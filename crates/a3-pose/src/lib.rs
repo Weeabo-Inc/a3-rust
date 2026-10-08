@@ -25,6 +25,14 @@
 //! The pose is in the engine's animation space; how the pose is placed on the entity (the root
 //! offset) is not settled, so the caller applies the entity transform. The move's own advance
 //! is [`MoveSample::step`], not a bone translation.
+//!
+//! A moves type (`a3-moves`) names each move's RTM by path and plays it to a phase: [`MoveClips`]
+//! holds the animations themselves, keyed by that path, and [`MoveBlend`] is a blend state in the
+//! moves type's terms (move ids and phases), which resolves to a [`MoveState`] over the clips.
+
+mod clips;
+
+pub use clips::{ClipLoadReport, MoveBlend, MoveClips};
 
 use a3_anim::SkeletonPivots;
 use a3_p3d::Skeleton;

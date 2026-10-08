@@ -94,7 +94,10 @@ Note that all sources at 0 is not the rest pose: for example a damper `translati
 ## RTM skeletal poses
 
 The path a character move takes: each record is decoded to a bone matrix, records are blended, and
-the result becomes the Pose that skinning uses. Implemented in `crates/a3-pose`.
+the result becomes the Pose that skinning uses. Implemented in `crates/a3-pose`. A moves type
+(`a3-moves`) names each move's RTM (`Move::file`) and plays it to a phase; `crates/a3-pose`'s
+`MoveClips` holds those animations and `MoveBlend` is a blend state in the moves type's terms
+(previous and current `MoveId` with their phases, and the blend between them).
 
 Engine functions (RVAs): BMTR serialiser `0x12557a0`; transform decode `0x1212520`; load-time
 conversion `0x124d370`; skeleton pivots `0x1252020` (from `0x1251c20`); the two-buffer record

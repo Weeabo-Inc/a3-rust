@@ -2,10 +2,13 @@
 //! Skipped, with a note, when the variable is unset, so CI stays green without game data.
 
 use std::path::Path;
+use std::sync::OnceLock;
 
 use a3_anim::{Pose, RtmBinding, SkeletonPivots};
+use a3_gamedata::{GameData, LoadOptions};
+use a3_moves::Moves;
 use a3_p3d::{Model, Skeleton};
-use a3_pose::{ManPose, ManRig, MoveSample, MoveState};
+use a3_pose::{ManPose, ManRig, MoveBlend, MoveClips, MoveSample, MoveState};
 use a3_rtm::Animation;
 use a3_vfs::Vfs;
 use glam::{Affine3A, Vec3};
@@ -322,6 +325,80 @@ fn the_pelvis_to_head_span_is_stable_over_the_cycle() {
             high - low < 0.1,
             "the head tracks the pelvis over the cycle"
         );
+    }
+}
+
+/// `CfgMovesMaleSdr` and the game data its RTM paths resolve against, loaded once.
+fn moves_type() -> Option<&'static (GameData, Moves)> {
+    static LOADED: OnceLock<(GameData, Moves)> = OnceLock::new();
+    let root = std::env::var_os("A3_ROOT")?;
+    Some(LOADED.get_or_init(|| {
+        let data = GameData::load(&LoadOptions::new(root)).unwrap();
+        let moves = Moves::from_config(&data.config.root().get("CfgMovesMaleSdr")).unwrap();
+        (data, moves)
+    }))
+}
+
+#[test]
+fn the_moves_type_resolves_its_ids_to_the_same_rtms_the_pose_uses() {
+    let Some(data) = setup() else {
+        return;
+    };
+    let Some((game, moves)) = moves_type() else {
+        return;
+    };
+    let idle = moves.find("AmovPercMstpSrasWrflDnon").unwrap();
+    let walk = moves.find("AmovPercMwlkSrasWrflDf").unwrap();
+    eprintln!(
+        "moves: {:?} at {:?}, {:?} at {:?}",
+        moves.get(idle).name,
+        moves.get(idle).file,
+        moves.get(walk).name,
+        moves.get(walk).file
+    );
+
+    // Loading two moves of a 5,575-move type reads two files, the ones the tests pose directly.
+    let mut clips = MoveClips::new();
+    let report = clips.load(moves, [idle, walk], |p| {
+        game.vfs.open(p).ok().map(|b| b.to_vec())
+    });
+    assert_eq!(report.loaded, 2, "{report:?}");
+    assert!(
+        report.missing.is_empty() && report.failed.is_empty(),
+        "{report:?}"
+    );
+    assert_eq!(clips.len(), 2);
+    assert_eq!(clips.animation(moves, idle), Some(&data.idle));
+    assert_eq!(clips.animation(moves, walk), Some(&data.walk));
+
+    // The moves type's blend (ids and phases) is the same pose as the samples it names, and the
+    // move vector the app advances the entity by is the one a3-moves gives the same move.
+    let state = MoveBlend {
+        previous: idle,
+        previous_phase: 0.3,
+        current: walk,
+        current_phase: 0.7,
+        blend: 0.5,
+    }
+    .state(&clips, moves)
+    .unwrap();
+    assert_eq!(
+        data.rig.pose(&state),
+        data.rig.pose(&MoveState::new(
+            MoveSample::new(&data.idle, 0.3),
+            MoveSample::new(&data.walk, 0.7),
+            0.5,
+        ))
+    );
+    assert_eq!(state.current.step(), data.walk.step);
+
+    // A move with no RTM (`file = ""`) is not a pose.
+    if let Some(none) = moves
+        .iter()
+        .find(|(_, m)| m.file.is_empty())
+        .map(|(id, _)| id)
+    {
+        assert!(clips.sample(moves, none, 0.0).is_none());
     }
 }
 
