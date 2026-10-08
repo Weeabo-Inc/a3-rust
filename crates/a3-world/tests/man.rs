@@ -7,7 +7,8 @@
 use std::sync::Arc;
 
 use a3_world::{
-    ClientId, Create, EntityType, GroundContact, GroundQuery, Motion, SimulationClass, World,
+    ClientId, Create, EntityType, GroundContact, GroundQuery, Motion, NetworkId, SimulationClass,
+    World,
 };
 use a3_wrp::{Terrain, TerrainBuilder};
 use glam::DVec3;
@@ -249,4 +250,21 @@ fn a_man_in_the_air_falls_to_the_terrain() {
         (feet - DVec3::new(10.0, 100.0, 20.0)).length() < 1e-6,
         "{feet:?}"
     );
+}
+
+/// A remote Man's position is his owner's to send: this machine only advances his local state
+/// (the family rule in `sim::man`).
+#[test]
+fn a_remote_man_is_not_moved_by_this_machine() {
+    let mut world = World::new(ClientId(5000));
+    world.load_terrain(Arc::new(flat_terrain(100.0))).unwrap();
+    let ty = Arc::new(EntityType::new("B_Soldier_F", SimulationClass::Soldier));
+    let position = DVec3::new(10.0, 110.0, 20.0);
+    let man = world
+        .spawn_remote(ty, position, NetworkId::new(2, 9), None)
+        .unwrap();
+
+    world.simulate(1.0);
+
+    assert_eq!(world.entity(man).unwrap().position(), position);
 }
