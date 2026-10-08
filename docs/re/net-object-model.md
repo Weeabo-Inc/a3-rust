@@ -16,9 +16,10 @@ var id         // per-creator serial
 ```
 
 Type 21 (`netidarr`) = `var count` × netid. Every object reference in a game message uses this
-pair; there is no other object addressing on the wire. In memory the pair is `ObjectId`/
-`NetworkId` (RTTI: `RemoveSoftLinks<SoftLinkIdTraits<ObjectId,ObjectIdAutoDestroy>>` is a base of
-`NetworkObject`). Log formats such as `"Server: Object %d:%d not found (message %s)"`,
+pair; there is no other object addressing on the wire. In memory the pair is the `NetworkId`
+(Entity `+0x498`). It is separate from the engine's soft-link `ObjectId` (Object `+0xa8`; RTTI
+`RemoveSoftLinks<SoftLinkIdTraits<ObjectId,ObjectIdAutoDestroy>>`), except for static map
+objects, whose NetworkId is `{1, ObjectId}` (`world-object-model.md`). Log formats such as `"Server: Object %d:%d not found (message %s)"`,
 `"Unit %d:%d not found, cannot update"` and `"Cannot create object %d:%d with type[%s], param[%s],
 NMT code[%d]"` print it as `creator:id`.
 

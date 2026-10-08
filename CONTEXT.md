@@ -319,8 +319,18 @@ _Avoid_: actor, game object
 
 **Object**:
 Any instance placed in the World with a model and position, simulated or static. Every Entity is
-an Object; buildings and trees on the Landscape are Objects but not Entities _(uncertain: exact
-class split)_.
+an Object. Trees, rocks and walls on the Landscape are Objects but not Entities.
+
+**Static object**:
+An Object placed by the WRP rather than created during the session. Every machine loads it
+from the terrain, so it is never created or deleted over the network. It can still be an Entity
+(a house with doors, a street lamp).
+_Avoid_: map object (that is the 2D map symbol), terrain object, primary object
+
+**Object ID**:
+The number of a Static object in the WRP, as returned by `getObjectID` and taken by
+`nearestObject [position, id]`.
+_Avoid_: VisitorId, netId
 
 **Simulation**:
 The behaviour class that drives an Entity type each frame, selected by the `simulation` config
@@ -358,8 +368,15 @@ _Avoid_: late join, hot join
 
 **Network object ID**:
 The identifier the original engine gives every networked Object, the same on every machine in the
-session, by which create, update, delete and ownership messages refer to it.
+session, by which create, update, delete and ownership messages refer to it. It is the pair of
+the creating machine's client ID and that machine's serial number; Static objects use the
+reserved creator 1.
 _Avoid_: netId (that is the SQF string form of it), object handle
+
+**Entity ID**:
+Our engine's local, per-process handle to an Entity in the World. A deleted Entity's ID never
+refers to another Entity. It is not sent over the network.
+_Avoid_: object ID, network ID
 
 **Owner**:
 The machine (identified by its client ID; the server is 2) on which an Object is local. Ownership
