@@ -85,7 +85,14 @@ merge order) and the units/weapons it adds.
 Root config classes defining every entity type, weapon, projectile and magazine by name.
 
 **Stringtable**:
-A `stringtable.xml` file mapping `STR_` keys to localised text in each supported language.
+A `stringtable.xml` (or binarized `stringtable.bin`) file mapping keys, by convention `STR_...`
+and compared ignoring case, to localised text in each supported language. A key shows the
+selected language, else its `Original` text, else English, else its first entry.
+
+**Localize**:
+To look a key up in every loaded Stringtable for the current language, as the `localize` script
+command and `$STR_...` config values do; a missing key gives an empty string.
+_Avoid_: translate
 
 ## Textures and materials
 
