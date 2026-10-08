@@ -1,0 +1,19 @@
+[package]
+name = "a3-ui"
+description = "Config-driven UI: displays and controls, layout, text, drawing and the SQF UI commands"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+a3-config.workspace = true
+a3-fonts.workspace = true
+a3-sqf.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+a3-gamedata.workspace = true
+
+[lints]
+workspace = true

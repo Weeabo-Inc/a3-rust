@@ -304,6 +304,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-ui"
+version = "0.1.0"
+dependencies = [
+ "a3-config",
+ "a3-fonts",
+ "a3-gamedata",
+ "a3-sqf",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "a3-vfs"
 version = "0.1.0"
 dependencies = [
