@@ -18,21 +18,17 @@ pub struct EngineContext {
     pub world: Option<String>,
     /// Initial camera placement over the World.
     pub camera: Option<CameraSpec>,
-    /// Distance fog density override.
-    pub fog: Option<f32>,
     /// Placed objects of the World.
     pub objects: ObjectOptions,
     /// Show one model instead (the model viewer).
     pub model: Option<ModelSpec>,
+    /// Date, time, weather and fog overrides over the World.
+    pub environment: crate::environment::EnvironmentSpec,
 }
 
 impl EngineContext {
     /// Apply command-line overrides of the render settings.
-    pub fn configure(&self, renderer: &mut a3_render::Renderer) {
-        if let Some(fog) = self.fog {
-            renderer.settings.fog_density = fog;
-        }
-    }
+    pub fn configure(&self, _renderer: &mut a3_render::Renderer) {}
 
     /// Mount the game data for the model viewer, if a model is requested.
     pub fn load_model_vfs(&self) -> anyhow::Result<Option<(a3_vfs::Vfs, ModelSpec)>> {

@@ -90,8 +90,13 @@ impl App for GameApp {
             self.keys_description = "LOADING...".to_owned();
         }
         if let Some(world) = self.engine.load_world()? {
-            self.scene
-                .load_world(&gpu, &mut renderer, world, self.engine.camera);
+            self.scene.load_world(
+                &gpu,
+                &mut renderer,
+                world,
+                self.engine.camera,
+                &self.engine.environment,
+            );
         }
         if let Some((vfs, spec)) = self.engine.load_model_vfs()? {
             self.scene.load_model(&gpu, &mut renderer, vfs, spec);
@@ -140,6 +145,8 @@ impl App for GameApp {
             captured,
             &self.keys_description,
         );
+        self.scene
+            .prepare_render(&mut g.renderer, time.real_dt as f32);
         let view = frame.texture.create_view(&Default::default());
         g.renderer.render(
             &g.gpu,

@@ -70,7 +70,13 @@ pub fn screenshot(
     engine.configure(&mut renderer);
     scene.load(&gpu, &mut renderer);
     if let Some(world) = engine.load_world()? {
-        scene.load_world(&gpu, &mut renderer, world, engine.camera);
+        scene.load_world(
+            &gpu,
+            &mut renderer,
+            world,
+            engine.camera,
+            &engine.environment,
+        );
     }
     if let Some((vfs, spec)) = engine.load_model_vfs()? {
         scene.load_model(&gpu, &mut renderer, vfs, spec);
@@ -86,6 +92,7 @@ pub fn screenshot(
         draws.clear();
         scene.draw(&mut draws);
         scene.overlay(&mut draws, &fps, &adapter, false, "BUILT-IN");
+        scene.prepare_render(&mut renderer, FRAME.as_secs_f32());
         let image = renderer.render_to_image(
             &gpu,
             width,

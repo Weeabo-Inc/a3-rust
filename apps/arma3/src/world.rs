@@ -28,6 +28,10 @@ pub struct LoadedWorld {
     pub objects: Option<WorldObjects>,
     /// The roads, when the World has a readable roads shapefile.
     pub roads: Option<crate::roads::LoadedRoads>,
+    /// Date, sun, lighting tables, weather and fog of the World.
+    pub environment: a3_environment::WorldEnvironment,
+    /// The cloud noise texture (`SimulWeather >> noiseTexture`), decoded.
+    pub sky_noise: Option<a3_render::TextureData>,
 }
 
 /// Mount the game at `game_dir`, find `CfgWorlds >> world` and load its terrain, and its
@@ -100,6 +104,14 @@ pub fn load(
         parsed - mounted,
         start.elapsed() - parsed
     );
+    let world_class = data.config.root().get("CfgWorlds").get(&config.class);
+    let environment = a3_environment::WorldEnvironment::from_config(&world_class);
+    let noise_path = world_class.get("SimulWeather").get("noiseTexture");
+    let sky_noise = if noise_path.is_text() {
+        load_rgba8(&data.vfs, &noise_path.text())
+    } else {
+        None
+    };
     let reader: FileReader = Arc::new(move |p| vfs.open(p.as_str()).ok().map(|b| b.to_vec()));
     Ok(LoadedWorld {
         name: config.class,
@@ -108,6 +120,28 @@ pub fn load(
         centre,
         objects,
         roads,
+        environment,
+        sky_noise,
+    })
+}
+
+/// Decodes a PAA with all its mipmaps to RGBA8.
+fn load_rgba8(vfs: &a3_vfs::Vfs, path: &str) -> Option<a3_render::TextureData> {
+    let bytes = vfs.open(path).ok()?;
+    let texture = a3_paa::Texture::read(&bytes)
+        .map_err(|e| log::warn!("cannot read {path}: {e}"))
+        .ok()?;
+    let mips = texture
+        .mips
+        .iter()
+        .map(|m| a3_paa::decode_rgba8(texture.format, m))
+        .collect::<Result<Vec<_>, _>>()
+        .ok()?;
+    Some(a3_render::TextureData {
+        format: a3_render::TextureFormat::Rgba8,
+        width: u32::from(texture.width()),
+        height: u32::from(texture.height()),
+        mips,
     })
 }
 

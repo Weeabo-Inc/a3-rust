@@ -5,6 +5,7 @@
 //! mode for checking rendering changes.
 
 mod engine;
+mod environment;
 mod keys;
 mod models;
 mod offline;
@@ -61,9 +62,6 @@ struct Cli {
     /// the terrain, degrees).
     #[arg(long, value_name = "SPEC", requires = "world")]
     camera: Option<world::CameraSpec>,
-    /// Distance fog density per metre (default 8e-5, Altis' `hazeBaseBeta0`).
-    #[arg(long, value_name = "DENSITY")]
-    fog: Option<f32>,
     /// Objects quality (`VeryLow`, `Low`, `High`, `VeryHigh`, `Ultra`, `Extreme`): LOD
     /// coefficients and how far small objects stay visible.
     #[arg(long, default_value = "High")]
@@ -86,6 +84,21 @@ struct Cli {
     /// `--screenshot`: after loading, time this many frames and print the average.
     #[arg(long, default_value_t = 0)]
     bench_frames: u64,
+    /// Date over the world, `year-month-day` (default: the world's `startDate`).
+    #[arg(long, value_name = "DATE", value_parser = environment::parse_date, requires = "world")]
+    date: Option<(i32, u32, u32)>,
+    /// Local time over the world, `hh:mm` (default: the world's `startTime`).
+    #[arg(long, value_name = "TIME", value_parser = environment::parse_time, requires = "world")]
+    time: Option<f64>,
+    /// Overcast 0..1, as `setOvercast` (default: the world's `startWeather`).
+    #[arg(long, value_name = "VALUE", requires = "world")]
+    overcast: Option<f32>,
+    /// Fog as `setFog`: `value[,decay[,base]]` (default: the world's `startFog*`).
+    #[arg(long, value_name = "FOG", requires = "world")]
+    fog: Option<environment::FogSpec>,
+    /// Fog view distance in metres: the linear fog ends there.
+    #[arg(long, value_name = "METRES", requires = "world")]
+    fog_distance: Option<f32>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -105,7 +118,6 @@ fn main() -> anyhow::Result<()> {
         },
         world: cli.world.clone(),
         camera: cli.camera,
-        fog: cli.fog,
         objects: models::ObjectOptions {
             quality: cli.objects_quality,
             view_distance: cli.view_distance,
@@ -116,6 +128,13 @@ fn main() -> anyhow::Result<()> {
             pitch: cli.view_pitch,
             lod: cli.lod,
         }),
+        environment: environment::EnvironmentSpec {
+            date: cli.date,
+            time: cli.time,
+            overcast: cli.overcast,
+            fog: cli.fog,
+            fog_distance: cli.fog_distance,
+        },
     };
     log::info!(
         "a3-rust {} (targets Arma 3 {}), game dir: {:?}",
@@ -177,5 +196,37 @@ mod tests {
         assert_eq!(cli.world.as_deref(), Some("altis"));
         assert_eq!(cli.camera.map(|c| c.altitude), Some(200.0));
         assert!(Cli::try_parse_from(["arma3", "--camera", "1,2"]).is_err());
+    }
+
+    #[test]
+    fn environment_flags_are_parsed() {
+        let cli = Cli::try_parse_from([
+            "arma3",
+            "--world",
+            "altis",
+            "--date",
+            "2035-06-24",
+            "--time",
+            "05:30",
+            "--overcast",
+            "0.4",
+            "--fog",
+            "0.2,0.05,0",
+            "--fog-distance",
+            "3000",
+        ])
+        .unwrap();
+        assert_eq!(cli.date, Some((2035, 6, 24)));
+        assert_eq!(cli.time, Some(5.5));
+        assert_eq!(cli.overcast, Some(0.4));
+        assert_eq!(cli.fog_distance, Some(3000.0));
+        assert_eq!(
+            cli.fog,
+            Some(environment::FogSpec {
+                value: 0.2,
+                decay: Some(0.05),
+                base: Some(0.0),
+            })
+        );
     }
 }

@@ -560,6 +560,7 @@ version = "0.1.0"
 dependencies = [
  "a3-config",
  "a3-core",
+ "a3-environment",
  "a3-gamedata",
  "a3-input",
  "a3-landscape",
