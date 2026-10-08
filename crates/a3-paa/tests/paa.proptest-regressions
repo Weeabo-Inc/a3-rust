@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc f92f0651c75c0376f43e52ec2c3aa644a4d837b2e87c8d407bc3bfc7e1ebaf62 # shrinks to texture = Texture { format: Ai88, average_color: None, max_color: Some(Color { r: 255, g: 255, b: 255, a: 255 }), flags: None, swizzle: None, procedural: None, other_taggs: [], palette: [], mips: [Mip { width: 1, height: 1, data: [17, 17], compression: None }] }

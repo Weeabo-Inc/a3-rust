@@ -9,6 +9,12 @@ official and optional folders mounted, EBOs skipped).
 All integers little-endian. `.pac` files have the same layout as `.paa` (**high**: all 15
 shipped `.pac` files parse with the same reader).
 
+The engine's PAC/PAA source (`TextureSourcePac`, header load `0x10bbc10`, level load
+`0x10b98f0`) decides `.paa` vs `.pac` by comparing the extension with `.paa`. A `.paa` may hold
+AI88, ARGB1555, ARGB4444, ARGB8888 or DXT1-5; a `.pac` only DXT1-5 or the obsolete untagged P8
+palette format ("Obsolette P8 format"); anything else fails ("Bad source texture format").
+All 15 shipped `.pac` files are DXT1. **high**
+
 ```text
 u16 type tag
 TAGG*            while the next 4 bytes are "GGAT"
@@ -31,6 +37,9 @@ mipmap*          until width == 0 && height == 0
 | `0x8888` | ARGB8888 | bytes B, G, R, A |
 | `0x8080` | AI88 (grey + alpha) | bytes I, A (verified visually on a `_gs` UI icon) |
 
+A first `u16` that is none of these means an untagged legacy P8 file: the engine steps back
+two bytes and reads TAGGs and palette from the start (`0x10bbc10`). **high**
+
 Survey: DXT5 22,353, DXT1 20,306, AI88 117, ARGB4444 4, ARGB1555 2; no DXT2/3/4, no ARGB8888,
 no untagged OFP-style palettised files.
 
@@ -41,15 +50,24 @@ reader is at RVA `0x10bce40` (see `file-formats-in-binary.md`).
 
 | file bytes | name | payload | notes |
 |---|---|---|---|
-| `GGATCGVA` | AVGC | 4 bytes B, G, R, A | average colour; for `_nohq` it is the *unswizzled* average (`#8080f4`). **high** |
-| `GGATCXAM` | MAXC | 4 bytes B, G, R, A | max colour; nearly always white. Absent in some old files. **high** |
+| `GGATCGVA` | AVGC | 4 bytes B, G, R, A | average colour; for `_nohq` it is the *unswizzled* average (`#8080f4`). Default without the TAGG: `0x80C02020` (ARGB) for AI88, ARGB4444, ARGB8888; `0xFF802020` otherwise. **high** |
+| `GGATCXAM` | MAXC | 4 bytes B, G, R, A | max colour; nearly always white. Absent in some old files. The engine keeps it as four floats `/255` with a "has max colour" flag. **high** |
 | `GGATGALF` | FLAG | `u32` | 1 = interpolated alpha (blend), 2 = binary alpha (alpha test). **high** (matches `texHeaders.bin` `is_alpha` / `is_transparent` on all 38,312 entries) |
 | `GGATZIWS` | SWIZ | 4 bytes, order A, R, G, B | channel swizzle, see below. **high** |
 | `GGATCORP` | PROC | text | procedural source text (TexView). Not in shipped data. **medium** |
 | `GGATSFFO` | OFFS | 16 `u32` | file offset of each mipmap header, zero-padded; all zero in some old `.pac`. Always matches the real offsets in the survey. **high** |
 
 No other TAGG names occur in shipped data. TexConvert writes them in the order AVGC, MAXC, FLAG,
-SWIZ, OFFS.
+SWIZ, OFFS. The engine (`0x10bce40`) skips SWIZ, PROC and any unknown TAGG by its length; it
+stores AVGC as four floats `/255`; FLAG bit 0 sets "alpha", bit 1 "transparent"; and "alpha non
+opaque" = FLAG bit 0 and AVGC alpha < 0x80 (matches `texHeaders.bin` on every entry). **high**
+
+Palette: `u16` count (must be ≤ 256), then `count` 3-byte entries. If an entry is `0xFF00FF`
+(magenta) or `0x00FFFF`, it becomes the transparent colour: it is replaced by the AVGC colour and
+the texture is marked transparent. Only the obsolete P8 format uses a palette. **high**
+
+How MAXC is applied when rendering is not traced yet (the value lives on the texture object
+next to the average colour).
 
 ### Swizzle codes (**high** for the values seen, **medium** for 8/9)
 
@@ -74,20 +92,29 @@ u24 stored size
 data[stored size]
 ```
 
-- The engine's mip header reader (`0x10bb9c0`) masks the width with `0x7fff`, handles the
-  1234/8765 marker by reading two more `u16`s, stops on (0, 0), and rejects sizes outside
-  2..=4096 with "Extreme texture size (%dx%d)". **high** for the code path. Shipped raw-format
-  textures do contain 1x1 levels; how the engine treats them is **unknown** (probably never
-  reaches them).
-- DXT data is LZO1X-compressed when the width's top bit is set, raw otherwise. TexConvert
-  compresses the large levels only (survey: DXT1 57,476 LZO / 119,381 raw levels; DXT5 47,843 /
-  127,701; e.g. a 2048² `_co` has LZO down to 256², raw from 128²). **high**
-- Non-DXT data is BI LZSS with a *signed* 32-bit checksum (sum of the output bytes as `i8`)
-  whenever the stored size differs from the raw size `w*h*bpp`; equal size means raw. Some LZSS
-  levels are *larger* than raw (the compressor never falls back), so "smaller than raw" is the
-  wrong test. **high** empirically (882 LZSS and 6 raw levels all decode and checksum), not
-  confirmed in the executable.
-- Raw DXT sizes are whole 4x4 blocks: `ceil(w/4) * ceil(h/4) * 8|16`.
+- **Which levels the engine loads** (`0x10bbc10`, header reader `0x10bb9c0`). With an OFFS
+  table, only level 0's header is read: level *i* is assumed to be `(w >> i, h >> i)` at
+  `OFFS[i]`, and the chain ends at the first zero OFFS slot (or the caller's level limit). DXT
+  chains also stop after a level with a side below 5. Without OFFS (old `.pac`), headers are
+  read one after another until (0, 0). The header reader masks the width with `0x7fff`, follows
+  the 1234/8765 marker, and rejects sides outside 2..=4096 ("Extreme texture size (%dx%d)",
+  texture init fails) — so the 1x1 levels of shipped raw-format textures (which all have OFFS)
+  are never validated, and no texture may exceed 4096 (none in the survey does). **high**
+- **(1234, 8765)** marks an obsolete palettised (P8) level: the real width and height follow,
+  then LZW-style data decoded through the palette (`0x10bea00`, "LZW Decode error"). Only P8
+  `.pac` files can use it; none ship. **high**
+- **DXT** (`0x10bde80`): LZO1X-compressed when the width's top bit is set ("LZO decompression
+  failed" on error), to `w*h/2` (DXT1) or `w*h` (DXT2-5) bytes. Otherwise the stored size must
+  be exactly that ("Bad DXT1 mipmap size", "Bad DXT2-5 mipmap size"); the engine does not round
+  to whole blocks, which is the same for the 4x4-and-larger levels that exist. **high**
+- **Non-DXT** (AI88, 1555, 4444: `0x10bd8b0`; 8888: `0x10bed40`): *always* BI LZSS with a
+  signed 32-bit checksum (sum of the output bytes as `i8`), decoded to `w*h*bpp` by
+  `0x10b56e0`; there is no raw path. Some streams are as long as the raw data (6 shipped AI88
+  levels) or longer. All 888 shipped non-DXT levels decode with a matching checksum. **high**
+- **TexConvert's LZO choice** is not a size threshold: in shipped data LZO levels range from
+  1 KiB to 16 MiB of raw data and raw levels up to 4 MiB (DXT1 57,476 LZO / 119,381 raw levels;
+  DXT5 47,843 / 127,701). TexConvert is not part of the install, so the rule is **unknown**;
+  `a3-paa` compresses a DXT level when LZO makes it smaller.
 - Mip chain length: halving until the *shorter* side reaches 4 (DXT) or 1 (other formats);
   e.g. 32x8 DXT ends at 16x4, 2:1 AI88 ends at 2x1. **high** (survey of non-square textures).
 - The 24-bit size field caps one stored level at 16 MiB - 1, so a 4096² DXT5 top level must be
@@ -117,13 +144,15 @@ entry:
   u32 paa_file_size
 ```
 
-Pixel format enum (also in the executable's string table next to the DXT names): 0 P8, 1 AI88,
-2 RGB565, 3 ARGB1555, 4 ARGB4444, 5 ARGB8888, 6 DXT1, 7 DXT2, 8 DXT3, 9 DXT4, 10 DXT5. **high**
-for 1, 3, 4, 6, 10 (seen); the rest by position.
+Pixel format enum: 0 P8, 1 AI88, 2 RGB565, 3 ARGB1555, 4 ARGB4444, 5 ARGB8888, 6 DXT1, 7 DXT2,
+8 DXT3, 9 DXT4, 10 DXT5. **high**: the header loader (`0x10bbc10`) maps the type tags to exactly
+these values (`0x8080` → 1, `0x1555` → 3, `0x4444` → 4, `0x8888` → 5, `0xFF01..05` → 6..10, no
+tag → 0).
 
 Survey: 219 files, 38,312 entries; every file writes back byte-identically, and every entry
-matches its PAA in format, file size, MAXC presence and value, FLAG bits, average colour and the
-full mipmap table (sizes and offsets). **high**
+matches its PAA in format, file size, MAXC presence and value, FLAG bits, "alpha non opaque"
+(FLAG bit 0 and AVGC alpha < 0x80), average colour, texture type and the full mipmap table
+(sizes and offsets). **high**
 
 ### Texture type (**high**)
 

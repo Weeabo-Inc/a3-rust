@@ -243,7 +243,7 @@ fn mip(width: usize, height: usize, data: Vec<u8>) -> Mip {
         width: width as u16,
         height: height as u16,
         data,
-        compression: Compression::None,
+        compression: Compression::Lzss,
     }
 }
 

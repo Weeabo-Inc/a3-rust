@@ -18,13 +18,13 @@ pub(crate) const OFFSET_SLOTS: usize = 16;
 /// How a mipmap's data is stored in the file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Compression {
-    /// Raw.
+    /// Raw (DXT formats only).
     #[default]
     None,
     /// LZO1X (DXT formats; flagged by the top bit of the stored width).
     Lzo,
-    /// BI LZSS with a signed checksum (non-DXT formats; recognised by a stored size that
-    /// differs from the raw size, larger when compression did not pay off).
+    /// BI LZSS with a signed checksum: every non-DXT level (the engine has no raw path for
+    /// them; some streams are as long as or longer than the raw data).
     Lzss,
 }
 
@@ -160,10 +160,9 @@ impl PaaHeader {
                 } else {
                     (stored_width, Compression::None)
                 }
-            } else if stored_len != format.data_len(stored_width, height) {
-                (stored_width, Compression::Lzss)
             } else {
-                (stored_width, Compression::None)
+                // The engine always LZSS-decodes non-DXT levels, whatever their stored size.
+                (stored_width, Compression::Lzss)
             };
             if width == 0 || height == 0 {
                 return malformed("PAA", format!("mipmap {width}x{height} at byte {offset}"));
