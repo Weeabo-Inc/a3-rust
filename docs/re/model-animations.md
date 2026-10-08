@@ -154,9 +154,14 @@ animation object carries its attach bone at `+0x90` (`int`) and that bone's blen
   copied through unchanged. Further layers are folded in the same way, pairwise, by
   `0x12105b0` / `0x1211710` / `0x1211d90`: each layer's contribution is weighted by the layer
   weight at `+0x1c` times the animation's per-bone weight (`*(anim+0x18) + 4 + 8*i`), clamped to
-  0..1, and weights at or below 0.001 are skipped. The earlier "whole matrices linearly, no
-  slerp" note described the **skeleton-less** path (`0x35bf70` / `0x35a020`, taken when the pose
-  builder is called without a skeleton); the skeletal path does slerp.
+  0..1, and weights at or below 0.001 are skipped. The record's index `i` is
+  `FUN_14069c8c0(anim, bone)` — not a weight itself but a lookup in the animation's bone table
+  (int array at `anim+0x60`, count `anim+0x68`) returning `-1` for a bone the animation does not
+  carry. The Man's layer list at `+0x3a0` (count `+0x3a8`, stride `0x70`, layer weight `+0x1c`)
+  treats that as weight 0 — the layer leaves the bone alone — while the list at `+0x740` (count
+  `+0x748`) leaves such a bone at weight 1. The earlier "whole matrices linearly, no slerp"
+  note described the **skeleton-less** path (`0x35bf70` / `0x35a020`, taken when the pose builder
+  is called without a skeleton); the skeletal path does slerp.
 - **Pose output** (high): `0x12105b0` builds `M` from the accumulated quaternion (after the
   decoder's row/column swap, so it is the matrix of the conjugate) and emits
   `translation = T - M * Q`, with `T` the blended posed joint and `Q` the bone's rest pivot
@@ -184,8 +189,11 @@ animation object carries its attach bone at `+0x90` (`int`) and that bone's blen
   where the trunk's are near identity, and the error grows along the chain, so the leading
   suspect is a rest pose other than `skeletonpivots.p3d`'s T-pose arms — either another pivots
   set (`CfgSkeletonParameters` per skeleton) or a further pose-builder layer (`0x1211710` /
-  `0x1211d90`, e.g. a weapon hold) that re-poses them. Worth checking next: what the per-bone
-  weight `FUN_14069c8c0(anim, bone)` returns for the arm and face bones.
+  `0x1211d90`, e.g. a weapon hold) that re-poses them. The layer route is the concrete one now:
+  `FUN_14069c8c0` is the layer's bone-table lookup (see *Blending*), so a layer carries some bones
+  with a weight and skips the rest — what is left is to see which layers a Man's animation holder
+  actually holds, and whether the arm and face bones are carried by them rather than by the base
+  move alone.
 - Hunter `wheel_*_destruct_unhide`: `hide` with `minValue..maxValue = -1..0`, so with
   `hitlfwheel` in `0..1` the bone stays hidden; the hit sources may feed negative values.
 - `animPeriod` / `initPhase` use by time-driven sources.
