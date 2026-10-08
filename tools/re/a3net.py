@@ -257,7 +257,201 @@ def connect_request(name: str, password: str, mod_string: str, steam_id: int, pl
     return body
 
 
+# ---- message layer: AES-128-CBC "DContext" (docs/re/net-messages.md) ---------------------
+
+_SBOX = bytes.fromhex(
+    "637c777bf26b6fc53001672bfed7ab76ca82c97dfa5947f0add4a2af9ca472c0b7fd9326363ff7cc34a5e5f171d8311504c723c31896059a071280e2eb27b27509832c1a1b6e5aa0523bd6b329e32f8453d100ed20fcb15b6acbbe394a4c58cfd0efaafb434d338545f9027f503c9fa851a3408f929d38f5bcb6da2110fff3d2cd0c13ec5f974417c4a77e3d645d197360814fdc222a908846eeb814de5e0bdbe0323a0a4906245cc2d3ac629195e479e7c8376d8dd54ea96c56f4ea657aae08ba78252e1ca6b4c6e8dd741f4bbd8b8a703eb5664803f60e613557b986c11d9ee1f8981169d98e949b1e87e9ce5528df8ca1890dbfe6426841992d0fb054bb16")
+_INV_SBOX = bytes(_SBOX.index(i) for i in range(256))
+
+
+def _xt(a: int) -> int:
+    return ((a << 1) ^ 0x1B) & 0xFF if a & 0x80 else a << 1
+
+
+def _mul(a: int, b: int) -> int:
+    r = 0
+    while b:
+        if b & 1:
+            r ^= a
+        a, b = _xt(a), b >> 1
+    return r
+
+
+def _expand(key: bytes) -> list[bytes]:
+    w = [list(key[i:i + 4]) for i in range(0, 16, 4)]
+    rcon = 1
+    for i in range(4, 44):
+        t = list(w[i - 1])
+        if i % 4 == 0:
+            t = [_SBOX[b] for b in t[1:] + t[:1]]
+            t[0] ^= rcon
+            rcon = _xt(rcon)
+        w.append([a ^ b for a, b in zip(w[i - 4], t)])
+    return [bytes(sum(w[r * 4:r * 4 + 4], [])) for r in range(11)]
+
+
+def _enc_block(rk: list[bytes], b: bytes) -> bytes:
+    s = [x ^ k for x, k in zip(b, rk[0])]
+    for r in range(1, 11):
+        s = [_SBOX[x] for x in s]
+        s = [s[(i + 4 * (i % 4)) % 16] for i in range(16)]  # ShiftRows (column-major)
+        if r < 10:
+            s = sum(([_mul(c[0], 2) ^ _mul(c[1], 3) ^ c[2] ^ c[3], c[0] ^ _mul(c[1], 2) ^ _mul(c[2], 3) ^ c[3],
+                      c[0] ^ c[1] ^ _mul(c[2], 2) ^ _mul(c[3], 3), _mul(c[0], 3) ^ c[1] ^ c[2] ^ _mul(c[3], 2)]
+                     for c in (s[j:j + 4] for j in range(0, 16, 4))), [])
+        s = [x ^ k for x, k in zip(s, rk[r])]
+    return bytes(s)
+
+
+def _dec_block(rk: list[bytes], b: bytes) -> bytes:
+    s = [x ^ k for x, k in zip(b, rk[10])]
+    for r in range(9, -1, -1):
+        s = [s[(i - 4 * (i % 4)) % 16] for i in range(16)]  # InvShiftRows
+        s = [_INV_SBOX[x] for x in s]
+        s = [x ^ k for x, k in zip(s, rk[r])]
+        if r > 0:
+            s = sum(([_mul(c[0], 14) ^ _mul(c[1], 11) ^ _mul(c[2], 13) ^ _mul(c[3], 9),
+                      _mul(c[0], 9) ^ _mul(c[1], 14) ^ _mul(c[2], 11) ^ _mul(c[3], 13),
+                      _mul(c[0], 13) ^ _mul(c[1], 9) ^ _mul(c[2], 14) ^ _mul(c[3], 11),
+                      _mul(c[0], 11) ^ _mul(c[1], 13) ^ _mul(c[2], 9) ^ _mul(c[3], 14)]
+                     for c in (s[j:j + 4] for j in range(0, 16, 4))), [])
+    return bytes(s)
+
+
+def _b(v: int) -> int:
+    return v & 0xFF
+
+
+def msg_key_from_token(token: bytes) -> tuple[bytes, bytes]:
+    """(AES key, IV) for a key token (0x7b4c40 / 0x7b4d00 / 0x272ed0; verified by emulation).
+    Only the low byte of CRC-32(token) matters."""
+    c = zlib.crc32(token) & 0xFF
+    k = bytearray()
+    for i in range(16):
+        v = _b(c * 0x16 - i * 0x1D - 0x21)
+        for j in range(16):
+            v = _b(v + (i * -0x69 + 0x1D) * j + c * 2 + i)
+        k.append(v)
+    b1 = _b(c * 2)
+    iv = bytearray()
+    for i in range(16):
+        t = ((_b(i * 10) ^ _b(b1 + 0x4F)) + (_b(i * 0x13) ^ _b(b1 + 0x9E)) + (_b(i * 0x1C) ^ _b(b1 - 0x13))
+             + (_b(i * 0x25) ^ _b(b1 + 0x3C)) + (_b(i * 0x2E) ^ _b(b1 + 0x8B)) + (_b(i * 0x37) ^ _b(b1 - 0x26))
+             + (_b(i << 6) ^ _b(b1 + 0x29)) + (_b(i * 0x49) ^ _b(b1 + 0x78)) + (_b(i * 0x52) ^ _b(b1 - 0x39))
+             + (_b(i * 0x5B) ^ _b(b1 + 0x16)) + (_b(i * 0x64) ^ _b(b1 + 0x65)) + (_b(i * 0x6D) ^ _b(b1 + 0xB4))
+             + (_b(i * 0x76) ^ _b(b1 + 3)) + (_b(i * 0x7F) ^ _b(b1 + 0x52)) + (_b(i * -0x78) ^ _b(b1 + 0xA1))
+             + (i ^ b1) + i * -0x71 - 0x43 + c * 0x16)
+        iv.append(_b(t))
+    g = bytes(_b(((i * i * 7 + 0x4B) * i - 0x20) * i) for i in range(16))
+    return bytes(a ^ b for a, b in zip(k, g)), bytes(iv)
+
+
+DEFAULT_MSG_KEY = msg_key_from_token(bytes(16))  # key 651287ec..., IV b32a11a8...
+
+
+def crc16_ccitt(data: bytes) -> int:
+    """Hashes::CRC16 (0x281bb0/0x281ca0): CRC-16/CCITT-FALSE, poly 0x1021, init 0xFFFF."""
+    crc = 0xFFFF
+    for byte in data:
+        crc ^= byte << 8
+        for _ in range(8):
+            crc = ((crc << 1) ^ 0x1021) & 0xFFFF if crc & 0x8000 else (crc << 1) & 0xFFFF
+    return crc
+
+
+def msg_encrypt(payload: bytes, key_iv: tuple[bytes, bytes] = DEFAULT_MSG_KEY, junk: int = 0,
+                q: int = 0) -> bytes:
+    """Encoder 0x7b4940: payload|crc16|check, pad to 16, AES-CBC, then `junk` bytes and info byte."""
+    key, iv = key_iv
+    body = bytearray(payload) + struct.pack("<H", crc16_ccitt(payload)) + b"\0"
+    check_pos = len(body) - 1
+    pad = (-len(body)) % 16
+    body += b"\0" * pad
+    if junk:
+        info = (pad << 4) | junk
+        check = (junk << 4) | pad
+    else:
+        info = pad if pad else (q & 0xF) | 0x80
+        check = ((info >> 4) | (info << 4)) & 0xFF
+    body[check_pos] = check
+    rk, prev, out = _expand(key), iv, bytearray()
+    for i in range(0, len(body), 16):
+        prev = _enc_block(rk, bytes(a ^ b for a, b in zip(body[i:i + 16], prev)))
+        out += prev
+    return bytes(out) + bytes(junk) + bytes([info])
+
+
+def msg_decrypt(data: bytes, key_iv: tuple[bytes, bytes] = DEFAULT_MSG_KEY) -> bytes:
+    """Decoder 0x7b4790. Raises ValueError on any check failure."""
+    key, iv = key_iv
+    n = len(data)
+    r = (n & 0xF) - 1
+    if r < 0:
+        raise ValueError("length is a multiple of 16")
+    info = data[-1]
+    if r >= 1:
+        pad = info >> 4
+        if info & 0xF != r:
+            raise ValueError("info byte mismatch")
+        want_check = ((info >> 4) | (info << 4)) & 0xFF
+    else:
+        pad = info & 0xF if info < 0x80 else 0
+        want_check = None
+    clen = n - (n & 0xF)
+    rk, prev, plain = _expand(key), iv, bytearray()
+    for i in range(0, clen, 16):
+        blk = data[i:i + 16]
+        plain += bytes(a ^ b for a, b in zip(_dec_block(rk, blk), prev))
+        prev = blk
+    end = clen - pad
+    if end <= 3:
+        raise ValueError("too short")
+    crc_lo, crc_hi, check = plain[end - 3], plain[end - 2], plain[end - 1]
+    if want_check is not None:
+        ok = check == want_check
+    elif pad == 0:
+        ok = check & 0xF == 8
+    else:
+        ok = check >> 4 == pad
+    if not ok:
+        raise ValueError("check byte mismatch")
+    payload = bytes(plain[:end - 3])
+    if crc16_ccitt(payload) != crc_lo | crc_hi << 8:
+        raise ValueError("crc16 mismatch")
+    return payload
+
+
+def read_varint(buf: bytes, pos: int) -> tuple[int, int]:
+    """Unsigned LEB128 (7 bits per byte, bit 7 = more), as in 0xc793e0 compression 1."""
+    v = shift = 0
+    while True:
+        b = buf[pos]
+        pos += 1
+        v |= (b & 0x7F) << shift
+        if b < 0x80:
+            return v & 0xFFFFFFFF, pos
+        shift += 7
+
+
+def write_varint(v: int) -> bytes:
+    out = bytearray()
+    v &= 0xFFFFFFFF
+    while True:
+        if v < 0x80:
+            out.append(v)
+            return bytes(out)
+        out.append((v & 0x7F) | 0x80)
+        v >>= 7
+
+
 def selftest() -> None:
+    p = b"\x01\x02\x03 network message body"
+    for junk in (0, 5, 12):
+        assert msg_decrypt(msg_encrypt(p, junk=junk)) == p
+    assert msg_decrypt(msg_encrypt(b"x" * 13)) == b"x" * 13  # pad == 0 case
+    assert DEFAULT_MSG_KEY[0].hex() == "651287ec61c6fba0fdfacf04993e8308"
+    assert crc16_ccitt(b"123456789") == 0x29B1
+    assert read_varint(write_varint(300), 0) == (300, 2)
     keys = derive_keys()
     pkt = pack(F_RELIABLE | F_RTT_REQ, 1000, 7, 0xFFFF, 0, b"hello arma", keys)
     h, p = unpack(pkt, keys)

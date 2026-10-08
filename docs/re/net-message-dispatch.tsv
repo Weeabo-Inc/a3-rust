@@ -1,0 +1,492 @@
+id	item_count	server_handler	server_strings	client_handler	client_strings
+0	2				
+1	2			0xc5240e (shared x6)	
+2	5	0xca880c (shared x3)		0xc4f318 (shared x3)	
+3	10	unhandled		unhandled	
+4	3	0xcac5d6 (shared x63)		0xc461cf	
+5	5	0xca880c (shared x3)		0xc4f318 (shared x3)	
+6	9	unhandled		unhandled	
+7	3	0xcac5d6 (shared x63)		0xc4621b	
+8	2	unhandled		unhandled	
+9	1	unhandled		unhandled	
+10	3	unhandled		unhandled	
+11	5	0xca880c (shared x3)		0xc4f318 (shared x3)	
+12	9	unhandled		unhandled	
+13	4	0xcac5d6 (shared x63)		0xc46267	
+14	12	unhandled		0xc3fe47	BE network interface was not created! | BE connection with remote machine could not be established. Error=%d | Identity
+15	0	unhandled		unhandled	
+16	1	unhandled		0xc4e915	
+17	1	0xca3dcc		0xc3ef3a	
+18	2	0xca3e0f		0xc3eeea	
+19	30	0xca3e5f		0xc40de6	
+20	1	unhandled		0xc410ad	
+21	8	unhandled		0xc411b9	
+22	2	0xca57e1		0xc4a4f0 (shared x2)	pblVarEvtHandlerTarget
+23	4	0xca5955 (shared x12)		0xc4a390	
+24	2	0xca362a		unhandled	
+25	5	0xca938f		0xc4dac0	NMTChat received bad channel %d
+26	7	0xca9735		0xc4e19b	NMTRadioChat received bad channel %d
+27	5	0xca97a3		0xc4e529	NMTRadioChatWave received bad channel %d
+28	4	unhandled		0xc4e904	Network message 'SetSpeaker' not implemented!
+29	84	unhandled		0xc41567	%s %s%s | Missing DLCs: | Unknown difficulty: %s | .pbo
+30	13	0xca3ead		0xc41b9b	
+31	5	0xca39af		0xc41c8a	
+32	2	0xca3cb3		unhandled	
+33	7	unhandled		0xc41d41	
+34	1	0xca3d7e		unhandled	
+35	6	0xca5e50 (shared x2)	Client mission file download from HTTP mirror failed for client: %s(%lli)! %s	0xc42529	.pbo | $\MPMissionsCache\ | ..\ |  - %s
+36	5	unhandled		0xc41e1f	.pbo | $\MPMissionsCache\ | ..\ | Mission-Hash:  | Mission-File-Name:  | %llu
+37	3	0xca5e50 (shared x2)	Client mission file download from HTTP mirror failed for client: %s(%lli)! %s	unhandled	
+38	7	0xca75e3		unhandled	
+39	8	0xca4036	NMTAskForDamage obsolete	0xc429d8	
+40	10	0xca4047		0xc42f26	
+41	3	0xca3f88		0xc430a8	
+42	6	0xca4441		0xc44175	Client: Unknown get in position %d | Client: CargoIndex to high:%d max:%d
+43	6	0xca45c5		0xc446b3	
+44	3	0xca4459		0xc4489b	
+45	2	0xcac5d6 (shared x63)		0xc44a1a	
+46	5	0xca471e		0xc44a8a	
+47	2	0xcac5d6 (shared x63)		0xc44c8c	
+48	5	0xca4864		0xc44dd8	
+49	3	0xca4876 (shared x3)		0xc44fc5	
+50	4	0xca4876 (shared x3)		0xc450e1	Warning: weapon index %d max is %d. Vehicle: %s, isTurret: %d
+51	3	0xcac5d6 (shared x63)		0xc43adf	
+52	2	0xca489c		0xc43b45	
+53	3	0xca496e		0xc43bc3	
+54	3	0xcac5d6 (shared x63)		0xc43d35	
+55	4	0xcac5d6 (shared x63)		0xc43dad	
+56	20	0xca56b8 (shared x2)		0xc43eec	
+57	13	0xca56b8 (shared x2)		0xc45da0	NMTFireWeapon | (%d [receivedMag]): Network sync error - %s
+58	4	0xcac5d6 (shared x63)		0xc462b3	
+59	3	0xca5370 (shared x16)		0xc462ff	
+60	3	0xca5370 (shared x16)		0xc4638a	
+61	2	0xca5370 (shared x16)		unhandled	
+62	2	0xca5370 (shared x16)		0xc46eef	
+63	22	0xca5370 (shared x16)		0xc46475	
+64	3	0xca5370 (shared x16)		0xc46dc3	
+65	4	0xca5370 (shared x16)		0xc46a4d	
+66	7	0xca43b4 (shared x15)		0xc46955	
+67	10	0xca43b4 (shared x15)		0xc46875	
+68	4	0xcac5d6 (shared x63)		0xc46e4a	
+69	4	0xca424a (shared x6)		0xc4668d	
+70	2	0xca424a (shared x6)		0xc46afa	
+71	6	0xca424a (shared x6)		0xc46ca4	
+72	6	0xca424a (shared x6)		0xc46b91	
+73	6	0xca424a (shared x6)		0xc46514	NMTReplaceContainer | (%d [update._targetSoldier]): Network sync error - %s | (%d [update._supplyEnt]): Network sync error - %s | (%d [update._fromSupply]): Network sync error - %s
+74	5	0xca5370 (shared x16)		0xc471a0	
+75	2	0xca5370 (shared x16)		0xc4733e	
+76	2	0xca5370 (shared x16)		0xc473ac	
+77	3	0xca5370 (shared x16)		0xc4730f	NetworkClient::OnMessage | d:\Bis\Source\Profile\Futura\lib\Network\networkClient.cpp | %s %s :OBSOLETE method call:
+78	2	0xca5370 (shared x16)		0xc46fd4	
+79	3	0xca5370 (shared x16)		0xc47093	
+80	2	0xca580a		0xc47583	
+81	6	0xca520f (shared x9)		0xc47624	
+82	1	0xca5370 (shared x16)		0xc47ea3	
+83	1	0xca5370 (shared x16)		0xc47e2b	
+84	1	0xca5370 (shared x16)		0xc47dd9	
+85	4	0xca97bf		0xc47f3a	
+86	2	0xca5118		0xc48063	
+87	3	0xca5165		0xc48129	
+88	2	unhandled		0xc4821a	
+89	2	0xca7b52		0xc4947f	
+90	2	0xca7bb0		0xc494da	
+91	3	0xcac5d6 (shared x63)		0xc49584	
+92	3	0xcac5d6 (shared x63)		0xc495c7	
+93	2	0xcac5d6 (shared x63)		0xc4960a	
+94	1	0xcac5d6 (shared x63)		0xc496c7	
+95	4	0xcac5d6 (shared x63)		0xc49706	
+96	3	0xcac5d6 (shared x63)		0xc49745	
+97	2	0xcac5d6 (shared x63)		0xc497c3	
+98	2	0xcac5d6 (shared x63)		0xc49802	
+99	2	0xcac5d6 (shared x63)		0xc49841	
+100	5	unhandled		0xc499fb	Client: object %d:%d is now local | Respawn type | Client: Remote object %d:%d not found | Client: object %d:%d is now remote
+101	8	0xca520f (shared x9)		0xc4a261	
+102	2	0xca7c0e		0xc4f00a	
+103	3	0xca7cee		0xc4f075	Client: remote command destroyed %d:%d
+104	4	0xca7dbc (shared x18)		0xc4f129	
+105	6	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+106	17	0xca7dbc (shared x18)		0xc4f13b	
+107	11	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+108	10	0xca853a (shared x14)		0xc4f321 (shared x18)	
+109	44	0xca7dbc (shared x18)		0xc4f14d	
+110	12	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+111	24	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+112	13	0xca7dbc (shared x18)		0xc4f15f	
+113	11	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+114	23	0xca7dbc (shared x18)		0xc4f171	
+115	26	0xca7dbc (shared x18)		0xc4f183	
+116	19	0xca7dbc (shared x18)		0xc4f195	
+117	7	0xca7dbc (shared x18)		0xc4f1b9	
+118	8	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+119	10	0xca7dbc (shared x18)		0xc4f1cb	
+120	18	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+121	1	unhandled		unhandled	
+122	29	unhandled		unhandled	
+123	5	0xca7dbc (shared x18)		0xc4f1dd	
+124	14	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+125	21	0xca7dbc (shared x18)		unhandled	
+126	20	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+127	9	0xca87fe (shared x4)		0xc4f321 (shared x18)	
+128	23	0xca7dbc (shared x18)		0xc4f201	
+129	23	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+130	9	0xca87fe (shared x4)		0xc4f321 (shared x18)	
+131	21	0xca7dbc (shared x18)		0xc4f213	
+132	20	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+133	9	0xca87fe (shared x4)		0xc4f321 (shared x18)	
+134	19	0xca7dbc (shared x18)		0xc4f237	
+135	5	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+136	20	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+137	23	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+138	28	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+139	65	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+140	33	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+141	17	0xca853a (shared x14)		0xc4f321 (shared x18)	
+142	46	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+143	21	0xca853a (shared x14)		0xc4f321 (shared x18)	
+144	65	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+145	65	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+146	15	0xca853a (shared x14)		0xc4f321 (shared x18)	
+147	16	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+148	66	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+149	16	0xca853a (shared x14)		0xc4f321 (shared x18)	
+150	74	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+151	17	0xca853a (shared x14)		0xc4f321 (shared x18)	
+152	80	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+153	20	0xca853a (shared x14)		0xc4f321 (shared x18)	
+154	66	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+155	67	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+156	70	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+157	13	0xca853a (shared x14)		0xc4f321 (shared x18)	
+158	9	unhandled		unhandled	
+159	18	unhandled		unhandled	
+160	3	unhandled		unhandled	
+161	8	unhandled		unhandled	
+162	2	unhandled		unhandled	
+163	2	unhandled		unhandled	
+164	9	unhandled		unhandled	
+165	15	unhandled		unhandled	
+166	2	unhandled		unhandled	
+167	67	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+168	1			0xc4ee02	
+169	1	0xca359d		0xc4ef3b	
+170	1	unhandled		unhandled	
+171	1	unhandled		unhandled	
+172	12	0xca853a (shared x14)		0xc4f321 (shared x18)	
+173	1	0xcac5d6 (shared x63)		0xc43e85	
+174	2	0xca9c3f	admins | passwordAdmin | missionWhitelist	0xc3ef75	
+175	5	unhandled			
+176	3	0xca36e7		unhandled	
+177	15	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+178	16	0xca853a (shared x14)		0xc4f321 (shared x18)	
+179	11	unhandled		0xc4f508	
+180	9	0xca844a (shared x3)		0xc4f2fd (shared x3)	
+181	7	0xca844a (shared x3)		0xc4f2fd (shared x3)	
+182	18	0xca7e13 (shared x10)	NetworkObjectInfo::GetPlayerObjectInfo | Wrong player index passed to %s - max=%d, received=%d	0xc4f249	
+183	7	0xca9033		0xc4f494	Unexpected on client
+184	2	0xcac5d6 (shared x63)		0xc4f561	
+185	3	0xcac5d6 (shared x63)		0xc4f63f	
+186	3	0xca51ad		0xc4afa0	
+187	2	0xca520f (shared x9)		0xc4b009	
+188	6	0xca4a40		0xc4b143	
+189	1	0xca4b2a		0xc4b1cd	
+190	3	0xca442f (shared x10)		0xc4b427	
+191	4	0xca4bab		0xc4bbf2	
+192	4	0xca4efd		0xc4da37	
+193	4	0xcabaf6		0xc4f7e8	
+194	13	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+195	2	0xcac5d6 (shared x63)		0xc4bf7e	
+196	3	0xca4bcd (shared x3)		0xc4bfdd	
+197	3	0xca4bcd (shared x3)		0xc4c065	
+198	4	0xca520f (shared x9)		0xc5240e (shared x6)	
+199	21	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+200	2	0xcac5d6 (shared x63)		0xc4c145	
+201	5	0xca3fca		0xc4c1a5	
+202	5	0xca520f (shared x9)		0xc4799f	
+203	3	0xca520f (shared x9)		0xc47a50	
+204	3	0xca516f		0xc47bac	
+205	3	0xca43b4 (shared x15)		0xc47c8b	
+206	3	0xca520f (shared x9)		0xc47cf4	
+207	1	0xca4e31		0xc4f90c	
+208	4	0xca4d88		0xc4f8a9	
+209	8	0xca7e13 (shared x10)	NetworkObjectInfo::GetPlayerObjectInfo | Wrong player index passed to %s - max=%d, received=%d	0xc4f2a3	
+210	12	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+211	12	unhandled		unhandled	
+212	16	0xca7e13 (shared x10)	NetworkObjectInfo::GetPlayerObjectInfo | Wrong player index passed to %s - max=%d, received=%d	0xc4f2b5	
+213	16	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+214	1	0xcabb80		unhandled	
+215	2	0xcabbe0		0xc5240e (shared x6)	
+216	3	unhandled		0xc4f986	
+217	3	0xca423a (shared x3)		0xc4d09c	
+218	3	0xca423a (shared x3)		0xc4d13e	
+219	9	0xcac5d6 (shared x63)		0xc4c4f9	
+220	5	0xca4c18 (shared x8)		0xc4c422	
+221	4	0xca4c18 (shared x8)		0xc4c64d	
+222	3	0xca4c18 (shared x8)		0xc4c70c	NMTAskBackpack | (%d [ask._to]): Network sync error - %s | (%d [ask._from]): Network sync error - %s
+223	5	0xca442f (shared x10)		0xc4c7f2	NMTReplaceItem | (%d [ask._to]): Network sync error - %s | (%d [ask._from]): Network sync error - %s
+224	4	0xca442f (shared x10)		0xc4c8dc	NMTStorePendingItem | (%d [ask._to]): Network sync error - %s | (%d [ask._from]): Network sync error - %s
+225	4	0xca4c2a (shared x3)		0xc4cafe	NMTReplaceWeapon | (%d [ask._to]): Network sync error - %s | (%d [ask._from]): Network sync error - %s
+226	5	0xca4c2a (shared x3)		0xc4cc1e	
+227	3	0xca4c2a (shared x3)		0xc4ccaf	NMTReplaceBackpack | (%d [ask._to]): Network sync error - %s | (%d [ask._from]): Network sync error - %s
+228	2	0xca4c18 (shared x8)		0xc4cd83	
+229	2	0xca4c18 (shared x8)		0xc4ce7c	
+230	2	0xca4c18 (shared x8)		0xc4ceeb	
+231	1	0xcac5d6 (shared x63)		0xc49535	
+232	5	0xca4d69 (shared x6)	NetworkServer::OnMessage | d:\Bis\Source\Profile\Futura\lib\Network\networkServer.cpp | %s %s:NOT IMPLEMENTED - briefing!	unhandled	
+233	5	0xca4d69 (shared x6)	NetworkServer::OnMessage | d:\Bis\Source\Profile\Futura\lib\Network\networkServer.cpp | %s %s:NOT IMPLEMENTED - briefing!	unhandled	
+234	3	0xca4d69 (shared x6)	NetworkServer::OnMessage | d:\Bis\Source\Profile\Futura\lib\Network\networkServer.cpp | %s %s:NOT IMPLEMENTED - briefing!	unhandled	
+235	5	unhandled		0xc4d763	
+236	5	unhandled		0xc4d841	
+237	5	unhandled		0xc4d8e2	
+238	1	0xca4d69 (shared x6)	NetworkServer::OnMessage | d:\Bis\Source\Profile\Futura\lib\Network\networkServer.cpp | %s %s:NOT IMPLEMENTED - briefing!	unhandled	
+239	1	0xca4d69 (shared x6)	NetworkServer::OnMessage | d:\Bis\Source\Profile\Futura\lib\Network\networkServer.cpp | %s %s:NOT IMPLEMENTED - briefing!	unhandled	
+240	3	0xca4d69 (shared x6)	NetworkServer::OnMessage | d:\Bis\Source\Profile\Futura\lib\Network\networkServer.cpp | %s %s:NOT IMPLEMENTED - briefing!	unhandled	
+241	2	0xcac5d6 (shared x63)		0xc469bc	
+242	2	0xcac5d6 (shared x63)		0xc468dc	
+243	4	0xca5e46 (shared x4)		0xc4d9ab	
+244	13	unhandled		unhandled	
+245	1	unhandled		0xc4d9d2	
+246	1	unhandled		0xc4d9f9	
+247	2	unhandled		0xc4da18	
+248	16	unhandled		unhandled	
+249	1	unhandled		unhandled	
+250	9	unhandled		unhandled	
+251	28	unhandled		unhandled	
+252	8	unhandled		unhandled	
+253	2	0xca5029		0xc4f9df	
+254	18	0xca7e13 (shared x10)	NetworkObjectInfo::GetPlayerObjectInfo | Wrong player index passed to %s - max=%d, received=%d	0xc4f27f	
+255	6	0xca442f (shared x10)		0xc49784	
+256	3	0xcac5d6 (shared x63)		0xc49649	
+257	3	0xcac5d6 (shared x63)		0xc49688	
+258	3	0xca4f36 (shared x2)		0xc4fa2e	
+259	18	0xca7dbc (shared x18)		0xc4f1a7	
+260	25	0xca7e13 (shared x10)	NetworkObjectInfo::GetPlayerObjectInfo | Wrong player index passed to %s - max=%d, received=%d	0xc4f2c7	
+261	1	unhandled		0xc40dc5	
+262	11	0xca4113		0xc43165	
+263	3	0xca4155		0xc4342a	
+264	5	0xca423a (shared x3)		0xc434df	
+265	4	unhandled		0xc5240e (shared x6)	
+266	6	0xca95db		0xc4dded	NMTLocalizedChat received bad channel %d
+267	6	0xca7e13 (shared x10)	NetworkObjectInfo::GetPlayerObjectInfo | Wrong player index passed to %s - max=%d, received=%d	0xc4f291	
+268	2	0xcab91f	missionWhitelist	unhandled	
+269	3	unhandled		0xc3fe26	
+270	2	0xca9bad		unhandled	
+271	1	0xca9c08		unhandled	
+272	1	unhandled		0xc4e950	
+273	2	unhandled		0xc4fc9e	", " | , ...
+274	1	unhandled		0xc5240e (shared x6)	
+275	2	unhandled		0xc50606	", " | , ...
+276	8	0xcabdad (shared x2)		unhandled	
+277	2	0xcabe47		unhandled	
+278	6	0xca7dbc (shared x18)		0xc4f225	
+279	7	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+280	8	0xca87fe (shared x4)		0xc4f321 (shared x18)	
+281	4	0xcabf5d		0xc50d23	
+282	4	0xcac17d		unhandled	
+283	4	0xca3569		0xc50e09	
+284	3	unhandled		0xc5240e (shared x6)	
+285	1	unhandled		0xc50e98	
+286	3	0xca5e29 (shared x12)		0xc4839a	
+287	3	0xca5994		0xc484bf	
+288	3	0xca5e29 (shared x12)		0xc485ab	
+289	4	0xca5e29 (shared x12)		0xc48758	
+290	2	0xca5e29 (shared x12)		0xc48823	
+291	1	0xca5e29 (shared x12)		0xc4888b	
+292	2	0xca5e46 (shared x4)		0xc50f70	
+293	5	0xca4876 (shared x3)		0xc45292	
+294	2	unhandled		unhandled	
+295	2	0xcac5d6 (shared x63)		0xc4b499	
+296	2	0xcac5d6 (shared x63)		0xc4b5b7	
+297	2	0xca5e29 (shared x12)		unhandled	
+298	1	unhandled		unhandled	
+299	8	0xca844a (shared x3)		0xc4f2fd (shared x3)	
+300	1	unhandled		unhandled	
+301	1	unhandled		unhandled	
+302	5	0xcac534		0xc510dc	
+303	6	0xca4f36 (shared x2)		0xc5136f	
+304	7	0xcac5b2		0xc513fc	
+305	3	0xcac5d6 (shared x63)		0xc51542	
+306	5	0xca442f (shared x10)		0xc4b61e	Conversation
+307	3	0xca5955 (shared x12)		0xc4ab94	
+308	5	0xca5e29 (shared x12)		0xc4ac9b	
+309	2	0xca5e29 (shared x12)		0xc486f0	
+310	5	0xca527a		0xc4bd34	
+311	1	0xca43b4 (shared x15)		0xc4bdc5	
+312	3	0xca5955 (shared x12)		0xc4ae99	
+313	4	unhandled		unhandled	
+314	3	unhandled		0xc4131b	
+315	2	0xca3edb		unhandled	
+316	1	unhandled		0xc413d3	$\players\
+317	3	0xca3ec4		0xc41c01	
+318	2	unhandled		unhandled	
+319	6	0xca92a2	Unexpected on server	0xc4f4a5	
+320	2	unhandled		0xc50fd1	
+321	65	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+322	10	0xca853a (shared x14)		0xc4f321 (shared x18)	
+323	2	0xca5e29 (shared x12)		0xc488e3	
+324	2	0xca5e29 (shared x12)		0xc4894e	
+325	2	0xca5b18 (shared x3)		0xc489be	
+326	0	0xcac96a	NetworkServer::OnMessage | d:\Bis\Source\Profile\Futura\lib\Network\networkServer.cpp | %s %s:NOT IMPLEMENTED - briefing!	unhandled	
+327	2	unhandled		0xc5102e	
+328	2	unhandled		0xc51094	
+329	2	0xca442f (shared x10)		0xc48a24	
+330	4	0xca520f (shared x9)		0xc48c08	
+331	2	0xca442f (shared x10)		0xc48d3f	
+332	2	0xcac5d6 (shared x63)		0xc48dd6	
+333	2	0xcac5d6 (shared x63)		0xc4f715	
+334	2	0xca410a		0xc43041	
+335	2	0xcac5d6 (shared x63)		0xc42c60	
+336	2	0xcac5d6 (shared x63)		0xc42d91	
+337	2	0xcac5d6 (shared x63)		0xc42e57	
+338	3	0xcac5d6 (shared x63)		0xc42ebe	
+339	2	0xcac5d6 (shared x63)		0xc43e1e	
+340	3	0xca5b56		0xc515e9	
+341	2	0xca5e46 (shared x4)		0xc51649	VehMPEvent:%d
+342	2	0xca5e46 (shared x4)		0xc5175a	MissionEvent:%d
+343	3	0xca5f9b		0xc51849	RemoteEEvent:%d
+344	1	0xca43b4 (shared x15)		0xc4740f	
+345	1	0xca43b4 (shared x15)		0xc4746c	
+346	1	0xca43b4 (shared x15)		0xc474c9	
+347	1	0xca43b4 (shared x15)		0xc47526	
+348	5	0xca7e13 (shared x10)	NetworkObjectInfo::GetPlayerObjectInfo | Wrong player index passed to %s - max=%d, received=%d	0xc4f2d9	
+349	5	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+350	5	0xca7e13 (shared x10)	NetworkObjectInfo::GetPlayerObjectInfo | Wrong player index passed to %s - max=%d, received=%d	0xc4f2eb	
+351	6	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+352	2	0xca476d		0xc44cf4	
+353	2	0xca4837		0xc44d5a	
+354	3	0xca442f (shared x10)		0xc44f5f	
+355	2	0xcac6eb	Server: Object info %d:%d not found during Changing Owner | Server: OwnerChanged of %d:%d arrived from non owner %d	unhandled	
+356	10	0xcac69e		0xc49880	
+357	2	unhandled		0xc50c5b	
+358	8	0xcabdad (shared x2)		unhandled	
+359	1	unhandled		0xc519a1	
+360	3	0xcac5d6 (shared x63)		0xc42d2a	
+361	2	0xcac5d6 (shared x63)		0xc42df8	
+362	7	0xca9969 (shared x3)		0xc4e6da	
+363	2	0xca9969 (shared x3)		0xc4e812	
+364	3	0xca9969 (shared x3)		0xc4e797	
+365	3	0xca9992	Array index out of range	0xc4e86f	
+366	1	0xca7208		0xc4baec	
+367	2	0xca43b4 (shared x15)		0xc4cf5e	
+368	2	0xca4c18 (shared x8)		0xc4cfc6	
+369	2	0xca4c18 (shared x8)		0xc4d031	
+370	5	0xca4c3c		0xc4d1db	GroundWeaponHolder
+371	11	unhandled		0xc4e98a	Speex | Opus
+372	3	0xca754e		0xc4a4f0 (shared x2)	pblVarEvtHandlerTarget
+373	2	0xca43b4 (shared x15)		0xc4a7ef	
+374	28	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+375	5	0xca9797		0xc4e37e	NMTRadioChatBroadcast received bad channel %d
+376	4	0xca5d51 (shared x3)	#reset | .rvmat | User tried to set invalid material %s	0xc48ed6	
+377	2	0xca5e29 (shared x12)		0xc490fb	
+378	2	0xca4bcd (shared x3)		0xc45364	
+379	2	0xca4269		0xc435ba	
+380	2	0xca4379		0xc4362c	
+381	1	0xcac5d6 (shared x63)		0xc4b3c7	
+382	1	0xca43b4 (shared x15)		0xc4b501	
+383	3	0xcac5d6 (shared x63)		0xc4b27d	
+384	1	0xcac5d6 (shared x63)		0xc4b2f0	
+385	1	0xca43b4 (shared x15)		0xc4a8ff	
+386	2	0xcac5d6 (shared x63)		0xc4c0e6	
+387	1	0xca41d3		unhandled	
+388	2	0xca5e29 (shared x12)		0xc491ce	
+389	2	0xca442f (shared x10)		0xc48afd	
+390	1	0xcac5d6 (shared x63)		0xc48b9a	
+391	1	0xcac5d6 (shared x63)		0xc4b225	
+392	8	0xca43b4 (shared x15)		0xc4b061	
+393	1	0xca43b4 (shared x15)		0xc4b0d2	
+394	12	0xca853a (shared x14)		0xc4f321 (shared x18)	
+395	7	0xca5fad	Player '%s'(%d) tried to execute invalid remoteExec in the name of player '%s'(%d), function '%s' | User %s (%llu) tried to remoteExec a disabled function: '%s' | targets	unhandled	
+396	8	0xca6627	Player '%s'(%d) tried to execute invalid remoteExec in the name of player '%s'(%d), function '%s' | User %s (%llu) tried to remoteExec a disabled function: '%s' | command | function | JIP is not enabled for %s: '%s' | targets	unhandled	
+397	8	unhandled		0xc49242	
+398	7	0xca6d1e		unhandled	
+399	5	unhandled		0xc492fd	
+400	1	0xca6488		unhandled	
+401	3	0xca5955 (shared x12)		0xc4a9cc	
+402	8	unhandled		0xc492bb	
+403	3	0xca5d51 (shared x3)	#reset | .rvmat | User tried to set invalid material %s	0xc48e42	
+404	8	0xca6f64		unhandled	
+405	7	unhandled		0xc493e5	
+406	6	unhandled		0xc49379	
+407	3	0xca5d51 (shared x3)	#reset | .rvmat | User tried to set invalid material %s	0xc48ff9	
+408	3	unhandled		0xc4ac03	
+409	4	0xca5955 (shared x12)		unhandled	
+410	4	0xca5955 (shared x12)		unhandled	
+411	3	unhandled		0xc4af08	
+412	4	0xca5955 (shared x12)		unhandled	
+413	4	0xca5955 (shared x12)		unhandled	
+414	5	0xca5955 (shared x12)		unhandled	
+415	5	0xca5955 (shared x12)		unhandled	
+416	4	0xca5955 (shared x12)		unhandled	
+417	4	0xca5955 (shared x12)		unhandled	
+418	2	0xca42ab		unhandled	
+419	2	0xca7aaa		unhandled	
+420	19	0xca7dbc (shared x18)		0xc4f1ef	
+421	3	0xca3ffe		0xc4c227	
+422	3	unhandled		unhandled	
+423	8	unhandled		unhandled	
+424	2	0xca655b		unhandled	
+425	2	unhandled		unhandled	
+426	2	0xcac5d6 (shared x63)		0xc42cbe	
+427	3	0xcac5d6 (shared x63)		0xc436be	
+428	2	0xcac5d6 (shared x63)		0xc43733	
+429	2	0xcac5d6 (shared x63)		0xc43791	
+430	2	0xcac5d6 (shared x63)		0xc4383a	
+431	2	0xcac5d6 (shared x63)		0xc438e3	
+432	3	0xcacb2c		0xc51b0b	
+433	2	0xcacc3b		0xc51b93	
+434	2	0xca92b3		unhandled	
+435	1	unhandled		unhandled	
+436	6	0xca4744		0xc44b3b	
+437	3	0xcabc35		0xc4fedc	Dedmen, ERROR, Sigcheck on HC, Tell Dedmen!!! ###################################################################### | Data required by server could not be found: %s | Client PBO could not be verified: %s | Client PBO is patched but VerifySignature is enabled: %s
+438	3	0xcabcb7		unhandled	
+439	6	unhandled		0xc41cff	
+440	3	0xcacd1b		unhandled	
+441	2	unhandled		0xc51eb4	
+442	2	unhandled		0xc51c14	
+443	4	unhandled		0xc4f794	
+444	4	0xcacebf		0xc5215e	
+445	4	0xca43b7 (shared x3)		0xc5227c	
+446	4	0xca424a (shared x6)		0xc5232a	actionPath
+447	43	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+448	2	0xca442f (shared x10)		0xc453cc	
+449	2	0xcac5d6 (shared x63)		0xc45482	
+450	2	0xcac5d6 (shared x63)		0xc45522	
+451	4	0xcac5d6 (shared x63)		0xc455c5	
+452	5	0xcac5d6 (shared x63)		0xc4587f	
+453	3	0xcac5d6 (shared x63)		0xc45af0	
+454	2	0xcac5d6 (shared x63)		0xc45c39	
+455	3	0xcac5d6 (shared x63)		0xc45ca6	
+456	2	0xcac5d6 (shared x63)		0xc45d2b	
+457	3	0xca4bbd		0xc456be	
+458	2	0xca4bee		0xc45a86	
+459	2	0xcac5d6 (shared x63)		0xc45bb1	
+460	7	0xca7dbc (shared x18)		0xc4be2c	
+461	3	0xca51c6		0xc4be3e	
+462	1	0xca520f (shared x9)		0xc4be9e	
+463	12	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+464	3	unhandled		unhandled	
+465	16	unhandled		unhandled	
+466	6	unhandled		0xc4bf03	
+467	14	0xca852e		0xc4f306	
+468	2	0xcaca53		0xc4c29e	
+469	8	0xcacab2		0xc4c31d	
+470	3	0xca5b18 (shared x3)		0xc4c39c	
+471	15	unhandled		unhandled	
+472	6	unhandled		unhandled	
+473	4	unhandled		unhandled	
+474	5	unhandled		unhandled	
+475	18	0xca7e13 (shared x10)	NetworkObjectInfo::GetPlayerObjectInfo | Wrong player index passed to %s - max=%d, received=%d	0xc4f25b	
+476	82	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+477	20	0xca853a (shared x14)		0xc4f321 (shared x18)	
+478	31	0xca7e13 (shared x10)	NetworkObjectInfo::GetPlayerObjectInfo | Wrong player index passed to %s - max=%d, received=%d	0xc4f26d	
+479	28	0xca8813 (shared x42)	Unit %d:%d not found, cannot update	0xc4f329 (shared x42)	Client: Object %d:%d (type %s) not found. | Client: Object (id %d:%d, type %s) is local - update is ignored. | Client: object %d:%d updated
+480	10	0xca853a (shared x14)		0xc4f321 (shared x18)	
+481	2	0xca43b4 (shared x15)		0xc4398c	
+482	2	0xca43da (shared x2)		0xc439f6	
+483	2	0xca43da (shared x2)		0xc43a7c	
+484	6	0xca8803 (shared x3)		0xc4f30f (shared x3)	
+485	8	0xca8803 (shared x3)		0xc4f30f (shared x3)	
+486	13	0xca8803 (shared x3)		0xc4f30f (shared x3)	
+487	2	0xca43b7 (shared x3)		0xc519d9	
+488	2	0xca43b7 (shared x3)		0xc51a41	
+489	2	0xca5b18 (shared x3)		0xc51aa9	
+490	5	0xca4f6f		0xc4fb05	

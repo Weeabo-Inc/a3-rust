@@ -5,8 +5,11 @@ addresses are **RVAs** (VA = RVA + 0x140000000). Reference implementation of eve
 page: `tools/re/a3net.py` (`python tools/re/a3net.py selftest | keys | decode <hex>`).
 
 **Confidence:** high for layouts, flags and algorithms (read directly from the code paths named
-below). **Not yet validated against a live capture** — the first capture will either confirm the
-derived keys byte-for-byte or show a transcription error (see "Validation" at the end).
+below). The key-derivation PRNG, LFSR table, RC4-drop512 and payload XOR were **executed under
+emulation and match `a3net.py` byte for byte** (`tools/re/verify_net_emu.py`); SHA-1 is
+CryptoAPI's. Not yet validated against a live capture (see "Validation" at the end) — the
+remaining risk is in *which* inputs feed the functions (e.g. that the peer's magic really is
+0x25252525), not in the algorithms.
 
 ## Layering
 
@@ -75,7 +78,7 @@ therefore fixed and identical for every server and client of this build.
    - flags mask `9b 6d`
    - bytes 8..23 mask `bf 27 61 a1 c3 e5 d4 73 7f 19 b5 99 5d c0 20 d0`
 
-   (values printed by `python tools/re/a3net.py keys`; to be confirmed by capture).
+   (values printed by `python tools/re/a3net.py keys`; algorithms verified by emulation).
 3. **Payload table** (`0x345d90`): 2048 bytes from a 16-bit Galois LFSR, polynomial mask 0xB400,
    seed `((m_lo ^ m_hi) & 0x5555) ^ m_hi` (0xACE1 if that is 0); `table[i] = (lfsr >> 1) & 0xFF`
    taken *before* each step `lfsr = (lfsr >> 1) ^ (-(lfsr & 1) & 0xB400)`.

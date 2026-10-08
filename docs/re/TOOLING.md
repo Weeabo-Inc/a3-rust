@@ -69,7 +69,10 @@ the server's naming conventions; they do not block the rename.
 | `tools/re/msvc_demangle.py <mangled>...` | demangler for RTTI type names |
 | `tools/re/sqf_commands.py <exe> --tsv out.tsv [--types t.tsv] [--long]` | script command table (10 s) |
 | `tools/re/data_inventory.py` | `docs/re/data-inventory.md` from `A3_ROOT` |
-| `tools/re/a3net.py selftest\|keys\|decode <hex>` | reference codec for the UDP transport and connect handshake (`net-*.md`) |
+| `tools/re/a3net.py selftest\|keys\|decode <hex>` | reference codec for the UDP transport, connect handshake and message encryption (`net-*.md`) |
+| `tools/re/emu.py` | Unicorn harness: call functions of arma3_x64.exe with fake allocator/imports/TLS (needs the `.work\venv`) |
+| `tools/re/verify_net_emu.py <exe>` | runs the original net crypto under emulation and compares with `a3net.py` |
+| `tools/re/net_formats.py <exe> --tsv out` | runs the message-format registration under emulation → `docs/re/net-message-formats.tsv` |
 
 ## MCP servers for interactive sessions (`.mcp.json`)
 
