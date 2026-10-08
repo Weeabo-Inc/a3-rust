@@ -98,6 +98,8 @@ impl App for GameApp {
             g.surface.size(),
             &self.scene.camera,
             &self.draws,
+            // Eye adaptation follows wall-clock time, also while the simulation is paused.
+            time.real_dt as f32,
         );
         cx.window().pre_present_notify();
         g.gpu.queue.present(frame);

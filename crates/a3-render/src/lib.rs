@@ -11,6 +11,8 @@
 //! - [`DrawList`]: this frame's meshes, [`DebugLines`] and debug text.
 //! - [`RenderFeature`]: how further renderers (terrain, sky, particles) plug into the frame's
 //!   phases (shadow, opaque, alpha, post, UI).
+//! - [`HdrSettings`]: the post chain after the scene pass: sky and fog into HDR, eye
+//!   adaptation from a luminance histogram, RV's filmic tonemapping (`HDRNewPars`), FXAA.
 
 pub mod camera;
 mod draw;
@@ -18,6 +20,7 @@ mod feature;
 pub mod font;
 mod gpu;
 pub mod mesh;
+mod post;
 mod renderer;
 pub mod texture;
 
@@ -26,7 +29,8 @@ pub use draw::{Color, DebugLines, DrawList, MeshDraw, MeshId, TextRun, TextureId
 pub use feature::{Phase, PrepareContext, RenderFeature};
 pub use gpu::{Gpu, RenderError, WindowSurface};
 pub use mesh::{Mesh, MeshData, Vertex};
-pub use renderer::{RenderSettings, Renderer};
+pub use post::{AntiAliasing, FilmicCurve, HdrSettings, Tonemap};
+pub use renderer::{ExposureReadout, RenderSettings, Renderer};
 pub use texture::{ColorSpace, GpuTexture, TextureData, TextureError, TextureFormat};
 
 /// Re-export so users can name wgpu types without a direct dependency.
