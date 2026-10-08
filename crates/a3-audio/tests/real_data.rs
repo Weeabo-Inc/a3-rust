@@ -84,6 +84,29 @@ fn every_sound_class_of_the_game_loads() {
     }
     eprintln!("expression variables: {vars:?}");
 
+    // Sample files: config paths usually omit the extension.
+    let (mut found, mut absent) = (0, Vec::new());
+    for shader in bank.shaders() {
+        for sample in &shader.samples {
+            if a3_audio::resolve_sound_path(&data.vfs, &sample.path).is_some() {
+                found += 1;
+            } else {
+                absent.push(sample.path.clone());
+            }
+        }
+    }
+    absent.sort();
+    absent.dedup();
+    eprintln!(
+        "{found} shader samples resolve, {} distinct paths missing: {:?}",
+        absent.len(),
+        &absent[..absent.len().min(10)]
+    );
+    assert!(
+        found > 9_000 && absent.len() * 20 < found,
+        "most samples exist"
+    );
+
     let sea = bank.set("Sea_SoundSet").unwrap();
     assert_eq!(sea.shaders, ["Sea_SoundShader"]);
     assert!(bank.environment_sets.iter().any(|s| s == "Coast_SoundSet"));

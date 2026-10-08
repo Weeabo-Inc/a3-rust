@@ -1,12 +1,16 @@
 //! 3D processing: attenuation, panning in RV axes, doppler, filters, and 3D voices in the mixer.
 
-use a3_audio::spatial::{doppler_factor, equal_power_pan, spatialize};
+use a3_audio::spatial::{Spatialized, doppler_factor, equal_power_pan};
 use a3_audio::{
     AudioEngine, Backend, Clip, Curve, DistanceFilter, Emitter, EngineConfig, Listener, Mixer,
     PlayParams, Source, VoiceId,
 };
 use a3_audio_formats::Sound;
 use glam::{DVec3, Vec3};
+
+fn spatialize(listener: &Listener, emitter: &Emitter) -> Spatialized {
+    a3_audio::spatial::spatialize(listener, emitter, 48_000.0)
+}
 
 fn falloff(range: f32) -> Curve {
     Curve::new([(0.0, 1.0), (range, 0.0)])
@@ -124,9 +128,14 @@ fn distance_filter_and_occlusion_close_the_low_pass() {
         range: 1000.0,
         power: 32.0,
     };
-    assert!(filter.cutoff_at(5.0) >= 19_999.0);
-    assert!((filter.cutoff_at(1000.0) - 150.0).abs() < 0.5);
-    assert!(filter.cutoff_at(100.0) < filter.cutoff_at(20.0));
+    // The engine's formula: open (the sample rate) inside innerRange, the minimum beyond range,
+    // fs + (min - fs) * ((d - inner) / (range - inner))^(1 / power) between.
+    let fs = 48_000.0;
+    assert_eq!(filter.cutoff_at(5.0, fs), fs);
+    assert_eq!(filter.cutoff_at(1001.0, fs), 150.0);
+    let t = (90.0f32 / 990.0).powf(1.0 / 32.0);
+    assert!((filter.cutoff_at(100.0, fs) - (fs + (150.0 - fs) * t)).abs() < 1.0);
+    assert!(filter.cutoff_at(100.0, fs) < filter.cutoff_at(20.0, fs));
 
     let mut emitter = Emitter::at(DVec3::new(0.0, 0.0, 5.0), falloff(100.0));
     assert_eq!(spatialize(&Listener::default(), &emitter).cutoff_hz, None);

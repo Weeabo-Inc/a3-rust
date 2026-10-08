@@ -13,7 +13,9 @@ mod engine;
 mod error;
 pub mod expr;
 mod filter;
+mod loader;
 mod mixer;
+pub mod player;
 pub mod spatial;
 mod stream;
 
@@ -22,6 +24,7 @@ pub use curve::Curve;
 pub use engine::{AudioEngine, Backend, EngineConfig, EngineStats};
 pub use error::{Error, Result};
 pub use filter::LowPass;
+pub use loader::{SOUND_EXTENSIONS, STREAM_SECONDS, SoundLoader, resolve_sound_path};
 pub use mixer::{Command, Mixer, MixerStats, PlayParams, Source, VoiceId};
 pub use spatial::{DistanceFilter, Emitter, Listener};
 pub use stream::Stream;

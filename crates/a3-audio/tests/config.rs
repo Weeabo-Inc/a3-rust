@@ -9,6 +9,7 @@ class CfgSoundCurves {
     class LinearCurve { points[] = {{0, 1}, {1, 0}}; };
 };
 class CfgSoundShaders {
+    class Factor_SoundShader { samples[] = {}; volume = 0.5; volumeFactor = 2; };
     class Base_SoundShader {
         samples[] = {{"A3\Sounds_F\a", 1}, {"A3\Sounds_F\b", 3}};
         volume = "forest * (windy factor [0.1, 0.5])";
@@ -99,6 +100,15 @@ fn reads_sound_shaders_with_expressions_and_inheritance() {
     assert_eq!(named.range, 150.0, "inherited");
     assert!((named.volume.as_constant().unwrap() - db_to_linear(-10.0)).abs() < 1e-6);
 
+    // A constant volume includes the shader's volumeFactor.
+    assert_eq!(
+        bank.shader("Factor_SoundShader")
+            .unwrap()
+            .volume
+            .as_constant(),
+        Some(1.0)
+    );
+
     assert_eq!(bank.warnings.len(), 1, "{:?}", bank.warnings);
     assert!(bank.warnings[0].contains("Broken_SoundShader"));
 }
@@ -109,7 +119,7 @@ fn reads_sound_sets_and_leaves_unset_fields_empty() {
     let sea = bank.set("SEA_SOUNDSET").unwrap();
     assert_eq!(sea.shaders, ["Base_SoundShader", "Named_SoundShader"]);
     assert_eq!(sea.volume_factor, 0.18);
-    assert_eq!(sea.spatial, Some(false));
+    assert!(!sea.spatial);
     assert!(sea.looping);
     assert_eq!(sea.shaders_limit, 1);
     assert_eq!(sea.frequency_randomizer, 3.0);
@@ -123,13 +133,30 @@ fn reads_sound_sets_and_leaves_unset_fields_empty() {
         Some(CurveRef::Points(vec![(0.0, 1.0), (100.0, 0.0)]))
     );
 
+    // Inline curves keep their points but resolve renormalised to 0..1, as in the engine.
+    assert_eq!(
+        bank.resolve_curve(sea.volume_curve.as_ref().unwrap()),
+        Some(Curve::new([(0.0, 1.0), (1.0, 0.0)]))
+    );
+
+    // Engine defaults and clamps.
     let bare = bank.set("Bare_SoundSet").unwrap();
     assert_eq!(bare.volume_factor, 1.0);
     assert_eq!(
         (bare.spatial, bare.doppler, bare.looping),
-        (None, None, false)
+        (true, true, false)
     );
     assert_eq!(bare.volume_curve, None);
+    assert_eq!(
+        (bare.volume_randomizer, bare.frequency_randomizer_min),
+        (1.0, 0.0)
+    );
+    assert_eq!(
+        (bare.occlusion_factor, bare.obstruction_factor),
+        (0.96, 0.7)
+    );
+    assert_eq!((bare.spatiality_range, bare.delay), (0.5, None));
+    assert_eq!(bare.volume.as_constant(), Some(1.0));
 }
 
 #[test]

@@ -1,26 +1,26 @@
-//! A second-order low-pass filter (RBJ biquad).
+//! The voice low-pass: a Chamberlin state-variable filter parameterised like XAudio2's
+//! (`Frequency = 2 sin(pi * cutoff / rate)`, `OneOverQ`), which the engine drives for its
+//! distance filters (`docs/re/audio.md`).
 
 use std::f32::consts::PI;
 
-/// Low-pass biquad for one channel, transposed direct form II.
+/// Low-pass state-variable filter for one channel.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct LowPass {
-    b0: f32,
-    b1: f32,
-    b2: f32,
-    a1: f32,
-    a2: f32,
-    z1: f32,
-    z2: f32,
+    f: f32,
+    one_over_q: f32,
+    low: f32,
+    band: f32,
     cutoff: f32,
     active: bool,
 }
 
 impl LowPass {
-    /// Sets the cutoff frequency (Hz) and resonance `q` at a sample rate. Cutoffs at or above
-    /// 45% of the sample rate switch the filter off (pass-through).
-    pub fn set(&mut self, cutoff_hz: f32, q: f32, sample_rate: f32) {
-        if cutoff_hz >= 0.45 * sample_rate || !cutoff_hz.is_finite() {
+    /// Sets the cutoff (Hz) and `one_over_q` (the config `qFactor`, passed through as XAudio2
+    /// does) at a sample rate. As in the engine, a cutoff at or above a sixth of the sample rate
+    /// leaves the filter fully open (pass-through).
+    pub fn set(&mut self, cutoff_hz: f32, one_over_q: f32, sample_rate: f32) {
+        if !cutoff_hz.is_finite() || cutoff_hz * 6.0 >= sample_rate {
             if self.active {
                 *self = Self::default();
             }
@@ -29,15 +29,8 @@ impl LowPass {
         if self.active && (cutoff_hz - self.cutoff).abs() < 0.5 {
             return;
         }
-        let w0 = 2.0 * PI * cutoff_hz.max(10.0) / sample_rate;
-        let (sin, cos) = w0.sin_cos();
-        let alpha = sin / (2.0 * q.max(0.1));
-        let a0 = 1.0 + alpha;
-        self.b0 = (1.0 - cos) / 2.0 / a0;
-        self.b1 = (1.0 - cos) / a0;
-        self.b2 = self.b0;
-        self.a1 = -2.0 * cos / a0;
-        self.a2 = (1.0 - alpha) / a0;
+        self.f = 2.0 * (PI * cutoff_hz.max(1.0) / sample_rate).sin();
+        self.one_over_q = one_over_q.clamp(0.05, 1.5);
         self.cutoff = cutoff_hz;
         self.active = true;
     }
@@ -52,10 +45,10 @@ impl LowPass {
         if !self.active {
             return x;
         }
-        let y = self.b0 * x + self.z1;
-        self.z1 = self.b1 * x - self.a1 * y + self.z2;
-        self.z2 = self.b2 * x - self.a2 * y;
-        y
+        let high = x - self.low - self.one_over_q * self.band;
+        self.band += self.f * high;
+        self.low += self.f * self.band;
+        self.low
     }
 }
 
@@ -80,22 +73,23 @@ mod tests {
     fn passes_low_and_cuts_high_frequencies() {
         let rate = 48_000.0;
         let mut lp = LowPass::default();
-        lp.set(500.0, std::f32::consts::FRAC_1_SQRT_2, rate);
-        let low = rms_after(&mut lp, 100.0, rate);
-        let mut lp2 = lp;
-        let high = rms_after(&mut lp2, 8000.0, rate);
+        lp.set(500.0, 1.0, rate);
+        let low = rms_after(&mut lp.clone(), 100.0, rate);
+        let high = rms_after(&mut lp, 6000.0, rate);
         assert!(
-            (low - std::f32::consts::FRAC_1_SQRT_2).abs() < 0.03,
+            (low - std::f32::consts::FRAC_1_SQRT_2).abs() < 0.05,
             "{low}"
         );
         assert!(high < 0.01, "{high}");
     }
 
     #[test]
-    fn a_cutoff_near_nyquist_disables_the_filter() {
+    fn a_cutoff_above_a_sixth_of_the_rate_disables_the_filter() {
         let mut lp = LowPass::default();
-        lp.set(30_000.0, 1.0, 48_000.0);
+        lp.set(8_000.0, 1.0, 48_000.0);
         assert!(!lp.is_active());
         assert_eq!(lp.process(0.25), 0.25);
+        lp.set(7_000.0, 1.0, 48_000.0);
+        assert!(lp.is_active());
     }
 }

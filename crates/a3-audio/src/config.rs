@@ -36,7 +36,8 @@ pub struct SoundShader {
     pub name: String,
     /// Sound files to choose from.
     pub samples: Vec<Sample>,
-    /// Linear volume expression (default 1).
+    /// Linear volume: a constant (already multiplied by the shader's `volumeFactor`) or an
+    /// expression (the engine does not apply `volumeFactor` to expressions).
     pub volume: Expr,
     /// Pitch factor expression (default 1).
     pub frequency: Expr,
@@ -55,44 +56,49 @@ pub struct SoundSet {
     pub name: String,
     /// Shader class names, played together.
     pub shaders: Vec<String>,
-    /// Linear gain applied to every shader.
+    /// Set-level volume (constant or expression, default 1), multiplied into every shader.
+    pub volume: Expr,
+    /// Linear gain, 0..=3.1623 (+10 dB), default 1.
     pub volume_factor: f32,
-    /// Pitch factor applied to every shader.
+    /// Pitch factor, 0.5..=2, default 1.
     pub frequency_factor: f32,
-    /// Gain over distance (`volumeCurve`), if given.
+    /// Gain over distance (`volumeCurve`, x normalised to 0..1 of the largest shader range);
+    /// `None` means `CfgSoundGlobals.defaultVolumeCurve`.
     pub volume_curve: Option<CurveRef>,
-    /// 3D (`spatial = 1`) or 2D; `None` when not given.
-    pub spatial: Option<bool>,
-    /// Doppler on; `None` when not given.
-    pub doppler: Option<bool>,
-    /// Loop the samples.
+    /// 3D (default) or 2D.
+    pub spatial: bool,
+    /// Doppler (default on).
+    pub doppler: bool,
+    /// Loop the samples (cleared by a `delay`).
     pub looping: bool,
     /// At most this many shaders with `limitation = 1` play at once (0 = no limit).
     pub shaders_limit: u32,
-    /// Random pitch variation (see `docs/re/audio.md` for units).
+    /// Largest random pitch offset in semitones, 0..=12.
     pub frequency_randomizer: f32,
-    /// Lower bound of the pitch variation, if given separately.
-    pub frequency_randomizer_min: Option<f32>,
-    /// Random volume variation.
+    /// Smallest random pitch offset in semitones, 0..=12.
+    pub frequency_randomizer_min: f32,
+    /// Largest random volume ratio, 1..=1.995 (+6 dB); the offset is applied in dB.
     pub volume_randomizer: f32,
-    /// Lower bound of the volume variation, if given separately.
-    pub volume_randomizer_min: Option<f32>,
-    /// `CfgDistanceFilters` class name.
+    /// Smallest random volume ratio, 1..=1.995.
+    pub volume_randomizer_min: f32,
+    /// `CfgDistanceFilters` class name; `None` means `CfgSoundGlobals.defaultDistanceFilter`.
     pub distance_filter: Option<String>,
-    /// How much occlusion lowers this set (engine default when `None`).
-    pub occlusion_factor: Option<f32>,
-    /// How much obstruction lowers this set (engine default when `None`).
-    pub obstruction_factor: Option<f32>,
-    /// `CfgSound3DProcessors` class name.
+    /// Occlusion factor, 0..=1, default 0.96 (consumer not traced).
+    pub occlusion_factor: f32,
+    /// Obstruction factor, 0..=1, default 0.7 (consumer not traced).
+    pub obstruction_factor: f32,
+    /// `CfgSound3DProcessors` class name; `None` means the global default.
     pub processing_type: Option<String>,
+    /// Radius around the listener within which the sound surrounds it, metres (default 0.5).
+    pub spatiality_range: f32,
+    /// Angle of that inner region, radians (default 0.7854).
+    pub spatiality_range_angle: f32,
     /// Offset of the source from its object, in metres (model space).
     pub position_offset: Option<[f32; 3]>,
-    /// Delay before playing, in seconds.
-    pub delay: f32,
-    /// Random addition to the delay, in seconds.
+    /// Delay before playing in seconds (`None` when absent or below 0.01).
+    pub delay: Option<f32>,
+    /// Random addition to the delay, in seconds (0..=delay).
     pub delay_randomizer: f32,
-    /// Speed of sound override for this set, in m/s.
-    pub speed_of_sound: Option<f32>,
 }
 
 /// `CfgDistanceFilters` class.
@@ -219,14 +225,21 @@ impl SoundBank {
         let mut warn = |w: String| warnings.push(w);
 
         for c in classes(root.get("CfgSoundCurves")) {
-            let points = points(&c.get("points").array());
-            bank.curves.insert(key(c.name()), Curve::new(points));
+            if let Some(curve) = normalized_curve(&points(&c.get("points").array())) {
+                bank.curves.insert(key(c.name()), curve);
+            }
         }
         for c in classes(root.get("CfgSoundShaders")) {
+            let volume_factor =
+                number_or(&c.get("volumeFactor"), 1.0).clamp(0.0, MAX_VOLUME_FACTOR);
+            let mut volume = expr_or(&c.get("volume"), 1.0, &mut warn);
+            if let Some(v) = volume.as_constant() {
+                volume = Expr::constant(v * volume_factor);
+            }
             let shader = SoundShader {
                 name: c.name().to_string(),
                 samples: samples(&c.get("samples").array()),
-                volume: expr_or(&c.get("volume"), 1.0, &mut warn),
+                volume,
                 frequency: expr_or(&c.get("frequency"), 1.0, &mut warn),
                 range: c.get("range").number(),
                 range_curve: curve_ref(&c.get("rangeCurve")),
@@ -235,50 +248,68 @@ impl SoundBank {
             bank.shaders.insert(key(c.name()), shader);
         }
         for c in classes(root.get("CfgSoundSets")) {
+            let flag =
+                |name: &str, default: bool| opt_number(&c.get(name)).map_or(default, |v| v != 0.0);
+            let delay = opt_number(&c.get("delay")).filter(|&d| d >= 0.01);
             let set = SoundSet {
                 name: c.name().to_string(),
                 shaders: strings(&c.get("soundShaders").array()),
-                volume_factor: number_or(&c.get("volumeFactor"), 1.0),
-                frequency_factor: number_or(&c.get("frequencyFactor"), 1.0),
+                volume: expr_or(&c.get("volume"), 1.0, &mut warn),
+                volume_factor: number_or(&c.get("volumeFactor"), 1.0).clamp(0.0, MAX_VOLUME_FACTOR),
+                frequency_factor: number_or(&c.get("frequencyFactor"), 1.0).clamp(0.5, 2.0),
                 volume_curve: curve_ref(&c.get("volumeCurve")),
-                spatial: opt_number(&c.get("spatial")).map(|v| v != 0.0),
-                doppler: opt_number(&c.get("doppler")).map(|v| v != 0.0),
-                looping: c.get("loop").number() != 0.0,
-                shaders_limit: c.get("soundShadersLimit").number().max(0.0) as u32,
-                frequency_randomizer: c.get("frequencyRandomizer").number(),
-                frequency_randomizer_min: opt_number(&c.get("frequencyRandomizerMin")),
-                volume_randomizer: c.get("volumeRandomizer").number(),
-                volume_randomizer_min: opt_number(&c.get("volumeRandomizerMin")),
+                spatial: flag("spatial", true),
+                doppler: flag("doppler", true),
+                looping: flag("loop", false) && delay.is_none(),
+                shaders_limit: c.get("soundShadersLimit").number().clamp(0.0, 255.0) as u32,
+                frequency_randomizer: c.get("frequencyRandomizer").number().clamp(0.0, 12.0),
+                frequency_randomizer_min: c.get("frequencyRandomizerMin").number().clamp(0.0, 12.0),
+                volume_randomizer: number_or(&c.get("volumeRandomizer"), 1.0)
+                    .clamp(1.0, MAX_VOLUME_RANDOMIZER),
+                volume_randomizer_min: number_or(&c.get("volumeRandomizerMin"), 1.0)
+                    .clamp(1.0, MAX_VOLUME_RANDOMIZER),
                 distance_filter: opt_text(&c.get("distanceFilter")),
-                occlusion_factor: opt_number(&c.get("occlusionFactor")),
-                obstruction_factor: opt_number(&c.get("obstructionFactor")),
+                occlusion_factor: number_or(&c.get("occlusionFactor"), 0.96).clamp(0.0, 1.0),
+                obstruction_factor: number_or(&c.get("obstructionFactor"), 0.7).clamp(0.0, 1.0),
                 processing_type: opt_text(&c.get("sound3DProcessingType")),
+                spatiality_range: number_or(&c.get("spatialityRange"), 0.5),
+                spatiality_range_angle: number_or(
+                    &c.get("spatialityRangeAngle"),
+                    std::f32::consts::FRAC_PI_4,
+                ),
                 position_offset: vec3(&c.get("posOffset").array()),
-                delay: c.get("delay").number(),
-                delay_randomizer: c.get("delayRandomizer").number(),
-                speed_of_sound: opt_number(&c.get("speedOfSound")),
+                delay,
+                delay_randomizer: c
+                    .get("delayRandomizer")
+                    .number()
+                    .clamp(0.0, delay.unwrap_or(0.0)),
             };
             bank.sets.insert(key(c.name()), set);
         }
         for c in classes(root.get("CfgDistanceFilters")) {
+            let inner_range = number_or(&c.get("innerRange"), 100.0).max(0.0);
             let filter = DistanceFilterDef {
                 name: c.name().to_string(),
-                kind: c.get("type").text(),
-                min_cutoff_hz: c.get("minCutoffFrequency").number(),
+                kind: opt_text(&c.get("type")).unwrap_or_else(|| "lowPassFilter".into()),
+                min_cutoff_hz: number_or(&c.get("minCutoffFrequency"), 44_100.0),
                 q: number_or(&c.get("qFactor"), 1.0),
-                inner_range: c.get("innerRange").number(),
-                range: c.get("range").number(),
-                power: number_or(&c.get("powerFactor"), 1.0),
+                inner_range,
+                range: number_or(&c.get("range"), 1500.0).max(inner_range),
+                power: number_or(&c.get("powerFactor"), 2.0).clamp(1e-4, 100.0),
             };
             bank.filters.insert(key(c.name()), filter);
         }
         for c in classes(root.get("CfgSound3DProcessors")) {
+            let kind = c.get("type").text();
+            let emitter = kind.eq_ignore_ascii_case("emitter");
+            let inner_range =
+                number_or(&c.get("innerRange"), if emitter { 1.0 } else { 0.0 }).max(0.0);
             let processor = Processor3d {
                 name: c.name().to_string(),
-                kind: c.get("type").text(),
-                inner_range: c.get("innerRange").number(),
-                range: c.get("range").number(),
-                radius: opt_number(&c.get("radius")),
+                kind,
+                inner_range,
+                range: number_or(&c.get("range"), if emitter { 4.0 } else { 0.0 }).max(inner_range),
+                radius: opt_number(&c.get("radius")).or(emitter.then_some(3.0)),
                 range_curve: curve_ref(&c.get("rangeCurve")),
             };
             bank.processors.insert(key(c.name()), processor);
@@ -403,14 +434,33 @@ impl SoundBank {
         self.shaders.values()
     }
 
-    /// Resolves a curve reference: named curves come back as stored (x in 0..1), inline points
-    /// as given.
+    /// Resolves a curve reference to a curve over `0..=1`. Inline points are renormalised like
+    /// named ones (the engine discards their absolute x scale). `None` for an unknown name or
+    /// fewer than two points.
     pub fn resolve_curve(&self, curve: &CurveRef) -> Option<Curve> {
         match curve {
             CurveRef::Named(name) => self.curve(name).cloned(),
-            CurveRef::Points(points) => Some(Curve::new(points.iter().copied())),
+            CurveRef::Points(points) => normalized_curve(points),
         }
     }
+}
+
+/// Largest `volumeFactor`: +10 dB.
+const MAX_VOLUME_FACTOR: f32 = 3.162_277_7;
+/// Largest `volumeRandomizer`: +6 dB.
+const MAX_VOLUME_RANDOMIZER: f32 = 1.995_262_3;
+
+/// A curve with its x values rescaled to 0..1, as the engine stores every sound curve.
+pub fn normalized_curve(points: &[(f32, f32)]) -> Option<Curve> {
+    if points.len() < 2 {
+        return None;
+    }
+    let min = points.iter().map(|p| p.0).fold(f32::INFINITY, f32::min);
+    let max = points.iter().map(|p| p.0).fold(f32::NEG_INFINITY, f32::max);
+    let span = max - min;
+    Some(Curve::new(points.iter().map(|&(x, y)| {
+        (if span > 0.0 { (x - min) / span } else { 0.0 }, y)
+    })))
 }
 
 fn classes(parent: ConfigRef<'_>) -> Vec<ConfigRef<'_>> {

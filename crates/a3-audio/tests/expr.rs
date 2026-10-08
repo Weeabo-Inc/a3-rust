@@ -1,6 +1,6 @@
 //! Sound controller expressions, with expressions taken from the game's config.
 
-use a3_audio::expr::{Expr, factor};
+use a3_audio::expr::{Expr, envelope, factor, interpolate};
 
 fn eval(text: &str, vars: &[(&str, f32)]) -> f32 {
     let expr = Expr::parse(text).unwrap_or_else(|e| panic!("{e}"));
@@ -116,6 +116,55 @@ fn constants_fold() {
     assert_eq!(Expr::parse("-3").unwrap().as_constant(), Some(-3.0));
     assert_eq!(Expr::parse("x").unwrap().as_constant(), None);
     assert_eq!(Expr::constant(0.5).eval(|_| None), 0.5);
+}
+
+#[test]
+fn operators_outside_the_expression_set_only_take_constants() {
+    // Like the engine: `^`, `==`, `sin` and friends fold constants but fail on variables.
+    assert_eq!(eval("2 ^ 3 + x", &[("x", 1.0)]), 9.0);
+    assert_eq!(eval("sin 90 * x", &[("x", 2.0)]), 2.0);
+    for text in ["x ^ 2", "x == 1", "sin x", "x mod 2", "x && 1"] {
+        assert!(Expr::parse(text).is_err(), "{text}");
+    }
+    assert_eq!(eval("x pow 2", &[("x", 3.0)]), 9.0);
+    assert_eq!(eval("sqr x + 1", &[("x", 3.0)]), 10.0);
+    assert!(
+        Expr::parse("x factor [0, y]").is_err(),
+        "list items are constants"
+    );
+}
+
+#[test]
+fn random_gen_draws_at_every_evaluation() {
+    let expr = Expr::parse("randomGen 2").unwrap();
+    assert_eq!(expr.as_constant(), None);
+    let values: Vec<f32> = (0..100).map(|_| expr.eval(|_| None)).collect();
+    assert!(values.iter().all(|v| (0.0..2.0).contains(v)));
+    assert!(values.windows(2).any(|w| w[0] != w[1]));
+}
+
+#[test]
+fn unknown_variables_fail_to_compile_in_a_context() {
+    let ok = Expr::compile("Forest * (windy factor [0, 1])", &["forest", "windy"]);
+    assert!(ok.is_ok());
+    let err = Expr::compile("meadows * forest", &["meadow", "forest"]).unwrap_err();
+    assert_eq!(err.at, 0);
+    assert!(err.message.contains("meadows"));
+}
+
+#[test]
+fn interpolate_and_envelope_match_the_engine() {
+    assert_eq!(interpolate(5.0, [0.0, 10.0, 100.0, 200.0]), 150.0);
+    assert_eq!(interpolate(-1.0, [0.0, 10.0, 100.0, 200.0]), 100.0);
+    // Falling input range: a maps to c, b maps to d.
+    assert_eq!(interpolate(2.0, [10.0, 0.0, 100.0, 200.0]), 180.0);
+    assert_eq!(envelope(1.0, [1.0, 2.0, 3.0, 5.0]), 0.0, "open interval");
+    assert_eq!(envelope(4.0, [1.0, 2.0, 3.0, 5.0]), 0.5);
+    assert!(
+        factor(2.0, 2.0, 2.0).is_nan(),
+        "a == b == x is NaN in the engine"
+    );
+    assert_eq!(factor(1.0, 2.0, 2.0), 1.0);
 }
 
 #[test]

@@ -19,6 +19,8 @@ dependencies = [
  "a3-audio-formats",
  "a3-config",
  "a3-gamedata",
+ "a3-pbo",
+ "a3-vfs",
  "cpal",
  "glam 0.34.1",
  "log",
