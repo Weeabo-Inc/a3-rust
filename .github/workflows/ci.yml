@@ -29,7 +29,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libasound2-dev libudev-dev libx11-dev libxkbcommon-dev libwayland-dev pkg-config
+            libasound2-dev libudev-dev libx11-dev libxkbcommon-dev libwayland-dev pkg-config             libvulkan1 mesa-vulkan-drivers
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -43,5 +43,18 @@ jobs:
       - name: cargo clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+      # GPU tests run on a software adapter: Mesa lavapipe (Vulkan) on Linux, WARP (D3D12) on
+      # Windows. A3_REQUIRE_GPU turns a missing adapter into a failure instead of a skip.
       - name: cargo test
         run: cargo test --workspace
+        env:
+          A3_REQUIRE_GPU: 1
+
+      - name: Render a screenshot
+        run: cargo run -p arma3 -- --screenshot target/screenshot-${{ matrix.os }}.png --frames 3 --width 640 --height 360
+
+      - name: Upload screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshot-${{ matrix.os }}
+          path: target/screenshot-${{ matrix.os }}.png
