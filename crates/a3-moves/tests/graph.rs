@@ -126,17 +126,63 @@ fn class_level_transition_lists_and_interpolation_groups() {
 fn connect_as_copies_the_edges_of_another_state() {
     let m = moves(
         r#"class A: Default { connectTo[] = {"B", 0.1}; };
-           class B: Default { interpolateTo[] = {"C", 0.2}; };
+           class B: Default { interpolateTo[] = {"C", 0.2}; ignoreMinPlayTime[] = {"C"}; };
            class C: Default {};
            class X: Default { connectAs = "B"; };"#,
         "",
     );
     let (a, c, x) = (id(&m, "A"), id(&m, "C"), id(&m, "X"));
 
+    let model = m.edge(id(&m, "B"), c).unwrap();
+    assert_eq!((model.kind, model.cost), (EdgeKind::Interpolate, 200));
+    assert!(model.ignore_min_play_time);
     let xc = m.edge(x, c).unwrap();
     assert_eq!((xc.kind, xc.cost), (EdgeKind::Interpolate, 200));
+    assert!(!xc.ignore_min_play_time, "a copy drops the flag");
     let ax = m.edge(a, x).unwrap();
     assert_eq!((ax.kind, ax.cost), (EdgeKind::Connect, 100));
+}
+
+#[test]
+fn connect_as_leaves_edges_the_state_already_has() {
+    let m = moves(
+        r#"class A: Default { connectTo[] = {"B", 0.1}; };
+           class B: Default { interpolateTo[] = {"C", 0.2}; };
+           class C: Default {};
+           class X: Default { connectAs = "B"; connectTo[] = {"C", 0.9}; };"#,
+        "",
+    );
+    let (a, c, x) = (id(&m, "A"), id(&m, "C"), id(&m, "X"));
+
+    let xc = m.edge(x, c).unwrap();
+    assert_eq!(
+        (xc.kind, xc.cost),
+        (EdgeKind::Connect, 900),
+        "its own edge wins"
+    );
+    assert_eq!(m.edges(x).len(), 1, "X has no other edge of its own");
+    let ax = m.edge(a, x).unwrap();
+    assert_eq!(
+        (ax.kind, ax.cost),
+        (EdgeKind::Connect, 100),
+        "the edge into B is still copied"
+    );
+}
+
+#[test]
+fn interpolate_with_ignores_min_play_time_per_direction() {
+    let m = moves(
+        r#"class A: Default { interpolateWith[] = {"B", 0.1}; ignoreMinPlayTime[] = {"B"}; };
+           class B: Default {};"#,
+        "",
+    );
+    let (a, b) = (id(&m, "A"), id(&m, "B"));
+
+    assert!(m.edge(a, b).unwrap().ignore_min_play_time, "A lists B");
+    assert!(
+        !m.edge(b, a).unwrap().ignore_min_play_time,
+        "B lists nothing"
+    );
 }
 
 #[test]

@@ -316,8 +316,14 @@ impl Moves {
         out
     }
 
-    /// Triples `(from, to, cost)` of a class-level transition list.
-    fn triples(&mut self, cfg: &ConfigRef<'_>, key: &str) -> Vec<(MoveId, MoveId, i16)> {
+    /// Triples `(from, to, cost)` of a class-level transition list (`label` names it the way
+    /// the engine's log line does).
+    fn triples(
+        &mut self,
+        cfg: &ConfigRef<'_>,
+        key: &str,
+        label: &str,
+    ) -> Vec<(MoveId, MoveId, i16)> {
         let items = cfg.get(key).array();
         let mut out = Vec::new();
         for t in items.chunks_exact(3) {
@@ -328,7 +334,7 @@ impl Moves {
                 (Some(x), Some(y)) => out.push((x, y, stored_cost(number(&t[2]).unwrap_or(0.0)))),
                 _ => self
                     .warnings
-                    .push(format!("bad {key} transition from {a} to {b}")),
+                    .push(format!("bad {label} transition from {a} to {b}")),
             }
         }
         out
@@ -366,10 +372,10 @@ impl Moves {
                 }
             }
         }
-        for (a, b, c) in self.triples(cfg, "transitionsInterpolated") {
+        for (a, b, c) in self.triples(cfg, "transitionsInterpolated", "interpolated") {
             self.set_edge(a, b, Interpolate, c, ignores(a, b));
         }
-        for (a, b, c) in self.triples(cfg, "transitionsSimple") {
+        for (a, b, c) in self.triples(cfg, "transitionsSimple", "simple") {
             self.set_edge(a, b, Connect, c, false);
         }
 
