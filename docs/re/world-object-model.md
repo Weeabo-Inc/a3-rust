@@ -266,12 +266,22 @@ Per frame, **medium** for ordering details:
 2. Housekeeping over the vehicle sub-lists and fast vehicles.
 3. **Fast vehicles** (`+0x1c48`): one `EntityMTSimJob` per entity, run in parallel. Each job
    calls the entity's step at its own precision until the frame's time is used up.
-4. **Fixed sub-steps**: while the frame dt is above 0.025 s, step 0.05 s at a time over the
-   vehicle list and the slow list (`0x141152730`), then the remainder. For each entity,
-   `Entity_SimulateFixedStep` (`0x140e95dc0`) adds dt to the accumulator (`+0x1c4`). When it
-   reaches the entity's step (`+0x1bc`), or the force flag is set, it pushes a visual state and
-   calls `Entity_Simulate(dt)` (slot 374). Entities flagged "no simulation" (`+0x1cd & 0x20`)
-   are skipped.
+4. **Catch-up loop for long frames**: while more than 0.025 s of the frame remains, each
+   iteration consumes 0.025 s of frame time (`fVar23 -= 0.025`) but calls
+   `Entity_SimulateFixedStep(entity, 0.05, k)` for the entities of the four vehicle sub-lists
+   and the slow-list sub-lists, where `k` is the sub-list index (0-3). `0x140e96500` uses `k`
+   to decide whether the entity takes part in this iteration, so the sub-lists are probably
+   interleaved: each entity gets 0.05 s every other iteration (**medium**; the gating has not
+   been traced). The remaining frame time (≤ 0.025 s) then goes through a separate per-frame
+   path (`0x14117a5a0` with callbacks `0x140e95fb0`/`0x140e96050`/`0x140e95eb0`, chosen by a
+   global mode `DAT_1420c0c2c % 3`).
+
+   `Entity_SimulateFixedStep` (`0x140e95dc0`) adds dt to the accumulator (`+0x1c4`). When the
+   accumulator reaches the entity's step (`+0x1bc`), or the force flag is set, it pushes a
+   visual state and calls `Entity_Simulate` (slot 374) with exactly one step (or the whole
+   accumulator if the step is 0), then subtracts that from the accumulator. Entities flagged
+   "no simulation" (`+0x1cd & 0x20`) are skipped. `a3-world` keeps the accumulator rule but cuts
+   frames into time-conserving 0.025 s sub-steps (issue #117).
 5. Then: attached positions (`World::UpdateAttachedPositions`), AI (`World::PerformAI`),
    cloudlets and sound (`World::SimulateCloudletsAndSound`). These are separate `World` methods
    named by lambda RTTI; their exact order inside `World::Simulate` has not been traced.
