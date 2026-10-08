@@ -448,3 +448,10 @@ fn eval_returns_last_statement_value() {
     assert_eq!(s("typeName (call { _a = 1 })"), "\"NOTHING\"");
     assert!(eval("").to_sqf_string() == "nothing");
 }
+
+#[test]
+fn number_as_assignment_target_discards_the_value() {
+    // Shipped functions use `0 = [] spawn {...}` to silence a result.
+    assert_eq!(s("x = 0; 0 = call { x = 2 }; x"), "2");
+    assert_eq!(s("0 = 1 + 1; 7"), "7");
+}

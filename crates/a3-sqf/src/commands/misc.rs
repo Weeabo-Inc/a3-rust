@@ -62,10 +62,15 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
             _ => String::new(),
         };
         drop(args);
-        let text = ctx
-            .host
-            .preprocess_file(&path, true)
-            .map_err(SqfError::Generic)?;
+        // Like `compile preprocessFileLineNumbers`: a missing file compiles to empty code
+        // (the shipped CfgFunctions declare a few functions whose files do not exist).
+        let text = match ctx.host.preprocess_file(&path, true) {
+            Ok(text) => text,
+            Err(message) => {
+                ctx.host.diag_log(&message);
+                String::new()
+            }
+        };
         // The header goes in front of the file's first line, after the leading
         // `#line` directive, so it does not shift line numbers.
         let text = match text.split_once('\n') {
@@ -74,9 +79,22 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
             }
             _ => format!("{header}{text}"),
         };
-        let code = ctx
-            .compile(&path, &text)
-            .map_err(|e| SqfError::Generic(e.message))?;
+        // A file that does not compile is reported (with its own file and line) and gives
+        // empty code, so one broken function does not stop the function library.
+        let source = crate::source::SourceFile::new(path.as_str(), text.as_str());
+        let code = match crate::code::compile_source(&source, ctx.table()) {
+            Ok(code) => code,
+            Err(e) => {
+                let error = crate::error::ScriptError::new(
+                    SqfError::Generic(e.message),
+                    None,
+                    Some((&source, e.span.start)),
+                );
+                ctx.host.report_error(&error);
+                ctx.compile(&path, "")
+                    .map_err(|e| SqfError::Generic(e.message))?
+            }
+        };
         Ok(Value::Code(if final_ { code.to_final() } else { code }))
     });
     r.unary("isFinal", CODE, BOOL, |_, a| {

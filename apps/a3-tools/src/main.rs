@@ -10,6 +10,7 @@ mod pbo_cmd;
 mod rtm_cmd;
 mod sign_cmd;
 mod sound_cmd;
+mod sqf_cmd;
 mod stringtable_cmd;
 mod vfs_cmd;
 mod wrp_cmd;
@@ -58,6 +59,8 @@ enum Command {
     /// Read stringtables and look up localized text.
     #[command(subcommand)]
     Stringtable(stringtable_cmd::StringtableCommand),
+    /// Run SQF scripts headless and compile-check the install.
+    Sqf(sqf_cmd::SqfArgs),
 }
 
 #[derive(Subcommand)]
@@ -162,6 +165,7 @@ fn main() -> anyhow::Result<()> {
         Command::Rtm(cmd) => rtm_cmd::run(cmd)?,
         Command::Font(cmd) => font_cmd::run(cmd)?,
         Command::Stringtable(cmd) => stringtable_cmd::run(cmd)?,
+        Command::Sqf(args) => sqf_cmd::run(args)?,
     }
     Ok(())
 }
