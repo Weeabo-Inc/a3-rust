@@ -47,7 +47,7 @@ class CfgMovesTest: CfgMovesBasic {
     class States {
         class Stand: Default {
             actions = "StandActions"; file = "a3\anims\stand.rtm"; speed = 1; looped = 0;
-            interpolateTo[] = {"Walk", 0.1, "Run", 0.2, "StandDown", 0.1};
+            interpolateTo[] = {"Walk", 0.1, "WalkLeft", 0.1, "WalkRight", 0.1, "Run", 0.2, "StandDown", 0.1};
         };
         class Walk: Default {
             actions = "StandActions"; file = "a3\anims\walk.rtm"; speed = 0.85; looped = 1;

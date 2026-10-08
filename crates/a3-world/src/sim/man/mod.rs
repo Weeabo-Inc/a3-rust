@@ -44,7 +44,7 @@ pub(crate) fn simulate(entity: &mut Entity, ctx: &mut StepContext<'_>, dt: f64) 
             man.moves.advance(moves.as_deref(), &man.input, dt);
             // The animation is the source of truth for his movement: the moves he plays carry
             // him, and the ground decides his height (`docs/re/sim-man-movement.md` §3).
-            let velocity = man.moves.velocity(moves.as_deref(), orientation);
+            let velocity = man.moves.velocity(orientation);
             (
                 man.motion.step(feet, velocity, terrain.as_ref(), dt),
                 velocity,
