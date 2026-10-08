@@ -7,6 +7,7 @@ use std::sync::Arc;
 use a3_wrp::Terrain;
 use glam::DVec3;
 
+use crate::groups::Groups;
 use crate::statics::StaticObjects;
 use crate::{
     ClientId, Entity, EntityId, EntityType, Error, ListKind, Locality, NetworkId, ObjectRef, Scope,
@@ -98,6 +99,7 @@ pub struct World {
     promoted: HashMap<StaticKey, EntityId>,
     events: Vec<WorldEvent>,
     time: f64,
+    groups: Groups,
 }
 
 impl World {
@@ -117,6 +119,7 @@ impl World {
             promoted: HashMap::new(),
             events: Vec::new(),
             time: 0.0,
+            groups: Groups::default(),
         }
     }
 
@@ -142,13 +145,25 @@ impl World {
         if request.placement == Placement::OnSurface {
             position.y += self.surface_height(position.x, position.z);
         }
-        let network_id = (!request.local_only).then(|| {
-            let id = NetworkId::new(self.local_client.0, self.next_serial);
-            self.next_serial += 1;
-            id
-        });
+        let network_id = (!request.local_only).then(|| self.allocate_network_id());
         let list = ListKind::for_class(ty.class());
         Ok(self.insert(ty, position, network_id, Locality::Local, list))
+    }
+
+    /// The next Network object ID `{local client, serial}`. Objects and groups share the serial,
+    /// as in the original (`NetworkClient_RegisterObject`).
+    pub(crate) fn allocate_network_id(&mut self) -> NetworkId {
+        let id = NetworkId::new(self.local_client.0, self.next_serial);
+        self.next_serial += 1;
+        id
+    }
+
+    pub(crate) fn groups(&self) -> &Groups {
+        &self.groups
+    }
+
+    pub(crate) fn groups_mut(&mut self) -> &mut Groups {
+        &mut self.groups
     }
 
     /// Creates the copy of an Entity that another machine created and announced.
@@ -254,6 +269,7 @@ impl World {
     /// and are never reused. Records [`WorldEvent::EntityDeleted`] for each.
     pub fn flush_deletions(&mut self) {
         for id in std::mem::take(&mut self.pending_deletions) {
+            self.leave_group(id);
             let slot = &mut self.slots[id.index as usize];
             let Some(entity) = slot.entity.take() else {
                 continue;

@@ -87,6 +87,7 @@
 
 mod class;
 mod entity;
+mod groups;
 mod id;
 mod object_ref;
 mod query;
@@ -99,6 +100,7 @@ mod world;
 
 pub use class::{EntityClass, SimulationClass};
 pub use entity::{Attachment, Entity, ListKind, Locality, VisualState};
+pub use groups::{ENEMY_THRESHOLD, Group, GroupId, Side, default_group_name, side_from_config};
 pub use id::{ClientId, EntityId, NetworkId, ParseNetworkIdError};
 pub use object_ref::ObjectRef;
 pub use query::Near;
@@ -132,6 +134,15 @@ pub enum Error {
         type_name: String,
         simulation: String,
     },
+    /// The group was deleted (or never existed).
+    #[error("no group {0:?}")]
+    NoSuchGroup(GroupId),
+    /// Only empty groups can be deleted.
+    #[error("group {0:?} still has units")]
+    GroupNotEmpty(GroupId),
+    /// The unit is not in the group.
+    #[error("{0:?} is not in the group")]
+    NotInGroup(EntityId),
     /// No Static object has this key.
     #[error("no static object {0:?}")]
     NoSuchStatic(StaticKey),
