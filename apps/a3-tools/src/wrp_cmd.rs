@@ -6,6 +6,8 @@ use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
+use a3_landscape::RoadNetwork;
+use a3_vfs::Vfs;
 use a3_wrp::{MapShape, MapType, Terrain};
 use anyhow::{Context, Result, bail};
 use clap::{Args, Subcommand};
@@ -43,7 +45,8 @@ enum WrpCommand {
         #[arg(long)]
         csv: bool,
     },
-    /// Render a top-down overview PNG: hillshaded terrain, water and map symbols.
+    /// Render a top-down overview PNG: hillshaded terrain, water, map symbols and, for a VFS
+    /// path, the roads of `<terrain folder>\data\roads\roads.shp`.
     Map {
         /// A `.wrp` file on disk or a VFS path.
         path: String,
@@ -70,22 +73,46 @@ pub fn run(args: WrpArgs) -> Result<()> {
             }
         }
         WrpCommand::Map { path, out, size } => {
-            map(&load(&path, args.game_dir.as_deref())?, &out, size)
+            let (terrain, vfs) = load_with_vfs(&path, args.game_dir.as_deref())?;
+            let roads = vfs.and_then(|vfs| {
+                let shp = a3_core::VfsPath::new(&path)
+                    .parent()?
+                    .join(r"data\roads\roads.shp");
+                match RoadNetwork::load(&vfs, &shp) {
+                    Ok(net) => {
+                        eprintln!("drawing {} roads from {shp}", net.roads.len());
+                        Some(net)
+                    }
+                    Err(e) => {
+                        eprintln!("no roads: {e}");
+                        None
+                    }
+                }
+            });
+            map(&terrain, roads.as_ref(), &out, size)
         }
     }
 }
 
 /// Loads a terrain from an OS file, or else from the VFS of `game_dir`.
 fn load(path: &str, game_dir: Option<&Path>) -> Result<Terrain> {
+    Ok(load_with_vfs(path, game_dir)?.0)
+}
+
+/// Like [`load`], also returning the VFS when the terrain came from it.
+fn load_with_vfs(path: &str, game_dir: Option<&Path>) -> Result<(Terrain, Option<Vfs>)> {
     let os_path = Path::new(path);
-    let data = if os_path.is_file() {
-        std::fs::read(os_path).with_context(|| format!("reading {path}"))?
+    let (data, vfs) = if os_path.is_file() {
+        (
+            std::fs::read(os_path).with_context(|| format!("reading {path}"))?,
+            None,
+        )
     } else {
         let Some(game_dir) = game_dir else {
             bail!("{path} is not a file; pass --game-dir (or set A3_ROOT) to read it from the VFS");
         };
         let vfs = crate::vfs_cmd::mount(game_dir, &[], true)?;
-        vfs.open(path)?.to_vec()
+        (vfs.open(path)?.to_vec(), Some(vfs))
     };
     let start = Instant::now();
     let terrain = Terrain::parse(&data).with_context(|| format!("parsing {path}"))?;
@@ -94,7 +121,7 @@ fn load(path: &str, game_dir: Option<&Path>) -> Result<Terrain> {
         data.len(),
         start.elapsed()
     );
-    Ok(terrain)
+    Ok((terrain, vfs))
 }
 
 fn info(t: &Terrain, path: &str) -> Result<()> {
@@ -329,7 +356,7 @@ fn terrain_color(h: f32, shade: f32) -> [u8; 3] {
     base.map(|v| (v * shade).clamp(0.0, 255.0) as u8)
 }
 
-fn map(t: &Terrain, out: &Path, size: u32) -> Result<()> {
+fn map(t: &Terrain, roads: Option<&RoadNetwork>, out: &Path, size: u32) -> Result<()> {
     if !(16..=16384).contains(&size) {
         bail!("--size must be between 16 and 16384");
     }
@@ -389,6 +416,20 @@ fn map(t: &Terrain, out: &Path, size: u32) -> Result<()> {
             if t.geography.get(x, z).is_some_and(|g| g.forest()) {
                 let c = Vec2::new((x as f32 + 0.5) * lc, (z as f32 + 0.5) * lc);
                 canvas.dot(c, dark_green);
+            }
+        }
+    }
+    // Roads from the shapefile, coloured by how the map draws their type.
+    if let Some(net) = roads {
+        for road in &net.roads {
+            let color = match net.road_type(road).map_type {
+                Some(MapType::MainRoad) => [200, 60, 40],
+                Some(MapType::Road) => [230, 150, 40],
+                Some(MapType::Trail) => [150, 120, 90],
+                _ => [120, 95, 70],
+            };
+            for w in road.points.windows(2) {
+                canvas.line(w[0], w[1], color);
             }
         }
     }
@@ -456,7 +497,17 @@ mod tests {
         assert!(heightmap(&terrain, &dir.path().join("h.bmp")).is_err());
 
         let map_path = dir.path().join("map.png");
-        map(&terrain, &map_path, 64).unwrap();
+        let net = a3_landscape::RoadNetwork {
+            roads: vec![a3_landscape::Road {
+                record: 0,
+                id: 1,
+                order: 0,
+                mask: 0,
+                points: vec![Vec2::new(1.0, 1.0), Vec2::new(90.0, 90.0)],
+            }],
+            library: Default::default(),
+        };
+        map(&terrain, Some(&net), &map_path, 64).unwrap();
         let reader = png::Decoder::new(std::io::BufReader::new(File::open(&map_path).unwrap()))
             .read_info()
             .unwrap();

@@ -244,6 +244,11 @@ A `CfgSurfaces` class selected by a layer's detail texture file name; it sets fr
 dust and, through its surface character, the clutter grown on the ground.
 _Avoid_: ground type, terrain type
 
+**Road shapefile**:
+A terrain's `roads.shp` polylines with a `roads.dbf` row per road whose `ID` selects a road
+type in `RoadsLib.cfg` (width, textures, map symbol). The source of every ordinary road.
+_Avoid_: road net (the WRP's bridge list)
+
 **Satellite map layers**:
 The large `_sat` colour image and the `_mask` layer images that blend per-surface textures
 (each described by an rvmat) across the Landscape.
