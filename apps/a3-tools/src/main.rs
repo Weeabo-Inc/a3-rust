@@ -2,6 +2,7 @@
 
 mod config_cmd;
 mod p3d_cmd;
+mod paa_cmd;
 mod pbo_cmd;
 mod vfs_cmd;
 mod wrp_cmd;
@@ -33,6 +34,8 @@ enum Command {
     P3d(p3d_cmd::P3dArgs),
     /// Inspect binarized terrains (WRP): summary, heightmap, objects, overview map.
     Wrp(wrp_cmd::WrpArgs),
+    /// Inspect and convert PAA/PAC textures and texHeaders.bin.
+    Paa(paa_cmd::PaaArgs),
 }
 
 #[derive(Subcommand)]
@@ -119,6 +122,7 @@ fn main() -> anyhow::Result<()> {
             prefix,
             properties,
         }) => pbo_cmd::pack(&dir, &file, prefix.as_deref(), &properties)?,
+        Command::Paa(args) => paa_cmd::run(args)?,
         Command::Vfs(args) => {
             let vfs = vfs_cmd::mount(&args.game_dir, &args.mods, args.all_mods)?;
             match args.command {

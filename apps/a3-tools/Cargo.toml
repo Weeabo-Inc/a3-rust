@@ -11,6 +11,7 @@ path = "src/main.rs"
 
 [dependencies]
 a3-core.workspace = true
+a3-paa.workspace = true
 a3-pbo.workspace = true
 a3-vfs.workspace = true
 a3-config.workspace = true
