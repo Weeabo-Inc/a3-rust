@@ -13,7 +13,7 @@ Per-world HDR parameters. Values for `Altis`, `Stratis`, `Tanoa`, `Malden` and `
 
 | entry | value | meaning (our reading) | confidence |
 | ----- | ----- | --------------------- | ---------- |
-| `tonemapMethod` | 1 | curve selector; 1 = filmic (Hable) | medium: the exe has the strings `Reinhard`, `Filmic`, `ACES`; order of the enum unknown |
+| `tonemapMethod` | 1 | curve selector: 0 = none, 1 = filmic (Hable), 2 = Reinhard (see `render-atmosphere.md` §3) | high: shader table in the exe; there is no ACES shader |
 | `tonemapShoulderStrength` | 0.22 | Hable A | high (names match Hable's parameters one to one) |
 | `tonemapLinearStrength` | 0.12 | Hable B | high |
 | `tonemapLinearAngle` | 0.1 | Hable C | high |
@@ -53,7 +53,7 @@ filter first.
 
 ## Open questions
 
-- Exact enum order of `tonemapMethod`, and what RV's ACES variant is.
+- ~~Exact enum order of `tonemapMethod`~~ resolved in `render-atmosphere.md` §3.1 (0 none, 1 filmic, 2 Reinhard; `DefaultWorld` therefore uses Reinhard with `tonemapLinearWhiteReinhard` as W).
 - How average luminance is measured (histogram vs. downsampled mean, which percentiles).
 - Meaning of `apertureRatioMin/Max`; interaction with `apertureStandard` of optics.
 - Units of scene luminance (RV's sun and sky intensities in config `CfgWorlds >> LightingNew`).
