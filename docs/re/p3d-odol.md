@@ -344,6 +344,58 @@ left out). Rendered exports of the MX rifle, the `b_soldier_01` soldier and
 `i_house_small_01_v1_f` show correct shapes with front faces outward; every LOD vertex lies in the
 ModelInfo bounding box.
 
+## Rendering notes
+
+Facts about the decoded data that the model renderer (`crates/a3-render-models`) relies on. Shader
+semantics are in `render-materials.md`. The `orientation` and `tangents` examples of
+`a3-render-models` reproduce the two checks below (`cargo run --release -p a3-render-models
+--example orientation`, `A3_ROOT` set).
+
+**World placement uses the raw coordinates.** A model is placed by applying the WRP object's 4x3
+transform to the decoded positions as they are, with no axis flip. Evidence: Binarize stores an
+oriented footprint rectangle for every `HOUSE`/`BUILDING` map symbol, linked to its placed
+object. For the 7,449 Altis houses whose visual bounding box is off-centre by more than 1 m, the
+box centre transformed raw lands on the footprint centre in 7,433 cases (errors of 0.00–0.08 m
+in a printed sample). Rotating the model 180° about Y first never matches better; the other 16
+cases are undecided. **High**.
+
+**Model "front" in raw data is -Z.** Vehicle memory points show it: on the Offroad, `light_l`/`light_r`
+are at z ≈ -3.1 and the rear lights at z ≈ +2.9; `wheel_1_1` (front left) is at x = +0.89,
+z = -1.59. The soldier's `leftshoulder` has a larger x than `rightshoulder`. So the left side is +X
+and the front is -Z, a 180° rotation of the "+Z forward" convention that is often assumed.
+`selectionPosition` (handler `0x5315c0` → `0x140490c00`) returns the stored point as `[x, z, y]`
+without a flip. How this agrees with `vectorDir` and `setDir` for vehicles is open (simulation
+topic). For rendering, the placement check above decides.
+
+**Tangents point down the UV gradients.** Over all triangles of LOD 0, the stored S and T (decoded
+like the normals, `+f/511`) give mean cosines S·∂P/∂u ≈ -0.95 and T·∂P/∂v ≈ -0.95, and
+S·∂P/∂v ≈ 0 (house_small_01 -0.950/-0.976, MX -0.963/-0.962, Offroad -0.935/-0.936). `sign(N×S·T)`
+is +1 for nearly all triangles. So S ≈ -∂P/∂u and T ≈ -∂P/∂v. **High** for the data. Whether the
+engine's vertex shader decodes tangents with the opposite sign is not traced.
+
+**Normal maps.** `render-materials.md` §3.1 gives the texel decode
+`nt = (2(r - a) + 1, 2g - 1, 2b - 1)`. We map it to world space with `-S·nt.x + T·nt.y + N·nt.z`,
+which is `∂P/∂u·x - ∂P/∂v·y + N·z`: red along +u, green "up" (Direct3D convention). _Medium_:
+consistent shading on the checked models, but not traced to the engine's vertex shader.
+
+**`uvSource` enum** (registration `0x1400fc940`): 0 None, 1 Tex, 2 TexWaterAnim, 3 Pos,
+4 Norm, 5 Tex1, 6 WorldPos, 7 WorldNorm, 8 TexShoreAnim, 9 TexCollimator, 10 TexCollimatorInv. ODOL
+`TexGen::uv_source` stores these values: tree `_mca` stages use 5 (Tex1, the second UV set).
+**High**.
+
+**Stray vertices.** Some resolution LODs hold vertices that no face uses: the MX LOD 0 reaches
+2.11 m from the origin, but its faces reach only 0.47 m. Bounds for culling and framing should come
+from indexed vertices.
+
+**Proxies in resolution LODs.**
+- Characters carry config-driven placeholders under `a3\characters_f\proxies\` (weapon, headgear,
+  NVG, ...) and the head `a3\characters_f\heads\bysta`, which does not exist as a file.
+- Vehicles carry crew placeholders under `a3\data_f\proxies\` and `a3\data_f\volumelightcar`.
+- The base-game buildings checked have no proxies.
+
+The renderer skips every proxy path that contains `\proxies\`, starts with
+`a3\characters_f\heads\`, or contains `volumelight`. Whether the 3x3 proxy orientation is stored
+by rows or by columns is still open: no checked proxy has a rotation that shows it.
 ## LOD resolutions
 
 `LodResolution` in `crates/a3-p3d/src/resolution.rs` lists the named values (1e13 Geometry, 1e15

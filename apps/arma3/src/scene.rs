@@ -12,7 +12,9 @@ use a3_render::{
 };
 use glam::{DAffine3, DQuat, DVec3, Vec3};
 
+use crate::models::{ModelSpec, Orbit, stats_line};
 use crate::world::{CameraSpec, LoadedWorld};
+use a3_render_models::{ModelFeature, ModelStats};
 
 /// Closest the free camera gets to the terrain surface, in metres.
 const MIN_ALTITUDE: f64 = 1.5;
@@ -118,6 +120,9 @@ pub struct DebugScene {
     pub actions: ActionMap,
     assets: Option<SceneAssets>,
     world: Option<WorldView>,
+    /// Placed objects of the World, or the model viewer's model.
+    models: Option<ModelFeature>,
+    orbit: Option<Orbit>,
     sim_time: f64,
 }
 
@@ -134,6 +139,8 @@ impl DebugScene {
             actions: actions::default_map(),
             assets: None,
             world: None,
+            models: None,
+            orbit: None,
             sim_time: 0.0,
         }
     }
@@ -148,6 +155,9 @@ impl DebugScene {
         spec: Option<CameraSpec>,
     ) {
         let terrain = TerrainRenderer::new(gpu, renderer, &world.landscape, Some(world.reader));
+        if let Some(objects) = world.objects {
+            self.models = Some(objects.attach(gpu, renderer));
+        }
         let stats = terrain.stats();
         renderer.add_feature(Box::new(terrain));
         let heights = world.landscape.heights;
@@ -175,6 +185,29 @@ impl DebugScene {
     }
 
     /// Terrain statistics of the loaded World.
+    /// Show one model with an orbit camera (the model viewer).
+    pub fn load_model(
+        &mut self,
+        gpu: &Gpu,
+        renderer: &mut Renderer,
+        vfs: a3_vfs::Vfs,
+        spec: ModelSpec,
+    ) {
+        let models = crate::models::model_feature(gpu, renderer, vfs, 4096);
+        self.orbit = Some(Orbit::new(&models, spec, WORLD_CENTRE));
+        self.models = Some(models);
+    }
+
+    /// Whether models or textures are still loading.
+    pub fn models_loading(&self) -> bool {
+        self.models.as_ref().is_some_and(|m| !m.lock().is_idle())
+    }
+
+    /// Model renderer statistics of the last frame.
+    pub fn model_stats(&self) -> Option<ModelStats> {
+        self.models.as_ref().map(|m| m.lock().stats())
+    }
+
     pub fn terrain_stats(&self) -> Option<TerrainStats> {
         let world = self.world.as_ref()?;
         world.stats.lock().ok().map(|s| *s)
@@ -216,6 +249,11 @@ impl DebugScene {
             self.controller.look_sensitivity,
             dt,
         );
+        if let (Some(orbit), Some(models)) = (&mut self.orbit, &self.models) {
+            let look = self.controller.look_sensitivity;
+            orbit.update(&mut self.camera, &fly, look, dt, models);
+            return;
+        }
         self.controller.update(&mut self.camera, &fly, dt);
         if let Some(world) = &self.world {
             let p = &mut self.camera.position;
@@ -226,6 +264,10 @@ impl DebugScene {
 
     /// Fill `draws` with this frame's meshes and lines.
     pub fn draw(&self, draws: &mut DrawList) {
+        if let (Some(orbit), Some(models)) = (&self.orbit, &self.models) {
+            orbit.draw(draws, models);
+            return;
+        }
         if self.world.is_some() {
             // The terrain draws itself as a render feature.
             return;
@@ -363,6 +405,17 @@ impl DebugScene {
         };
         draws.text(8.0, 52.0, 2.0, dim, help);
         draws.text(8.0, 74.0, 2.0, dim, format!("KEYS {keys}"));
+        if let Some(models) = &self.models {
+            let line = match &self.orbit {
+                Some(orbit) => format!(
+                    "{}  {}",
+                    orbit.describe(models),
+                    stats_line(&models.lock().stats())
+                ),
+                None => stats_line(&models.lock().stats()),
+            };
+            draws.text(8.0, 118.0, 2.0, dim, line);
+        }
         if let (Some(world), Some(stats)) = (&self.world, self.terrain_stats()) {
             let ground = world.heights.sample(p.x as f32, p.z as f32);
             draws.text(

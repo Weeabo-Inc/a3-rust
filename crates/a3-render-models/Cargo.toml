@@ -1,0 +1,25 @@
+[package]
+name = "a3-render-models"
+description = "ODOL model rendering: materials, LOD selection, instancing and the model asset cache"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+a3-core.workspace = true
+a3-p3d.workspace = true
+a3-paa.workspace = true
+a3-render.workspace = true
+a3-vfs.workspace = true
+bytemuck.workspace = true
+glam.workspace = true
+log.workspace = true
+thiserror.workspace = true
+wgpu.workspace = true
+
+[dev-dependencies]
+a3-wrp.workspace = true
+
+[lints]
+workspace = true

@@ -13,6 +13,8 @@ use a3_wrp::Terrain;
 use anyhow::Context as _;
 use glam::DVec3;
 
+use crate::models::{ObjectOptions, WorldObjects};
+
 /// A terrain ready for the renderer.
 pub struct LoadedWorld {
     /// The CfgWorlds class name.
@@ -22,10 +24,17 @@ pub struct LoadedWorld {
     pub reader: FileReader,
     /// `centerPosition` in world space (x east, z north; y is 0).
     pub centre: DVec3,
+    /// The placed objects, when they should be drawn.
+    pub objects: Option<WorldObjects>,
 }
 
-/// Mount the game at `game_dir`, find `CfgWorlds >> world` and load its terrain.
-pub fn load(game_dir: &Path, world: &str) -> anyhow::Result<LoadedWorld> {
+/// Mount the game at `game_dir`, find `CfgWorlds >> world` and load its terrain, and its
+/// placed objects when `objects` is given.
+pub fn load(
+    game_dir: &Path,
+    world: &str,
+    objects: Option<ObjectOptions>,
+) -> anyhow::Result<LoadedWorld> {
     let start = Instant::now();
     let data = GameData::load(&LoadOptions::new(game_dir))
         .with_context(|| format!("cannot load the game in {}", game_dir.display()))?;
@@ -39,6 +48,8 @@ pub fn load(game_dir: &Path, world: &str) -> anyhow::Result<LoadedWorld> {
         .with_context(|| format!("cannot open {wrp}"))?;
     let terrain = Terrain::parse(&bytes).with_context(|| format!("cannot parse {wrp}"))?;
     drop(bytes);
+    let objects =
+        objects.map(|options| WorldObjects::from_terrain(&terrain, data.vfs.clone(), options));
     let parsed = start.elapsed();
     let layers = TerrainLayers::load(&data.vfs, &terrain);
     if !layers.errors.is_empty() {
@@ -86,6 +97,7 @@ pub fn load(game_dir: &Path, world: &str) -> anyhow::Result<LoadedWorld> {
         landscape,
         reader,
         centre,
+        objects,
     })
 }
 

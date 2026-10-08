@@ -93,6 +93,9 @@ impl App for GameApp {
             self.scene
                 .load_world(&gpu, &mut renderer, world, self.engine.camera);
         }
+        if let Some((vfs, spec)) = self.engine.load_model_vfs()? {
+            self.scene.load_model(&gpu, &mut renderer, vfs, spec);
+        }
         self.graphics = Some(Graphics {
             gpu,
             surface,

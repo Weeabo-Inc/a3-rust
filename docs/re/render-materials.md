@@ -389,3 +389,61 @@ A renderer should decode the colour types (0, 1, and MCA) as sRGB and read the d
 - `VSShaderPool` variant key layout, and what each VertexShaderID changes: skinning, instancing,
   `*NoFade`, `TreeAdvModNormals`.
 - Skin subsurface constants (cb2) and the `FresnelGlass` generator.
+
+## 8. Our implementation (`a3-render-models`)
+
+How the model renderer maps the above onto wgpu. It is engine-side, not RE: where the renderer
+departs from the shaders above, this section says so.
+
+**Families.** `PixelShader::family` (`crates/a3-render-models/src/shader.rs`) groups the IDs:
+
+| family | IDs | WGSL path |
+|---|---|---|
+| Basic | Normal, NormalDXTA, Detail, Interpolation(Alpha), White(Alpha), AlphaShadow, AlphaNoShadow, DetailMacroAS | colour map only, lit per pixel normal (the engine lights these per vertex) |
+| Super | Super, SuperExt, SuperHair, Skin, NormalPiP, NormalMap* | §3.1 / §4 Super; NormalMap* stages recognised by suffix |
+| SuperAlphaTest | SuperAToC, SuperHairAtoC | Super, alpha test instead of alpha-to-coverage |
+| Multi | Multi | §4 Multi: layer colours, mask, per-layer `_dtsmdi`, macro over the mip-20 layer average, AS, per-layer normals |
+| Tree | Tree*, Grass, GrassAToC, NormalMapGrass | §4 TreeAdv: `albedo × mca.rgb × 4.5947`, `mca.a` as ambient AO, alpha test 0.5, two-sided |
+| Glass | Glass, Refract | §4 Glass: fresnel + env, premultiplied blend |
+| Unsupported | water, terrain, sky, clouds, sprites | sections skipped |
+
+The real-data test (`crates/a3-render-models/tests/real_data.rs`) checks the 963 models placed on
+Altis: 8,703 sections (Super 6,427, Multi 1,445, Basic 503, Tree 263, SuperAlphaTest 65), none
+unsupported, no missing texture.
+
+**Stages to bindings.** The engine binds stage k to `t<k>`. Multi needs 15 stages, but wgpu's
+default limit is 16 sampled textures per stage. So a material binds 15 textures, and slots that no
+family uses together share a binding (`Slot::binding`): t0 colour/layer 0, t1 normal/layer 0
+normal, t2 smdi/layer 0 dtsmdi, t3 AS, t4 macro (`_mca` for trees), t5 detail/mask, t6
+fresnel/layer 1, t7 env/layer 2, t8 layer 3, t9–t11 layer normals 1–3, t12–t14 layer dtsmdi 1–3.
+- Super, SuperExt, SuperAToC, SuperHair*, Skin and Glass stages are taken by position (§4).
+  NormalMap* share the Super code path but have their own layouts, so they go by suffix.
+- Multi stage 8 uses stage 3's tex gen.
+- The other shaders' stages are taken by Texture suffix (`_nohq`, `_smdi`/`_sm`, `_as`,
+  `_mc`/`_mca`, `_dt`/`_cdt`).
+- Empty slots get 1×1 neutral textures per family: flat normal, no specular, transparent macro,
+  0.5 detail, neutral `_mca`.
+
+**Colour spaces** follow §6: colour, layer, macro and env maps are sRGB; the rest are linear.
+
+**Approximations, pending the open points of §7:**
+- Hemisphere ambient: a3-render's sky colours stand in for `AE`/`AmbientMid`/`GE`.
+- The env-map tint `GlassEnvColor × GlassMatSpecular` is replaced by sky level × material specular.
+- `DForced`, point/spot lights, SSAO/caustics, underwater extinction and the FogMode switch are
+  not implemented. Fog and haze come from a3-render's post pass.
+- TreeAdv `TreeAdvPars` (wrap, translucency, rim) are unknown. We use a fixed wrap
+  (`N·L·0.5 + 0.5`), no translucency and no rim term.
+- Alpha: Glass blends; Tree and SuperAlphaTest test; for other families the colour map's PAA
+  `FLAG` decides (interpolated alpha blends, binary alpha tests). Blended sections are not yet
+  sorted back to front within a frame.
+- Sun shadows: opaque and alpha-tested sections cast within the shadow distance. Receivers use
+  a3-render's cascades (`sun_visibility`), multiplied by the AS `aoSun` term.
+
+**LOD selection** (`lod.rs`) follows `render-lod.md`. These parts are the engine's:
+- the objects-quality coefficients and their distance curve;
+- the object size;
+- the draw/fade test (a dithered fade per instance);
+- the shadow test.
+
+The global area multiplier and the per-LOD index are named stand-ins (`LodSelector::area_scale`,
+`stand_in_lod_index`) until §5 of that page is decoded.
