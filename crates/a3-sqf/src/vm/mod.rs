@@ -36,7 +36,7 @@ use crate::registry::Registry;
 use crate::source::SourceFile;
 use crate::symbol::Sym;
 use crate::table::CommandTable;
-use crate::value::{Namespace, ScriptHandle, SwitchState, Value};
+use crate::value::{Format, Namespace, ScriptHandle, SwitchState, Value};
 use exec::{Outcome, ScriptState};
 
 /// VM state shared by all scripts.
@@ -369,16 +369,72 @@ impl<H: Host> Ctx<'_, H> {
         self.vm.rng.next_f32()
     }
 
-    /// Formats a value as `str` does, using the host for handles.
+    /// Formats a value as `str` does, using the host for handles and the
+    /// scope's `toFixed` setting.
     pub fn to_sqf_string(&self, v: &Value) -> String {
         let host: &H = self.host;
-        v.to_sqf_string_with(&|h| host.format_handle(h))
+        v.to_sqf_string_fmt(&Format {
+            handle: &|h| host.format_handle(h),
+            fixed: self.fixed_digits(),
+        })
     }
 
-    /// Formats a value as `format "%1"` does, using the host for handles.
+    /// Formats a value as `format "%1"` does, using the host for handles
+    /// and the scope's `toFixed` setting.
     pub fn to_display_string(&self, v: &Value) -> String {
         let host: &H = self.host;
-        v.to_display_string_with(&|h| host.format_handle(h))
+        v.to_display_string_fmt(&Format {
+            handle: &|h| host.format_handle(h),
+            fixed: self.fixed_digits(),
+        })
+    }
+
+    /// `diag_scope`: how many scopes deep the current one is in its
+    /// evaluation context (0 at the top; `isNil {...}` starts a new one).
+    pub fn scope_depth(&self) -> usize {
+        let mut depth = 0;
+        for f in self.script.frames.iter().rev() {
+            if let exec::Frame::Code(cf) = f {
+                if cf.context_root {
+                    return depth;
+                }
+                depth += 1;
+            }
+        }
+        depth.saturating_sub(1)
+    }
+
+    /// `diag_stacktrace`: for each scope from the outermost, its line,
+    /// scope name and private variables.
+    pub fn stack_trace(&self) -> Vec<StackFrame> {
+        self.script
+            .frames
+            .iter()
+            .filter_map(|f| match f {
+                exec::Frame::Code(cf) => {
+                    let off = cf.code.offset_of(cf.ip.saturating_sub(1));
+                    let line = cf.code.source_file().locate(off).line;
+                    Some(StackFrame {
+                        line,
+                        scope_name: cf.scope_name.clone(),
+                        locals: cf.locals.clone(),
+                    })
+                }
+                exec::Frame::Native(_) => None,
+            })
+            .collect()
+    }
+
+    /// The current scope's `toFixed` digits.
+    pub fn fixed_digits(&self) -> Option<u8> {
+        self.script.top_code().and_then(|cf| cf.fixed)
+    }
+
+    /// Sets `toFixed` for the current scope (`None` resets).
+    pub fn set_fixed_digits(&mut self, digits: Option<u8>) {
+        if let Some(cf) = self.script.top_code_mut() {
+            cf.fixed = digits;
+        }
     }
 
     /// Runs code unscheduled to completion right now, in a fresh script
@@ -406,6 +462,33 @@ impl<H: Host> Ctx<'_, H> {
         self.host.report_error(&err);
     }
 
+    /// Like [`call_unscheduled`](Self::call_unscheduled), with extra
+    /// private variables in the outermost scope (`_self` for hash map
+    /// object methods).
+    pub fn call_unscheduled_with_locals(
+        &mut self,
+        code: &Code,
+        this: Option<Value>,
+        locals: Vec<(Sym, Value)>,
+    ) -> Result<Value, ScriptError> {
+        let ns = self.current_namespace();
+        let mut script = ScriptState::new(code.clone(), this, false, ScriptHandle::default(), ns);
+        if let Some(exec::Frame::Code(cf)) = script.frames.last_mut() {
+            cf.locals.extend(locals);
+        }
+        match exec::run(self.host, self.reg, self.vm, &mut script, None) {
+            Outcome::Done(v) => Ok(v),
+            Outcome::Terminated => Ok(Value::Nothing),
+            Outcome::Failed(e) => {
+                self.host.report_error(&e);
+                Err(e)
+            }
+            Outcome::Suspended(_) | Outcome::OutOfTime => {
+                unreachable!("unscheduled scripts neither suspend nor run out of time")
+            }
+        }
+    }
+
     /// Starts a scheduled script (`spawn`).
     pub fn spawn(&mut self, code: Code, this: Value, name: Option<Rc<str>>) -> ScriptHandle {
         self.vm.scheduler.spawn(code, this, name)
@@ -414,6 +497,17 @@ impl<H: Host> Ctx<'_, H> {
     pub(crate) fn scheduler(&mut self) -> &mut crate::scheduler::Scheduler<H> {
         &mut self.vm.scheduler
     }
+}
+
+/// One scope in [`Ctx::stack_trace`].
+#[derive(Clone, Debug)]
+pub struct StackFrame {
+    /// Source line the scope is at.
+    pub line: u32,
+    /// The scope's `scopeName`.
+    pub scope_name: Option<Rc<str>>,
+    /// Its private variables.
+    pub locals: Vec<(Sym, Value)>,
 }
 
 /// The VM's random number generator (xorshift64*). The engine's generator

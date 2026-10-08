@@ -701,14 +701,19 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
     // Exceptions and scope exits.
     let exc_t = TypeSet::of(Type::Exception);
     r.unary("try", CODE, exc_t, |_, a| {
-        Ok(Value::Exception(expect_code(&a)?))
+        Ok(Value::Exception(expect_code(&a)?, None))
+    });
+    r.binary("try", ANY, CODE, exc_t, |_, a, b| {
+        Ok(Value::Exception(expect_code(&b)?, Some(Rc::new(a))))
     });
     r.binary_flow("catch", exc_t, CODE, ANY, |_, a, b| {
-        let Value::Exception(body) = a else {
+        let Value::Exception(body, this) = a else {
             unreachable!()
         };
+        let mut inv = Invoke::new(body);
+        inv.this = this.map(|t| (*t).clone());
         Ok(Flow::CallThen(
-            Invoke::new(body),
+            inv,
             Box::new(TryCatch {
                 catch: expect_code(&b)?,
                 catching: false,

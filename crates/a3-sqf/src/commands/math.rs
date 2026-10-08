@@ -2,7 +2,7 @@
 //! All arithmetic is single precision.
 
 use super::*;
-use crate::value::{HashMap, deep_copy_value};
+use crate::value::deep_copy_value;
 use crate::vm::Ctx;
 
 pub(super) fn register<H: Host>(r: &mut Registry<H>) {
@@ -22,18 +22,6 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
     });
     r.unary("+", NUM, NUM, |_, a| Ok(a));
     r.unary("+", ARR, ARR, |_, a| Ok(deep_copy_value(&a)));
-    r.unary("+", HASH, HASH, |_, a| {
-        let Value::HashMap(m) = a else { unreachable!() };
-        let copy = HashMap::new();
-        {
-            let src = m.borrow();
-            let mut dst = copy.borrow_mut();
-            for (k, v) in src.iter() {
-                dst.insert(k.clone(), deep_copy_value(v));
-            }
-        }
-        Ok(Value::HashMap(copy))
-    });
     r.binary("-", NUM, NUM, NUM, |_, a, b| {
         Ok(Value::Number(num(&a) - num(&b)))
     });

@@ -171,8 +171,10 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
             check_not_self(&arr, v)?;
         }
         let mut items = arr.borrow_mut();
+        // -1 appends, -2 inserts before the last element, and so on.
+        let len = items.len() as i64;
         let mut pos = if at < 0 {
-            items.len()
+            (len + 1 + at).clamp(0, len) as usize
         } else {
             (at as usize).min(items.len())
         };
