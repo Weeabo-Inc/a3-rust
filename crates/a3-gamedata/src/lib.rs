@@ -22,9 +22,14 @@ use a3_config::{AddonPatches, Config, ConfigTree, load_order, read_rap};
 use a3_core::VfsPath;
 use a3_vfs::{MountReport, Vfs};
 
+mod boot;
 mod scripts;
 mod sqf_config;
 
+pub use boot::{
+    CompileStats, FunctionsReport, compile_all, engine_command_table, error_category,
+    init_functions, register_headless, script_registry, script_vm, unimplemented_usage,
+};
 pub use scripts::{VfsHost, VfsResolver, decode_text, load_text_config, read_text};
 pub use sqf_config::{ConfigHost, ConfigRoot, SqfConfigs, register_config_commands};
 
