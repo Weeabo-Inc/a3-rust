@@ -435,8 +435,8 @@ pub fn sample_lod_body() -> Vec<u8> {
     b.u32(1); // one UV set
     let pos: Vec<f32> = positions.iter().flatten().copied().collect();
     b.carray_lzo(5, &le_f32s(&pos));
-    // Normals: all -Z, packed z = 511 (decodes to -1).
-    b.fill_value(5, &(511u32 << 20).to_le_bytes());
+    // Normals: all -Z, packed z = -511 (0x201).
+    b.fill_value(5, &(0x201u32 << 20).to_le_bytes());
     b.carray(0, &[]); // tangents
     // Bone weights: vertex 4 on LOD bone 1, others on bone 0.
     let mut w = Vec::new();

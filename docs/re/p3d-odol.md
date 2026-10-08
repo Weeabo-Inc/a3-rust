@@ -278,8 +278,15 @@ fill<i16 pair>  uv          // per vertex
 ### Compressed normal / tangent vector (u32)
 
 Three signed 10-bit fields: x = bits 0..9, y = 10..19, z = 20..29 (bits 30..31 zero). A field
-value `f` in -512..=511 decodes to `-f / 511` (note the sign flip). _High_: decoded normals and
-tangents of sampled models have length 1 ± 0.002, except a few all-zero normals in degenerate faces.
+value `f` in -512..=511 decodes to `f / 511`. _High_: decoded normals and tangents have length
+1 ± 0.01 (or are zero in degenerate geometry).
+
+**Sign.** Community readers decode `-f / 511`; with that sign the normals of a closed convex model
+(`bottleplastic_v1_f.p3d`: 79 of 79 vertices) point **inward**. With `+f / 511` they point outward,
+and the right-handed cross product `(b - a) x (c - a)` of each face agrees with its vertex normals
+(MX rifle 8144/8144, house 7078/7078, soldier 8697/8775 triangles). So faces are wound clockwise
+seen from outside in the engine's left-handed space (the D3D front-face convention). The reader
+returns outward normals. The tangent sign uses the same rule _(unverified)_.
 
 `STPair` = two compressed vectors (S then T).
 

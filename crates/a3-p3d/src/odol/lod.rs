@@ -371,12 +371,14 @@ fn uv_set(r: &mut Reader) -> Result<Vec<Vec2>> {
     })
 }
 
-/// A unit vector packed as three signed 10-bit fields (x low), each decoding to `-f / 511`.
+/// A unit vector packed as three signed 10-bit fields (x low), each decoding to `f / 511`.
+///
+/// With this sign, normals point out of closed shapes (see `docs/re/p3d-odol.md`).
 pub(crate) fn unpack_vector(packed: u32) -> Vec3 {
     let field = |shift: u32| {
         let v = ((packed >> shift) & 0x3ff) as i32;
         let v = if v > 511 { v - 1024 } else { v };
-        v as f32 * (-1.0 / 511.0)
+        v as f32 / 511.0
     };
     Vec3::new(field(0), field(10), field(20))
 }
@@ -464,10 +466,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn unpacks_compressed_vectors_with_flipped_sign() {
+    fn unpacks_signed_ten_bit_fields() {
         // x = -511 (0x201), y = 0, z = 511 (0x1ff)
         let packed = 0x201 | (0x1ff << 20);
-        assert_eq!(unpack_vector(packed), Vec3::new(1.0, 0.0, -1.0));
+        assert_eq!(unpack_vector(packed), Vec3::new(-1.0, 0.0, 1.0));
         assert_eq!(unpack_vector(0), Vec3::ZERO);
     }
 }
