@@ -52,6 +52,9 @@ $env:A3_ROOT = "C:\path\to\Arma 3"; cargo test --workspace
 A3_ROOT="/path/to/Arma 3" cargo test --workspace
 ```
 
+Optional: set `ARMA_WIKI` to an offline Arma wiki database (default `P:\ArmaWiki`) for command
+signatures and locality; see "Reference sources" in [AGENTS.md](AGENTS.md).
+
 Try the CLI:
 
 ```sh

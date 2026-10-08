@@ -77,6 +77,23 @@ addresses, struct layouts with offsets and types, observed behaviour and edge ca
 sure you are. An implementer reads `docs/re/` and writes Rust from it, without opening the
 decompiler.
 
+## Reference sources
+
+Consult in this order; the binary outranks every other source when they disagree.
+
+1. **Ground truth**: `docs/re/` (our findings), then the decompiled binary through the RE tooling
+   (`python tools/re/mcp_call.py ...`, see `docs/re/TOOLING.md`).
+2. **Offline Arma wiki** (optional, local machine only): `P:\ArmaWiki`, or `$ARMA_WIKI` when set.
+   Check it exists first. Reach for it instead of the live wiki, which blocks automated access.
+   Built 2026-08-21 from the BI community wiki: 2,654 commands and 2,062 functions (typed
+   signatures, examples, locality), 1,657 guide pages, HEMTT docs.
+   - CLI: `python -I P:\ArmaWiki\arma3db.py show <name> | search "<text>" | list --group <g> --arma3 | stats`
+   - SQL on `arma3.sqlite`, e.g. `SELECT name FROM commands WHERE is_arma3=1 AND effect_locality LIKE '%global%'`
+   - Markdown: `export/commands/*.md`, `export/docs.json`
+   This path is a doc pointer for local dev; code takes install paths from flags or env (see Code conventions).
+3. **Community tools** (HEMTT, armake2, bis-file-formats): read them as format documentation, and
+   write our own implementation. Their code stays out of this repo.
+
 ## Domain docs
 
 - New or sharpened domain term: update `CONTEXT.md` (use the `mattpocock-skills:domain-modeling`
