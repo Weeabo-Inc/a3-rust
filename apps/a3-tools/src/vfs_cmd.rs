@@ -31,6 +31,22 @@ pub fn mount(game_dir: &Path, mods: &[PathBuf], all_mods: bool) -> Result<Vfs> {
     Ok(vfs)
 }
 
+/// Reads `input`: an OS file when one exists at that path, otherwise a VFS path in the game
+/// at `game_dir` (mounted with every optional mod folder).
+pub fn read_file_or_vfs(input: &str, game_dir: Option<&Path>) -> Result<Vec<u8>> {
+    let on_disk = Path::new(input);
+    if on_disk.is_file() {
+        return std::fs::read(on_disk).with_context(|| format!("cannot read {input}"));
+    }
+    let Some(game_dir) = game_dir else {
+        anyhow::bail!(
+            "{input} is not a file, and no --game-dir (or A3_ROOT) is set to look it up in the VFS"
+        );
+    };
+    let vfs = mount(game_dir, &[], true)?;
+    Ok(vfs.open(input)?.to_vec())
+}
+
 /// Lists the children of `dir`, directories marked with a trailing `\`.
 pub fn ls(vfs: &Vfs, dir: &str) -> Result<()> {
     let entries = vfs.list_dir(dir);

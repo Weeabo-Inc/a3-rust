@@ -102,7 +102,31 @@ _Avoid_: shader file
 **Texture suffix**:
 The naming convention telling the engine how to use a texture: `_co` colour, `_ca` colour with
 alpha, `_nohq` normal map, `_smdi` specular/metal/detail, `_as` ambient shadow, `_mc` macro,
-`_dt` detail, `_sat` satellite, `_mask` surface mask.
+`_dt` detail, `_lco` satellite segment, `_mask` surface mask, `_ti_ca` thermal.
+
+**Texture type**:
+The engine's classification of a texture (diffuse, linear diffuse, detail, normal map, macro,
+ambient shadow, specular, mask, thermal, ...), derived from its Texture suffix when the texture is
+converted and cached in texHeaders.bin.
+
+**TAGG**:
+A tagged chunk in a PAA header (average colour, max colour, alpha flags, channel swizzle, mipmap
+offsets).
+_Avoid_: tag (alone), chunk
+
+**Swizzle**:
+The channel rearrangement recorded in a PAA (e.g. a `_nohq` normal map stores X in alpha); shaders
+read the swizzled layout.
+
+**texHeaders.bin**:
+The per-PBO cache of every texture's header (format, size, mipmap offsets, average colour,
+Texture type), so the engine can plan texture loading without opening each PAA.
+
+**Procedural texture**:
+A texture the engine generates from a string such as `#(argb,8,8,3)color(1,0,0,1)`, usable
+anywhere a texture path is; generators include `color`, `fresnel`, `fresnelGlass`,
+`perlinNoise`, `irradiance`.
+_Avoid_: generated texture, inline texture
 
 ## Models and animation
 

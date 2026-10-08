@@ -48,17 +48,7 @@ pub fn run(args: P3dArgs) -> anyhow::Result<()> {
 
 /// Reads `model` from disk if such a file exists, else from the VFS of the game in `game_dir`.
 fn load(model: &str, game_dir: Option<&Path>) -> anyhow::Result<Vec<u8>> {
-    let on_disk = Path::new(model);
-    if on_disk.is_file() {
-        return std::fs::read(on_disk).with_context(|| format!("reading {model}"));
-    }
-    let Some(game_dir) = game_dir else {
-        bail!(
-            "{model} is not a file, and no --game-dir (or A3_ROOT) is set to look it up in the VFS"
-        );
-    };
-    let vfs = crate::vfs_cmd::mount(game_dir, &[], true)?;
-    Ok(vfs.open(model)?.to_vec())
+    crate::vfs_cmd::read_file_or_vfs(model, game_dir)
 }
 
 fn vec3(v: glam::Vec3) -> String {

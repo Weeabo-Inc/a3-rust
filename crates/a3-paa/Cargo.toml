@@ -1,0 +1,20 @@
+[package]
+name = "a3-paa"
+description = "Reader and writer for PAA/PAC textures, texHeaders.bin and procedural textures"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+a3-compress.workspace = true
+lzokay-native.workspace = true
+texpresso.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+a3-vfs.workspace = true
+proptest.workspace = true
+
+[lints]
+workspace = true
