@@ -13,6 +13,7 @@ rust-version = "1.85"
 a3-core = { path = "crates/a3-core" }
 a3-pbo = { path = "crates/a3-pbo" }
 a3-vfs = { path = "crates/a3-vfs" }
+a3-audio-formats = { path = "crates/a3-audio-formats" }
 a3-sqf = { path = "crates/a3-sqf" }
 a3-config = { path = "crates/a3-config" }
 a3-gamedata = { path = "crates/a3-gamedata" }
@@ -53,6 +54,9 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 
 # Images (png is listed with the engine core)
 tiff = "0.9"
+# Audio
+lewton = "0.10"
+hound = "3.5"
 
 # CLI
 clap = { version = "4", features = ["derive", "env"] }
