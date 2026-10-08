@@ -6,8 +6,8 @@ mod p3d_cmd;
 mod p3d_export;
 mod paa_cmd;
 mod pbo_cmd;
-mod sound_cmd;
 mod sign_cmd;
+mod sound_cmd;
 mod vfs_cmd;
 mod wrp_cmd;
 
