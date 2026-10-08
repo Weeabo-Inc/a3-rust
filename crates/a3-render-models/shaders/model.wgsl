@@ -1,5 +1,9 @@
 // ODOL model sections: instanced, camera-relative (ADR 0003), one material per draw.
 //
+// Skinned models (a Skeleton, vertices with bone weights) draw through the `*_skinned` entry
+// points, which blend up to four bone matrices from the palette buffer (group 2) and transform
+// the position, normal and tangent by the blended matrix before the instance transform.
+//
 // Follows docs/re/render-materials.md (the engine's own shaders). Families (params.x):
 //   0 Basic  - Normal / Detail etc.: colour map, lit per vertex normal
 //   1 Super  - Super, NormalMap*, Skin: colour, macro, detail, normal, smdi, AS, fresnel, env
@@ -77,6 +81,12 @@ struct Shadows {
 @group(1) @binding(14) var t13: texture_2d<f32>;
 @group(1) @binding(15) var t14: texture_2d<f32>;
 @group(1) @binding(16) var s_material: sampler;
+// Bone palette: the frame's skinning matrices, one block per instance. An instance's block
+// starts at its `palette` base; slot `b` of the block holds Skeleton bone `b`'s skinning matrix
+// (rest pose -> posed model), and the block is padded with the identity, the rest pose that
+// vertices without influences are bound to. Slot 0 of the buffer is the shared identity block
+// that unposed instances read.
+@group(2) @binding(0) var<storage, read> palette: array<mat4x4<f32>>;
 
 struct VertexIn {
     @location(0) position: vec3<f32>,
@@ -91,8 +101,17 @@ struct InstanceIn {
     @location(5) row0: vec4<f32>,
     @location(6) row1: vec4<f32>,
     @location(7) row2: vec4<f32>,
-    // x: fade, 1 = fully drawn; objects near the drop-out distance dither in.
+    // x: fade, 1 = fully drawn; objects near the drop-out distance dither in; yzw unused.
     @location(8) params: vec4<f32>,
+    // Palette slot the instance's bone matrices start at (0 = the identity block, the rest pose).
+    @location(11) palette: u32,
+}
+
+// A skinned vertex's bone influences: up to four palette slots (Skeleton bones), with the
+// weights summing to 1.
+struct SkinIn {
+    @location(9) bones: vec4<u32>,
+    @location(10) weights: vec4<f32>,
 }
 
 struct VertexOut {
@@ -114,18 +133,60 @@ fn transform_vector(i: InstanceIn, v: vec3<f32>) -> vec3<f32> {
     return vec3<f32>(dot(i.row0.xyz, v), dot(i.row1.xyz, v), dot(i.row2.xyz, v));
 }
 
-@vertex
-fn vs_main(v: VertexIn, i: InstanceIn) -> VertexOut {
-    let relative = transform_point(i, v.position);
+// The vertex's skinning matrix: its bones' palette matrices blended by weight. Weights sum to
+// 1, so the blend of the affine matrices is the affine matrix of the blend.
+fn skin_matrix(s: SkinIn, base: u32) -> mat4x4<f32> {
+    return s.weights.x * palette[base + s.bones.x]
+        + s.weights.y * palette[base + s.bones.y]
+        + s.weights.z * palette[base + s.bones.z]
+        + s.weights.w * palette[base + s.bones.w];
+}
+
+fn skin_point(m: mat4x4<f32>, p: vec3<f32>) -> vec3<f32> {
+    return (m * vec4<f32>(p, 1.0)).xyz;
+}
+
+// Directions take the blended matrix's rotation (the engine skins normals with the bone matrix
+// itself, then renormalises). A blend that collapses the vertex — its bones are hidden — would
+// give the zero vector; the vertex is degenerate there, so keep the rest direction.
+fn skin_vector(m: mat4x4<f32>, v: vec3<f32>) -> vec3<f32> {
+    let skinned = (m * vec4<f32>(v, 0.0)).xyz;
+    if dot(skinned, skinned) < 1e-12 {
+        return v;
+    }
+    return skinned;
+}
+
+// The vertex's output, from its model-space position, normal and tangent.
+fn vertex_out(position: vec3<f32>, normal: vec3<f32>, tangent: vec4<f32>, uv0: vec2<f32>, uv1: vec2<f32>, i: InstanceIn) -> VertexOut {
+    let relative = transform_point(i, position);
     var out: VertexOut;
     out.clip = frame.view_proj * vec4<f32>(relative, 1.0);
     out.relative = relative;
-    out.normal = transform_vector(i, v.normal);
-    out.tangent = vec4<f32>(transform_vector(i, v.tangent.xyz), v.tangent.w);
-    out.uv0 = v.uv0;
-    out.uv1 = v.uv1;
+    out.normal = transform_vector(i, normal);
+    out.tangent = vec4<f32>(transform_vector(i, tangent.xyz), tangent.w);
+    out.uv0 = uv0;
+    out.uv1 = uv1;
     out.fade = i.params.x;
     return out;
+}
+
+@vertex
+fn vs_main(v: VertexIn, i: InstanceIn) -> VertexOut {
+    return vertex_out(v.position, v.normal, v.tangent, v.uv0, v.uv1, i);
+}
+
+@vertex
+fn vs_main_skinned(v: VertexIn, i: InstanceIn, s: SkinIn) -> VertexOut {
+    let m = skin_matrix(s, i.palette);
+    return vertex_out(
+        skin_point(m, v.position),
+        skin_vector(m, v.normal),
+        vec4<f32>(skin_vector(m, v.tangent.xyz), v.tangent.w),
+        v.uv0,
+        v.uv1,
+        i,
+    );
 }
 
 struct ShadowOut {
@@ -138,6 +199,15 @@ struct ShadowOut {
 fn vs_shadow(v: VertexIn, i: InstanceIn) -> ShadowOut {
     var out: ShadowOut;
     out.clip = frame.view_proj * vec4<f32>(transform_point(i, v.position), 1.0);
+    out.uv0 = v.uv0;
+    return out;
+}
+
+@vertex
+fn vs_shadow_skinned(v: VertexIn, i: InstanceIn, s: SkinIn) -> ShadowOut {
+    let p = skin_point(skin_matrix(s, i.palette), v.position);
+    var out: ShadowOut;
+    out.clip = frame.view_proj * vec4<f32>(transform_point(i, p), 1.0);
     out.uv0 = v.uv0;
     return out;
 }

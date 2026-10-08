@@ -3,13 +3,14 @@
 
 use std::ops::Range;
 
-use a3_p3d::{Lod, Model};
+use a3_p3d::{Lod, Model, Skeleton};
 use bytemuck::{Pod, Zeroable};
 use glam::{Affine3A, Vec2, Vec3};
 
 use crate::lod::LodMetrics;
 use crate::material::{MaterialDesc, Slot};
 use crate::shader::ShaderFamily;
+use crate::skin::SkinData;
 
 /// One model vertex as the model shaders read it.
 #[repr(C)]
@@ -48,6 +49,8 @@ pub struct PreparedLod {
     pub indices: Vec<u32>,
     pub sections: Vec<PreparedSection>,
     pub proxies: Vec<ProxyRef>,
+    /// The LOD's vertices in Skeleton bones, when the model is skinned.
+    pub skin: Option<SkinData>,
     /// Distance of the farthest vertex from the model origin.
     pub radius: f32,
     /// Triangle count.
@@ -72,7 +75,7 @@ impl PreparedModel {
             .lods
             .iter()
             .filter(|l| l.resolution.is_visual())
-            .map(prepare_lod)
+            .map(|l| prepare_lod(l, model.skeleton.as_ref()))
             .collect();
         lods.sort_by(|a, b| a.resolution.total_cmp(&b.resolution));
         let radius = lods.iter().map(|l| l.radius).fold(0.0, f32::max);
@@ -107,7 +110,7 @@ impl PreparedModel {
     }
 }
 
-fn prepare_lod(lod: &Lod) -> PreparedLod {
+fn prepare_lod(lod: &Lod, skeleton: Option<&Skeleton>) -> PreparedLod {
     let v = &lod.vertices;
     let n = v.len();
     let uv = |set: usize, i: usize| {
@@ -142,6 +145,10 @@ fn prepare_lod(lod: &Lod) -> PreparedLod {
     // Group the sections' triangles by material, keeping first-appearance order.
     let mut groups: Vec<(MaterialDesc, Vec<u32>)> = Vec::new();
     for section in &lod.sections {
+        // Proxy triangles are placeholders for the proxies of the LOD, not geometry.
+        if section.is_proxy() {
+            continue;
+        }
         let texture = section
             .texture
             .and_then(|t| lod.textures.get(t as usize))
@@ -195,6 +202,7 @@ fn prepare_lod(lod: &Lod) -> PreparedLod {
         indices,
         sections,
         proxies,
+        skin: skeleton.and_then(|s| SkinData::new(lod, s)),
         radius,
     }
 }
@@ -212,6 +220,7 @@ fn proxy_model_path(model: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use a3_p3d::{BoneWeights, OdolLod};
     use a3_p3d::{Face, Lod, LodResolution, Material, Model, Proxy, Section, Vertices};
     use glam::{Mat3, Vec2, Vec3};
 
@@ -347,5 +356,96 @@ mod tests {
         let proxy = &p.lods[0].proxies[0];
         assert_eq!(proxy.model, r"a3\structures_f\data\window.p3d");
         assert_eq!(proxy.transform.translation, Vec3::new(1.0, 2.0, 3.0).into());
+    }
+
+    #[test]
+    fn proxy_sections_are_not_drawn() {
+        let mut lod = quad_lod(1.0);
+        // The third section's faces are proxy triangles, placeholders for proxies.
+        lod.sections[2].flags = Section::PROXY_FLAG;
+        let mut model = empty_model();
+        model.lods = vec![lod];
+        let p = PreparedModel::new(&model);
+        let lod = &p.lods[0];
+        assert_eq!(lod.sections.len(), 2);
+        // The triangle (0,1,2) and the triangle (0,2,3); the proxy quad's six indices are gone.
+        assert_eq!(lod.indices.len(), 6);
+        assert_eq!(lod.faces, 2);
+    }
+
+    /// A skinned LOD: two vertices, bound to LOD bones 0 and 1, of a two-bone skeleton that
+    /// swaps them (LOD bone 0 is Skeleton bone 1).
+    fn skinned_lod() -> Lod {
+        let mut lod = quad_lod(1.0);
+        lod.vertices.bone_weights = vec![
+            BoneWeights {
+                count: 1,
+                pairs: [(0, 255), (0, 0), (0, 0), (0, 0)],
+            },
+            BoneWeights {
+                count: 2,
+                pairs: [(1, 128), (0, 127), (0, 0), (0, 0)],
+            },
+            BoneWeights {
+                count: 0,
+                pairs: [(0, 0); 4],
+            },
+        ];
+        lod.odol = Some(OdolLod {
+            sub_skeleton: vec![1, 0],
+            ..OdolLod::default()
+        });
+        lod
+    }
+
+    fn skeleton() -> a3_p3d::Skeleton {
+        a3_p3d::Skeleton {
+            name: "test".into(),
+            bones: vec![
+                a3_p3d::Bone {
+                    name: "root".into(),
+                    ..a3_p3d::Bone::default()
+                },
+                a3_p3d::Bone {
+                    name: "head".into(),
+                    ..a3_p3d::Bone::default()
+                },
+            ],
+            ..a3_p3d::Skeleton::default()
+        }
+    }
+
+    #[test]
+    fn a_lod_of_a_skinned_model_carries_its_bone_influences() {
+        let mut model = empty_model();
+        model.skeleton = Some(skeleton());
+        model.lods = vec![skinned_lod()];
+        let p = PreparedModel::new(&model);
+        let skin = p.lods[0].skin.as_ref().expect("the LOD is skinned");
+        // Two Skeleton bones plus the trailing identity slot.
+        assert_eq!(skin.palette_len, 3);
+        assert_eq!(
+            skin.vertices[0].bones[0], 1,
+            "LOD bone 0 is Skeleton bone 1"
+        );
+        assert_eq!(skin.vertices[0].weights[0], 1.0);
+        assert_eq!(skin.vertices[1].bones[0], 0);
+        assert_eq!(skin.vertices[1].bones[1], 1);
+        assert!((skin.vertices[1].weights[0] + skin.vertices[1].weights[1] - 1.0).abs() < 1e-6);
+        // No influence: the rest pose through the identity slot.
+        assert_eq!(skin.vertices[2].bones, [2; 4]);
+    }
+
+    #[test]
+    fn a_lod_of_an_unskinned_model_has_no_bone_influences() {
+        let mut model = empty_model();
+        model.skeleton = Some(skeleton());
+        model.lods = vec![quad_lod(1.0)];
+        let p = PreparedModel::new(&model);
+        assert_eq!(p.lods[0].skin, None);
+        let mut model = empty_model();
+        model.lods = vec![skinned_lod()];
+        let p = PreparedModel::new(&model);
+        assert_eq!(p.lods[0].skin, None, "no skeleton, no skinning");
     }
 }

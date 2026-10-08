@@ -317,8 +317,24 @@ BoneWeights:   u32 count; { u8 bone; u8 weight; }[4]      // bone = LOD bone ind
 NeighborBones: u16 pos_a; u16 pad; BoneWeights rtw_a; u16 pos_b; u16 pad; BoneWeights rtw_b
 ```
 
-Over every shipped vertex with a bone-weight entry: 31.1 M have `count = 0` (unskinned), 15.6 M
+Over every shipped vertex with a bone-weight entry: 31.1 M have `count = 0` (no influence), 15.6 M
 one bone with weight 255, 2.5 M several bones whose weights sum to exactly 255. _High_.
+
+A vertex with no influence is a rigid part that follows the model origin rather than a bone: of
+the install's 92.2 M vertices, 20.3 M are drawn by the visual LODs of skinned models without any
+influence (every helicopter hull, a parachute's canopy); the soldier's visual LODs draw none. The
+renderer leaves them at rest through a trailing identity palette slot. _High for the counts;
+medium that the engine's vertex shader treats them the same way._
+
+`vertex_bone_ref_is_simple` selects the engine's simple or complex vertex-bone-ref reader; both
+forms carry the same `BoneWeights` array, so `a3-p3d` decodes them alike. _Medium: the array is
+identical in the shipped data; what the flag itself promises is untraced._
+
+Skinning samples a matrix palette indexed by Skeleton bone: `a3-render-models` resolves each
+vertex's LOD bones through the LOD's `sub_skeleton` and gives the palette one slot per Skeleton
+bone (slot `i` = bone `i`), plus a trailing identity slot that vertices with no influence are
+bound to, leaving them at rest. A hidden bone contributes the zero matrix
+(`model-animations.md`), collapsing its vertices.
 
 ## Geometry checks over the whole install
 
