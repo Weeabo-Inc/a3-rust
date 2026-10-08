@@ -78,7 +78,7 @@ impl TileResidency {
                     .iter()
                     .enumerate()
                     .filter_map(|(s, t)| t.map(|t| (s, rank(t))))
-                    .max_by_key(|&(_, r)| r.map_or(usize::MAX, |r| r))?;
+                    .max_by_key(|&(_, r)| r.unwrap_or(usize::MAX))?;
                 slot as u32
             }
         };
