@@ -44,6 +44,8 @@ impl SourceMap {
 /// The result of preprocessing one file.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Output {
+    /// Virtual path of the preprocessed (root) file.
+    pub path: Arc<str>,
     /// The preprocessed text, as `preprocessFile` returns it.
     pub text: String,
     /// Source location of every line of `text`.
@@ -54,12 +56,21 @@ pub struct Output {
 }
 
 impl Output {
-    /// The text with `#line N "file"` directives inserted wherever the next line does not follow
-    /// the previous one in the same file, as `preprocessFileLineNumbers` returns it. The SQF
+    /// The text with `#line N "file"` directives, as `preprocessFileLineNumbers` returns it: it
+    /// always starts with `#line 1 "<path>"`, and a directive is inserted wherever the next line
+    /// does not follow the previous one in the same file. The SQF
     /// compiler reads these directives to report error locations.
     pub fn with_line_directives(&self) -> String {
         let mut out = String::with_capacity(self.text.len() + 64);
-        let mut expected: Option<SourceLocation> = None;
+        out.push_str(&format!(
+            "#line 1 \"{}\"
+",
+            self.path
+        ));
+        let mut expected = Some(SourceLocation {
+            file: self.path.clone(),
+            line: 1,
+        });
         for (index, line) in self.text.split_inclusive('\n').enumerate() {
             if let Some(location) = self.source_map.lines.get(index) {
                 if expected.as_ref() != Some(location) {
@@ -104,11 +115,12 @@ impl Emitter {
         }
     }
 
-    pub fn finish(mut self, warnings: Vec<PreprocessError>) -> Output {
+    pub fn finish(mut self, path: Arc<str>, warnings: Vec<PreprocessError>) -> Output {
         if !self.text.is_empty() && !self.text.ends_with('\n') {
             self.lines.extend(self.open.take());
         }
         Output {
+            path,
             text: self.text,
             source_map: SourceMap { lines: self.lines },
             warnings,

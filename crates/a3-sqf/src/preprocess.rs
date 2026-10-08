@@ -36,8 +36,7 @@ impl<'a, H: Host + ?Sized> HostResolver<'a, H> {
 
     fn path(current_file: &str, include: &str) -> String {
         let joined = join_virtual_path(current_file, include);
-        let relative =
-            !current_file.starts_with(['\\', '/']) && !include.starts_with(['\\', '/']);
+        let relative = !current_file.starts_with(['\\', '/']) && !include.starts_with(['\\', '/']);
         if relative {
             joined.trim_start_matches('\\').to_owned()
         } else {

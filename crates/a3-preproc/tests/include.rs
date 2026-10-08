@@ -195,6 +195,23 @@ fn line_directives_mark_discontinuities() {
 }
 
 #[test]
+fn line_directives_always_start_with_the_root_file() {
+    // wiki: preprocessFileLineNumbers adds `#line 1 "aFilename"` at the beginning.
+    let files = MemoryResolver::new().with_file("\\m\\inc.hpp", "i1\n");
+    let out = Preprocessor::new(&files)
+        .preprocess_str("m\\main.sqf", "#include \"\\m\\inc.hpp\"\nx")
+        .unwrap();
+    assert_eq!(
+        out.with_line_directives(),
+        "#line 1 \"m\\main.sqf\"\n#line 1 \"\\m\\inc.hpp\"\ni1\n#line 1 \"m\\main.sqf\"\n\nx"
+    );
+    let empty = Preprocessor::new(&files)
+        .preprocess_str("e.sqf", "")
+        .unwrap();
+    assert_eq!(empty.with_line_directives(), "#line 1 \"e.sqf\"\n");
+}
+
+#[test]
 fn line_directive_renumbers() {
     let files = MemoryResolver::new();
     let out = Preprocessor::new(&files)

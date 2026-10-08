@@ -33,6 +33,8 @@ dependencies = [
  "a3-config",
  "a3-core",
  "a3-pbo",
+ "a3-preproc",
+ "a3-sqf",
  "a3-vfs",
  "tempfile",
  "thiserror 2.0.21",

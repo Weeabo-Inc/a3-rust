@@ -71,6 +71,12 @@ pub trait Host: 'static {
         crate::preprocess::preprocess_with_host(self, path, line_numbers)
     }
 
+    /// The stringtable text for `key` (`STR_...`, without `$`, any case), or `None` when the key
+    /// is unknown (`localize`). The default knows no keys.
+    fn localize(&self, _key: &str) -> Option<String> {
+        None
+    }
+
     /// The text `str` gives for a host handle.
     fn format_handle(&self, handle: Handle) -> String {
         handle.to_string()

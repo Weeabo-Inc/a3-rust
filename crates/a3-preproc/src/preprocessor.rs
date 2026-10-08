@@ -212,7 +212,7 @@ impl<'r> Preprocessor<'r> {
         self.warnings.clear();
         let mut emitter = Emitter::default();
         self.process_file(Arc::from(path), source, 0, &mut emitter)?;
-        let mut output = emitter.finish(std::mem::take(&mut self.warnings));
+        let mut output = emitter.finish(Arc::from(path), std::mem::take(&mut self.warnings));
         if self.options.config_macros {
             self.evaluate_config_macros(&mut output)?;
         }

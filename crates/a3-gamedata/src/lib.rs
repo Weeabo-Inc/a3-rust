@@ -5,6 +5,12 @@
 //! is read and patched into one [`ConfigTree`] in CfgPatches `requiredAddons` order, with the
 //! mount order as the tie-break. Renderer, SQF and simulation code start from a [`GameData`].
 //!
+//! Unbinarised `config.cpp` files (common in mods) are preprocessed with [`a3_preproc`], their
+//! `#include`s resolved through the VFS and their `__EXEC`/`__EVAL` run on an SQF VM in
+//! `parsingNamespace`, then merged like `config.bin`. When a folder has both, `config.bin` is used
+//! _(uncertain: which one the engine prefers)_. [`VfsResolver`] and [`VfsHost`] give scripts the
+//! same file access.
+//!
 //! Localisation is pluggable through the [`Localizer`] trait so that the stringtable crate can be
 //! attached without this crate depending on it.
 
@@ -15,6 +21,10 @@ use std::time::{Duration, Instant};
 use a3_config::{AddonPatches, Config, ConfigTree, load_order, read_rap};
 use a3_core::VfsPath;
 use a3_vfs::{MountReport, Vfs};
+
+mod scripts;
+
+pub use scripts::{VfsHost, VfsResolver, decode_text, load_text_config, read_text};
 
 /// Errors that stop a game load. Problems with individual addons are collected in
 /// [`LoadReport`] instead.
@@ -107,7 +117,7 @@ pub struct LoadReport {
     pub missing_requirements: Vec<(VfsPath, String)>,
     /// Configs force-loaded to break a `requiredAddons` cycle.
     pub cycles: Vec<VfsPath>,
-    /// Unbinarised `config.cpp` files found and skipped (needs the preprocessor).
+    /// Unbinarised `config.cpp` files ignored because their folder also has a `config.bin`.
     pub skipped_config_cpp: Vec<VfsPath>,
     pub timings: LoadTimings,
 }
@@ -174,29 +184,55 @@ impl GameData {
         let start = Instant::now();
         let mut report = LoadReport::default();
 
-        // Every config.bin of every archive, in mount order.
+        // Every config.bin (or, without one, config.cpp) of every archive, in mount order.
         let mut sources = Vec::new();
         for archive in vfs.archives() {
+            let bins: std::collections::HashSet<VfsPath> = archive
+                .pbo
+                .entries()
+                .iter()
+                .map(|entry| archive.prefix.join(entry.name()))
+                .filter(|path| {
+                    path.file_name()
+                        .is_some_and(|n| n.eq_ignore_ascii_case("config.bin"))
+                })
+                .filter_map(|path| path.parent())
+                .collect();
             for entry in archive.pbo.entries() {
                 let path = archive.prefix.join(entry.name());
                 match path.file_name() {
                     Some(name) if name.eq_ignore_ascii_case("config.bin") => {
-                        sources.push((archive.clone(), entry.clone(), path));
+                        sources.push((archive.clone(), entry.clone(), path, false));
                     }
                     Some(name) if name.eq_ignore_ascii_case("config.cpp") => {
-                        report.skipped_config_cpp.push(path);
+                        if path.parent().is_some_and(|dir| bins.contains(&dir)) {
+                            report.skipped_config_cpp.push(path);
+                        } else {
+                            sources.push((archive.clone(), entry.clone(), path, true));
+                        }
                     }
                     _ => {}
                 }
             }
         }
 
-        let parsed = parallel_map(&sources, |(archive, entry, _)| {
-            let bytes = archive.pbo.read_entry(entry).map_err(|e| e.to_string())?;
-            read_rap(&bytes).map_err(|e| e.to_string())
+        // config.bin files are read in parallel; config.cpp files run SQF (`__EXEC`/`__EVAL`)
+        // on one VM in order, so they are done afterwards on this thread.
+        let parsed = parallel_map(&sources, |(archive, entry, _, is_text)| {
+            if *is_text {
+                return None;
+            }
+            let bytes = match archive.pbo.read_entry(entry) {
+                Ok(bytes) => bytes,
+                Err(e) => return Some(Err(e.to_string())),
+            };
+            Some(read_rap(&bytes).map_err(|e| e.to_string()))
         });
+        let mut parsing_vm = a3_sqf::Vm::new(VfsHost::new(vfs.clone()));
         let mut configs: Vec<(AddonConfig, Config)> = Vec::new();
-        for ((archive, _, path), result) in sources.into_iter().zip(parsed) {
+        for ((archive, _, path, _), result) in sources.into_iter().zip(parsed) {
+            let result =
+                result.unwrap_or_else(|| load_text_config(&vfs, &mut parsing_vm, path.as_str()));
             match result {
                 Ok(config) => {
                     let AddonPatches { patches, required } = AddonPatches::from_config(&config);

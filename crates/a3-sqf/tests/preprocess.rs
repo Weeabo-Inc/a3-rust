@@ -71,7 +71,10 @@ fn exec_vm_runs_the_preprocessed_script() {
     let mut vm = vm();
     files(
         &mut vm,
-        &[("scripts\\init.sqf", "#define ADD(a,b) (a + b)\nloaded = ADD(_this,1);")],
+        &[(
+            "scripts\\init.sqf",
+            "#define ADD(a,b) (a + b)\nloaded = ADD(_this,1);",
+        )],
     );
     vm.eval("41 execVM \"scripts\\init.sqf\"").unwrap();
     vm.run_scheduled(FRAME);
@@ -118,6 +121,14 @@ fn compile_errors_point_into_the_included_file() {
     assert_eq!((&*location.file, location.line), ("m\\inc.sqf", 2));
 }
 
+#[test]
+fn localize_unknown_key_is_empty_and_logged() {
+    let mut vm = vm();
+    let v = vm.eval("localize \"$STR_Nope\"").unwrap();
+    assert_eq!(v.to_sqf_string(), "\"\"");
+    assert_eq!(vm.host.log, ["String STR_Nope not found"]);
+}
+
 // --- Evaluator -----------------------------------------------------------------------------
 
 #[test]
@@ -128,7 +139,11 @@ fn evaluator_runs_exec_in_parsing_namespace() {
     assert_eq!(eval.eval("cat * lev").unwrap(), EvalValue::Number(24.0));
     let parsing = vm.namespace(Namespace::Parsing);
     assert_eq!(parsing.get(Sym::new("cat")), Some(&Value::Number(6.0)));
-    assert!(vm.namespace(Namespace::Mission).get(Sym::new("cat")).is_none());
+    assert!(
+        vm.namespace(Namespace::Mission)
+            .get(Sym::new("cat"))
+            .is_none()
+    );
 }
 
 #[test]
@@ -139,7 +154,10 @@ fn evaluator_converts_results() {
         eval.eval("\"a\" + \"b\"").unwrap(),
         EvalValue::String("ab".into())
     );
-    assert_eq!(eval.eval("1 < 2").unwrap(), EvalValue::String("true".into()));
+    assert_eq!(
+        eval.eval("1 < 2").unwrap(),
+        EvalValue::String("true".into())
+    );
     assert_eq!(
         eval.eval("[1, \"x\"]").unwrap(),
         EvalValue::String("[1,\"x\"]".into())

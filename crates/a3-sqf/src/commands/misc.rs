@@ -133,6 +133,19 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
             .unwrap_or_default();
         Ok(Value::from(text))
     });
+    // localize "STR_key" (a leading `$` is accepted since 2.04): the stringtable text, or ""
+    // with an RPT line when the key is unknown.
+    r.unary("localize", STR, STR, |ctx, a| {
+        let key = string(&a);
+        let key = key.strip_prefix('$').unwrap_or(key);
+        Ok(Value::from(match ctx.host.localize(key) {
+            Some(text) => text,
+            None => {
+                ctx.host.diag_log(&format!("String {key} not found"));
+                String::new()
+            }
+        }))
+    });
     r.unary("loadFile", STR, STR, |ctx, a| {
         Ok(Value::from(
             ctx.host.load_file(string(&a)).unwrap_or_default(),
