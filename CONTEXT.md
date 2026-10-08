@@ -215,6 +215,17 @@ The WRP's list of road parts per land cell, each with its connection ends; in Ar
 only bridges and invisible runway roadways, while ordinary roads come from the terrain's roads
 shapefile.
 
+**Layer material**:
+The rvmat (`p_XXX-YYY_*.rvmat`) of one satellite tile: its satellite and mask textures, up to
+five surface layers (detail colour and normal maps) and the UV transforms that place them.
+Each land cell names one through the WRP material index.
+_Avoid_: tile shader, terrain texture
+
+**Surface type**:
+A `CfgSurfaces` class selected by a layer's detail texture file name; it sets friction, sounds,
+dust and, through its surface character, the clutter grown on the ground.
+_Avoid_: ground type, terrain type
+
 **Satellite map layers**:
 The large `_sat` colour image and the `_mask` layer images that blend per-surface textures
 (each described by an rvmat) across the Landscape.
