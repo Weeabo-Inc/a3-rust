@@ -10,6 +10,11 @@ An archive file holding a set of game files plus a header of string properties (
 The unit in which all game content ships.
 _Avoid_: archive, pak
 
+**EBO**:
+An encrypted PBO (`.ebo`) shipped by creator DLC. Its properties (including the Prefix) are plain
+text; its entry records and data are encrypted.
+_Avoid_: encrypted archive
+
 **Addon**:
 A PBO whose content is registered with the engine, normally declaring one or more CfgPatches
 classes in its config.

@@ -1,20 +1,16 @@
 [package]
-name = "a3-tools"
+name = "a3-vfs"
+description = "The engine's virtual file system: PBOs and loose folders mounted by prefix"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
 rust-version.workspace = true
 
-[[bin]]
-name = "a3-tools"
-path = "src/main.rs"
-
 [dependencies]
 a3-core.workspace = true
 a3-pbo.workspace = true
-a3-vfs.workspace = true
-anyhow.workspace = true
-clap.workspace = true
+bytes.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

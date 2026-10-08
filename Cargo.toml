@@ -11,6 +11,8 @@ rust-version = "1.85"
 [workspace.dependencies]
 # Internal crates
 a3-core = { path = "crates/a3-core" }
+a3-pbo = { path = "crates/a3-pbo" }
+a3-vfs = { path = "crates/a3-vfs" }
 
 # Errors
 thiserror = "2"
@@ -20,6 +22,12 @@ anyhow = "1"
 glam = "0.34"
 bytemuck = { version = "1", features = ["derive"] }
 byteorder = "1"
+bytes = "1.10"
+
+# Files and hashing
+memmap2 = "0.9"
+sha1 = "0.10"
+tempfile = "3"
 
 # Logging and tracing
 log = "0.4"
@@ -27,7 +35,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # CLI
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4", features = ["derive", "env"] }
 
 # Testing
 proptest = "1"
@@ -38,3 +46,7 @@ unsafe_code = "warn"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
+
+# Hashing whole archives in tests is far too slow unoptimised.
+[profile.dev.package.sha1]
+opt-level = 3

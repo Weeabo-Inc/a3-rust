@@ -3,6 +3,10 @@
 //! This crate holds small, dependency-light types that every other crate may
 //! need (versions, identifiers, common math aliases as they appear).
 
+pub mod vfs_path;
+
+pub use vfs_path::VfsPath;
+
 /// Version of the original Arma 3 build this reimplementation targets.
 pub const GAME_VERSION: &str = "2.22.0.154103";
 
