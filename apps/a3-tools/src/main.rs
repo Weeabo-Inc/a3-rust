@@ -1,6 +1,11 @@
 //! Command-line tools for Arma 3 data formats (PBO, config, PAA, ...).
 
-use clap::{Parser, Subcommand};
+mod pbo_cmd;
+mod vfs_cmd;
+
+use std::path::PathBuf;
+
+use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "a3-tools", version, about = "Tools for Arma 3 data formats")]
@@ -13,6 +18,73 @@ struct Cli {
 enum Command {
     /// Print the tool version and the targeted game version.
     Version,
+    /// Inspect, unpack and build PBO archives.
+    #[command(subcommand)]
+    Pbo(PboCommand),
+    /// Browse the virtual file system of a game install.
+    Vfs(VfsArgs),
+}
+
+#[derive(Subcommand)]
+enum PboCommand {
+    /// Print the properties and entries of a PBO.
+    List {
+        /// The PBO file.
+        file: PathBuf,
+        /// Also check the SHA-1 trailer (reads the whole archive).
+        #[arg(long)]
+        verify: bool,
+    },
+    /// Extract every entry of a PBO into a folder (prefix written to `$PBOPREFIX$`).
+    Unpack {
+        /// The PBO file.
+        file: PathBuf,
+        /// Output folder.
+        outdir: PathBuf,
+    },
+    /// Build a PBO from every file in a folder.
+    Pack {
+        /// Source folder.
+        dir: PathBuf,
+        /// Output PBO file.
+        file: PathBuf,
+        /// The `prefix` property (default: content of `<dir>/$PBOPREFIX$`, if present).
+        #[arg(long)]
+        prefix: Option<String>,
+        /// Extra header property as `key=value`; repeatable.
+        #[arg(long = "property", value_name = "KEY=VALUE")]
+        properties: Vec<String>,
+    },
+}
+
+#[derive(Args)]
+struct VfsArgs {
+    /// Game install folder.
+    #[arg(long, env = "A3_ROOT")]
+    game_dir: PathBuf,
+    /// Mod folder to mount after the game, in order; repeatable.
+    #[arg(long = "mod", value_name = "DIR")]
+    mods: Vec<PathBuf>,
+    /// Also mount every optional DLC and `@mod` folder found in the game folder.
+    #[arg(long)]
+    all_mods: bool,
+    #[command(subcommand)]
+    command: VfsCommand,
+}
+
+#[derive(Subcommand)]
+enum VfsCommand {
+    /// List a VFS directory (default: the root).
+    Ls {
+        #[arg(default_value = "")]
+        dir: String,
+    },
+    /// Write a file's content to standard output.
+    Cat { path: String },
+    /// Print the size and source archive of a file.
+    Stat { path: String },
+    /// Print every path matching a pattern (`*`, `?` within a component; `**` across).
+    Find { pattern: String },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -24,6 +96,27 @@ fn main() -> anyhow::Result<()> {
                 env!("CARGO_PKG_VERSION"),
                 a3_core::GAME_VERSION
             );
+        }
+        Command::Pbo(PboCommand::List { file, verify }) => pbo_cmd::list(&file, verify)?,
+        Command::Pbo(PboCommand::Unpack { file, outdir }) => {
+            for name in pbo_cmd::unpack(&file, &outdir)? {
+                eprintln!("skipped unsafe entry name {name:?}");
+            }
+        }
+        Command::Pbo(PboCommand::Pack {
+            dir,
+            file,
+            prefix,
+            properties,
+        }) => pbo_cmd::pack(&dir, &file, prefix.as_deref(), &properties)?,
+        Command::Vfs(args) => {
+            let vfs = vfs_cmd::mount(&args.game_dir, &args.mods, args.all_mods)?;
+            match args.command {
+                VfsCommand::Ls { dir } => vfs_cmd::ls(&vfs, &dir)?,
+                VfsCommand::Cat { path } => vfs_cmd::cat(&vfs, &path)?,
+                VfsCommand::Stat { path } => vfs_cmd::stat(&vfs, &path)?,
+                VfsCommand::Find { pattern } => vfs_cmd::find(&vfs, &pattern)?,
+            }
         }
     }
     Ok(())
