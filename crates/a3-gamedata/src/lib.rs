@@ -23,8 +23,10 @@ use a3_core::VfsPath;
 use a3_vfs::{MountReport, Vfs};
 
 mod scripts;
+mod sqf_config;
 
 pub use scripts::{VfsHost, VfsResolver, decode_text, load_text_config, read_text};
+pub use sqf_config::{ConfigHost, ConfigRoot, SqfConfigs, register_config_commands};
 
 /// Errors that stop a game load. Problems with individual addons are collected in
 /// [`LoadReport`] instead.

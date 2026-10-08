@@ -5,10 +5,11 @@ use a3_config::{Config, parse_text};
 use a3_preproc::{
     IncludeError, IncludeResolver, Options, Preprocessor, ResolvedInclude, join_virtual_path,
 };
-use a3_sqf::{Host, ScriptError, SqfEvaluator, Vm};
+use a3_sqf::{Handle, HandleKind, Host, ScriptError, SqfEvaluator, Vm};
 use a3_vfs::Vfs;
 
 use crate::Localizer;
+use crate::sqf_config::{ConfigHost, SqfConfigs};
 use std::sync::Arc;
 
 /// Reads a VFS file as text: UTF-8 (invalid sequences replaced, a BOM dropped), or UTF-16 when
@@ -81,6 +82,8 @@ pub struct VfsHost {
     pub log: Vec<String>,
     /// Reported script errors.
     pub errors: Vec<String>,
+    /// The configs the config commands read (`configFile`, `missionConfigFile`, ...).
+    pub configs: SqfConfigs,
 }
 
 impl VfsHost {
@@ -91,7 +94,26 @@ impl VfsHost {
             localizer: None,
             log: Vec::new(),
             errors: Vec::new(),
+            configs: SqfConfigs::default(),
         }
+    }
+
+    /// A host reading from `game`'s VFS whose `configFile` is `game`'s merged config.
+    pub fn for_game(game: &crate::GameData) -> Self {
+        let mut host = Self::new(game.vfs.clone());
+        host.localizer = game.localizer.clone();
+        host.configs = SqfConfigs::new(game.config.clone());
+        host
+    }
+}
+
+impl ConfigHost for VfsHost {
+    fn configs(&self) -> &SqfConfigs {
+        &self.configs
+    }
+
+    fn configs_mut(&mut self) -> &mut SqfConfigs {
+        &mut self.configs
     }
 }
 
@@ -121,6 +143,14 @@ impl Host for VfsHost {
 
     fn load_file(&mut self, path: &str) -> Result<String, String> {
         read_text(&self.vfs, path).map_err(|_| format!("Script {path} not found"))
+    }
+
+    fn format_handle(&self, handle: Handle) -> String {
+        if handle.kind == HandleKind::Config {
+            self.configs.format(handle)
+        } else {
+            handle.to_string()
+        }
     }
 }
 
