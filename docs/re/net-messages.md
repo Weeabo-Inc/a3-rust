@@ -143,16 +143,42 @@ content and order must match the client's exactly. Building them is an open ques
 (follow-up) — until then, always send compression-2/3 strings with id 0 + literal text, which
 every reader accepts.
 
+## Who handles which id
+
+`docs/re/net-message-dispatch.tsv` lists, for every id, the case of the server dispatcher
+(`NetworkServer::OnMessage`, jump tables 0xcad310/0xcad0e4, type−2 indexed) and of the client
+dispatcher (`NetworkClient::OnMessage` 0xc3ed30, table 0xc52440, type−1 indexed), plus the
+strings each case references. "unhandled" = the case logs `Unhandled user message` (that side
+never receives the id). Message object classes are named `NMMA_<n>` (decoys, no semantics).
+
 ## Known message ids
 
-| Id | Items | Meaning |
-|---|---|---|
-| 15 | — | batch container |
-| 170 | `rawdata` | key proposal (client → server), 32-byte token encrypted with current key |
-| 171 | `rawdata` | key acknowledgement (server → client and back) |
-| 300 | `rawdata` | data block handed to `0x7aeeb0` (`server+0x458`); sets player flag 4 and, in state 5, triggers `0xc92360` — candidate for mission/file transfer (to verify) |
-| 301, 435 | — | handled in `0xcad580` (`NMRA_150`, `NMRA_454` objects) |
+From handler strings and code (medium confidence unless noted):
 
-Everything else: structure only, see `net-message-formats.tsv`. Mapping ids to semantics
-(login/identity, mission file transfer, object create/update/delete, publicVariable,
-remoteExec, chat, time sync) is the next step (issue #28 follow-ups).
+| Id | Items | Direction | Meaning |
+|---|---|---|---|
+| 15 | — | both | batch container (high) |
+| 14 | 12 | S→C | player identity / BattlEye client init (`"Identity"`, BE errors) |
+| 29 | 84 | S→C | mission header: mission, island, difficulty, required DLCs/addons (`"Missing DLCs:"`, `"Unknown difficulty: %s"`, `.pbo`) |
+| 36 | 5 | S→C | mission file offer: name + hash, client looks in `$\MPMissionsCache\` (`"Mission-Hash:"`, `"Mission-File-Name:"`) |
+| 35 | 6 | both | mission file transfer / download status (server logs `"Client mission file download from HTTP mirror failed"`) |
+| 37 | 3 | C→S | mission download report (same server case as 35) |
+| 39 | — | C→S | AskForDamage, obsolete (`"NMTAskForDamage obsolete"`) |
+| 42 | — | S→C | get-in (`"Client: Unknown get in position %d"`) |
+| 57 | — | S→C | fire weapon (`"NMTFireWeapon"`) |
+| 73 | — | S→C | replace container (`"NMTReplaceContainer"`) |
+| 168 / 169 | `rawdata` | C→S | key exchange, second pair (decrypt with `player+0x290`, validator 0x7b3b00) |
+| 170 / 171 | `rawdata` | both | key proposal / acknowledgement (see "Key rotation") (high) |
+| 174 | 2 | both | server command / admin login (`#login`; server case reads `admins`, `passwordAdmin`, `missionWhitelist`) |
+| 232–240, 326 | — | C→S | briefing messages, logged "NOT IMPLEMENTED - briefing!" on the server |
+| 268 | 2 | C→S | mission selection / vote (`missionWhitelist`) |
+| 300 | `rawdata` | C→S | data block handed to `0x7aeeb0` (`server+0x458`); sets player flag 4 |
+| 342 | 2 | S→C | mission event (`"MissionEvent:%d"`) |
+| 355 | 2 | C→S | change owner (`"Server: OwnerChanged of %d:%d arrived from non owner %d"`) |
+| 376, 403, 407 | — | C→S | set object material (`.rvmat`, `"User tried to set invalid material"`) |
+| 395 | 7 | C→S | remoteExecCall (no JIP) |
+| 396 | 8 | C→S | remoteExec / JIP-capable (`"JIP is not enabled for %s"`, command/function, targets) |
+| 105–156 etc. | — | C→S | object updates from the owning client (`"Unit %d:%d not found, cannot update"`, one shared server case for ~40 ids) |
+
+The rest still needs naming (follow-up issue): login request, publicVariable, chat, time sync,
+object create/delete, JIP queue replay.
