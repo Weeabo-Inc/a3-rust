@@ -181,6 +181,15 @@ moves.
 A config-defined transform (rotation, translation, hide) of a named selection, driven by an
 Animation source such as a door state, wheel rotation or gun elevation.
 
+**Animation source**:
+A named scalar (`door_lf`, `wheel`, `reload`, `damper`, ...) whose value drives every Model
+animation that names it; the engine maps the value to an angle, offset or hide state.
+_Avoid_: controller, input
+
+**Pose**:
+The model-space transform of every Skeleton bone at one moment, from Model animations and/or
+an RTM; skinning applies it to the vertices bound to each bone.
+
 ## Terrain
 
 **WRP**:

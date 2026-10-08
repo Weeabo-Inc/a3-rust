@@ -20,6 +20,7 @@ a3-config = { path = "crates/a3-config" }
 a3-gamedata = { path = "crates/a3-gamedata" }
 a3-preproc = { path = "crates/a3-preproc" }
 a3-p3d = { path = "crates/a3-p3d" }
+a3-anim = { path = "crates/a3-anim" }
 a3-compress = { path = "crates/a3-compress" }
 a3-wrp = { path = "crates/a3-wrp" }
 a3-paa = { path = "crates/a3-paa" }

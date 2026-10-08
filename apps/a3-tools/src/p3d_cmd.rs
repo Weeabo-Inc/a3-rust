@@ -35,6 +35,10 @@ enum P3dCommand {
         /// Index of the LOD to export (see `p3d info`).
         #[arg(long, default_value_t = 0)]
         lod: usize,
+        /// Pose the model first: set animation source NAME to VALUE (e.g. `door_lf=1`);
+        /// repeatable. Sources not given are 0. Hidden sections are left out.
+        #[arg(long = "source", value_name = "NAME=VALUE")]
+        sources: Vec<String>,
     },
 }
 
@@ -52,12 +56,24 @@ pub fn run(args: P3dArgs) -> anyhow::Result<()> {
                 print!("{}", lod_details(i, l));
             }
         }
-        P3dCommand::Export { model, out, lod } => {
+        P3dCommand::Export {
+            model,
+            out,
+            lod,
+            sources,
+        } => {
             let bytes = load(&model, args.game_dir.as_deref())?;
             let model =
                 Model::from_bytes(&bytes).with_context(|| format!("decoding model {model}"))?;
             let Some(l) = model.lods.get(lod) else {
                 bail!("model has {} LODs, no LOD {lod}", model.lods.len());
+            };
+            let posed;
+            let l = if sources.is_empty() {
+                l
+            } else {
+                posed = posed_lod(&model, lod, &parse_sources(&sources)?);
+                &posed
             };
             let mesh = crate::p3d_export::Mesh::from_lod(l);
             if mesh.primitives.is_empty() {
@@ -68,6 +84,38 @@ pub fn run(args: P3dArgs) -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+/// Parses `NAME=VALUE` source assignments.
+fn parse_sources(items: &[String]) -> anyhow::Result<a3_anim::Sources> {
+    let mut sources = a3_anim::Sources::new();
+    for item in items {
+        let Some((name, value)) = item.split_once('=') else {
+            bail!("--source expects NAME=VALUE, got {item:?}");
+        };
+        let value: f32 = value
+            .trim()
+            .parse()
+            .with_context(|| format!("--source {item}: not a number"))?;
+        sources.set(name.trim(), value);
+    }
+    Ok(sources)
+}
+
+/// A copy of LOD `lod` posed by `sources`: vertices skinned, sections the pose hides removed.
+fn posed_lod(model: &Model, lod: usize, sources: &a3_anim::Sources) -> Lod {
+    let mut l = model.lods[lod].clone();
+    let pose = a3_anim::pose(model, lod, sources);
+    let skinning = pose.skinning(&l);
+    let skinned = a3_anim::skin(&l, &skinning);
+    let hidden = a3_anim::hidden_sections(&l, &skinning);
+    l.vertices.positions = skinned.positions;
+    if !skinned.normals.is_empty() {
+        l.vertices.normals = skinned.normals;
+    }
+    let mut keep = hidden.iter().map(|h| !h);
+    l.sections.retain(|_| keep.next().unwrap_or(true));
+    l
 }
 
 /// Sanity figures for an exported LOD, in engine space.

@@ -18,6 +18,7 @@ a3-audio-formats.workspace = true
 a3-config.workspace = true
 a3-gamedata.workspace = true
 a3-p3d.workspace = true
+a3-anim.workspace = true
 a3-wrp.workspace = true
 png.workspace = true
 tiff.workspace = true
