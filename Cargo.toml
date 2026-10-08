@@ -32,6 +32,10 @@ a3-landscape = { path = "crates/a3-landscape" }
 a3-world = { path = "crates/a3-world" }
 a3-environment = { path = "crates/a3-environment" }
 a3-landscape-render = { path = "crates/a3-landscape-render" }
+a3-physics = { path = "crates/a3-physics" }
+
+# Physics (ADR 0001, ADR 0008)
+rapier3d-f64 = "0.36"
 
 # Errors
 thiserror = "2"
@@ -135,6 +139,16 @@ opt-level = 3
 opt-level = 3
 
 [profile.dev.package.lzokay-native]
+opt-level = 3
+
+# Collision building and queries over real terrains.
+[profile.dev.package.parry3d-f64]
+opt-level = 3
+
+[profile.dev.package.rapier3d-f64]
+opt-level = 3
+
+[profile.dev.package.a3-physics]
 opt-level = 3
 
 # Each git worktree has its own target/. Keep it small: line tables keep backtraces readable,

@@ -373,6 +373,37 @@ Script commands differ in whether their arguments must be local and whether thei
 global.
 _Avoid_: authority (alone), ownership (that is the Owner relation)
 
+## Physics and collision
+
+**Collision world**:
+The single simulation world holding the terrain, the Static objects of the loaded land cells and
+every Entity's body, in which all of the engine's collision queries run (ADR 0008).
+_Avoid_: physics scene (that is the rendering side), broadphase
+
+**Query layer**:
+One of the kinds of collision geometry an Object can have — Geometry (solid collision and mass),
+Fire Geometry (bullet hits), View Geometry (line of sight) and Roadway (walkable surfaces) —
+chosen per query, so a bullet and an eye see different shapes of the same house.
+_Avoid_: collision group (that is the solver's filter, in which only Geometry and the terrain
+take part)
+
+**Surface info**:
+The collision properties of a surface name — roughness, dust, sound environment, bullet
+penetration, thickness, friction, restitution and density — from a `.bisurf` file or a
+`CfgSurfaces` class; one per name, shared by every face that uses it.
+_Avoid_: material (the visual rvmat), Surface type (the class, selected from the terrain)
+
+**Rigid body**:
+An Object's presence in the collision world: _dynamic_ when its motion is simulated here, from
+forces and contacts, or _kinematic_ when its pose is set from outside (a remote Entity, a man
+driven by his own movement code).
+_Avoid_: collider (that is the shape alone), physics object
+
+**Interest**:
+An area around an Entity, the camera or a script query that streaming keeps loaded; Static
+object colliders outside every Interest are unloaded after a while.
+_Avoid_: activation range, view distance
+
 ## Multiplayer and server
 
 **Dedicated server**:

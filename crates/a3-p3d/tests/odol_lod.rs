@@ -2,7 +2,7 @@
 
 mod common;
 
-use a3_p3d::{BoneWeights, Error, Face, Model};
+use a3_p3d::{BoneWeights, Error, Face, LodKind, Model};
 use common::{Odol, empty_lod_body, sample_lod_body};
 use glam::{Mat3, Vec2, Vec3};
 
@@ -121,6 +121,26 @@ fn reads_lods_with_no_geometry() {
     let memory = &model.lods[1];
     assert!(memory.vertices.is_empty());
     assert!(memory.faces.is_empty());
+}
+
+#[test]
+fn decodes_geometry_only_for_kept_lods() {
+    let mut file = Odol::new(&[1.0, 1e13]);
+    file.lod_bodies = vec![sample_lod_body(), sample_lod_body()];
+    let data = file.build();
+
+    let model = Model::from_bytes_with_lods(&data, |r| r.kind() == LodKind::Geometry).unwrap();
+    assert_eq!(model.lods.len(), 2, "every LOD stays listed");
+    assert!(
+        model.lods[0].vertices.is_empty() && model.lods[0].faces.is_empty(),
+        "a LOD the filter rejects has no geometry"
+    );
+    assert_eq!(model.lods[0].resolution.kind(), LodKind::Resolution(1.0));
+    assert_eq!(model.lods[1].resolution.kind(), LodKind::Geometry);
+    assert_eq!(model.lods[1].faces.len(), 2, "kept LOD decoded");
+
+    let all = Model::from_bytes(&data).unwrap();
+    assert_eq!(all.lods[0].faces.len(), 2, "from_bytes keeps every LOD");
 }
 
 #[test]

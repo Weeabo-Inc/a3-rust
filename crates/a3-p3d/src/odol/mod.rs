@@ -11,7 +11,7 @@ use crate::resolution::LodResolution;
 /// The only ODOL version in the 2.22 install, and the only one this crate reads.
 pub(crate) const VERSION: u32 = 73;
 
-pub(crate) fn read(data: &[u8]) -> Result<Model> {
+pub(crate) fn read(data: &[u8], keep: &dyn Fn(LodResolution) -> bool) -> Result<Model> {
     let mut r = Reader::new(data);
     r.bytes(4)?;
     let version = r.u32()?;
@@ -77,7 +77,9 @@ pub(crate) fn read(data: &[u8]) -> Result<Model> {
             }),
             ..Lod::default()
         };
-        lod::read(data, start, end, &mut lod)?;
+        if keep(resolution) {
+            lod::read(data, start, end, &mut lod)?;
+        }
         lods.push(lod);
     }
     Ok(Model {

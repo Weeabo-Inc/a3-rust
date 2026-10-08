@@ -1,0 +1,22 @@
+[package]
+name = "a3-physics"
+description = "Collision world and rigid bodies: terrain, Static objects and Entities on rapier, with the engine's query layers"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+a3-config.workspace = true
+a3-p3d.workspace = true
+a3-vfs.workspace = true
+a3-wrp.workspace = true
+glam.workspace = true
+rapier3d-f64.workspace = true
+
+[dev-dependencies]
+a3-gamedata.workspace = true
+proptest.workspace = true
+
+[lints]
+workspace = true
