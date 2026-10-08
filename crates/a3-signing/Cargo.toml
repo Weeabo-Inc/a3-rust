@@ -1,0 +1,16 @@
+[package]
+name = "a3-signing"
+description = "Bikey/bisign reading and PBO signature verification"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+a3-pbo.workspace = true
+num-bigint.workspace = true
+sha1.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

@@ -7,6 +7,7 @@ mod p3d_export;
 mod paa_cmd;
 mod pbo_cmd;
 mod sound_cmd;
+mod sign_cmd;
 mod vfs_cmd;
 mod wrp_cmd;
 
@@ -42,6 +43,9 @@ enum Command {
     /// Inspect and convert sound files (WSS, Ogg Vorbis, WAV).
     #[command(subcommand)]
     Sound(sound_cmd::SoundCommand),
+    /// Inspect bikeys/bisigns, verify and sign PBOs.
+    #[command(subcommand)]
+    Sign(sign_cmd::SignCommand),
 }
 
 #[derive(Subcommand)]
@@ -142,6 +146,7 @@ fn main() -> anyhow::Result<()> {
         Command::P3d(args) => p3d_cmd::run(args)?,
         Command::Wrp(args) => wrp_cmd::run(args)?,
         Command::Sound(cmd) => sound_cmd::run(cmd)?,
+        Command::Sign(cmd) => sign_cmd::run(cmd)?,
     }
     Ok(())
 }
