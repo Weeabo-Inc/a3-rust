@@ -1,6 +1,6 @@
 //! Round-trip properties of the identifier encodings.
 
-use a3_world::{ClientId, EntitySpec, NetworkId, ObjectRef, SimulationClass, StaticKey, World};
+use a3_world::{ClientId, Create, NetworkId, ObjectRef, SimulationClass, StaticKey, World};
 use glam::DVec3;
 use proptest::prelude::*;
 
@@ -27,7 +27,7 @@ proptest! {
         let mut seen = std::collections::HashSet::new();
         for spawn in ops {
             if spawn || live.is_empty() {
-                let id = world.spawn(EntitySpec::new(ty("T", SimulationClass::Thing), DVec3::ZERO));
+                let id = world.create(Create::new(ty("T", SimulationClass::Thing), DVec3::ZERO)).unwrap();
                 let h = ObjectRef::Entity(id).to_handle_id();
                 prop_assert!(h != 0 && seen.insert(h), "handle reused");
                 prop_assert_eq!(ObjectRef::from_handle_id(h), Some(ObjectRef::Entity(id)));
@@ -35,6 +35,7 @@ proptest! {
             } else {
                 let id = live.swap_remove(0);
                 prop_assert!(world.delete(id));
+                world.flush_deletions();
             }
         }
     }

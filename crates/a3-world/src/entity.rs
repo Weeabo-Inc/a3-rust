@@ -1,10 +1,10 @@
-//! An Entity and what it is created from.
+//! An Entity and its simulation list.
 
 use std::sync::Arc;
 
 use glam::DVec3;
 
-use crate::{ClientId, EntityId, EntityType, NetworkId, SimulationClass};
+use crate::{ClientId, EntityClass, EntityId, EntityType, NetworkId, SimulationClass};
 
 /// Whether this machine owns an Entity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -22,19 +22,38 @@ impl Locality {
     }
 }
 
-/// What to create: a type and where.
-#[derive(Debug, Clone, PartialEq)]
-pub struct EntitySpec {
-    pub entity_type: Arc<EntityType>,
-    /// World-space position (ADR 0003).
-    pub position: DVec3,
+/// The World list an Entity is simulated in, after the original's World containers
+/// (`docs/re/world-object-model.md`, "World containers").
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ListKind {
+    /// AI-capable Entities: people, vehicles, buildings and things (`EntityAI`). The original's
+    /// "vehicles".
+    Vehicles = 0,
+    /// Shots and other projectiles. The original's "fast vehicles", simulated in parallel jobs.
+    Projectiles = 1,
+    /// Every other Entity or Object created at run time (triggers, cameras, lamps, proxies).
+    Slow = 2,
+    /// Static objects promoted to Entities.
+    Static = 3,
 }
 
-impl EntitySpec {
-    pub fn new(entity_type: Arc<EntityType>, position: DVec3) -> Self {
-        Self {
-            entity_type,
-            position,
+impl ListKind {
+    pub(crate) const COUNT: usize = 4;
+    pub const ALL: [ListKind; 4] = [
+        ListKind::Vehicles,
+        ListKind::Projectiles,
+        ListKind::Slow,
+        ListKind::Static,
+    ];
+
+    /// The list a created Entity of `class` goes to.
+    pub fn for_class(class: SimulationClass) -> ListKind {
+        if class.is_kind_of(EntityClass::Shot) {
+            ListKind::Projectiles
+        } else if class.is_kind_of(EntityClass::EntityAi) {
+            ListKind::Vehicles
+        } else {
+            ListKind::Slow
         }
     }
 }
@@ -47,9 +66,30 @@ pub struct Entity {
     pub(crate) locality: Locality,
     pub(crate) entity_type: Arc<EntityType>,
     pub(crate) position: DVec3,
+    pub(crate) list: ListKind,
+    pub(crate) deleted: bool,
 }
 
 impl Entity {
+    pub(crate) fn new(
+        id: EntityId,
+        network_id: Option<NetworkId>,
+        locality: Locality,
+        entity_type: Arc<EntityType>,
+        position: DVec3,
+        list: ListKind,
+    ) -> Self {
+        Self {
+            id,
+            network_id,
+            locality,
+            entity_type,
+            position,
+            list,
+            deleted: false,
+        }
+    }
+
     pub fn id(&self) -> EntityId {
         self.id
     }
@@ -78,6 +118,16 @@ impl Entity {
 
     pub fn class(&self) -> SimulationClass {
         self.entity_type.class()
+    }
+
+    /// The simulation list it lives in.
+    pub fn list(&self) -> ListKind {
+        self.list
+    }
+
+    /// Scheduled for deletion; it disappears at the end of the step.
+    pub fn is_deleted(&self) -> bool {
+        self.deleted
     }
 
     pub fn position(&self) -> DVec3 {
