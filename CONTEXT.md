@@ -184,6 +184,17 @@ CfgSkeletons.
 An animation file holding per-frame bone transforms for a Skeleton, used mainly for character
 moves.
 
+**Move**:
+A named animation state a Man can be in — a `CfgMovesBasic` / `CfgMovesMaleSdr` `States` class:
+an RTM with its phase rate and speed entries, plus the graph edges to the moves it can flow
+into.
+_Avoid_: animation (alone), anim state (SQF's `animationState` returns the current move's name)
+
+**Move state machine**:
+The per-Man state machine that plays one move at a time, blends into the next along the move
+graph, and serves the queue `playMove` and friends build.
+_Avoid_: anim system, animation controller (that drives Model animations)
+
 **Animation phase**:
 A position in an RTM's cycle, from 0 (start) to 1 (end). Keyframes and keystones sit at phases.
 _Avoid_: time, frame (a keyframe is the pose stored at one phase)
@@ -256,6 +267,12 @@ The coarser square grid of land cells (30 m on Altis) over the Landscape that ho
 geography flags, the surface material index and the placed objects, grouped by cell. Distinct
 from the Terrain grid of height samples, which is finer (7.5 m on Altis).
 _Avoid_: layer grid, texture grid
+
+**Ground**:
+The surface a Man stands on at a point: the terrain, or an object's Roadway LOD face within step
+range, so he walks on bridges, ramps and house floors as readily as on land. His feet height is
+the ground's height there.
+_Avoid_: floor (that is a building's ground), terrain (one kind of ground)
 
 **Map object**:
 A symbol of the 2D map stored in the WRP (tree, house, fence, power line, forest cell...),
@@ -373,6 +390,11 @@ _Avoid_: map coordinates, grid coordinates (those are the 100 m map grid referen
 **Entity**:
 A dynamic, simulated object in the World (soldier, vehicle, projectile).
 _Avoid_: actor, game object
+
+**Man**:
+A `Person` Entity (soldier, animal, uavpilot, logic): a Skeleton posed by moves, standing on the
+ground the World reports under his feet. His position is his feet.
+_Avoid_: character, person (the config class is `Person`; the Entity is a Man)
 
 **Object**:
 Any instance placed in the World with a model and position, simulated or static. Every Entity is
