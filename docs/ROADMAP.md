@@ -7,7 +7,11 @@ Each phase has a GitHub milestone and one `type:epic` issue; task issues hang of
 
 Scope: repository, CI, conventions; RE tooling (Ghidra headless + MCP, rea, IDA Free); binary
 recon of the game executable — RTTI class hierarchy, imports, strings, the script command table;
-inventory of the game data (PBO list, prefixes, file types and counts).
+inventory of the game data (PBO list, prefixes, file types and counts). **Priority:** RE and
+documentation of the network protocol (client <-> Dedicated server and A2S) from
+`arma3_x64.exe` / `arma3server_x64.exe` and traffic captures, per
+[ADR 0004](adr/0004-official-client-compatibility.md); Phase 4 depends on its network object
+model.
 
 Exit criteria:
 - CI green on ubuntu and windows; conventions documented in `AGENTS.md`.
@@ -15,6 +19,8 @@ Exit criteria:
   `docs/re/`.
 - `docs/re/` contains the RTTI class hierarchy, the script command table (name, form, argument
   types), and a data inventory of the install.
+- `docs/re/` documents the network protocol: transport and framing, handshake and version check,
+  message type catalogue, network object model, Mission transfer, JIP sequence, and A2S answers.
 
 ## Phase 1 — Data formats & VFS
 
@@ -63,12 +69,18 @@ Exit criteria:
 Scope: World and Landscape object model; entity types (Man, Car, Tank, Helicopter, Plane, Ship,
 StaticWeapon, Building, Thing); simulation loop; physics on rapier; animations (RTM, skeletons,
 config animations and sources); weapons, ballistics and hit-point damage; AI (FSM-driven, groups,
-waypoints, pathfinding); event handlers; all world-related SQF commands.
+waypoints, pathfinding); event handlers; all world-related SQF commands. The World and Entity
+model mirrors the original's network object model from the start — Network object IDs, Owner and
+Locality, which machine simulates what, and the object create/update/delete and
+ownership-transfer message flow — per [ADR 0004](adr/0004-official-client-compatibility.md), so
+Phase 6 needs no retrofit.
 
 Exit criteria:
 - A soldier walks, enters and drives a vehicle, fires weapons, and takes damage.
 - AI groups follow waypoints and engage enemies.
 - Mission scripts that touch the world run without unimplemented-command errors.
+- Every Entity carries a Network object ID and an Owner, and its simulation runs only where it is
+  local, matching the network object model documented in `docs/re/`.
 
 ## Phase 5 — UI, missions & game loop
 
@@ -80,8 +92,24 @@ Exit criteria:
 
 ## Phase 6 — Multiplayer & dedicated server
 
-Scope: network protocol (reverse engineered from the original); locality; join-in-progress;
-dedicated server binary. BattlEye is out of scope.
+Goal: official Arma 3 2.22 clients join our Dedicated server via Direct connect
+([ADR 0004](adr/0004-official-client-compatibility.md)).
+
+Scope:
+- Network protocol, byte-compatible with the official 2.22.0.154103 client, reverse engineered
+  from the original and documented in `docs/re/` first.
+- Dedicated server binary.
+- A2S (A2S_INFO, A2S_RULES, A2S_PLAYER, including challenge handling) answered directly, without
+  Steamworks.
+- Steam auth tickets accepted but not validated.
+- No BattlEye.
+- No signature verification (`verifySignatures=0` behaviour).
+- Authentication by Server password and Admin password (`#login`) only.
+- Version/build check and addon/mod list matching as the client expects.
+- Mission transfer of the mission PBO to the client.
+- Locality and ownership; join in progress (JIP).
+- Out of scope: Steamworks SDK, Steam ticket validation, BattlEye, signature checks; our client
+  joining official servers.
 
 Exit criteria:
-- Two clients play a shipped multiplayer scenario on our dedicated server, with JIP.
+- An official 2.22 client joins our server, plays a shipped MP scenario, with JIP.

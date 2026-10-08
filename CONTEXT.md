@@ -251,8 +251,62 @@ The behaviour class that drives an Entity type each frame, selected by the `simu
 entry (e.g. `soldier`, `carx`, `tankx`, `helicopterrtd`, `airplanex`, `shipx`, `house`, `thing`).
 
 **Locality**:
-Which machine in a multiplayer session owns and simulates a given Object. Script commands differ
-in whether their arguments must be local and whether their effects are global.
+Whether an Object is _local_ (its Owner is this machine, which simulates it and is authoritative
+for its state) or _remote_ (another machine owns it; this machine only receives its updates).
+Script commands differ in whether their arguments must be local and whether their effects are
+global.
+_Avoid_: authority (alone), ownership (that is the Owner relation)
+
+## Multiplayer and server
+
+**Dedicated server**:
+A headless machine that hosts a multiplayer session without a player of its own; it runs the
+mission and is the Owner of every Object not owned by a client.
+_Avoid_: host (that is a player-hosted server), listen server
+
+**Direct connect**:
+Joining a server by entering its IP address and port in the client, rather than picking it from
+the server browser.
+_Avoid_: IP join
+
+**A2S**:
+The Steam server query protocol: UDP requests A2S_INFO (name, map, player counts), A2S_RULES
+(key/value rules; Arma packs binary mod/DLC data into them) and A2S_PLAYER (player list), each
+guarded by a challenge number. Answered on the query port (game port + 1, default 2303).
+_Avoid_: server query, master server
+
+**JIP (join in progress)**:
+A client joining a mission that is already running; it must receive the current world state and
+the queued persistent messages to catch up.
+_Avoid_: late join, hot join
+
+**Network object ID**:
+The identifier the original engine gives every networked Object, the same on every machine in the
+session, by which create, update, delete and ownership messages refer to it.
+_Avoid_: netId (that is the SQF string form of it), object handle
+
+**Owner**:
+The machine (identified by its client ID; the server is 2) on which an Object is local. Ownership
+can move between machines during a session.
+_Avoid_: host, authority
+
+**verifySignatures**:
+The server setting that decides whether clients' addons must match Bisigns under the server's
+Bikeys; value 0 disables the check.
+_Avoid_: signature checking, addon verification
+
+**Server password**:
+The password a client must supply to join a server.
+_Avoid_: join password
+
+**Admin password**:
+The password a joined player supplies with the `#login` chat command to become server admin.
+_Avoid_: login password, rcon password
+
+**Mission transfer**:
+The server sending the mission PBO to a joining client that does not already have that exact
+mission.
+_Avoid_: mission download
 
 ## UI
 
