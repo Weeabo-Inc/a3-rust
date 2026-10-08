@@ -1,0 +1,20 @@
+[package]
+name = "a3-wrp"
+description = "Reader for binarized terrains (WRP, signature OPRW)"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+a3-core.workspace = true
+glam.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+glam.workspace = true
+a3-vfs.workspace = true
+proptest.workspace = true
+
+[lints]
+workspace = true

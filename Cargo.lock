@@ -137,6 +137,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-wrp"
+version = "0.1.0"
+dependencies = [
+ "a3-core",
+ "a3-vfs",
+ "glam",
+ "proptest",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "ab_glyph"
 version = "0.2.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
