@@ -5,6 +5,25 @@ use a3_audio_formats::{Format, Sound, decode, probe};
 const SINE_OGG: &[u8] = include_bytes!("fixtures/sine440_stereo.ogg");
 
 #[test]
+fn streaming_yields_the_same_samples_as_decoding_and_rewinds() {
+    let whole = decode(SINE_OGG).unwrap();
+    let mut stream = a3_audio_formats::VorbisStream::new(SINE_OGG).unwrap();
+    assert_eq!((stream.sample_rate(), stream.channels()), (22050, 2));
+    assert_eq!(stream.total_frames(), Some(5513));
+    let (mut streamed, mut chunks) = (Vec::new(), 0);
+    while let Some(chunk) = stream.next_chunk().unwrap() {
+        streamed.extend(chunk);
+        chunks += 1;
+    }
+    assert!(chunks > 2, "decoded in several chunks");
+    assert_eq!(streamed, whole.samples);
+
+    stream.rewind().unwrap();
+    let first = stream.next_chunk().unwrap().unwrap();
+    assert_eq!(first[..], whole.samples[..first.len()]);
+}
+
+#[test]
 fn probes_an_ogg_vorbis_header() {
     let info = probe(SINE_OGG).unwrap();
     assert_eq!(info.format, Format::OggVorbis);

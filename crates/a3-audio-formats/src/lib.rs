@@ -13,6 +13,7 @@ mod wss;
 use std::time::Duration;
 
 pub use error::{Error, Result};
+pub use ogg::VorbisStream;
 pub use wss::{WssCompression, delta4_step, delta8_step};
 
 /// Decoded PCM audio.

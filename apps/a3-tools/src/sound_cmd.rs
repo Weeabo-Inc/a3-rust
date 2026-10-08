@@ -12,6 +12,17 @@ use crate::input::InputArgs;
 pub enum SoundCommand {
     /// Print the format, channels, rate and length of a sound file.
     Info(InputArgs),
+    /// Play a sound file on the default output device (Ogg files are streamed).
+    Play {
+        #[command(flatten)]
+        input: InputArgs,
+        /// Linear gain.
+        #[arg(long, default_value_t = 1.0)]
+        gain: f32,
+        /// Pitch factor.
+        #[arg(long, default_value_t = 1.0)]
+        pitch: f32,
+    },
     /// Decode a sound file to a 16-bit PCM WAV file.
     Towav {
         #[command(flatten)]
@@ -24,6 +35,7 @@ pub enum SoundCommand {
 pub fn run(cmd: SoundCommand) -> anyhow::Result<()> {
     match cmd {
         SoundCommand::Info(input) => print!("{}", info(&a3_audio_formats::probe(&input.read()?)?)),
+        SoundCommand::Play { input, gain, pitch } => play(input.read()?, gain, pitch)?,
         SoundCommand::Towav { input, output } => {
             let sound = a3_audio_formats::decode(&input.read()?)?;
             std::fs::write(&output, sound.to_wav())
@@ -57,6 +69,34 @@ fn info(info: &SoundInfo) -> String {
         out += &format!("frames   {frames} ({seconds:.3} s)\n");
     }
     out
+}
+
+fn play(data: Vec<u8>, gain: f32, pitch: f32) -> anyhow::Result<()> {
+    use a3_audio::{AudioEngine, EngineConfig, PlayParams, Source, Stream};
+    let info = a3_audio_formats::probe(&data)?;
+    let seconds = info.frames.unwrap_or(0) as f64 / f64::from(info.sample_rate.max(1));
+    let source = if info.format == Format::OggVorbis {
+        Source::Stream(Stream::open(data, false)?)
+    } else {
+        Source::Clip(a3_audio::Clip::decode(&data)?)
+    };
+    let engine = AudioEngine::start_or_null(EngineConfig::default());
+    eprintln!(
+        "playing {seconds:.2} s on {:?} output at {} Hz",
+        engine.backend(),
+        engine.sample_rate()
+    );
+    let params = PlayParams {
+        gain,
+        pitch,
+        ..PlayParams::default()
+    };
+    engine.play(source, params);
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    while engine.stats().voices > 0 {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    Ok(())
 }
 
 #[cfg(test)]

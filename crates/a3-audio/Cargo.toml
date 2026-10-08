@@ -1,0 +1,17 @@
+[package]
+name = "a3-audio"
+description = "Audio engine: software mixer, cpal output, 3D spatialisation"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+a3-audio-formats.workspace = true
+cpal.workspace = true
+glam.workspace = true
+log.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true
