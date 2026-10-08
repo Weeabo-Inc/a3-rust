@@ -115,7 +115,7 @@ data type and a compression (`net-message-formats.tsv` prints `type:compression`
 | 4 | `int64` | `i64` |
 | 5 | `float` | c=0,2: `f32`; c=4: `u8/254`; c=5: `u8/127`; c=6: `u8/127 - 1`; c=7: `u8*2π/254 - π`; c=8: `(var z → ±(z>>1)) + 127` then `/254`; c=9: same with the angle scale; c=11: IEEE half (`u16`, 0 → 0.0) |
 | 6 | `string` | c=0: NUL-terminated bytes; c=2 / c=3: `var id`, 0 → NUL-terminated string follows, else entry `id-1` of string table A (0x21cce90) / B (0x21ce490) |
-| 7 | `rawdata` | `var len` + bytes (other compressions: see 0xc798c0) |
+| 7 | `rawdata` | c=0,2: `var len` + bytes; c=13: `u8 packed`; 0 → `var len` + bytes; 1 → `var packed_len`, `var unpacked_len`, LZO1X data (`lzo1x_decompress_safe` 0x28ba10 after `lzo_init` 0x29e010; "LZO Professional" is linked) |
 | 8 | `u32` | `u32` |
 | 9 | `vector` | c=0,2: 3×`f32`; c=4: packed `u32` direction (bits 22-31 → x·(-1/511), 11-21 → y·(-1/1023), 0-10 → z·(-1/1023), signed fields); c=10: packed camera position (`u32`, scale table 0x1baac80, centre 6400/500/6400, `0xFFFFFFFF` = −FLT_MAX); c=11: 3× half |
 | 10 | `matrix` | c=0,2: 9×`f32`; c=12: 11 bytes — two `i16` pairs (two unit vectors, z from √(1−x²−y²), sign bits in byte 8) + half-float scale (`0x3c00` = 1.0) |
