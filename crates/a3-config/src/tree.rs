@@ -119,6 +119,18 @@ impl ConfigTree {
         }
     }
 
+    /// The entry reached by `path` (node ids from the root, as returned by
+    /// [`ConfigRef::node_path`]), or the null config when the path is empty or does not
+    /// belong to this tree. Lets a script VM store configs as plain ids.
+    pub fn from_node_path(&self, path: &[NodeId]) -> ConfigRef<'_> {
+        let valid =
+            path.first() == Some(&ROOT) && path.iter().all(|id| (id.0 as usize) < self.nodes.len());
+        ConfigRef {
+            tree: self,
+            path: if valid { path.to_vec() } else { Vec::new() },
+        }
+    }
+
     /// Number of nodes ever created (classes and values, including deleted ones).
     pub fn node_count(&self) -> usize {
         self.nodes.len()
@@ -477,6 +489,12 @@ impl<'a> ConfigRef<'a> {
             }
             None => Self::null(self.tree),
         }
+    }
+
+    /// The access path as node ids from the root (empty for null); see
+    /// [`ConfigTree::from_node_path`].
+    pub fn node_path(&self) -> &[NodeId] {
+        &self.path
     }
 
     /// `isNull` for configs.
