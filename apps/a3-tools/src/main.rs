@@ -6,6 +6,7 @@ mod p3d_cmd;
 mod p3d_export;
 mod paa_cmd;
 mod pbo_cmd;
+mod rtm_cmd;
 mod sign_cmd;
 mod sound_cmd;
 mod vfs_cmd;
@@ -46,6 +47,9 @@ enum Command {
     /// Inspect bikeys/bisigns, verify and sign PBOs.
     #[command(subcommand)]
     Sign(sign_cmd::SignCommand),
+    /// Inspect RTM animations.
+    #[command(subcommand)]
+    Rtm(rtm_cmd::RtmCommand),
 }
 
 #[derive(Subcommand)]
@@ -147,6 +151,7 @@ fn main() -> anyhow::Result<()> {
         Command::Wrp(args) => wrp_cmd::run(args)?,
         Command::Sound(cmd) => sound_cmd::run(cmd)?,
         Command::Sign(cmd) => sign_cmd::run(cmd)?,
+        Command::Rtm(cmd) => rtm_cmd::run(cmd)?,
     }
     Ok(())
 }
