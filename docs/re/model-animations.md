@@ -93,39 +93,107 @@ Note that all sources at 0 is not the rest pose: for example a damper `translati
 
 ## RTM skeletal poses
 
+The path a character move takes: each record is decoded to a bone matrix, records are blended, and
+the result becomes the Pose that skinning uses. Implemented in `crates/a3-pose`. A moves type
+(`a3-moves`) names each move's RTM (`Move::file`) and plays it to a phase; `crates/a3-pose`'s
+`MoveClips` holds those animations and `MoveBlend` is a blend state in the moves type's terms
+(previous and current `MoveId` with their phases, and the blend between them).
+
 Engine functions (RVAs): BMTR serialiser `0x12557a0`; transform decode `0x1212520`; load-time
-conversion `0x124d370`; skeleton pivots `0x1252020` (from `0x1251c20`); keyframe/animation
-blending `0x12114b0`; the pose builder that calls it `0x12105b0`.
+conversion `0x124d370`; skeleton pivots `0x1252020` (from `0x1251c20`); the two-buffer record
+blend `0x12102c0` (quaternion slerp `0x35d140`); the pose builder `0x12105b0`, which folds in
+further layers (`0x1211710`, `0x1211d90`) and emits each bone matrix; half-float decode
+`0x1211fe0`; the skeleton-less scaled matrix add `0x35bf70` / `0x35a020`.
+
+The skeleton object as the pose builder reads it: parent index `int32` per bone at `+0x40`
+(stride 4), pivot `float3` per bone at `+0x78` (stride `0xc`), bone count at `+0x80`. The
+animation object carries its attach bone at `+0x90` (`int`) and that bone's blend weight at
+`+0x94`.
 
 - **Bone binding** (high): RTM bone names map to Skeleton bones by name (`0x12531f0`).
 - **Rotation** (high): the decoder `0x1212520` turns the `i16` quaternion (x, y, z, w) / 16384
   into a `Matrix4` whose columns are the **rows** of the usual quaternion matrix, i.e. the
-  matrix of the conjugate quaternion. `a3-rtm` returns the quaternion as stored; `a3-anim` uses
-  its conjugate.
+  matrix of the conjugate quaternion. `a3-rtm` returns the quaternion as stored; the engine (and
+  `a3-anim`) uses its conjugate.
 - **Pivots** (high): CfgSkeletonParameters `>> skeleton >> pivotsModel` (for
   `OFP2_ManSkeleton`: `A3\anims_f\data\skeleton\SkeletonPivots.p3d`, not autocentred, pelvis at
   the origin). Each bone's pivot is the memory point named like the bone; without one it takes
   the parent's pivot, else the origin. `weaponBone` (same class) names one bone the conversion
   below skips.
 - **Load conversion** (high): after reading a keyframe, every bound bone except the weapon bone
-  gets its translation replaced by `R * pivot + t` (written back as half floats). So the engine's
-  bone matrix is `[R | R * pivot + t]`. On the shipped soldier its translation behaves like the
-  **posed position of the joint**: trunk and leg bone lengths are kept within a few cm
-  (`crates/a3-anim/tests/real_data.rs`).
-- **Blending** (high): keyframes and simultaneous animations are blended by weighting whole
-  matrices linearly (`0x14035bf70` set-scaled, `0x14035a170` add-scaled); no slerp.
-- **Skinning** (open): `a3-anim` currently skins with `frame * translate(-pivot)` (rest frame at
-  the pivot onto the posed frame). For the soldier idle (`amovpercmstpsraswrfldnon`), the spine,
-  head and legs come out right. The arm chains don't: their posed joints drift apart (forearm
-  0.66 m, hand 1.37 m from the parent joint instead of 0.14–0.16 m), and the root bone `pelvis`
-  carries an extra 0.91 m upward translation. Pure local-rotation and absolute-rotation
-  hierarchies about the pivots give connected bodies but not the rifle stance. The pose builder
-  `0x12105b0` (quaternion path with pivots and a recursion to the parent bone) is the next
-  place to read.
+  gets its translation replaced by `R * pivot + t` (written back as half floats). A loaded record
+  is therefore `[R | R * pivot + t]`: it maps the bone's rest pivot onto the **posed position of
+  the joint**. How far that reading holds on real data is measured under *Pose coherence* below.
+- **Pose coherence** (measured, `crates/a3-pose/tests/real_data.rs`): reading the emitted frame as
+  `[M | T - M*Q]` over the rest pivots, the shipped `OFP2_ManSkeleton` keeps 31 of the 102
+  parent/child rest distances within 5 cm (`idle`; 34 for `walk`). It holds along the trunk above
+  the spine (`spine1`, `spine3`, `neck`, `head` within 1 cm of rest) and down the legs (knee,
+  foot, toe within 2..5 cm) — the idle stands nearly at its rest pose — and it fails in three
+  groups:
+  - **Records that carry a position, not a correction.** Almost every bone's `t` is a small
+    correction to its pivot (a few cm; the whole trunk), but the root's `y` is the hip height
+    (`0.9116` at frame 0 of both moves, while `pivotsModel` has the pelvis at the origin with the
+    feet at `-0.889`), which alone puts the pelvis 0.912 m out of the trunk's space and both
+    uplegs 0.85..0.88 m out of it; `face_hub` carries `t = (-0.29, -0.82, 0.17)` in the idle and
+    drags every `face_*` and eye bone with it (0.64..0.88 m).
+  - **Pivots that are not joints.** `weapon` and `launcher` are `(-1, 0, 0)` and `(1, 0, 0)`, and
+    `camera` is `(0, -0.61, 0.007)` — attachment points, not bone positions (the `weaponBone` is
+    also the one the load conversion skips, so its `t` stays a raw offset).
+  - **The arm chain**, where the error accumulates outward: shoulder 0.06 m, arm roll 0.33, forearm
+    0.43..0.89, hand 1.20, finger tips 1.77. The pivots model's arms are a T-pose (hand at
+    `x = 0.59`), the idle's arms hang at the hip (hand `y = -0.88`), and the file's arm rotations
+    are large there — the signature of a rest pose other than the pivots model's. No single-rule
+    reading fixes them: raw `t`, `t + Q`, `Q + t - t_root`, `M*Q + t - t_root` and `R*Q` alone
+    were all measured, and none keeps the chain rigid.
+  None of this contradicts the emitted matrices — an unblended frame's translation is exactly the
+  file's `t` (the `M*Q` term only appears while blending), and `a3-pose` reproduces `a3-anim`'s
+  frames to 1e-4 — but the arm records are evidently not a complete Man pose on their own.
+- **Blending** (high): a layer's two record buffers — two keyframes of one RTM, or an animation
+  layer's two sources — are blended in `0x12102c0` by **slerping the quaternions** (`0x35d140`)
+  and **lerping the converted translations** by `phase`. With one buffer present the record is
+  copied through unchanged. Further layers are folded in the same way, pairwise, by
+  `0x12105b0` / `0x1211710` / `0x1211d90`: each layer's contribution is weighted by the layer
+  weight at `+0x1c` times the animation's per-bone weight (`*(anim+0x18) + 4 + 8*i`), clamped to
+  0..1, and weights at or below 0.001 are skipped. The record's index `i` is
+  `FUN_14069c8c0(anim, bone)` — not a weight itself but a lookup in the animation's bone table
+  (int array at `anim+0x60`, count `anim+0x68`) returning `-1` for a bone the animation does not
+  carry. The Man's layer list at `+0x3a0` (count `+0x3a8`, stride `0x70`, layer weight `+0x1c`)
+  treats that as weight 0 — the layer leaves the bone alone — while the list at `+0x740` (count
+  `+0x748`) leaves such a bone at weight 1. The earlier "whole matrices linearly, no slerp"
+  note described the **skeleton-less** path (`0x35bf70` / `0x35a020`, taken when the pose builder
+  is called without a skeleton); the skeletal path does slerp.
+- **Pose output** (high): `0x12105b0` builds `M` from the accumulated quaternion (after the
+  decoder's row/column swap, so it is the matrix of the conjugate) and emits
+  `translation = T - M * Q`, with `T` the blended posed joint and `Q` the bone's rest pivot
+  (`*(float3*)(*(skeleton+0x78) + 0xc*bone)`). The emitted matrix maps the rest pivot onto the
+  posed joint. Where nothing is blended (`T = R * Q + t`) its translation is exactly the file's
+  `t` — the pivot term only shows up while blending.
+- **Parent composition** (high, narrow): every bone is emitted flat except the one whose parent
+  index equals the animation's attach bone (`*(int*)(anim+0x90)`, the CfgSkeletonParameters
+  `weaponBone` for a Man); for that bone the parent's pose is composed in (a quaternion product)
+  and blended by the animation's weight at `+0x94`. There is no general parent walk in this
+  path — a child's rest offset is carried by the pivots, not by composing bone matrices.
+- **Skinning** (high): `a3-anim`'s `frame * translate(-pivot)` composes to exactly this emitted
+  `[M | T - M*Q]`, so `a3_anim::Pose::from_rtm_frames` plus `a3_anim::skin` is the engine's
+  transform for these poses.
 
 ## Open questions
 
-- The bone walk and the order of several animations on one bone (see above).
+- The order in which several animations act on one bone in the model.cfg (non-skeletal) path.
+- The origin of the pose space: the pivots model has the pelvis at the origin and the feet at
+  `y = -0.889`, while the root bone's own record carries `y = 0.912` on every frame, so the
+  emitted pose mixes two origins (see *Pose coherence*). How the pose is placed on the entity
+  (the exact root offset) was not traced. `a3-pose` returns the pose in the engine's animation
+  space and leaves the offset to the caller.
+- What completes the arm chains (see *Pose coherence*): the base move's arm rotations are large
+  where the trunk's are near identity, and the error grows along the chain, so the leading
+  suspect is a rest pose other than `skeletonpivots.p3d`'s T-pose arms — either another pivots
+  set (`CfgSkeletonParameters` per skeleton) or a further pose-builder layer (`0x1211710` /
+  `0x1211d90`, e.g. a weapon hold) that re-poses them. The layer route is the concrete one now:
+  `FUN_14069c8c0` is the layer's bone-table lookup (see *Blending*), so a layer carries some bones
+  with a weight and skips the rest — what is left is to see which layers a Man's animation holder
+  actually holds, and whether the arm and face bones are carried by them rather than by the base
+  move alone.
 - Hunter `wheel_*_destruct_unhide`: `hide` with `minValue..maxValue = -1..0`, so with
   `hitlfwheel` in `0..1` the bone stays hidden; the hit sources may feed negative values.
 - `animPeriod` / `initPhase` use by time-driven sources.

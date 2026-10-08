@@ -107,7 +107,15 @@ Shapes checked in the shipped config (a `config dump` of `CfgMovesMaleSdr`, 2.9 
 
 ## Open
 
-- How the Man consumes the path each step (when a connect edge fires relative to phase 1,
-  blending weights, `interpolationRestart`, `minPlayTime` checks), how `relSpeedMin/Max` scale
-  the speed with the requested movement speed, and variants/idles timing.
+- How the Man consumes the path each step (when a connect edge fires relative to phase 1, how the
+  blend weight advances and what `interpolationRestart` restarts, `minPlayTime` checks), how
+  `relSpeedMin/Max` scale the speed with the requested movement speed, and variants/idles timing.
 - `equivalentTo` and `reverse` use in the planner.
+- The blending of two moves in progress is known from the animation side (`crates/a3-pose`, and
+  `model-animations.md` "RTM skeletal poses"), and it pins what a transition may mix: the moves
+  are blended in **joint space**, not record space — every bone's loaded record is
+  `[R | R * pivot + t]`, the blend slerps the rotations and lerps those posed joints (`0x12102c0`)
+  and emits `T - M * Q` — and each move is sampled at **its own phase**, so two moves with
+  different cycles and different `step` vectors mix per bone with no phase alignment. The
+  animation side takes the blend weight as given; how the sim produces it from
+  `interpolationSpeed` is still open (first bullet).

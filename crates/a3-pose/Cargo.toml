@@ -1,0 +1,22 @@
+[package]
+name = "a3-pose"
+description = "Man poses from the moves state: per-bone frames of the current and previous move, blended by phase"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+a3-anim.workspace = true
+a3-moves.workspace = true
+a3-p3d.workspace = true
+a3-rtm.workspace = true
+glam.workspace = true
+
+[dev-dependencies]
+a3-config.workspace = true
+a3-gamedata.workspace = true
+a3-vfs.workspace = true
+
+[lints]
+workspace = true

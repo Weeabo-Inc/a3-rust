@@ -136,7 +136,7 @@ dependencies = [
  "a3-config",
  "a3-gamedata",
  "a3-rtm",
- "glam",
+ "glam 0.34.1",
  "thiserror 2.0.21",
 ]
 
@@ -203,6 +203,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-pose"
+version = "0.1.0"
+dependencies = [
+ "a3-anim",
+ "a3-config",
+ "a3-gamedata",
+ "a3-moves",
+ "a3-p3d",
+ "a3-rtm",
+ "a3-vfs",
+ "glam 0.34.1",
+]
+
+[[package]]
 name = "a3-preproc"
 version = "0.1.0"
 dependencies = [
@@ -236,7 +250,7 @@ dependencies = [
  "a3-vfs",
  "a3-wrp",
  "bytemuck",
- "glam",
+ "glam 0.34.1",
  "log",
  "thiserror 2.0.21",
  "wgpu",
