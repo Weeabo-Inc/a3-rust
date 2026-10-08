@@ -20,6 +20,7 @@ a3-preproc = { path = "crates/a3-preproc" }
 a3-p3d = { path = "crates/a3-p3d" }
 a3-compress = { path = "crates/a3-compress" }
 a3-wrp = { path = "crates/a3-wrp" }
+a3-paa = { path = "crates/a3-paa" }
 
 # Errors
 thiserror = "2"
@@ -30,6 +31,9 @@ glam = "0.34"
 bytemuck = { version = "1", features = ["derive"] }
 byteorder = "1"
 bytes = "1.10"
+
+# Images and textures
+texpresso = "2"
 
 # Files and hashing
 memmap2 = "0.9"
