@@ -1,0 +1,18 @@
+[package]
+name = "a3-rtm"
+description = "Reader for RTM skeletal animations (binarized BMTR and plain RTM_0101)"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+a3-compress.workspace = true
+glam.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+a3-vfs.workspace = true
+
+[lints]
+workspace = true
