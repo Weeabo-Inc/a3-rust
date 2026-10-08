@@ -6,25 +6,24 @@
 
 use std::sync::Arc;
 
-use a3_world::{GroundContact, GroundQuery, Motion};
+use a3_world::{
+    ClientId, Create, EntityType, GroundContact, GroundQuery, Motion, SimulationClass, World,
+};
 use a3_wrp::{Terrain, TerrainBuilder};
 use glam::DVec3;
 
 /// A level terrain of `height` metres above sea level: 4 land cells of 50 m, a 8x8 height grid.
 fn flat_terrain(height: f32) -> Terrain {
-    TerrainBuilder::new(4, 8, 50.0).heights(|_, _| height).build()
+    TerrainBuilder::new(4, 8, 50.0)
+        .heights(|_, _| height)
+        .build()
 }
 
 /// Ground from a closure returning the surface height at `(x, z)`, always level.
 struct Level<F>(F);
 
 impl<F: Fn(f64, f64) -> f64> GroundQuery for Level<F> {
-    fn ground(
-        &self,
-        x: f64,
-        z: f64,
-        _from_y: f64,
-    ) -> Option<GroundContact> {
+    fn ground(&self, x: f64, z: f64, _from_y: f64) -> Option<GroundContact> {
         Some(GroundContact {
             height: (self.0)(x, z),
             normal: DVec3::Y,
@@ -63,7 +62,11 @@ fn a_slope_tilts_the_ground_normal() {
     assert!((contact.height - 1.2).abs() < 1e-6, "{}", contact.height);
     // The surface rises eastwards, so its normal leans west.
     let expected = DVec3::new(-1.0, 50.0, 0.0).normalize();
-    assert!(contact.normal.abs_diff_eq(expected, 1e-6), "{:?}", contact.normal);
+    assert!(
+        contact.normal.abs_diff_eq(expected, 1e-6),
+        "{:?}",
+        contact.normal
+    );
 }
 
 #[test]
@@ -71,7 +74,12 @@ fn a_man_standing_still_keeps_his_feet_on_the_ground() {
     let ground = Level(|_, _| 100.0);
     let mut motion = Motion::default();
 
-    let feet = motion.step(DVec3::new(10.0, 100.0, 20.0), DVec3::ZERO, &ground, 1.0 / 15.0);
+    let feet = motion.step(
+        DVec3::new(10.0, 100.0, 20.0),
+        DVec3::ZERO,
+        &ground,
+        1.0 / 15.0,
+    );
 
     assert_eq!(feet, DVec3::new(10.0, 100.0, 20.0));
     assert!(motion.on_ground);
@@ -176,6 +184,23 @@ fn a_wall_too_high_to_step_onto_stops_him() {
 }
 
 #[test]
+fn a_step_down_within_reach_is_walked_down() {
+    // A 0.3 m kerb down at z = 1.
+    let ground = Level(|_, z| if z >= 1.0 { 99.7 } else { 100.0 });
+    let mut motion = Motion::default();
+
+    let feet = motion.step(
+        DVec3::new(0.0, 100.0, 0.5),
+        DVec3::new(0.0, 0.0, 1.0),
+        &ground,
+        1.0,
+    );
+
+    assert!(motion.on_ground, "a small drop is walked down, not fallen");
+    assert_eq!(feet, DVec3::new(0.0, 99.7, 1.5));
+}
+
+#[test]
 fn a_man_who_has_no_ground_under_him_falls() {
     let mut motion = Motion::default();
 
@@ -201,4 +226,27 @@ fn a_terrain_can_be_asked_as_the_ground_of_a_man() {
 
     assert_eq!(feet.y, 42.0);
     assert!(motion.on_ground);
+}
+
+/// A Man created in the air is stepped by [`World::simulate`] like any other Entity of his
+/// family, and the terrain decides where he ends up.
+#[test]
+fn a_man_in_the_air_falls_to_the_terrain() {
+    let mut world = World::new(ClientId::SERVER);
+    world.load_terrain(Arc::new(flat_terrain(100.0))).unwrap();
+    let ty = Arc::new(EntityType::new("B_Soldier_F", SimulationClass::Soldier));
+    let man = world
+        .create(Create::new(ty, DVec3::new(10.0, 110.0, 20.0)))
+        .unwrap();
+
+    for _ in 0..90 {
+        world.simulate(1.0 / 15.0);
+    }
+
+    // 10 m of falling is over in ~1.4 s; afterwards he stands on the surface.
+    let feet = world.entity(man).unwrap().position();
+    assert!(
+        (feet - DVec3::new(10.0, 100.0, 20.0)).length() < 1e-6,
+        "{feet:?}"
+    );
 }

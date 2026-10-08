@@ -4,7 +4,7 @@
 //! authoritative work (forces, damage, decisions) only when `entity.is_local()`; a remote
 //! Entity only advances from its last received state.
 
-use crate::Entity;
+use crate::{ClassState, Entity};
 
 use super::StepContext;
 
@@ -14,6 +14,25 @@ pub use ground::{GRAVITY, GroundContact, GroundQuery, MAX_STEP_DOWN, MAX_STEP_UP
 
 /// Class-specific state of this family (`ClassState`).
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct ManState {}
+pub struct ManState {
+    /// Where his feet are relative to the ground: standing on it, or falling to it.
+    pub motion: Motion,
+}
 
-pub(crate) fn simulate(_entity: &mut Entity, _ctx: &mut StepContext<'_>, _dt: f64) {}
+pub(crate) fn simulate(entity: &mut Entity, ctx: &mut StepContext<'_>, dt: f64) {
+    if !entity.is_local() {
+        return;
+    }
+    let feet = entity.position;
+    let velocity = entity.velocity;
+    // Without a terrain there is no surface to stand on or land on; leave him where he is
+    // (in the original a World always has one).
+    let Some(terrain) = ctx.world().terrain().cloned() else {
+        return;
+    };
+    let next = match entity.class_state_mut() {
+        ClassState::Man(man) => man.motion.step(feet, velocity, terrain.as_ref(), dt),
+        _ => return,
+    };
+    entity.position = next;
+}

@@ -33,19 +33,6 @@ pub struct GroundContact {
     pub normal: DVec3,
 }
 
-impl GroundContact {
-    /// The slope along the horizontal direction `direction` (need not be unit length): rise over
-    /// run, positive uphill, as `CfgSlopeLimits` measures it (`docs/re/sim-man-movement.md` §4).
-    /// Zero for level ground; a vertical surface is infinite.
-    pub fn slope_along(&self, direction: DVec3) -> f64 {
-        let run = direction.x.hypot(direction.z);
-        if run <= f64::EPSILON {
-            return 0.0;
-        }
-        -(self.normal.x * direction.x + self.normal.z * direction.z) / (self.normal.y * run)
-    }
-}
-
 /// The world surface a Man walks on.
 pub trait GroundQuery {
     /// The surface to stand on at `(x, z)` for a Man whose feet are at `from_y`: the highest
@@ -93,11 +80,7 @@ fn surface_normal(terrain: &a3_wrp::Terrain, x: f32, z: f32) -> DVec3 {
     };
     let normal = (b - a).cross(c - a).normalize();
     // The cross product of the corner order above points down; flip it to face the sky.
-    if normal.y < 0.0 {
-        -normal
-    } else {
-        normal
-    }
+    if normal.y < 0.0 { -normal } else { normal }
 }
 
 /// How a Man is standing on, or falling to, the ground. Kept per Man and advanced by
