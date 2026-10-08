@@ -1,0 +1,41 @@
+# Original game install and RE tooling — never commit
+/oirignal/
+/.resources/
+# Scratch area for RE outputs and large local artifacts
+/.work/
+
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+
+# Ghidra projects
+*.gpr
+*.rep/
+*.rep
+
+# IDA databases
+*.i64
+*.idb
+*.id0
+*.id1
+*.id2
+*.nam
+*.til
+
+# Snapshot test leftovers
+*.snap.new
+*.pending-snap
+
+# IDE / OS noise
+.idea/
+.vscode/
+*.iml
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local Claude settings
+.claude/settings.local.json

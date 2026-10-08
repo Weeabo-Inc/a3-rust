@@ -1,0 +1,40 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "apps/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+publish = false
+rust-version = "1.85"
+
+[workspace.dependencies]
+# Internal crates
+a3-core = { path = "crates/a3-core" }
+
+# Errors
+thiserror = "2"
+anyhow = "1"
+
+# Math and binary data
+glam = "0.34"
+bytemuck = { version = "1", features = ["derive"] }
+byteorder = "1"
+
+# Logging and tracing
+log = "0.4"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Testing
+proptest = "1"
+insta = "1"
+
+[workspace.lints.rust]
+unsafe_code = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }

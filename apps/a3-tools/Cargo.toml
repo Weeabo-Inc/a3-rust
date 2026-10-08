@@ -1,0 +1,18 @@
+[package]
+name = "a3-tools"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "a3-tools"
+path = "src/main.rs"
+
+[dependencies]
+a3-core.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+
+[lints]
+workspace = true

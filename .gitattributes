@@ -1,0 +1,16 @@
+* text=auto eol=lf
+
+# Binary test fixtures and game-format files
+*.pbo binary
+*.paa binary
+*.pac binary
+*.p3d binary
+*.wrp binary
+*.rtm binary
+*.wss binary
+*.ogg binary
+*.bin binary
+*.bikey binary
+*.bisign binary
+*.png binary
+*.jpg binary
