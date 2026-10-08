@@ -64,6 +64,7 @@ name = "a3-preproc"
 version = "0.1.0"
 dependencies = [
  "a3-core",
+ "a3-vfs",
  "chrono",
  "proptest",
  "thiserror 2.0.21",

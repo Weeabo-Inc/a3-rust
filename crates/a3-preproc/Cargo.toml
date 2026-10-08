@@ -12,6 +12,7 @@ chrono.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+a3-vfs.workspace = true
 proptest.workspace = true
 
 [lints]

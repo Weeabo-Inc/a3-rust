@@ -2,30 +2,27 @@
 //!
 //! Needs `A3_ROOT`; skipped otherwise. Run with `--nocapture` to see the report.
 
-#[path = "support/pbo.rs"]
-mod pbo;
-
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 
 use a3_preproc::{
     ErrorKind, IncludeError, IncludeResolver, Options, Preprocessor, ResolvedInclude,
     join_virtual_path,
 };
-use pbo::Vfs;
+use a3_vfs::Vfs;
 
+/// Resolves includes against the mounted game, as the engine does.
 struct VfsResolver<'a>(&'a Vfs);
 
 impl IncludeResolver for VfsResolver<'_> {
     fn resolve(&self, current_file: &str, include: &str) -> Result<ResolvedInclude, IncludeError> {
         let path = join_virtual_path(current_file, include);
-        let entry = self
-            .0
-            .files
-            .get(&path.to_ascii_lowercase())
-            .ok_or_else(|| IncludeError::NotFound(path.clone()))?;
-        let bytes = self.0.read(entry).ok_or_else(|| IncludeError::Io {
-            path: path.clone(),
-            message: "compressed or unreadable PBO entry".to_owned(),
+        let bytes = self.0.open(&path).map_err(|e| match e {
+            a3_vfs::Error::NotFound(_) => IncludeError::NotFound(path.clone()),
+            other => IncludeError::Io {
+                path: path.clone(),
+                message: other.to_string(),
+            },
         })?;
         Ok(ResolvedInclude {
             path,
@@ -34,9 +31,7 @@ impl IncludeResolver for VfsResolver<'_> {
     }
 
     fn exists(&self, current_file: &str, include: &str) -> bool {
-        self.0
-            .files
-            .contains_key(&join_virtual_path(current_file, include).to_ascii_lowercase())
+        self.0.exists(&join_virtual_path(current_file, include))
     }
 }
 
@@ -65,7 +60,7 @@ struct Stats {
     ok: usize,
     warnings: usize,
     skipped_binary: usize,
-    skipped_compressed: usize,
+    unreadable: usize,
     failures: BTreeMap<String, Vec<String>>,
 }
 
@@ -81,29 +76,31 @@ fn preprocess_all_shipped_sources() {
         eprintln!("skipping: A3_ROOT not set");
         return;
     };
-    let vfs = Vfs::mount(std::path::Path::new(&root));
-    let resolver = VfsResolver(&vfs);
+    let root = PathBuf::from(root);
+    let vfs = Vfs::new();
+    // Base game, default DLCs and the optional (creator) DLC folders.
+    let report = vfs.mount_game(&root, &a3_vfs::optional_mod_dirs(&root));
     eprintln!(
-        "mounted {} PBOs ({} unreadable), {} files",
-        vfs.pbos.len(),
-        vfs.broken.len(),
-        vfs.files.len()
+        "mounted {} PBOs ({} failed, {} encrypted), {} files",
+        report.pbos,
+        report.failed.len(),
+        report.encrypted.len(),
+        vfs.len()
     );
+    let resolver = VfsResolver(&vfs);
 
-    let mut paths: Vec<&String> = vfs.files.keys().collect();
-    paths.sort();
-    let mut by_ext: BTreeMap<&str, Stats> = BTreeMap::new();
-    for path in paths {
-        let ext = path.rsplit_once('.').map_or("", |(_, e)| e);
-        let config = match ext {
+    let mut by_ext: BTreeMap<String, Stats> = BTreeMap::new();
+    for path in vfs.walk("") {
+        let path = format!("\\{}", path.as_str());
+        let ext = path.rsplit_once('.').map_or("", |(_, e)| e).to_owned();
+        let config = match ext.as_str() {
             "sqf" => false,
             "hpp" | "inc" | "h" | "ext" | "cpp" | "sqm" => true,
             _ => continue,
         };
         let stats = by_ext.entry(ext).or_default();
-        let entry = &vfs.files[path];
-        let Some(bytes) = vfs.read(entry) else {
-            stats.skipped_compressed += 1;
+        let Ok(bytes) = vfs.open(&path) else {
+            stats.unreadable += 1;
             continue;
         };
         if bytes.starts_with(b"\0raP") {
@@ -116,7 +113,7 @@ fn preprocess_all_shipped_sources() {
             ..Options::default()
         };
         let mut pp = Preprocessor::new(&resolver).with_options(options);
-        match pp.preprocess_str(path, &source) {
+        match pp.preprocess_str(&path, &source) {
             Ok(out) => {
                 stats.ok += 1;
                 stats.warnings += out.warnings.len();
@@ -135,12 +132,12 @@ fn preprocess_all_shipped_sources() {
         total_ok += stats.ok;
         total_failed += stats.failed();
         eprintln!(
-            ".{ext}: {} ok ({} warnings), {} failed, {} rapified skipped, {} compressed skipped",
+            ".{ext}: {} ok ({} warnings), {} failed, {} rapified skipped, {} unreadable",
             stats.ok,
             stats.warnings,
             stats.failed(),
             stats.skipped_binary,
-            stats.skipped_compressed
+            stats.unreadable
         );
         for (cat, examples) in &stats.failures {
             eprintln!("    {cat}: {}", examples.len());
