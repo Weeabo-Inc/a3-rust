@@ -15,6 +15,7 @@ a3-pbo = { path = "crates/a3-pbo" }
 a3-vfs = { path = "crates/a3-vfs" }
 a3-sqf = { path = "crates/a3-sqf" }
 a3-config = { path = "crates/a3-config" }
+a3-gamedata = { path = "crates/a3-gamedata" }
 
 # Errors
 thiserror = "2"

@@ -299,3 +299,22 @@ fn a_vfs_is_shared_across_threads_and_clones() {
         .unwrap();
     assert_eq!(text(&vfs, r"t\a.txt"), "a");
 }
+
+#[test]
+fn lists_mounted_archives_in_mount_order_with_prefix_and_source() {
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("My_Addon.pbo");
+    write_pbo(&file, None, &[("config.bin", "b")]);
+
+    let vfs = Vfs::new();
+    vfs.mount_pbo(pbo(r"a3\first", &[("config.bin", "a")]), None);
+    vfs.mount_dir(dir.path(), VfsPath::new("loose")).unwrap();
+    vfs.mount_pbo_file(&file).unwrap();
+
+    let archives = vfs.archives();
+    let prefixes: Vec<&str> = archives.iter().map(|a| a.prefix.as_str()).collect();
+    assert_eq!(prefixes, [r"a3\first", "my_addon"]);
+    assert_eq!(archives[0].source, None);
+    assert_eq!(archives[1].source.as_deref(), Some(file.as_path()));
+    assert_eq!(archives[1].pbo.entries()[0].name(), "config.bin");
+}

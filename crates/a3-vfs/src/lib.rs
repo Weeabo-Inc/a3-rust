@@ -111,6 +111,27 @@ impl MountReport {
     }
 }
 
+/// One PBO mounted in a [`Vfs`], as listed by [`Vfs::archives`].
+#[derive(Clone)]
+pub struct MountedArchive {
+    /// The virtual path the archive's entries are mounted under.
+    pub prefix: VfsPath,
+    /// The OS file it was opened from; `None` for a PBO mounted from memory.
+    pub source: Option<PathBuf>,
+    /// The parsed archive (shared with the VFS).
+    pub pbo: Arc<Pbo>,
+}
+
+impl std::fmt::Debug for MountedArchive {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MountedArchive")
+            .field("prefix", &self.prefix)
+            .field("source", &self.source)
+            .field("entries", &self.pbo.entries().len())
+            .finish()
+    }
+}
+
 /// The virtual file system. Cheap to clone; clones share one tree.
 #[derive(Clone, Default)]
 pub struct Vfs {
@@ -127,6 +148,7 @@ enum Mount {
     Pbo {
         pbo: Arc<Pbo>,
         path: Option<PathBuf>,
+        prefix: VfsPath,
     },
     Dir {
         root: PathBuf,
@@ -345,6 +367,25 @@ impl Vfs {
             .collect()
     }
 
+    /// Every mounted PBO in mount order (lowest priority first). Loose folders are not listed.
+    ///
+    /// Engine subsystems that process whole archives use this, e.g. loading each addon's
+    /// `config.bin` in discovery order.
+    pub fn archives(&self) -> Vec<MountedArchive> {
+        self.read()
+            .mounts
+            .iter()
+            .filter_map(|mount| match mount {
+                Mount::Pbo { pbo, path, prefix } => Some(MountedArchive {
+                    prefix: prefix.clone(),
+                    source: path.clone(),
+                    pbo: Arc::clone(pbo),
+                }),
+                Mount::Dir { .. } => None,
+            })
+            .collect()
+    }
+
     /// Number of files in the tree.
     pub fn len(&self) -> usize {
         self.read().files.len()
@@ -372,6 +413,7 @@ impl Vfs {
         tree.mounts.push(Mount::Pbo {
             pbo: Arc::new(pbo),
             path,
+            prefix: prefix.clone(),
         });
         let mut overridden = 0;
         let files = keys.len();
@@ -394,7 +436,7 @@ impl Vfs {
         let tree = self.read();
         let file = tree.files.get(path.as_str())?;
         Some(match (file, &tree.mounts[file.mount() as usize]) {
-            (FileRef::Entry { entry, .. }, Mount::Pbo { pbo, path }) => {
+            (FileRef::Entry { entry, .. }, Mount::Pbo { pbo, path, .. }) => {
                 Resolved::Entry(Arc::clone(pbo), *entry, path.clone())
             }
             (FileRef::Loose { rel, size, .. }, Mount::Dir { root }) => {
