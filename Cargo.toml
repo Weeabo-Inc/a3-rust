@@ -13,6 +13,7 @@ rust-version = "1.85"
 a3-core = { path = "crates/a3-core" }
 a3-pbo = { path = "crates/a3-pbo" }
 a3-vfs = { path = "crates/a3-vfs" }
+a3-fonts = { path = "crates/a3-fonts" }
 a3-audio-formats = { path = "crates/a3-audio-formats" }
 a3-signing = { path = "crates/a3-signing" }
 a3-rtm = { path = "crates/a3-rtm" }

@@ -24,6 +24,7 @@ png.workspace = true
 tiff.workspace = true
 a3-signing.workspace = true
 a3-rtm.workspace = true
+a3-fonts.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 glam.workspace = true

@@ -1,6 +1,7 @@
 //! Command-line tools for Arma 3 data formats (PBO, config, PAA, ...).
 
 mod config_cmd;
+mod font_cmd;
 mod input;
 mod p3d_cmd;
 mod p3d_export;
@@ -50,6 +51,9 @@ enum Command {
     /// Inspect RTM animations.
     #[command(subcommand)]
     Rtm(rtm_cmd::RtmCommand),
+    /// Inspect FXY bitmap fonts.
+    #[command(subcommand)]
+    Font(font_cmd::FontCommand),
 }
 
 #[derive(Subcommand)]
@@ -152,6 +156,7 @@ fn main() -> anyhow::Result<()> {
         Command::Sound(cmd) => sound_cmd::run(cmd)?,
         Command::Sign(cmd) => sign_cmd::run(cmd)?,
         Command::Rtm(cmd) => rtm_cmd::run(cmd)?,
+        Command::Font(cmd) => font_cmd::run(cmd)?,
     }
     Ok(())
 }

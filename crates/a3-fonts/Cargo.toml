@@ -1,0 +1,17 @@
+[package]
+name = "a3-fonts"
+description = "Reader for FXY bitmap font metadata (glyph tables over PAA texture pages)"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+
+[dev-dependencies]
+a3-paa.workspace = true
+a3-vfs.workspace = true
+
+[lints]
+workspace = true
