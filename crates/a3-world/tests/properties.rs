@@ -27,7 +27,7 @@ proptest! {
         let mut seen = std::collections::HashSet::new();
         for spawn in ops {
             if spawn || live.is_empty() {
-                let id = world.spawn(EntitySpec::new("T", SimulationClass::Thing, DVec3::ZERO));
+                let id = world.spawn(EntitySpec::new(ty("T", SimulationClass::Thing), DVec3::ZERO));
                 let h = ObjectRef::Entity(id).to_handle_id();
                 prop_assert!(h != 0 && seen.insert(h), "handle reused");
                 prop_assert_eq!(ObjectRef::from_handle_id(h), Some(ObjectRef::Entity(id)));
@@ -38,4 +38,8 @@ proptest! {
             }
         }
     }
+}
+
+fn ty(name: &str, class: SimulationClass) -> std::sync::Arc<a3_world::EntityType> {
+    std::sync::Arc::new(a3_world::EntityType::new(name, class))
 }

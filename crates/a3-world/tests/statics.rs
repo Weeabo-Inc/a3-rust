@@ -77,8 +77,7 @@ fn promoted_static_objects_keep_their_network_id() {
         panic!()
     };
     let spec = EntitySpec::new(
-        "Land_House_1",
-        SimulationClass::House,
+        ty("Land_House_1", SimulationClass::House),
         DVec3::new(120.0, 0.0, 160.0),
     );
 
@@ -107,7 +106,7 @@ fn on_a_client_promoted_static_objects_are_owned_by_the_server() {
     let id = world
         .promote_static(
             key,
-            EntitySpec::new("Land_Pine", SimulationClass::Thing, DVec3::ZERO),
+            EntitySpec::new(ty("Land_Pine", SimulationClass::Thing), DVec3::ZERO),
         )
         .unwrap();
 
@@ -128,7 +127,7 @@ fn a_deleted_promoted_static_object_is_gone_for_good() {
     let id = world
         .promote_static(
             key,
-            EntitySpec::new("Land_Pine", SimulationClass::Thing, DVec3::ZERO),
+            EntitySpec::new(ty("Land_Pine", SimulationClass::Thing), DVec3::ZERO),
         )
         .unwrap();
 
@@ -139,7 +138,7 @@ fn a_deleted_promoted_static_object_is_gone_for_good() {
     assert!(matches!(
         world.promote_static(
             key,
-            EntitySpec::new("Land_Pine", SimulationClass::Thing, DVec3::ZERO)
+            EntitySpec::new(ty("Land_Pine", SimulationClass::Thing), DVec3::ZERO)
         ),
         Err(Error::NoSuchStatic(_))
     ));
@@ -166,4 +165,8 @@ fn network_ids_print_and_parse_like_net_id() {
     assert_eq!(key.to_string().parse::<NetworkId>().unwrap(), key);
     assert!("2".parse::<NetworkId>().is_err());
     assert!("a:b".parse::<NetworkId>().is_err());
+}
+
+fn ty(name: &str, class: SimulationClass) -> std::sync::Arc<a3_world::EntityType> {
+    std::sync::Arc::new(a3_world::EntityType::new(name, class))
 }

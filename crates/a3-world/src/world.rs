@@ -111,8 +111,7 @@ impl World {
             id,
             network_id,
             locality,
-            type_name: spec.type_name,
-            class: spec.class,
+            entity_type: spec.entity_type,
             position: spec.position,
         });
         id

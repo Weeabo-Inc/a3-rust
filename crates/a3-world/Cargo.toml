@@ -7,11 +7,13 @@ publish.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+a3-config.workspace = true
 a3-wrp.workspace = true
 glam.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+a3-gamedata.workspace = true
 a3-pbo.workspace = true
 proptest.workspace = true
 

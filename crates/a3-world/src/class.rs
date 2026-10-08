@@ -10,11 +10,18 @@ pub enum EntityClass {
     Object,
     Entity,
     Shot,
+    Detector,
+    Camera,
+    StreetLamp,
+    WindSock,
+    RopeSegment,
     EntityAi,
     Building,
     Thing,
     FlagCarrier,
     Target,
+    Rope,
+    Vasi,
     EntityAiFull,
     Person,
     Man,
@@ -39,8 +46,8 @@ impl EntityClass {
         Some(match self {
             Object => return None,
             Entity => Object,
-            Shot | EntityAi => Entity,
-            Building | Thing | FlagCarrier | Target | EntityAiFull => EntityAi,
+            Shot | Detector | Camera | StreetLamp | WindSock | RopeSegment | EntityAi => Entity,
+            Building | Thing | FlagCarrier | Target | Rope | Vasi | EntityAiFull => EntityAi,
             Person | Transport => EntityAiFull,
             Man | Animal | InvisibleVehicle => Person,
             TankOrCar | PlaneOrHeli | Parachute => Transport,
@@ -65,12 +72,14 @@ impl EntityClass {
 /// The concrete engine class an Entity type uses, chosen by its config `simulation` value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SimulationClass {
+    // People and logic (CfgVehicles)
     Soldier,
     UavPilot,
     Animal,
     Invisible,
     Curator,
     HeadlessClient,
+    // Vehicles (CfgVehicles)
     Car,
     CarX,
     Motorcycle,
@@ -87,25 +96,57 @@ pub enum SimulationClass {
     AirplaneX,
     Parachute,
     Paraglide,
+    // Buildings and things (CfgVehicles)
     House,
     Church,
     Fountain,
     Fire,
     Airport,
     FlagCarrier,
+    Vasi,
     Thing,
     ThingX,
     ThingEffect,
     BreakableHousePart,
+    Rope,
     LaserTarget,
     NvMarker,
     ArtilleryMarker,
     SuppressTarget,
+    // Projectiles (CfgAmmo)
+    ShotBullet,
+    ShotShell,
+    ShotSpread,
+    ShotMissile,
+    ShotRocket,
+    ShotGrenade,
+    ShotSmoke,
+    ShotSmokeX,
+    ShotIlluminating,
+    ShotCm,
+    ShotMine,
+    ShotTimeBomb,
+    ShotDirectionalBomb,
+    ShotBoundingMine,
+    ShotDeploy,
+    ShotSubmunitions,
+    ShotLaser,
+    ShotNvgMarker,
+    LaserDesignate,
+    // Non-AI objects (CfgNonAIVehicles)
+    Detector,
+    Camera,
     SeaGull,
+    StreetLamp,
+    WindSock,
+    RopeSegment,
+    Road,
+    Proxy,
+    Plain,
 }
 
 /// `simulation` value (lower case) → class. Pairs confirmed in the factory are marked in the RE
-/// doc; `tankx`, `shipx`, `house`, `church`, `animal` are by name (issue #117).
+/// doc; the rest are by name (issue #117).
 const SIMULATIONS: &[(&str, SimulationClass)] = &[
     ("soldier", SimulationClass::Soldier),
     ("uavpilot", SimulationClass::UavPilot),
@@ -137,6 +178,7 @@ const SIMULATIONS: &[(&str, SimulationClass)] = &[
     ("fire", SimulationClass::Fire),
     ("airport", SimulationClass::Airport),
     ("flagcarrier", SimulationClass::FlagCarrier),
+    ("vasi", SimulationClass::Vasi),
     ("thing", SimulationClass::Thing),
     ("thingx", SimulationClass::ThingX),
     ("thingeffect", SimulationClass::ThingEffect),
@@ -145,11 +187,58 @@ const SIMULATIONS: &[(&str, SimulationClass)] = &[
         "breakablehouseanimatedpart",
         SimulationClass::BreakableHousePart,
     ),
+    ("rope", SimulationClass::Rope),
     ("lasertarget", SimulationClass::LaserTarget),
     ("nvmarker", SimulationClass::NvMarker),
     ("artillerymarker", SimulationClass::ArtilleryMarker),
     ("suppresstarget", SimulationClass::SuppressTarget),
+    ("shotbullet", SimulationClass::ShotBullet),
+    ("shotshell", SimulationClass::ShotShell),
+    ("shotspread", SimulationClass::ShotSpread),
+    ("shotmissile", SimulationClass::ShotMissile),
+    ("shotrocket", SimulationClass::ShotRocket),
+    ("shotgrenade", SimulationClass::ShotGrenade),
+    ("shotsmoke", SimulationClass::ShotSmoke),
+    ("shotsmokex", SimulationClass::ShotSmokeX),
+    ("shotilluminating", SimulationClass::ShotIlluminating),
+    ("shotcm", SimulationClass::ShotCm),
+    ("shotmine", SimulationClass::ShotMine),
+    ("shottimebomb", SimulationClass::ShotTimeBomb),
+    ("shotdirectionalbomb", SimulationClass::ShotDirectionalBomb),
+    ("shotboundingmine", SimulationClass::ShotBoundingMine),
+    ("shotdeploy", SimulationClass::ShotDeploy),
+    ("shotsubmunitions", SimulationClass::ShotSubmunitions),
+    ("shotlaser", SimulationClass::ShotLaser),
+    ("shotnvgmarker", SimulationClass::ShotNvgMarker),
+    ("laserdesignate", SimulationClass::LaserDesignate),
+    ("detector", SimulationClass::Detector),
+    ("camera", SimulationClass::Camera),
+    ("camconstruct", SimulationClass::Camera),
+    ("camcurator", SimulationClass::Camera),
+    ("editcursor", SimulationClass::Camera),
+    ("objview", SimulationClass::Camera),
     ("seagull", SimulationClass::SeaGull),
+    ("streetlamp", SimulationClass::StreetLamp),
+    ("windsock", SimulationClass::WindSock),
+    ("ropesegment", SimulationClass::RopeSegment),
+    ("road", SimulationClass::Road),
+    ("alwayshide", SimulationClass::Proxy),
+    ("alwaysshow", SimulationClass::Proxy),
+    ("flag", SimulationClass::Proxy),
+    ("magazine", SimulationClass::Proxy),
+    ("maverickweapon", SimulationClass::Proxy),
+    ("pylonpod", SimulationClass::Proxy),
+    ("proxycrew", SimulationClass::Proxy),
+    ("proxyheadgear", SimulationClass::Proxy),
+    ("proxyinventoryold", SimulationClass::Proxy),
+    ("proxyradio", SimulationClass::Proxy),
+    ("proxyretex", SimulationClass::Proxy),
+    ("proxysecweapon", SimulationClass::Proxy),
+    ("proxysubpart", SimulationClass::Proxy),
+    ("proxyweapon", SimulationClass::Proxy),
+    ("proxyhandgun", SimulationClass::Proxy),
+    ("randomshape", SimulationClass::Plain),
+    ("temp", SimulationClass::Plain),
 ];
 
 impl SimulationClass {
@@ -178,11 +267,37 @@ impl SimulationClass {
             S::Parachute | S::Paraglide => EntityClass::Parachute,
             S::House | S::Church | S::Fountain | S::Fire | S::Airport => EntityClass::Building,
             S::FlagCarrier => EntityClass::FlagCarrier,
+            S::Vasi => EntityClass::Vasi,
             S::Thing | S::ThingX | S::ThingEffect | S::BreakableHousePart => EntityClass::Thing,
+            S::Rope => EntityClass::Rope,
             S::LaserTarget | S::NvMarker | S::ArtilleryMarker | S::SuppressTarget => {
                 EntityClass::Target
             }
-            S::SeaGull => EntityClass::Entity,
+            S::ShotBullet
+            | S::ShotShell
+            | S::ShotSpread
+            | S::ShotMissile
+            | S::ShotRocket
+            | S::ShotGrenade
+            | S::ShotSmoke
+            | S::ShotSmokeX
+            | S::ShotIlluminating
+            | S::ShotCm
+            | S::ShotMine
+            | S::ShotTimeBomb
+            | S::ShotDirectionalBomb
+            | S::ShotBoundingMine
+            | S::ShotDeploy
+            | S::ShotSubmunitions
+            | S::ShotLaser
+            | S::ShotNvgMarker
+            | S::LaserDesignate => EntityClass::Shot,
+            S::Detector => EntityClass::Detector,
+            S::Camera | S::SeaGull => EntityClass::Camera,
+            S::StreetLamp => EntityClass::StreetLamp,
+            S::WindSock => EntityClass::WindSock,
+            S::RopeSegment => EntityClass::RopeSegment,
+            S::Road | S::Proxy | S::Plain => EntityClass::Object,
         }
     }
 
