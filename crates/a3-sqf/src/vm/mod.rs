@@ -109,6 +109,56 @@ impl<H: Host> Vm<H> {
         call_unscheduled(host, registry, state, code, this, Namespace::Mission)
     }
 
+    /// Runs `code` unscheduled with global variables in `namespace`.
+    pub fn call_in(
+        &mut self,
+        code: &Code,
+        this: Option<Value>,
+        namespace: Namespace,
+    ) -> Result<Value, ScriptError> {
+        let Vm {
+            host,
+            registry,
+            state,
+        } = self;
+        call_unscheduled(host, registry, state, code, this, namespace)
+    }
+
+    /// Runs `code` unscheduled in `namespace` with `locals` as the private
+    /// variables of its outermost scope. Returns the result and the
+    /// outermost scope's private variables when it ended (without `_this`),
+    /// so a caller can carry them into the next call.
+    pub fn call_with_locals(
+        &mut self,
+        code: &Code,
+        namespace: Namespace,
+        locals: Vec<(Sym, Value)>,
+    ) -> (Result<Value, ScriptError>, Vec<(Sym, Value)>) {
+        let Vm {
+            host,
+            registry,
+            state,
+        } = self;
+        let mut script = ScriptState::new_with_locals(code.clone(), namespace, locals);
+        let result = match exec::run(host, registry, state, &mut script, None) {
+            Outcome::Done(v) => Ok(v),
+            Outcome::Terminated => Ok(Value::Nothing),
+            Outcome::Failed(e) => {
+                host.report_error(&e);
+                Err(e)
+            }
+            Outcome::Suspended(_) | Outcome::OutOfTime => {
+                unreachable!("unscheduled scripts neither suspend nor run out of time")
+            }
+        };
+        let this = Sym::new("_this");
+        let locals = std::mem::take(&mut script.final_locals)
+            .into_iter()
+            .filter(|(name, _)| *name != this)
+            .collect();
+        (result, locals)
+    }
+
     /// Compiles and runs `text` unscheduled. A compile error is reported
     /// like a runtime error.
     pub fn eval(&mut self, text: &str) -> Result<Value, ScriptError> {

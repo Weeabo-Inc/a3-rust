@@ -7,6 +7,7 @@ rust-version.workspace = true
 description = "SQF language core: values, lexer, parser, compiler, command registry and VM"
 
 [dependencies]
+a3-preproc.workspace = true
 thiserror.workspace = true
 indexmap.workspace = true
 

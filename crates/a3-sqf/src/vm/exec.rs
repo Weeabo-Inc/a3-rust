@@ -53,6 +53,9 @@ pub(crate) struct ScriptState<H: Host> {
     /// Value to hand to the top frame when the script next runs (after a
     /// suspension).
     pub resume_with: Option<Value>,
+    /// The private variables of the outermost scope when it ended (kept for
+    /// `__EXEC`/`__EVAL`, whose locals persist between calls).
+    pub final_locals: Vec<(Sym, Value)>,
 }
 
 /// How a run of a script ended.
@@ -92,6 +95,7 @@ impl<H: Host> ScriptState<H> {
             name: None,
             last_undefined: None,
             resume_with: None,
+            final_locals: Vec::new(),
         };
         let mut inv = Invoke::new(code);
         inv.this = Some(this.unwrap_or(Value::Nil));
@@ -100,6 +104,19 @@ impl<H: Host> ScriptState<H> {
                 .push((Sym::new("_thisScript"), Value::Script(handle)));
         }
         s.push_code(inv, namespace);
+        s
+    }
+
+    /// An unscheduled script whose outermost scope starts with `locals`.
+    pub fn new_with_locals(
+        code: Code,
+        namespace: Namespace,
+        locals: Vec<(Sym, Value)>,
+    ) -> ScriptState<H> {
+        let mut s = ScriptState::new(code, None, false, ScriptHandle::default(), namespace);
+        if let Some(Frame::Code(cf)) = s.frames.last_mut() {
+            cf.locals.extend(locals);
+        }
         s
     }
 
@@ -131,6 +148,9 @@ impl<H: Host> ScriptState<H> {
         let f = self.frames.pop()?;
         if let Frame::Code(cf) = &f {
             self.stack.truncate(cf.base);
+            if self.frames.is_empty() {
+                self.final_locals = cf.locals.clone();
+            }
         }
         Some(f)
     }
@@ -355,8 +375,7 @@ fn exec_code<H: Host>(
             } else {
                 Value::Nothing
             };
-            script.stack.truncate(base);
-            script.frames.pop();
+            script.pop_frame();
             return Next::Deliver(v, false);
         }
         if let Some(deadline) = deadline {

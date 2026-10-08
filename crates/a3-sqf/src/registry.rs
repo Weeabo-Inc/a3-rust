@@ -89,6 +89,15 @@ impl<H: Host> Registry<H> {
         r
     }
 
+    /// `table` (e.g. the builtin table extended with the engine's full command list) with every
+    /// core command of this crate registered. Commands of `table` without an implementation
+    /// parse and fail at run time.
+    pub fn with_core_table(table: CommandTable) -> Registry<H> {
+        let mut r = Registry::new(table);
+        crate::commands::register_core(&mut r);
+        r
+    }
+
     fn grow(&mut self) {
         let n = self.table.len();
         self.nular.resize_with(n, || None);

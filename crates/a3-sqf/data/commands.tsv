@@ -86,6 +86,7 @@ civilian	nular			SIDE
 compile	unary		STRING	CODE
 compileFinal	unary		CODE	CODE
 compileFinal	unary		STRING	CODE
+compileScript	unary		ARRAY	CODE
 configNull	nular			CONFIG
 continue	nular			NOTHING
 continueWith	unary		ANY	NOTHING
@@ -163,6 +164,7 @@ joinString	binary	ARRAY	STRING	STRING
 linearConversion	unary		ARRAY	SCALAR
 ln	unary		SCALAR	SCALAR
 loadFile	unary		STRING	STRING
+localize	unary		STRING	STRING
 localNamespace	nular			NAMESPACE
 locationNull	nular			LOCATION
 log	unary		SCALAR	SCALAR

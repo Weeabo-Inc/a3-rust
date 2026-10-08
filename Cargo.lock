@@ -33,6 +33,8 @@ dependencies = [
  "a3-config",
  "a3-core",
  "a3-pbo",
+ "a3-preproc",
+ "a3-sqf",
  "a3-vfs",
  "tempfile",
  "thiserror 2.0.21",
@@ -105,6 +107,7 @@ dependencies = [
 name = "a3-sqf"
 version = "0.1.0"
 dependencies = [
+ "a3-preproc",
  "indexmap",
  "thiserror 2.0.21",
 ]
