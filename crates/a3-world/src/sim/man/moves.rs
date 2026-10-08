@@ -2,12 +2,13 @@
 //! how he walks the move graph between them (`docs/re/sim-man-movement.md`,
 //! `docs/re/sim-man-anim-state.md`).
 //!
-//! The machine plays one move of the moves type at a time. A move his input asks for is routed
-//! through the move graph ([`Moves::find_path`]) and the route is played hop by hop: a hop over
-//! an `interpolateTo` edge blends into the next move at once (once the current move has played
-//! its `minPlayTime`), a hop over a `connectTo` edge waits for the end of the current move's
-//! cycle. Movement ([`super::ManState::motion`]) comes out of the moves: each contributes its
-//! RTM step scaled by its blend weight.
+//! The machine plays one move of the moves type at a time. A move his input asks for — or the
+//! one a script asked for with `playMove`, which wins until it is done — is routed through the
+//! move graph ([`Moves::find_path`]) and the route is played hop by hop: a hop over an
+//! `interpolateTo` edge blends into the next move at once (once the current move has played its
+//! `minPlayTime`), a hop over a `connectTo` edge waits for the end of the current move's cycle.
+//! Movement ([`super::ManState::motion`]) comes out of the moves: each contributes its RTM step
+//! scaled by its blend weight.
 
 use std::collections::VecDeque;
 
@@ -40,6 +41,12 @@ pub struct MoveState {
     accumulator: f64,
     /// The moves still to play to reach the one his input asks for, from the move graph.
     plan: VecDeque<MoveId>,
+    /// The move he was explicitly asked for (`playMove`, `playMoveNow`, a script): it wins over
+    /// his input until it is done. The engine's request slot (`Man+0x440`), empty as `None`.
+    request: Option<MoveId>,
+    /// The moves a script queued behind the request (`playMove`); the next one starts once the
+    /// request is done. The engine's queue at `Man+0x1DE0`.
+    queue: VecDeque<MoveId>,
     /// His velocity in model space (forward is −Z), built from the moves he plays
     /// (`docs/re/sim-man-movement.md` §3).
     velocity: Vec3,
@@ -54,6 +61,60 @@ impl MoveState {
     /// The name of the move he plays now, in its original case (`Stand`, not `stand`), if any.
     pub fn move_name<'a>(&self, moves: &'a Moves) -> Option<&'a str> {
         Some(moves.get(self.current?).name.as_str())
+    }
+
+    /// How far through the current move's cycle he is, `0.0..=1.0`.
+    pub fn phase(&self) -> f64 {
+        self.phase
+    }
+
+    /// How much of him the current move is: `1.0` when no blend is running, lower while one
+    /// fades the move before it out.
+    pub fn weight(&self) -> f64 {
+        self.weight
+    }
+
+    /// The moves a script queued with [`Self::play`], front first: the order they will play in.
+    pub fn queue(&self) -> impl Iterator<Item = MoveId> + '_ {
+        self.queue.iter().copied()
+    }
+
+    /// `playMove`: queues `move` behind everything already queued. It becomes the request — and
+    /// is routed to through the move graph like any other — once the one before it has played out
+    /// (`docs/re/sim-man-anim-state.md` §3).
+    pub fn play(&mut self, id: MoveId) {
+        self.queue.push_back(id);
+    }
+
+    /// `playMoveNow`: drops the queue and arms `move` at once. The route through the graph is
+    /// still walked; only the queue is skipped (`docs/re/sim-man-anim-state.md` §6.1).
+    pub fn play_now(&mut self, id: MoveId) {
+        self.queue.clear();
+        self.plan.clear();
+        self.request = Some(id);
+    }
+
+    /// `switchMove`: resets the record to `move` on the spot — no route through the graph, no
+    /// blend out of the move before, nothing queued or requested — and writes the cycle `phase`
+    /// and the blend `weight` the script asked for (`time` and `blendFactor` of the array form;
+    /// `docs/re/sim-man-anim-state.md` §6.3).
+    pub fn switch_to(&mut self, id: MoveId, phase: f64, weight: f64) {
+        self.queue.clear();
+        self.request = None;
+        self.plan.clear();
+        self.current = Some(id);
+        self.previous = None;
+        self.phase = phase.clamp(0.0, 1.0);
+        self.weight = weight.clamp(0.0, 1.0);
+        self.accumulator = self.weight;
+        self.cycle_ended = false;
+    }
+
+    /// The move an unresolved `switchMove` name falls back to: the default state of the action
+    /// map of the move he plays, i.e. its `Stop` move — the idle of the stance he is in
+    /// (`docs/re/sim-man-anim-state.md` §6.3).
+    pub(crate) fn default_move(&self, moves: &Moves) -> Option<MoveId> {
+        moves.action_move(self.current?, "Stop")
     }
 
     /// One step of the machine: plan the move his input asks for, play the route, advance the
@@ -74,9 +135,11 @@ impl MoveState {
         let Some(current) = self.current else {
             return;
         };
+        self.consume_queue();
         self.plan_route(moves, current, input);
         self.hop(moves);
         self.advance_phase(moves, dt);
+        self.retire_request(moves);
         self.blend(moves, dt);
         self.advance_velocity(moves, dt);
     }
@@ -103,14 +166,41 @@ impl MoveState {
             .unwrap_or(0.0)
     }
 
-    /// Routes to the move his input asks for, when he is not already walking a route. A move the
-    /// graph cannot reach is planned again on the next step, as the engine's planner keeps the
-    /// request standing.
+    /// Takes the next queued move into the request slot, once the request before it is done — at
+    /// most one per step (`docs/re/sim-man-anim-state.md` §3).
+    fn consume_queue(&mut self) {
+        if self.request.is_some() {
+            return;
+        }
+        if let Some(next) = self.queue.pop_front() {
+            self.request = Some(next);
+            self.plan.clear();
+        }
+    }
+
+    /// Drops the request once the move he was asked for has played out: the request is satisfied
+    /// at the end of the requested move's cycle, and from the next step on his input has him —
+    /// or the next queued move (`docs/re/sim-man-anim-state.md` §5.4).
+    fn retire_request(&mut self, moves: &Moves) {
+        let (Some(request), Some(current)) = (self.request, self.current) else {
+            return;
+        };
+        if self.cycle_ended && equivalent(moves, current) == equivalent(moves, request) {
+            self.request = None;
+        }
+    }
+
+    /// Routes to the move he was asked for — the request while one stands, his input otherwise —
+    /// when he is not already walking a route. A move the graph cannot reach is planned again on
+    /// the next step, as the engine's planner keeps the request standing.
     fn plan_route(&mut self, moves: &Moves, current: MoveId, input: &ManInput) {
         if !self.plan.is_empty() {
             return;
         }
-        let Some(target) = requested_move(moves, current, input) else {
+        let Some(target) = self
+            .request
+            .or_else(|| requested_move(moves, current, input))
+        else {
             return;
         };
         if target != current {
@@ -206,10 +296,14 @@ impl MoveState {
     }
 
     /// Ramps the blend at the current move's `interpolationSpeed`; once it holds all of him the
-    /// move before is dropped. _Simplification_: the original eases the ramp
-    /// (`docs/re/sim-man-anim-state.md` §3).
+    /// move before is dropped. A blend the script started with a `blendFactor` below 1 ramps on
+    /// too, from nothing (we keep no pose of the move before a `switchMove`). _Simplification_:
+    /// the original eases the ramp (`docs/re/sim-man-anim-state.md` §3).
     fn blend(&mut self, moves: &Moves, dt: f64) {
-        let Some(current) = self.current.filter(|_| self.previous.is_some()) else {
+        let Some(current) = self
+            .current
+            .filter(|_| self.previous.is_some() || self.weight < 1.0)
+        else {
             self.weight = 1.0;
             self.accumulator = 1.0;
             return;
@@ -251,6 +345,13 @@ impl MoveState {
             Vec3::ZERO
         }
     }
+}
+
+/// The id a request is matched against: a move that is `equivalentTo` another is that other move
+/// for the request bookkeeping, as the engine compares the normalised ids
+/// (`docs/re/sim-man-anim-state.md` §5.4).
+fn equivalent(moves: &Moves, id: MoveId) -> MoveId {
+    moves.get(id).equivalent_to.unwrap_or(id)
 }
 
 /// What a move moves him by per second (model space): its RTM step per cycle times its phase

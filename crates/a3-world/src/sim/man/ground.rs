@@ -4,11 +4,16 @@
 //! LOD face of an object (a bridge, a ramp, a house floor) — and walks him along it, letting him
 //! fall when there is nothing within reach (`docs/re/sim-man-movement.md` §5).
 //!
-//! [`GroundQuery`] is the seam for that query: this module answers it from the terrain, and the
-//! physics of #123 replaces it with the full surface query (roadways, step-up heights, dynamic
-//! objects) without the Man family changing.
+//! That question is [`CollisionWorld::surface_below`], the engine's one surface query
+//! (`docs/adr/0008-collision-world.md`): a Man is one of the things that drives the collision
+//! world, and the terrain is only one of the surfaces in it.
 
+use a3_physics::CollisionWorld;
 use glam::DVec3;
+
+/// Gravity (m/s²): the physics world's constant, which the original uses for characters and
+/// physics objects alike.
+pub use a3_physics::GRAVITY;
 
 /// The highest surface a Man climbs in one step without jumping (metres).
 ///
@@ -19,69 +24,6 @@ pub const MAX_STEP_UP: f64 = 0.5;
 /// The deepest drop a Man walks down without leaving the ground (metres). A taller drop starts
 /// a fall.
 pub const MAX_STEP_DOWN: f64 = 0.5;
-
-/// Gravity (m/s²). The original uses the same value for characters and physics objects.
-pub const GRAVITY: f64 = 9.81;
-
-/// A walkable surface under a point.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct GroundContact {
-    /// Surface height at `(x, z)`, in metres above sea level.
-    pub height: f64,
-    /// Unit surface normal in world space (level ground is `+Y`). Its tilt is the slope a Man
-    /// walks on.
-    pub normal: DVec3,
-}
-
-/// The world surface a Man walks on.
-pub trait GroundQuery {
-    /// The surface to stand on at `(x, z)` for a Man whose feet are at `from_y`: the highest
-    /// one not above `from_y + MAX_STEP_UP` in the original, so he walks under a bridge as
-    /// readily as over it. `None` when there is nothing there (he falls).
-    fn ground(&self, x: f64, z: f64, from_y: f64) -> Option<GroundContact>;
-}
-
-impl GroundQuery for a3_wrp::Terrain {
-    fn ground(&self, x: f64, z: f64, _from_y: f64) -> Option<GroundContact> {
-        let (x, z) = (x as f32, z as f32);
-        Some(GroundContact {
-            height: f64::from(self.surface_height(x, z)),
-            normal: surface_normal(self, x, z),
-        })
-    }
-}
-
-/// The normal of the terrain triangle under `(x, z)`, from the same three corner heights
-/// [`a3_wrp::Terrain::surface_height`] interpolates between.
-fn surface_normal(terrain: &a3_wrp::Terrain, x: f32, z: f32) -> DVec3 {
-    let cell = f64::from(terrain.terrain_cell_size());
-    let inv = 1.0 / cell;
-    let (gx, gz) = (f64::from(x) * inv, f64::from(z) * inv);
-    let (fi, fj) = (gx.floor(), gz.floor());
-    let (fx, fz) = (gx - fi, gz - fj);
-    let (i, j) = (fi as i64, fj as i64);
-    let h = |i: i64, j: i64| f64::from(terrain.grid_height(i, j));
-    let (h00, h10, h01, h11) = (h(i, j), h(i + 1, j), h(i, j + 1), h(i + 1, j + 1));
-    // Each cell is split along the diagonal (i + 1, j) -> (i, j + 1); the corners of the
-    // triangle are (0, h00, 0), (cell, h10, 0), (0, h01, cell) in (x, y, z), or the three
-    // lower ones in the other half of the cell.
-    let (a, b, c) = if fx + fz <= 1.0 {
-        (
-            DVec3::new(0.0, h00, 0.0),
-            DVec3::new(cell, h10, 0.0),
-            DVec3::new(0.0, h01, cell),
-        )
-    } else {
-        (
-            DVec3::new(0.0, h01, cell),
-            DVec3::new(cell, h10, 0.0),
-            DVec3::new(cell, h11, cell),
-        )
-    };
-    let normal = (b - a).cross(c - a).normalize();
-    // The cross product of the corner order above points down; flip it to face the sky.
-    if normal.y < 0.0 { -normal } else { normal }
-}
 
 /// How a Man is standing on, or falling to, the ground. Kept per Man and advanced by
 /// [`Motion::step`].
@@ -107,46 +49,48 @@ impl Motion {
     /// Moves the feet from `feet` over `dt` seconds.
     ///
     /// The horizontal part of `velocity` (world m/s, from the animation) carries him; the ground
-    /// decides his height. Ground within a step is followed up or down, a taller step stops him,
-    /// a deeper drop starts a fall, and with nothing under him he accelerates under gravity and
-    /// lands on the first surface he reaches. The vertical part of `velocity` is ignored: the
-    /// ground or gravity owns the height _(the original lets an animation's own rise play out;
-    /// #191 follow-up)_.
+    /// decides his height. He steps up or down to a surface within [`MAX_STEP_UP`] /
+    /// [`MAX_STEP_DOWN`] of his feet, walks off a taller edge and falls, accelerates under
+    /// gravity with nothing under him, and lands on the first surface this step reaches. The
+    /// vertical part of `velocity` is ignored: the ground or gravity owns the height _(the
+    /// original lets an animation's own rise play out; #191 follow-up)_.
+    ///
+    /// Only surfaces a Man can walk on answer: a Roadway (a deck, a floor, stairs) or the
+    /// terrain. Geometry — walls, the sides of Objects — is not asked; a Man is stopped by those
+    /// in the character controller (issue #123), not here.
     pub fn step(
         &mut self,
         feet: DVec3,
         velocity: DVec3,
-        ground: &dyn GroundQuery,
+        ground: &CollisionWorld,
         dt: f64,
     ) -> DVec3 {
         let moved = feet + DVec3::new(velocity.x, 0.0, velocity.z) * dt;
         if self.on_ground {
-            match ground.ground(moved.x, moved.z, feet.y) {
-                Some(contact)
-                    if contact.height <= feet.y + MAX_STEP_UP
-                        && contact.height >= feet.y - MAX_STEP_DOWN =>
-                {
-                    moved.with_y(contact.height)
-                }
-                // A step taller than a step: he is stopped by it.
-                Some(contact) if contact.height > feet.y + MAX_STEP_UP => feet,
-                // A drop: he walks off the edge and falls from where he was.
-                _ => {
-                    self.on_ground = false;
-                    self.vertical_speed = 0.0;
-                    moved.with_y(feet.y)
-                }
+            // The band a step takes him through: from MAX_STEP_UP over his feet down to
+            // MAX_STEP_DOWN under them. The highest surface in it is the one he stands on; a
+            // deck above the band is walked under rather than climbed.
+            let probe = moved.with_y(feet.y + MAX_STEP_UP);
+            if let Some(surface) = ground.surface_below(probe, MAX_STEP_UP + MAX_STEP_DOWN) {
+                return moved.with_y(surface.y);
             }
+            // Nothing within reach: he walks off the edge and falls from where he was.
+            self.on_ground = false;
+            self.vertical_speed = 0.0;
+            moved.with_y(feet.y)
         } else {
             self.vertical_speed -= GRAVITY * dt;
             let next = moved.with_y(feet.y + self.vertical_speed * dt);
-            match ground.ground(next.x, next.z, feet.y) {
-                Some(contact) if next.y <= contact.height => {
+            // From just over his feet down to where this step took him: the first surface in
+            // that band catches him, so even a fall that crosses the surface in one step lands.
+            let probe = next.with_y(feet.y + MAX_STEP_UP);
+            match ground.surface_below(probe, probe.y - next.y) {
+                Some(surface) => {
                     self.on_ground = true;
                     self.vertical_speed = 0.0;
-                    next.with_y(contact.height)
+                    next.with_y(surface.y)
                 }
-                _ => next,
+                None => next,
             }
         }
     }

@@ -106,8 +106,8 @@ pub use id::{ClientId, EntityId, NetworkId, ParseNetworkIdError};
 pub use object_ref::ObjectRef;
 pub use query::Near;
 pub use sim::{
-    AirState, ClassState, GRAVITY, GroundContact, GroundQuery, GroundState, MAX_STEP_DOWN,
-    MAX_STEP_UP, ManInput, ManState, Motion, MoveState, ProjectileState, SUB_STEP,
+    AirState, ClassState, GRAVITY, GroundState, MAX_STEP_DOWN, MAX_STEP_UP, ManInput, ManState,
+    Motion, MoveState, ProjectileState, SUB_STEP,
 };
 pub use statics::{StaticKey, StaticObject};
 pub use types::{DEFAULT_SIMULATION_STEP, EntityType, Scope, TypeBank, TypeSource};

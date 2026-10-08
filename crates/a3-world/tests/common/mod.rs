@@ -9,9 +9,11 @@ use std::sync::Arc;
 
 use a3_config::{ConfigTree, parse_text};
 use a3_moves::Moves;
+use a3_p3d::{Encoding, Face, Lod, LodResolution, Model, ModelInfo, Section, Vertices};
+use a3_physics::{CollisionWorld, Interest, MemoryFiles, ModelBank, TerrainStatics};
 use a3_world::{ClientId, Create, EntityId, EntityType, SimulationClass, World};
-use a3_wrp::{Terrain, TerrainBuilder};
-use glam::DVec3;
+use a3_wrp::{Terrain, TerrainBuilder, Transform};
+use glam::{DVec3, Vec3};
 
 /// A moves type with two stances (stand, prone), their action maps and the moves the graph
 /// walks between them. Real names are long (`AmovPercMstpSnonWnonDnon`); short ones keep the
@@ -29,6 +31,8 @@ class CfgMovesBasic {
     };
     class ManActions {
         Stop = ""; WalkF = ""; WalkB = ""; WalkL = ""; WalkR = ""; RunF = ""; Down = "";
+        // A gesture action: the engine plays these on its action layer, not as moves.
+        reloadMagazine[] = {"GestureReloadMagazine", "Gesture"};
     };
     class Actions {
         class NoActions: ManActions {
@@ -75,7 +79,10 @@ class CfgMovesTest: CfgMovesBasic {
         };
         class Prone: Default {
             actions = "ProneActions"; file = "a3\anims\prone.rtm"; speed = 1; looped = 0;
-            interpolateTo[] = {"Crawl", 0.1};
+            // Getting up is a transition move of its own in the real data
+            // (`AmovPpneMstpSnonWnonDnon_AmovPercMstpSnonWnonDnon`); the fixture blends straight
+            // back up to the stand.
+            interpolateTo[] = {"Crawl", 0.1, "Stand", 0.2};
         };
         class Crawl: Default {
             actions = "ProneActions"; file = "a3\anims\crawl.rtm"; speed = 0.5; looped = 1;
@@ -144,11 +151,88 @@ pub fn flat_terrain(height: f32) -> Terrain {
         .build()
 }
 
-/// A World with the fixture terrain and moves, ready for a Man to walk in.
+/// A level terrain of `height` carrying one Static object of `model` at `transform` (a bridge,
+/// a platform, a house).
+pub fn terrain_with(height: f32, model: &str, transform: Transform) -> Arc<Terrain> {
+    Arc::new(
+        TerrainBuilder::new(4, 8, 50.0)
+            .heights(move |_, _| height)
+            .object(model, transform)
+            .build(),
+    )
+}
+
+/// A WRP object transform at a world position (no rotation, unit scale).
+pub fn at(x: f32, y: f32, z: f32) -> Transform {
+    Transform::from_position(Vec3::new(x, y, z))
+}
+
+/// The reserved LOD resolution of a Roadway LOD: the surface an Object offers to walk on
+/// (`docs/re/p3d.md`).
+const ROADWAY: f32 = 3e15;
+
+/// A Model of one LOD, as a synthetic P3D.
+pub fn model(lods: Vec<Lod>) -> Model {
+    Model {
+        encoding: Encoding::Mlod,
+        version: 257,
+        info: ModelInfo::default(),
+        skeleton: None,
+        animations: Vec::new(),
+        lods,
+    }
+}
+
+/// The Roadway LOD of a flat platform: one quad from `min` to `max` (model space x/z) at model
+/// height `y` — a bridge deck, a house floor, a kerb.
+pub fn roadway_lod(min: [f32; 2], max: [f32; 2], y: f32) -> Lod {
+    Lod {
+        resolution: LodResolution(ROADWAY),
+        vertices: Vertices {
+            positions: vec![
+                Vec3::new(min[0], y, min[1]),
+                Vec3::new(min[0], y, max[1]),
+                Vec3::new(max[0], y, max[1]),
+                Vec3::new(max[0], y, min[1]),
+            ],
+            ..Default::default()
+        },
+        faces: vec![Face::quad(0, 1, 2, 3)],
+        textures: vec![r"a3\data_f\surfaces\betonout.paa".to_owned()],
+        sections: vec![Section {
+            faces: 0..1,
+            texture: Some(0),
+            ..Default::default()
+        }],
+        ..Default::default()
+    }
+}
+
+/// The collision world of `terrain`: `models` (path, model) loadable, the terrain's Static
+/// objects streamed around `interests` (empty for a terrain-only world, whose surface is
+/// answered everywhere). See `docs/adr/0008-collision-world.md`.
+pub fn collision_world(
+    terrain: Arc<Terrain>,
+    models: &[(&str, Model)],
+    interests: &[Interest],
+) -> CollisionWorld {
+    let mut bank = ModelBank::new(Arc::new(MemoryFiles::default()), None);
+    for (path, model) in models {
+        bank.insert_model(path, model);
+    }
+    let mut world = CollisionWorld::new(bank);
+    world.set_terrain(Some(terrain.clone()));
+    world.stream(&TerrainStatics::new(terrain), interests);
+    world
+}
+
+/// A World with the fixture terrain, moves and collision world, ready for a Man to walk in.
 pub fn world() -> World {
+    let terrain = Arc::new(flat_terrain(100.0));
     let mut world = World::new(ClientId::SERVER);
-    world.load_terrain(Arc::new(flat_terrain(100.0))).unwrap();
+    world.load_terrain(terrain.clone()).unwrap();
     world.load_moves(moves());
+    world.set_collision_world(collision_world(terrain, &[], &[]));
     world
 }
 

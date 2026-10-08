@@ -15,7 +15,7 @@ mod input;
 mod moves;
 mod turn;
 
-pub use ground::{GRAVITY, GroundContact, GroundQuery, MAX_STEP_DOWN, MAX_STEP_UP, Motion};
+pub use ground::{GRAVITY, MAX_STEP_DOWN, MAX_STEP_UP, Motion};
 pub use input::ManInput;
 pub use moves::MoveState;
 pub use turn::Turning;
@@ -39,9 +39,9 @@ pub(crate) fn simulate(entity: &mut Entity, ctx: &mut StepContext<'_>, dt: f64) 
     }
     let feet = entity.position;
     let orientation = entity.orientation();
-    // Without a terrain there is no surface to stand on or land on; leave him where he is
-    // (in the original a World always has one).
-    let Some(terrain) = ctx.world().terrain().cloned() else {
+    // Without a collision world there is no surface to stand on or land on; leave him where he
+    // is (in the original a World always has one).
+    let Some(ground) = ctx.world().collision_world() else {
         return;
     };
     let moves = ctx.world().moves().cloned();
@@ -58,7 +58,7 @@ pub(crate) fn simulate(entity: &mut Entity, ctx: &mut StepContext<'_>, dt: f64) 
             // him, and the ground decides his height (`docs/re/sim-man-movement.md` §3).
             let velocity = man.moves.velocity(orientation);
             (
-                man.motion.step(feet, velocity, terrain.as_ref(), dt),
+                man.motion.step(feet, velocity, ground, dt),
                 velocity,
                 orientation,
             )

@@ -10,6 +10,7 @@
 //! Positions cross the boundary with Y and Z swapped (ADR 0003): script `[x, y, z]` is world
 //! `(x, z, y)`.
 
+mod animation;
 mod create;
 mod groups;
 mod query;
@@ -33,6 +34,7 @@ pub trait WorldHost: Host {
 
 /// Registers every world command implemented so far.
 pub fn register_world_commands<H: WorldHost>(r: &mut Registry<H>) {
+    animation::register(r);
     create::register(r);
     groups::register(r);
     state::register(r);
