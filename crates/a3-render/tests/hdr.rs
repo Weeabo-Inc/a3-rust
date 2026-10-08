@@ -91,29 +91,39 @@ fn eye_adaptation_compensates_for_scene_brightness() {
 }
 
 #[test]
-fn adaptation_is_gradual_without_reset() {
+fn adaptation_steps_are_limited_per_frame() {
     let Some(gpu) = gpu() else { return };
     let mut s = scene(&gpu);
     s.render(&gpu, DT);
     let start = s.renderer.read_exposure(&gpu).unwrap();
+
+    // 16x brighter: exposure falls at most eyeAdaptFactorLight (3.3) stops/s, 0.33 stops in 0.1 s.
     s.scale_light(16.0);
     s.render(&gpu, 0.1);
     let step = s.renderer.read_exposure(&gpu).unwrap();
-    // Towards brighter at eyeAdaptFactorLight 3.3/s: 1 - e^(-0.33) = 28 % of the way.
-    let target = step.average_luminance;
-    let progress =
-        (step.adapted_luminance - start.adapted_luminance) / (target - start.adapted_luminance);
+    let ratio = step.exposure / start.exposure;
     assert!(
-        (0.2..0.4).contains(&progress),
-        "progress {progress}: {start:?} -> {step:?}"
+        (ratio - 2f32.powf(-0.33)).abs() < 1e-3,
+        "ratio {ratio}: {start:?} -> {step:?}"
     );
     for _ in 0..60 {
         s.render(&gpu, 0.1);
     }
     let settled = s.renderer.read_exposure(&gpu).unwrap();
+    let key = s.renderer.settings.hdr.key;
     assert!(
-        (settled.adapted_luminance / settled.average_luminance - 1.0).abs() < 0.02,
-        "{settled:?}"
+        (settled.exposure * settled.average_luminance / key - 1.0).abs() < 0.02,
+        "exposure should settle at key / measured: {settled:?}"
+    );
+
+    // 16x darker again: exposure rises at most eyeAdaptFactorDark (0.75) stops/s.
+    s.scale_light(1.0 / 16.0);
+    s.render(&gpu, 0.1);
+    let darker = s.renderer.read_exposure(&gpu).unwrap();
+    let ratio = darker.exposure / settled.exposure;
+    assert!(
+        (ratio - 2f32.powf(0.075)).abs() < 1e-3,
+        "ratio {ratio}: {settled:?} -> {darker:?}"
     );
 }
 
@@ -189,4 +199,32 @@ fn rv_tonemap_methods_differ_on_bright_light() {
         "filmic {filmic}, reinhard {reinhard}"
     );
     assert_ne!(filmic, reinhard);
+}
+
+#[test]
+fn bloom_lifts_dark_pixels_next_to_bright_ones() {
+    use a3_render::BloomSettings;
+    let Some(gpu) = gpu() else { return };
+    let brightness = |bloom: bool| {
+        let mut s = scene(&gpu);
+        s.renderer.settings.hdr = HdrSettings {
+            fixed_exposure: Some(1.0),
+            anti_aliasing: AntiAliasing::None,
+            bloom: BloomSettings {
+                enabled: bloom,
+                ..BloomSettings::default()
+            },
+            ..HdrSettings::default()
+        };
+        // Bright sky around a dark cube.
+        s.scale_light(4.0);
+        let image = s.render(&gpu, DT);
+        let i = ((SIZE / 2 * SIZE + SIZE / 2) * 4) as usize;
+        u32::from(image[i]) + u32::from(image[i + 1]) + u32::from(image[i + 2])
+    };
+    let (off, on) = (brightness(false), brightness(true));
+    assert!(
+        on > off,
+        "bloom should brighten the dark cube centre: {off} -> {on}"
+    );
 }

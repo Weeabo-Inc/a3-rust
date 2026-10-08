@@ -1,6 +1,8 @@
-//! The post chain: atmosphere into HDR, eye adaptation, tonemapping and anti-aliasing.
+//! The post chain: atmosphere into HDR, eye adaptation, bloom, tonemapping and anti-aliasing.
 //!
-//! Defaults mirror `CfgWorlds >> Altis >> HDRNewPars` (see `docs/re/hdr.md`).
+//! Follows RV's HDR chain as reverse engineered in `docs/re/render-atmosphere.md` §3: log-average
+//! luminance meter, assumed-luminance adaptation, bloom mixed before the curve, `tonemapMethod`
+//! curves and a final gamma. Defaults mirror `CfgWorlds >> Altis >> HDRNewPars`.
 
 use bytemuck::{Pod, Zeroable};
 
@@ -81,25 +83,55 @@ pub enum AntiAliasing {
     Fxaa,
 }
 
+/// Bloom parameters, named after RV's `HDRNewPars` entries (`PSC_BloomPars`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BloomSettings {
+    pub enabled: bool,
+    /// `bloomImageScale`: scale of the scene image in the final mix.
+    pub image_scale: f32,
+    /// `bloomScale`: strength of the bloom on dark pixels (it fades out on bright ones).
+    pub scale: f32,
+    /// `bloomExponent`: power applied to the blurred image.
+    pub exponent: f32,
+}
+
+impl Default for BloomSettings {
+    /// Altis / CAWorld values.
+    fn default() -> Self {
+        BloomSettings {
+            enabled: true,
+            image_scale: 1.0,
+            scale: 0.09,
+            exponent: 0.75,
+        }
+    }
+}
+
 /// HDR, eye adaptation, tonemapping and anti-aliasing settings.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HdrSettings {
     pub tonemap: Tonemap,
     pub filmic: FilmicCurve,
-    /// `tonemapExposureBias`.
+    /// `tonemapExposureBias`; applies to the filmic curve only, as in RV.
     pub exposure_bias: f32,
-    /// `tonemapLinearWhiteReinhard`.
+    /// `tonemapLinearWhiteReinhard`: white point of the Reinhard curve.
     pub reinhard_white: f32,
-    /// `minAperture` / `maxAperture`: range of the adapted luminance.
+    pub bloom: BloomSettings,
+    /// `minAperture` / `maxAperture`: range of the adapted luminance (exposure is
+    /// `key / adapted`).
     pub min_aperture: f32,
     pub max_aperture: f32,
-    /// `eyeAdaptFactorLight`: adaptation speed (1/s) towards brighter scenes.
+    /// `eyeAdaptFactorLight`: how fast the eye adapts to a brighter scene, in stops per second
+    /// _(uncertain mapping to RV's per-frame limits, see `docs/re/render-atmosphere.md` §3.3)_.
     pub eye_adapt_light: f32,
-    /// `eyeAdaptFactorDark`: adaptation speed (1/s) towards darker scenes.
+    /// `eyeAdaptFactorDark`: how fast the eye adapts to a darker scene, stops per second.
     pub eye_adapt_dark: f32,
-    /// Display value the average scene luminance is exposed to (our choice, see
-    /// `docs/re/hdr.md`).
+    /// Target of the adaptation: exposure = key / measured log-average luminance (RV's
+    /// `PSC_AssumedLuminancePars1.z`; its value is not traced, ours is chosen by eye).
     pub key: f32,
+    /// Final power applied after the curve (`PSC_RgbEyeCoef.w`; CPU value not traced, 1 keeps
+    /// the curve's output). The sRGB encode for display follows separately.
+    pub final_gamma: f32,
     /// Fixed exposure instead of eye adaptation (`setAperture`-like override, and for tests).
     pub fixed_exposure: Option<f32>,
     pub anti_aliasing: AntiAliasing,
@@ -112,11 +144,13 @@ impl Default for HdrSettings {
             filmic: FilmicCurve::default(),
             exposure_bias: 1.0,
             reinhard_white: 2.5,
+            bloom: BloomSettings::default(),
             min_aperture: 1e-5,
             max_aperture: 256.0,
             eye_adapt_light: 3.3,
             eye_adapt_dark: 0.75,
             key: 0.3,
+            final_gamma: 1.0,
             fixed_exposure: None,
             anti_aliasing: AntiAliasing::Fxaa,
         }
@@ -124,16 +158,29 @@ impl Default for HdrSettings {
 }
 
 impl HdrSettings {
-    /// log2 of the histogram's lower bound and its range in stops.
-    pub fn log_luminance_range(&self) -> (f32, f32) {
-        let min = self.min_aperture.max(1e-12).log2();
-        let max = self.max_aperture.max(self.min_aperture * 2.0).log2();
-        (min, max - min)
+    /// Exposure range implied by the aperture limits: `key / maxAperture ..= key / minAperture`.
+    pub fn exposure_range(&self) -> (f32, f32) {
+        let max_ap = self.max_aperture.max(self.min_aperture).max(1e-12);
+        let min_ap = self.min_aperture.max(1e-12);
+        (self.key / max_ap, self.key / min_ap)
+    }
+
+    /// Per-frame limits of the exposure ratio (RV's `PSC_AssumedLuminancePars2.zw`): exposure
+    /// may fall by `eye_adapt_light` stops per second (scene got brighter) and rise by
+    /// `eye_adapt_dark` stops per second (scene got darker).
+    pub fn adaptation_limits(&self, dt: f32) -> (f32, f32) {
+        let dt = dt.max(0.0);
+        (
+            (-self.eye_adapt_light.max(0.0) * dt).exp2(),
+            (self.eye_adapt_dark.max(0.0) * dt).exp2(),
+        )
     }
 
     fn uniforms(&self, dt: f32, reset: bool, output_srgb: bool) -> PostUniforms {
         let f = &self.filmic;
-        let (min_log, range) = self.log_luminance_range();
+        let (min_exposure, max_exposure) = self.exposure_range();
+        let (ratio_min, ratio_max) = self.adaptation_limits(dt);
+        let flag = |b: bool| if b { 1.0 } else { 0.0 };
         PostUniforms {
             filmic_abcd: [
                 f.shoulder_strength,
@@ -147,23 +194,26 @@ impl HdrSettings {
                 f.linear_white,
                 self.exposure_bias,
             ],
-            exposure: [min_log, range, self.key, self.fixed_exposure.unwrap_or(0.0)],
-            adaptation: [
-                self.eye_adapt_light,
-                self.eye_adapt_dark,
-                dt.max(0.0),
-                if reset { 1.0 } else { 0.0 },
+            exposure: [
+                min_exposure,
+                max_exposure,
+                self.key,
+                self.fixed_exposure.unwrap_or(0.0),
             ],
+            adaptation: [ratio_min, ratio_max, dt.max(0.0), flag(reset)],
             misc: [
                 self.tonemap.shader_index(),
                 self.reinhard_white,
-                if output_srgb { 1.0 } else { 0.0 },
-                if self.anti_aliasing == AntiAliasing::Fxaa {
-                    1.0
-                } else {
-                    0.0
-                },
+                flag(output_srgb),
+                flag(self.anti_aliasing == AntiAliasing::Fxaa),
             ],
+            bloom: [
+                self.bloom.image_scale,
+                self.bloom.scale,
+                1.0,
+                self.bloom.exponent,
+            ],
+            output: [self.final_gamma, flag(self.bloom.enabled), 0.0, 0.0],
         }
     }
 }
@@ -176,18 +226,27 @@ struct PostUniforms {
     exposure: [f32; 4],
     adaptation: [f32; 4],
     misc: [f32; 4],
+    bloom: [f32; 4],
+    output: [f32; 4],
 }
 
-/// Format of the intermediate HDR image after the atmosphere pass.
+/// Format of the intermediate HDR image after the atmosphere pass, and of the bloom targets.
 const HDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 /// Gamma-encoded tonemapped image with luma in alpha.
 const LDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+/// Pixels per luminance-meter workgroup edge (16 invocations x 2 taps).
+const METER_TILE: u32 = 32;
 
 struct PostTargets {
-    size: (u32, u32),
+    meter_groups: (u32, u32),
     atmosphere_inputs: wgpu::BindGroup,
     hdr_view: wgpu::TextureView,
     exposure_group: wgpu::BindGroup,
+    bloom_a: wgpu::TextureView,
+    bloom_b: wgpu::TextureView,
+    bloom_down_group: wgpu::BindGroup,
+    blur_h_group: wgpu::BindGroup,
+    blur_v_group: wgpu::BindGroup,
     tonemap_group: wgpu::BindGroup,
     ldr_view: wgpu::TextureView,
     final_group: wgpu::BindGroup,
@@ -197,14 +256,17 @@ struct PostTargets {
 pub(crate) struct PostChain {
     output_srgb: bool,
     uniforms: wgpu::Buffer,
-    histogram: wgpu::Buffer,
     state: wgpu::Buffer,
     sampler: wgpu::Sampler,
     atmosphere_layout: wgpu::BindGroupLayout,
     atmosphere: wgpu::RenderPipeline,
     exposure_layout: wgpu::BindGroupLayout,
-    build_histogram: wgpu::ComputePipeline,
+    measure: wgpu::ComputePipeline,
     adapt: wgpu::ComputePipeline,
+    bloom_layout: wgpu::BindGroupLayout,
+    bloom_down: wgpu::RenderPipeline,
+    blur_h: wgpu::RenderPipeline,
+    blur_v: wgpu::RenderPipeline,
     tonemap_layout: wgpu::BindGroupLayout,
     tonemap: wgpu::RenderPipeline,
     final_layout: wgpu::BindGroupLayout,
@@ -212,6 +274,62 @@ pub(crate) struct PostChain {
     copy: wgpu::RenderPipeline,
     targets: Option<PostTargets>,
     reset_adaptation: bool,
+}
+
+fn float_tex(
+    binding: u32,
+    visibility: wgpu::ShaderStages,
+    filterable: bool,
+) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility,
+        ty: wgpu::BindingType::Texture {
+            sample_type: wgpu::TextureSampleType::Float { filterable },
+            view_dimension: wgpu::TextureViewDimension::D2,
+            multisampled: false,
+        },
+        count: None,
+    }
+}
+
+fn uniform_entry(visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding: 0,
+        visibility,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Uniform,
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    }
+}
+
+fn storage_entry(
+    binding: u32,
+    visibility: wgpu::ShaderStages,
+    read_only: bool,
+) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Storage { read_only },
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    }
+}
+
+fn sampler_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::FRAGMENT,
+        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+        count: None,
+    }
 }
 
 impl PostChain {
@@ -227,12 +345,6 @@ impl PostChain {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let histogram = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("luminance histogram"),
-            size: 256 * 4,
-            usage: wgpu::BufferUsages::STORAGE,
-            mapped_at_creation: false,
-        });
         let state = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("exposure state"),
             size: 16,
@@ -245,41 +357,16 @@ impl PostChain {
             min_filter: wgpu::FilterMode::Linear,
             ..Default::default()
         });
-
-        let float_tex = |binding, visibility, filterable| wgpu::BindGroupLayoutEntry {
-            binding,
-            visibility,
-            ty: wgpu::BindingType::Texture {
-                sample_type: wgpu::TextureSampleType::Float { filterable },
-                view_dimension: wgpu::TextureViewDimension::D2,
-                multisampled: false,
-            },
-            count: None,
-        };
-        let uniform = |visibility| wgpu::BindGroupLayoutEntry {
-            binding: 0,
-            visibility,
-            ty: wgpu::BindingType::Buffer {
-                ty: wgpu::BufferBindingType::Uniform,
-                has_dynamic_offset: false,
-                min_binding_size: None,
-            },
-            count: None,
-        };
-        let storage = |binding, visibility, read_only| wgpu::BindGroupLayoutEntry {
-            binding,
-            visibility,
-            ty: wgpu::BindingType::Buffer {
-                ty: wgpu::BufferBindingType::Storage { read_only },
-                has_dynamic_offset: false,
-                min_binding_size: None,
-            },
-            count: None,
+        let layout = |label, entries: &[wgpu::BindGroupLayoutEntry]| {
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some(label),
+                entries,
+            })
         };
 
-        let atmosphere_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("atmosphere inputs"),
-            entries: &[
+        let atmosphere_layout = layout(
+            "atmosphere inputs",
+            &[
                 float_tex(0, S::FRAGMENT, false),
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
@@ -292,43 +379,45 @@ impl PostChain {
                     count: None,
                 },
             ],
-        });
-        let exposure_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("exposure"),
-            entries: &[
-                uniform(S::COMPUTE),
-                float_tex(1, S::COMPUTE, false),
-                storage(2, S::COMPUTE, false),
-                storage(3, S::COMPUTE, false),
-            ],
-        });
-        let tonemap_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("tonemap"),
-            entries: &[
-                uniform(S::FRAGMENT),
-                float_tex(1, S::FRAGMENT, false),
-                storage(2, S::FRAGMENT, true),
-            ],
-        });
-        let final_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("final"),
-            entries: &[
-                uniform(S::FRAGMENT),
-                float_tex(1, S::FRAGMENT, true),
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: S::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-            ],
-        });
-
-        let atmosphere_shader = crate::renderer::shader(
-            device,
-            "atmosphere",
-            include_str!("../shaders/atmosphere.wgsl"),
         );
+        let exposure_layout = layout(
+            "exposure",
+            &[
+                uniform_entry(S::COMPUTE),
+                float_tex(1, S::COMPUTE, false),
+                storage_entry(2, S::COMPUTE, false),
+                storage_entry(3, S::COMPUTE, false),
+            ],
+        );
+        let bloom_layout = layout(
+            "bloom",
+            &[
+                uniform_entry(S::FRAGMENT),
+                float_tex(1, S::FRAGMENT, false),
+                storage_entry(2, S::FRAGMENT, true),
+            ],
+        );
+        let tonemap_layout = layout(
+            "tonemap",
+            &[
+                uniform_entry(S::FRAGMENT),
+                float_tex(1, S::FRAGMENT, false),
+                storage_entry(2, S::FRAGMENT, true),
+                float_tex(3, S::FRAGMENT, true),
+                sampler_entry(4),
+            ],
+        );
+        let final_layout = layout(
+            "final",
+            &[
+                uniform_entry(S::FRAGMENT),
+                float_tex(1, S::FRAGMENT, true),
+                sampler_entry(2),
+            ],
+        );
+
+        let shader = |label, source| crate::renderer::shader(device, label, source);
+        let atmosphere_shader = shader("atmosphere", include_str!("../shaders/atmosphere.wgsl"));
         let atmosphere = fullscreen_pipeline(
             device,
             "atmosphere",
@@ -338,8 +427,7 @@ impl PostChain {
             HDR_FORMAT,
         );
 
-        let exposure_shader =
-            crate::renderer::shader(device, "exposure", include_str!("../shaders/exposure.wgsl"));
+        let exposure_shader = shader("exposure", include_str!("../shaders/exposure.wgsl"));
         let exposure_pipeline_layout =
             crate::renderer::pipeline_layout(device, "exposure", &[&exposure_layout]);
         let compute = |entry: &str| {
@@ -352,11 +440,25 @@ impl PostChain {
                 cache: None,
             })
         };
-        let build_histogram = compute("build_histogram");
+        let measure = compute("measure");
         let adapt = compute("adapt");
 
-        let tonemap_shader =
-            crate::renderer::shader(device, "tonemap", include_str!("../shaders/tonemap.wgsl"));
+        let bloom_shader = shader("bloom", include_str!("../shaders/bloom.wgsl"));
+        let bloom_pipeline = |entry| {
+            fullscreen_pipeline(
+                device,
+                entry,
+                &[&bloom_layout],
+                &bloom_shader,
+                entry,
+                HDR_FORMAT,
+            )
+        };
+        let bloom_down = bloom_pipeline("fs_down");
+        let blur_h = bloom_pipeline("fs_blur_h");
+        let blur_v = bloom_pipeline("fs_blur_v");
+
+        let tonemap_shader = shader("tonemap", include_str!("../shaders/tonemap.wgsl"));
         let tonemap = fullscreen_pipeline(
             device,
             "tonemap",
@@ -365,8 +467,7 @@ impl PostChain {
             "fs_main",
             LDR_FORMAT,
         );
-        let final_shader =
-            crate::renderer::shader(device, "final", include_str!("../shaders/final.wgsl"));
+        let final_shader = shader("final", include_str!("../shaders/final.wgsl"));
         let fxaa = fullscreen_pipeline(
             device,
             "fxaa",
@@ -387,14 +488,17 @@ impl PostChain {
         PostChain {
             output_srgb: output_format.is_srgb(),
             uniforms,
-            histogram,
             state,
             sampler,
             atmosphere_layout,
             atmosphere,
             exposure_layout,
-            build_histogram,
+            measure,
             adapt,
+            bloom_layout,
+            bloom_down,
+            blur_h,
+            blur_v,
             tonemap_layout,
             tonemap,
             final_layout,
@@ -424,13 +528,13 @@ impl PostChain {
         scene_color: &wgpu::TextureView,
         scene_depth: &wgpu::TextureView,
     ) {
-        let texture = |label, format| {
+        let texture = |label, (width, height): (u32, u32), format| {
             device
                 .create_texture(&wgpu::TextureDescriptor {
                     label: Some(label),
                     size: wgpu::Extent3d {
-                        width: size.0,
-                        height: size.1,
+                        width,
+                        height,
                         depth_or_array_layers: 1,
                     },
                     mip_level_count: 1,
@@ -443,8 +547,19 @@ impl PostChain {
                 })
                 .create_view(&Default::default())
         };
-        let hdr_view = texture("post hdr", HDR_FORMAT);
-        let ldr_view = texture("post ldr", LDR_FORMAT);
+        let bloom_size = ((size.0 / 4).max(1), (size.1 / 4).max(1));
+        let meter_groups = (size.0.div_ceil(METER_TILE), size.1.div_ceil(METER_TILE));
+        let hdr_view = texture("post hdr", size, HDR_FORMAT);
+        let ldr_view = texture("post ldr", size, LDR_FORMAT);
+        let bloom_a = texture("bloom a", bloom_size, HDR_FORMAT);
+        let bloom_b = texture("bloom b", bloom_size, HDR_FORMAT);
+        let partials = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("luminance partials"),
+            size: u64::from(meter_groups.0 * meter_groups.1) * 2 * 4,
+            usage: wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: false,
+        });
+
         let view = wgpu::BindingResource::TextureView;
         let group = |label, layout, entries: &[wgpu::BindGroupEntry<'_>]| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -465,10 +580,24 @@ impl PostChain {
             &[
                 entry(0, self.uniforms.as_entire_binding()),
                 entry(1, view(&hdr_view)),
-                entry(2, self.histogram.as_entire_binding()),
+                entry(2, partials.as_entire_binding()),
                 entry(3, self.state.as_entire_binding()),
             ],
         );
+        let bloom_group = |label, source| {
+            group(
+                label,
+                &self.bloom_layout,
+                &[
+                    entry(0, self.uniforms.as_entire_binding()),
+                    entry(1, view(source)),
+                    entry(2, self.state.as_entire_binding()),
+                ],
+            )
+        };
+        let bloom_down_group = bloom_group("bloom down", &hdr_view);
+        let blur_h_group = bloom_group("bloom blur h", &bloom_a);
+        let blur_v_group = bloom_group("bloom blur v", &bloom_b);
         let tonemap_group = group(
             "tonemap",
             &self.tonemap_layout,
@@ -476,6 +605,8 @@ impl PostChain {
                 entry(0, self.uniforms.as_entire_binding()),
                 entry(1, view(&hdr_view)),
                 entry(2, self.state.as_entire_binding()),
+                entry(3, view(&bloom_a)),
+                entry(4, wgpu::BindingResource::Sampler(&self.sampler)),
             ],
         );
         let final_group = group(
@@ -488,17 +619,22 @@ impl PostChain {
             ],
         );
         self.targets = Some(PostTargets {
-            size,
+            meter_groups,
             atmosphere_inputs,
             hdr_view,
             exposure_group,
+            bloom_a,
+            bloom_b,
+            bloom_down_group,
+            blur_h_group,
+            blur_v_group,
             tonemap_group,
             ldr_view,
             final_group,
         });
     }
 
-    /// Encode atmosphere, eye adaptation, tonemapping and the final pass into `output`.
+    /// Encode atmosphere, eye adaptation, bloom, tonemapping and the final pass into `output`.
     pub fn encode(
         &mut self,
         queue: &wgpu::Queue,
@@ -524,10 +660,24 @@ impl PostChain {
                 timestamp_writes: None,
             });
             pass.set_bind_group(0, &t.exposure_group, &[]);
-            pass.set_pipeline(&self.build_histogram);
-            pass.dispatch_workgroups(t.size.0.div_ceil(16), t.size.1.div_ceil(16), 1);
+            pass.set_pipeline(&self.measure);
+            pass.dispatch_workgroups(t.meter_groups.0, t.meter_groups.1, 1);
             pass.set_pipeline(&self.adapt);
             pass.dispatch_workgroups(1, 1, 1);
+        }
+        if settings.bloom.enabled {
+            fullscreen_pass(encoder, "bloom down", &t.bloom_a, |pass| {
+                pass.set_pipeline(&self.bloom_down);
+                pass.set_bind_group(0, &t.bloom_down_group, &[]);
+            });
+            fullscreen_pass(encoder, "bloom blur h", &t.bloom_b, |pass| {
+                pass.set_pipeline(&self.blur_h);
+                pass.set_bind_group(0, &t.blur_h_group, &[]);
+            });
+            fullscreen_pass(encoder, "bloom blur v", &t.bloom_a, |pass| {
+                pass.set_pipeline(&self.blur_v);
+                pass.set_bind_group(0, &t.blur_v_group, &[]);
+            });
         }
         fullscreen_pass(encoder, "tonemap", &t.ldr_view, |pass| {
             pass.set_pipeline(&self.tonemap);
@@ -616,11 +766,21 @@ mod tests {
     }
 
     #[test]
-    fn histogram_spans_the_aperture_range() {
+    fn exposure_range_follows_the_aperture_limits() {
         let s = HdrSettings::default();
-        let (min, range) = s.log_luminance_range();
-        assert!((min - 1e-5f32.log2()).abs() < 1e-4);
-        assert!((min + range - 8.0).abs() < 1e-4, "max aperture 256 = 2^8");
+        let (lo, hi) = s.exposure_range();
+        assert!((lo - 0.3 / 256.0).abs() < 1e-7);
+        assert!((hi - 0.3 / 1e-5).abs() < 1.0);
+    }
+
+    #[test]
+    fn adaptation_limits_are_stops_per_second() {
+        let s = HdrSettings::default();
+        let (down, up) = s.adaptation_limits(0.5);
+        // eyeAdaptFactorLight 3.3 stops/s down, eyeAdaptFactorDark 0.75 stops/s up.
+        assert!((down - 2f32.powf(-1.65)).abs() < 1e-6);
+        assert!((up - 2f32.powf(0.375)).abs() < 1e-6);
+        assert_eq!(s.adaptation_limits(0.0), (1.0, 1.0));
     }
 
     #[test]
@@ -634,6 +794,8 @@ mod tests {
         assert_eq!(u.exposure[3], 2.0);
         assert_eq!(u.adaptation[2..], [0.016, 1.0]);
         assert_eq!(u.misc[2..], [1.0, 0.0]);
+        assert_eq!(u.bloom, [1.0, 0.09, 1.0, 0.75]);
+        assert_eq!(u.output, [1.0, 1.0, 0.0, 0.0]);
         let auto = HdrSettings::default().uniforms(-1.0, false, false);
         assert_eq!((auto.exposure[3], auto.adaptation[2]), (0.0, 0.0));
     }
