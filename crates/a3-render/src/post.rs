@@ -4,33 +4,38 @@
 
 use bytemuck::{Pod, Zeroable};
 
-/// Tonemapping curve (RV `tonemapMethod`).
+/// Tonemapping curve, numbered as RV's `HDRNewPars >> tonemapMethod` (see `docs/re/hdr.md`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tonemap {
-    /// Extended Reinhard with [`HdrSettings::reinhard_white`] as white point.
-    Reinhard,
-    /// Hable's filmic curve with [`FilmicCurve`] parameters (RV method 1).
+    /// Method 0: exposure only, clamped to the display range.
+    None,
+    /// Method 1: Hable's filmic curve with [`FilmicCurve`] parameters.
     Filmic,
-    /// Fitted ACES curve _(uncertain: which ACES variant RV uses)_.
-    Aces,
+    /// Method 2: extended Reinhard with [`HdrSettings::reinhard_white`] as white point.
+    Reinhard,
 }
 
 impl Tonemap {
-    /// The curve for RV's `tonemapMethod` value _(uncertain enum order, see docs/re/hdr.md)_.
+    /// The curve for RV's `tonemapMethod` value; unknown values fall back to filmic.
     pub fn from_rv_method(method: i32) -> Tonemap {
         match method {
-            0 => Tonemap::Reinhard,
-            2 => Tonemap::Aces,
+            0 => Tonemap::None,
+            2 => Tonemap::Reinhard,
             _ => Tonemap::Filmic,
         }
     }
 
-    fn shader_index(self) -> f32 {
+    /// RV's `tonemapMethod` value, also the selector in `tonemap.wgsl`.
+    pub fn rv_method(self) -> i32 {
         match self {
-            Tonemap::Reinhard => 0.0,
-            Tonemap::Filmic => 1.0,
-            Tonemap::Aces => 2.0,
+            Tonemap::None => 0,
+            Tonemap::Filmic => 1,
+            Tonemap::Reinhard => 2,
         }
+    }
+
+    fn shader_index(self) -> f32 {
+        self.rv_method() as f32
     }
 }
 
@@ -600,9 +605,14 @@ mod tests {
 
     #[test]
     fn rv_tonemap_methods() {
+        // 0 = None, 1 = Filmic, 2 = Reinhard (reverse engineered; no ACES in RV).
+        assert_eq!(Tonemap::from_rv_method(0), Tonemap::None);
         assert_eq!(Tonemap::from_rv_method(1), Tonemap::Filmic);
-        assert_eq!(Tonemap::from_rv_method(0), Tonemap::Reinhard);
-        assert_eq!(Tonemap::from_rv_method(2), Tonemap::Aces);
+        assert_eq!(Tonemap::from_rv_method(2), Tonemap::Reinhard);
+        assert_eq!(Tonemap::from_rv_method(7), Tonemap::Filmic);
+        for t in [Tonemap::None, Tonemap::Filmic, Tonemap::Reinhard] {
+            assert_eq!(Tonemap::from_rv_method(t.rv_method()), t);
+        }
     }
 
     #[test]

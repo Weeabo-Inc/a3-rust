@@ -46,11 +46,6 @@ fn reinhard(x: vec3<f32>) -> vec3<f32> {
     return x * (1.0 + x / (w * w)) / (1.0 + x);
 }
 
-// Narkowicz's fit of the ACES reference rendering transform.
-fn aces(x: vec3<f32>) -> vec3<f32> {
-    return (x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14);
-}
-
 fn linear_to_srgb(c: vec3<f32>) -> vec3<f32> {
     let low = c * 12.92;
     let high = 1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055;
@@ -61,12 +56,13 @@ fn linear_to_srgb(c: vec3<f32>) -> vec3<f32> {
 fn fs_main(@builtin(position) position: vec4<f32>) -> @location(0) vec4<f32> {
     let hdr_color = textureLoad(hdr, vec2<i32>(floor(position.xy)), 0).rgb;
     let x = max(hdr_color * state.exposure * post.filmic_efw_bias.w, vec3<f32>(0.0));
+    // RV tonemapMethod: 0 none, 1 filmic (Hable), 2 Reinhard.
     var mapped: vec3<f32>;
     let method = u32(post.misc.x + 0.5);
     if method == 0u {
-        mapped = reinhard(x);
+        mapped = x;
     } else if method == 2u {
-        mapped = aces(x);
+        mapped = reinhard(x);
     } else {
         mapped = filmic(x);
     }

@@ -10,7 +10,8 @@ struct Post {
     exposure: vec4<f32>,
     // speed towards brighter, speed towards darker, dt, reset (1 = jump to target).
     adaptation: vec4<f32>,
-    // tonemap method (0 Reinhard, 1 filmic, 2 ACES), Reinhard white, output is sRGB, FXAA on.
+    // tonemap method (RV numbering: 0 none, 1 filmic, 2 Reinhard), Reinhard white, output is
+    // sRGB, FXAA on.
     misc: vec4<f32>,
 }
 

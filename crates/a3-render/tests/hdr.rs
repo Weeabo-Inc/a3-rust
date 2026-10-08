@@ -161,3 +161,32 @@ fn fxaa_softens_aliased_edges() {
         counts[1]
     );
 }
+
+#[test]
+fn rv_tonemap_methods_differ_on_bright_light() {
+    use a3_render::Tonemap;
+    let Some(gpu) = gpu() else { return };
+    let centre = |method| {
+        let mut s = scene(&gpu);
+        // Scene values between 1 and the Reinhard white point (2.5): only method 0 clips.
+        s.scale_light(12.0);
+        s.renderer.settings.hdr = HdrSettings {
+            tonemap: method,
+            fixed_exposure: Some(1.0),
+            anti_aliasing: AntiAliasing::None,
+            ..HdrSettings::default()
+        };
+        let image = s.render(&gpu, DT);
+        let i = ((SIZE / 2 * SIZE + SIZE / 2) * 4) as usize;
+        image[i]
+    };
+    let none = centre(Tonemap::None);
+    let filmic = centre(Tonemap::Filmic);
+    let reinhard = centre(Tonemap::Reinhard);
+    assert_eq!(none, 255, "method 0 only clamps");
+    assert!(
+        filmic < 255 && reinhard < 255,
+        "filmic {filmic}, reinhard {reinhard}"
+    );
+    assert_ne!(filmic, reinhard);
+}
