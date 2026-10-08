@@ -32,19 +32,26 @@ pub(crate) fn simulate(entity: &mut Entity, ctx: &mut StepContext<'_>, dt: f64) 
         return;
     }
     let feet = entity.position;
-    let velocity = entity.velocity;
+    let orientation = entity.orientation;
     // Without a terrain there is no surface to stand on or land on; leave him where he is
     // (in the original a World always has one).
     let Some(terrain) = ctx.world().terrain().cloned() else {
         return;
     };
     let moves = ctx.world().moves().cloned();
-    let next = match entity.class_state_mut() {
+    let (next, velocity) = match entity.class_state_mut() {
         ClassState::Man(man) => {
             man.moves.advance(moves.as_deref(), &man.input, dt);
-            man.motion.step(feet, velocity, terrain.as_ref(), dt)
+            // The animation is the source of truth for his movement: the moves he plays carry
+            // him, and the ground decides his height (`docs/re/sim-man-movement.md` §3).
+            let velocity = man.moves.velocity(moves.as_deref(), orientation);
+            (
+                man.motion.step(feet, velocity, terrain.as_ref(), dt),
+                velocity,
+            )
         }
         _ => return,
     };
     entity.position = next;
+    entity.velocity = velocity;
 }

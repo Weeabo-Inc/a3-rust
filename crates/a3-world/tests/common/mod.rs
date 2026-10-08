@@ -127,7 +127,8 @@ pub fn moves() -> Arc<Moves> {
     let tree = ConfigTree::from_config(&parse_text(CONFIG).unwrap());
     let mut moves = Moves::from_config(&tree.root().get("CfgMovesTest")).unwrap();
     let report = moves.load_rtm_headers(|path| {
-        STEPS.iter()
+        STEPS
+            .iter()
             .find(|(file, _)| *file == path)
             .map(|(_, step)| rtm(*step))
     });
