@@ -135,3 +135,16 @@ opt-level = 3
 
 [profile.dev.package.lzokay-native]
 opt-level = 3
+
+# Each git worktree has its own target/. Keep it small: line tables keep backtraces readable,
+# dependencies carry no debuginfo. The package overrides above only set opt-level, so they
+# inherit these settings.
+[profile.dev]
+debug = "line-tables-only"
+incremental = true
+
+[profile.dev.package."*"]
+debug = false
+
+[profile.test]
+debug = "line-tables-only"

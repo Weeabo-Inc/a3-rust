@@ -67,6 +67,16 @@ Use the `mattpocock-skills:tdd` skill: red, green, refactor.
   separate from OS paths.
 - Game data location comes from `A3_ROOT` or a `--game-dir` flag; hard-code no install paths.
 
+## Disk hygiene
+
+Every git worktree has its own `target/`, and many worktrees exist at once. Debug builds are
+already slimmed in the root `Cargo.toml` (line-tables-only debuginfo, none for dependencies); keep
+those settings.
+
+- Run `cargo clean` in your worktree after your last PR merges, or when `target/` exceeds ~8 GB.
+- Never delete another agent's worktree or `target/`.
+- Keep scratch output in `.work/` small; delete big intermediates when done.
+
 ## Reverse engineering
 
 RE tools live in `.resources/` (Ghidra, IDA Free); scratch output goes in `.work/`. Both are
