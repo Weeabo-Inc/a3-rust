@@ -1,0 +1,18 @@
+[package]
+name = "a3-environment"
+description = "Date, time, sun and moon, lighting tables, weather and fog of a World"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+a3-config.workspace = true
+glam.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+a3-gamedata.workspace = true
+
+[lints]
+workspace = true
