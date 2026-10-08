@@ -7,6 +7,7 @@ use std::time::Instant;
 
 use a3_gamedata::{GameData, LoadOptions};
 use a3_landscape::{TerrainLayers, WorldConfig};
+use a3_landscape_render::landscape::TerrainShading;
 use a3_landscape_render::{FileReader, Landscape};
 use a3_wrp::Terrain;
 use anyhow::Context as _;
@@ -48,7 +49,22 @@ pub fn load(game_dir: &Path, world: &str) -> anyhow::Result<LoadedWorld> {
         );
     }
     let vfs = data.vfs.clone();
-    let landscape = Landscape::from_terrain(&terrain, &layers, |p| vfs.open(p.as_str()).ok());
+    let mut landscape = Landscape::from_terrain(&terrain, &layers, |p| vfs.open(p.as_str()).ok());
+    let class = data.config.root().get("CfgWorlds").get(&config.class);
+    let defaults = TerrainShading::default();
+    let positive = |value: f32, default: f32| if value > 0.0 { value } else { default };
+    landscape.shading = TerrainShading {
+        full_detail_dist: positive(config.full_detail_dist, defaults.full_detail_dist),
+        no_detail_dist: positive(config.no_detail_dist, defaults.no_detail_dist),
+        max_darken: positive(
+            class.get("terrainBlendMaxDarkenCoef").number(),
+            defaults.max_darken,
+        ),
+        max_brighten: positive(
+            class.get("terrainBlendMaxBrightenCoef").number(),
+            defaults.max_brighten,
+        ),
+    };
     let centre = DVec3::new(
         f64::from(config.center_position.x),
         0.0,

@@ -112,6 +112,8 @@ pub struct TileTable {
     /// Per land cell (row-major, `z * width + x`, south first): index into `tiles` or
     /// [`NO_TILE`].
     pub cell_tiles: Grid<u16>,
+    /// Per WRP material index: index into `tiles` or [`NO_TILE`].
+    pub material_tiles: Vec<u16>,
 }
 
 impl TileTable {
@@ -185,6 +187,7 @@ impl TileTable {
             tiles,
             cell_tiles: Grid::from_vec(material_indices.size(), cells)
                 .expect("same size as the material grid"),
+            material_tiles: material_tile,
         }
     }
 
