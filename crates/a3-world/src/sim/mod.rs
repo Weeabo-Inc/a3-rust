@@ -17,7 +17,7 @@
 //!    long frame per iteration but feeds 0.05 s to Entities of one of four interleaved sub-lists
 //!    at a time; the remainder goes through a separate per-frame path. We keep the invariant
 //!    that every simulated Entity covers exactly the frame time, with 0.025 s sub-steps.
-//! 4. Attached positions (no attachments yet).
+//! 4. Attached positions: every `attachTo`-ed Entity moves to its parent.
 //! 5. AI (none yet).
 //! 6. Commands queued by steps (creations, deletions) are applied, then deletions take effect.
 //!
@@ -164,7 +164,10 @@ impl World {
         }
         self.apply(&mut commands);
 
-        // 4. Attached positions and 5. AI: added with attachments (#127) and AI (#129).
+        // 4. Attached positions.
+        self.update_attached_positions();
+
+        // 5. AI: added with #129.
 
         // 6.
         self.flush_deletions();
