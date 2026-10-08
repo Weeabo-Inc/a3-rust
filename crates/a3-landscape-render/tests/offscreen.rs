@@ -3,6 +3,8 @@
 
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
+use a3_landscape_render::detail::DetailLayers;
+use a3_landscape_render::landscape::TerrainShading;
 use a3_landscape_render::{HeightField, Landscape, NO_TILE, TerrainRenderer, TileTable};
 use a3_render::{Camera, DrawList, Gpu, Renderer, TextureData};
 use a3_wrp::{Grid, GridSize};
@@ -61,9 +63,13 @@ fn island() -> Landscape {
             grid: None,
             tiles: Vec::new(),
             cell_tiles: Grid::filled(land, NO_TILE),
+            material_tiles: Vec::new(),
         },
         // Bright green land, so terrain pixels are easy to tell from sea and sky.
         overview: Some(TextureData::solid_rgba8([40, 220, 40, 255])),
+        material_indices: Grid::filled(land, 0),
+        detail: DetailLayers::default(),
+        shading: TerrainShading::default(),
     }
 }
 

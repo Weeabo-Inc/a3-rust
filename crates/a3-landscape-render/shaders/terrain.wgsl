@@ -1,4 +1,5 @@
-// Terrain (CDLOD heightmap patches) and sea. Positions are camera-relative (ADR 0003).
+// Terrain (CDLOD heightmap patches) and the placeholder sea. Positions are camera-relative
+// (ADR 0003). Shading follows the engine's PSTerrainSNX (docs/re/render-terrain.md).
 
 struct Frame {
     view_proj: mat4x4<f32>,
@@ -18,8 +19,10 @@ struct Terrain {
     camera: vec4<f32>,
     // Height cell edge (m), height samples per axis, world edge (m), land cell edge (m).
     grid: vec4<f32>,
-    // Land cells per axis, tile count, sea extent (m), unused.
+    // Land cells per axis, tile count, sea extent (m), detail layers loaded (0 or 1).
     misc: vec4<f32>,
+    // fullDetailDist, noDetailDist (m), terrainBlendMaxDarkenCoef, terrainBlendMaxBrightenCoef.
+    detail: vec4<f32>,
     // Per LOD level: morph start (m), morph end (m), 1 / (end - start), unused.
     morph: array<vec4<f32>, 16>,
 }
@@ -28,7 +31,7 @@ struct Tile {
     // u = u.x * x + u.y * z + u.z (world metres); likewise v.
     u: vec4<f32>,
     v: vec4<f32>,
-    // x: texture array layer of the full-resolution satellite tile, or -1.
+    // x: texture array layer of the full-resolution satellite tile, or -1; y: mask loaded.
     slot: vec4<i32>,
 }
 
@@ -38,12 +41,21 @@ struct Tile {
 @group(1) @binding(2) var overview: texture_2d<f32>;
 @group(1) @binding(3) var linear_clamp: sampler;
 @group(1) @binding(4) var<uniform> terrain: Terrain;
-@group(1) @binding(5) var cell_tiles: texture_2d<u32>;
+// WRP material index of every land cell.
+@group(1) @binding(5) var cell_materials: texture_2d<u32>;
 @group(1) @binding(6) var<storage, read> tiles: array<Tile>;
 @group(1) @binding(7) var near_tiles: texture_2d_array<f32>;
 @group(1) @binding(8) var tile_sampler: sampler;
+@group(1) @binding(9) var masks: texture_2d_array<f32>;
+@group(1) @binding(10) var detail_color: texture_2d_array<f32>;
+@group(1) @binding(11) var detail_normal: texture_2d_array<f32>;
+@group(1) @binding(12) var repeat_sampler: sampler;
+// Per material: tile, slot0 | slot1 << 16, slot2 | slot3 << 16, slot4 (0xFFFF = none).
+@group(1) @binding(13) var<storage, read> materials: array<vec4<u32>>;
+// Average sRGB colour of each detail colour texture (its smallest mip).
+@group(1) @binding(14) var<storage, read> detail_average: array<vec4<f32>>;
 
-const NO_TILE: u32 = 65535u;
+const NONE: u32 = 65535u;
 
 fn load_height(i: i32, j: i32) -> f32 {
     let last = i32(terrain.grid.y) - 1;
@@ -82,6 +94,9 @@ struct TerrainOut {
     @location(0) world_xz: vec2<f32>,
     // Camera-relative position.
     @location(1) rel: vec3<f32>,
+    // Detail texture coordinates: 5 repeats per height cell (the engine's TexGen1/2 on the
+    // integer grid index), counted from the node origin so they stay small.
+    @location(2) detail_uv: vec2<f32>,
 }
 
 @vertex
@@ -110,6 +125,7 @@ fn vs_terrain(@location(0) local: vec2<u32>, node: NodeIn) -> TerrainOut {
     out.rel = vec3<f32>(rel_xz.x, h - terrain.camera.y, rel_xz.y);
     out.clip = frame.view_proj * vec4<f32>(out.rel, 1.0);
     out.world_xz = g * cell;
+    out.detail_uv = morphed * step * 5.0;
     return out;
 }
 
@@ -117,31 +133,6 @@ fn overview_color(world_xz: vec2<f32>) -> vec3<f32> {
     let world = terrain.grid.z;
     let uv = vec2<f32>(world_xz.x / world, 1.0 - world_xz.y / world);
     return textureSample(overview, linear_clamp, uv).rgb;
-}
-
-fn satellite(world_xz: vec2<f32>) -> vec3<f32> {
-    let far = overview_color(world_xz);
-    let land = terrain.grid.w;
-    let cells = i32(terrain.misc.x);
-    let cell = clamp(vec2<i32>(floor(world_xz / land)), vec2<i32>(0), vec2<i32>(cells - 1));
-    let tile_index = textureLoad(cell_tiles, cell, 0).r;
-    // Gradients from the continuous world position, so tile borders do not change the mip.
-    let dx = dpdx(world_xz);
-    let dy = dpdy(world_xz);
-    if tile_index == NO_TILE || tile_index >= arrayLength(&tiles) {
-        return far;
-    }
-    let tile = tiles[tile_index];
-    if tile.slot.x < 0 {
-        return far;
-    }
-    let uv = vec2<f32>(
-        dot(tile.u.xy, world_xz) + tile.u.z,
-        dot(tile.v.xy, world_xz) + tile.v.z,
-    );
-    let ddx = vec2<f32>(dot(tile.u.xy, dx), dot(tile.v.xy, dx));
-    let ddy = vec2<f32>(dot(tile.u.xy, dy), dot(tile.v.xy, dy));
-    return textureSampleGrad(near_tiles, tile_sampler, uv, tile.slot.x, ddx, ddy).rgb;
 }
 
 fn surface_normal(world_xz: vec2<f32>) -> vec3<f32> {
@@ -158,10 +149,107 @@ fn lit(albedo: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
     return albedo * (frame.sun_color.rgb * diffuse + ambient);
 }
 
+// The layer weights of PSTerrainSNX: each present layer (`present`, 0 or 1 per slot) paints
+// over the earlier ones with coverage saturate(3 * channel); slot 1 follows red, 2 green,
+// 3 blue, 4 blue where alpha is low. Mirrors `detail::layer_weights`.
+fn layer_weights(m: vec4<f32>, l0: f32, l: vec4<f32>) -> array<f32, 5> {
+    var w = array<f32, 5>(saturate(3.0 * l0), 0.0, 0.0, 0.0, 0.0);
+    var r = min(1.0 - l0, 1.0);
+    let channels = vec4<f32>(m.r, m.g, m.b, m.b * saturate(2.0 * (1.0 - m.a)));
+    for (var k = 1; k < 5; k++) {
+        let t = max(r, channels[k - 1]) * l[k - 1];
+        r = min(r, 1.0 - l[k - 1]);
+        let s = saturate(3.0 * t);
+        for (var j = 0; j < k; j++) {
+            w[j] *= 1.0 - s;
+        }
+        w[k] = s;
+    }
+    return w;
+}
+
+fn to_gamma(c: vec3<f32>) -> vec3<f32> {
+    return pow(max(c, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.2));
+}
+
+fn to_linear(c: vec3<f32>) -> vec3<f32> {
+    return pow(max(c, vec3<f32>(0.0)), vec3<f32>(2.2));
+}
+
 @fragment
 fn fs_terrain(in: TerrainOut) -> @location(0) vec4<f32> {
-    let n = surface_normal(in.world_xz);
-    let albedo = satellite(in.world_xz);
+    let n0 = surface_normal(in.world_xz);
+    let far = overview_color(in.world_xz);
+    // Gradients from continuous coordinates, so tile and node borders do not change the mip.
+    let dx = dpdx(in.world_xz);
+    let dy = dpdy(in.world_xz);
+    let ddx = dpdx(in.detail_uv);
+    let ddy = dpdy(in.detail_uv);
+
+    let cells = i32(terrain.misc.x);
+    let cell = clamp(vec2<i32>(floor(in.world_xz / terrain.grid.w)), vec2<i32>(0), vec2<i32>(cells - 1));
+    let material_index = min(textureLoad(cell_materials, cell, 0).r, arrayLength(&materials) - 1u);
+    let material = materials[material_index];
+    let tile_index = material.x;
+    if tile_index == NONE || tile_index >= arrayLength(&tiles) {
+        return vec4<f32>(lit(far, n0), 1.0);
+    }
+    let tile = tiles[tile_index];
+    if tile.slot.x < 0 {
+        return vec4<f32>(lit(far, n0), 1.0);
+    }
+    let uv = vec2<f32>(dot(tile.u.xy, in.world_xz) + tile.u.z, dot(tile.v.xy, in.world_xz) + tile.v.z);
+    let uv_dx = vec2<f32>(dot(tile.u.xy, dx), dot(tile.v.xy, dx));
+    let uv_dy = vec2<f32>(dot(tile.u.xy, dy), dot(tile.v.xy, dy));
+    // Satellite colour S; the base colour far away (stage 2 is constant grey: base = S).
+    let satellite = textureSampleGrad(near_tiles, tile_sampler, uv, tile.slot.x, uv_dx, uv_dy).rgb;
+
+    // Detail weight: 1 up to fullDetailDist, 0 from noDetailDist.
+    let distance = length(in.rel);
+    let detail_weight = saturate((terrain.detail.y - distance) / (terrain.detail.y - terrain.detail.x));
+    if detail_weight <= 0.01 || tile.slot.y == 0 || terrain.misc.w == 0.0 {
+        return vec4<f32>(lit(satellite, n0), 1.0);
+    }
+
+    let mask = textureSampleGrad(masks, tile_sampler, uv, tile.slot.x, uv_dx, uv_dy);
+    let ids = array<u32, 5>(
+        material.y & 0xffffu, material.y >> 16u, material.z & 0xffffu, material.z >> 16u, material.w & 0xffffu,
+    );
+    var present = vec4<f32>(0.0);
+    for (var k = 1; k < 5; k++) {
+        present[k - 1] = select(0.0, 1.0, ids[k] != NONE);
+    }
+    let weights = layer_weights(mask, select(0.0, 1.0, ids[0] != NONE), present);
+
+    var d = vec3<f32>(0.0);
+    var a = vec3<f32>(0.0);
+    var detail_n = vec3<f32>(0.0);
+    for (var k = 0; k < 5; k++) {
+        let w = weights[k];
+        if w > 0.001 && ids[k] != NONE {
+            let layer = i32(ids[k]);
+            // Detail colour sampled linear (sRGB texture); the blend works on stored values.
+            d += w * to_gamma(textureSampleGrad(detail_color, repeat_sampler, in.detail_uv, layer, ddx, ddy).rgb);
+            a += w * detail_average[ids[k]].rgb;
+            detail_n += w * (textureSampleGrad(detail_normal, repeat_sampler, in.detail_uv, layer, ddx, ddy).rgb * 2.0 - 1.0);
+        }
+    }
+
+    // PSC_TerrainBlend = (10, maxDarken, maxBrighten): the satellite relative to "satellite +
+    // average detail" darkens or brightens the detail beyond the configured limits.
+    let s = to_gamma(satellite);
+    let kk = clamp(1.0 / (s + a + vec3<f32>(0.001)), vec3<f32>(1.0), vec3<f32>(10.0));
+    let ks = kk * s;
+    let lo = max(ks, vec3<f32>(terrain.detail.z));
+    let hi = min(ks, vec3<f32>(terrain.detail.w));
+    let res = lo * d * (1.0 - d) + d * (1.0 - (1.0 - d) * (1.0 - hi));
+    let albedo = mix(satellite, to_linear(res), detail_weight);
+
+    // Detail normal in the terrain's tangent frame: u east, v north.
+    let t = normalize(vec3<f32>(1.0, 0.0, 0.0) - n0 * n0.x);
+    let b = cross(t, n0);
+    let dn = normalize(detail_n + vec3<f32>(0.0, 0.0, 0.001));
+    let n = normalize(mix(n0, t * dn.x + b * dn.y + n0 * dn.z, detail_weight));
     return vec4<f32>(lit(albedo, n), 1.0);
 }
 

@@ -3,8 +3,10 @@
 use std::time::Instant;
 
 use a3_landscape::TerrainLayers;
+use a3_landscape_render::detail::NO_LAYER;
 use a3_landscape_render::lod::{distance_to_box, farthest_in_box};
 use a3_landscape_render::{Landscape, LodQuadtree, LodSettings, TileCoord, TileFormat};
+use a3_render::TextureFormat;
 use a3_vfs::Vfs;
 use a3_wrp::Terrain;
 use glam::DVec3;
@@ -70,12 +72,49 @@ fn altis_satellite_tiles_overview_and_heights() {
     assert_eq!(
         format,
         TileFormat {
-            bc1: true,
+            format: TextureFormat::Bc1,
             size: 512,
             mips: 8
         }
     );
     assert!(format.decode(&bytes).is_some());
+
+    // Its mask streams as BC3 of the same shape.
+    let kavala_tile = landscape
+        .tiles
+        .tiles
+        .iter()
+        .find(|t| t.coord == TileCoord { col: 7, row: 36 })
+        .unwrap();
+    let mask = vfs
+        .open(kavala_tile.mask.as_ref().unwrap().as_str())
+        .unwrap();
+    let mask_format = TileFormat::probe(&mask, true).unwrap();
+    assert_eq!(
+        (mask_format.format, mask_format.size),
+        (TextureFormat::Bc3, 512)
+    );
+
+    // Detail layers: every gdt_* surface once, each material pointing at its tile.
+    let detail = &landscape.detail;
+    assert_eq!(detail.materials.len(), terrain.materials.len());
+    assert!(
+        (15..=40).contains(&detail.textures.len()),
+        "{} detail textures",
+        detail.textures.len()
+    );
+    assert!(detail.textures.iter().all(|t| {
+        let name = t.color.file_name().unwrap_or_default();
+        name.starts_with("gdt_") && t.normal.is_some()
+    }));
+    let (cx, cz) = (
+        (3600.0 / landscape.land_cell) as u32,
+        (13000.0 / landscape.land_cell) as u32,
+    );
+    let material = *landscape.material_indices.get(cx, cz).unwrap();
+    let slots = detail.materials[usize::from(material)];
+    assert_eq!(slots.tile, *landscape.tiles.cell_tiles.get(cx, cz).unwrap());
+    assert!(slots.layers.iter().any(|&l| l != NO_LAYER));
 
     for (x, z) in [(3600.0, 13000.0), (14382.4, 15924.6), (25000.3, 21000.7)] {
         let (ours, engine) = (landscape.surface_height(x, z), terrain.surface_height(x, z));

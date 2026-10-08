@@ -9,6 +9,7 @@
 //!
 //! See `docs/re/render-terrain.md` and `docs/adr/0007-terrain-lod.md`.
 
+pub mod detail;
 pub mod heights;
 pub mod landscape;
 pub mod lod;

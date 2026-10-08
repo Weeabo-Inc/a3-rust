@@ -1,5 +1,7 @@
-//! The terrain [`RenderFeature`]: CDLOD heightmap patches textured with the satellite
-//! overview and streamed full-resolution satellite tiles, plus a placeholder sea plane.
+//! The terrain [`RenderFeature`]: CDLOD heightmap patches textured like `PSTerrainSNX`: the
+//! satellite overview and streamed full-resolution satellite tiles, and near the camera the
+//! layer mask blending the surface detail textures (`docs/re/render-terrain.md`). Plus a
+//! placeholder sea plane.
 //!
 //! The sea belongs to the ocean renderer; until it exists, [`TerrainRenderer`] draws a flat
 //! placeholder at sea level (`vs_sea`/`fs_sea` in `terrain.wgsl`), shaded by the water depth
@@ -11,21 +13,25 @@ use a3_render::wgpu;
 use a3_render::wgpu::util::DeviceExt as _;
 use a3_render::{
     ColorSpace, Frustum, Gpu, GpuTexture, Phase, PrepareContext, RenderFeature, Renderer,
-    TextureData,
+    TextureData, TextureFormat,
 };
 use bytemuck::{Pod, Zeroable};
 use glam::DVec3;
 
+use crate::detail::{DetailLayers, NO_LAYER};
 use crate::landscape::Landscape;
 use crate::lod::{LodQuadtree, LodSettings, SelectedNode};
 use crate::residency::{TileResidency, nearest_tiles};
 use crate::satellite::{NO_TILE, SatelliteGrid, Tile};
-use crate::stream::{FileReader, TileFormat, TileLoader};
+use crate::stream::{FileReader, TileFormat, TileLoader, TileRequest};
 
 /// Full-resolution satellite tiles kept on the GPU.
 pub const TILE_SLOTS: u32 = 128;
 /// Tiles whose core is within this distance (m) of the camera are streamed in.
 pub const TILE_RADIUS: f32 = 2_600.0;
+/// Largest edge of the detail textures on the GPU (shipped `gdt_*` textures are 2048 px; at
+/// five repeats per 7.5 m cell, 1024 px is already 1.5 mm per texel).
+pub const DETAIL_SIZE: u32 = 1024;
 /// Most tiles uploaded per frame.
 const UPLOADS_PER_FRAME: usize = 8;
 /// Half-extent of the sea plane around the camera in metres.
@@ -42,6 +48,8 @@ pub struct TerrainStats {
     pub resident_tiles: u32,
     /// Tiles requested and not yet uploaded.
     pub pending_tiles: u32,
+    /// Detail textures on the GPU.
+    pub detail_textures: u32,
 }
 
 #[repr(C)]
@@ -50,6 +58,7 @@ struct Params {
     camera: [f32; 4],
     grid: [f32; 4],
     misc: [f32; 4],
+    detail: [f32; 4],
     morph: [[f32; 4]; MAX_LEVELS],
 }
 
@@ -58,6 +67,7 @@ struct Params {
 struct TileGpu {
     u: [f32; 4],
     v: [f32; 4],
+    /// Array layer of the satellite tile or -1; whether its mask is loaded.
     slot: [i32; 4],
 }
 
@@ -74,12 +84,164 @@ impl NodeInstance {
         wgpu::vertex_attr_array![1 => Float32x2, 2 => Uint32x2, 3 => Uint32x2];
 }
 
+/// Per WRP material: tile and the detail texture of each of the five slots, packed as
+/// `(tile, slot0 | slot1 << 16, slot2 | slot3 << 16, slot4)`, `0xFFFF` = none.
+fn materials_gpu(detail: &DetailLayers) -> Vec<[u32; 4]> {
+    let mut out: Vec<[u32; 4]> = detail
+        .materials
+        .iter()
+        .map(|m| {
+            let l = m.layers.map(u32::from);
+            [
+                u32::from(m.tile),
+                l[0] | l[1] << 16,
+                l[2] | l[3] << 16,
+                l[4],
+            ]
+        })
+        .collect();
+    if out.is_empty() {
+        let none = u32::from(NO_LAYER);
+        out.push([
+            u32::from(NO_TILE),
+            none | none << 16,
+            none | none << 16,
+            none,
+        ]);
+    }
+    out
+}
+
 struct Streaming {
     grid: SatelliteGrid,
     loader: TileLoader,
     residency: TileResidency,
     tiles: Vec<Tile>,
     last_centre: Option<DVec3>,
+}
+
+/// A texture array shaped by a [`TileFormat`] (one layer when there is nothing to hold).
+struct LayerArray {
+    texture: wgpu::Texture,
+    view: wgpu::TextureView,
+}
+
+impl LayerArray {
+    fn new(
+        device: &wgpu::Device,
+        label: &str,
+        format: Option<TileFormat>,
+        layers: u32,
+        color_space: ColorSpace,
+    ) -> LayerArray {
+        let format = format.unwrap_or(TileFormat {
+            format: TextureFormat::Rgba8,
+            size: 4,
+            mips: 1,
+        });
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some(label),
+            size: wgpu::Extent3d {
+                width: format.size,
+                height: format.size,
+                depth_or_array_layers: layers.max(1),
+            },
+            mip_level_count: format.mips,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: format.format.wgpu_format(color_space),
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        let view = texture.create_view(&wgpu::TextureViewDescriptor {
+            dimension: Some(wgpu::TextureViewDimension::D2Array),
+            ..Default::default()
+        });
+        LayerArray { texture, view }
+    }
+}
+
+/// The detail textures, loaded at startup.
+struct DetailArrays {
+    color: LayerArray,
+    normal: LayerArray,
+    /// Average colour (sRGB, 0..1) of each detail colour texture.
+    averages: Vec<[f32; 4]>,
+    loaded: u32,
+}
+
+impl DetailArrays {
+    fn load(gpu: &Gpu, detail: &DetailLayers, reader: Option<&FileReader>) -> DetailArrays {
+        let bc = Renderer::supports_bc(gpu);
+        let count = detail.textures.len() as u32;
+        let shape = |format| {
+            let size = DETAIL_SIZE;
+            TileFormat {
+                format,
+                size,
+                mips: size.trailing_zeros() - 1,
+            }
+        };
+        let (color_format, normal_format) = if bc {
+            (shape(TextureFormat::Bc1), shape(TextureFormat::Bc3))
+        } else {
+            (shape(TextureFormat::Rgba8), shape(TextureFormat::Rgba8))
+        };
+        let usable = reader.is_some() && count > 0;
+        let color = LayerArray::new(
+            &gpu.device,
+            "terrain detail colour",
+            usable.then_some(color_format),
+            count,
+            ColorSpace::Srgb,
+        );
+        let normal = LayerArray::new(
+            &gpu.device,
+            "terrain detail normals",
+            usable.then_some(normal_format),
+            count,
+            ColorSpace::Linear,
+        );
+        let mut averages = vec![[0.5, 0.5, 0.5, 1.0]; detail.textures.len().max(1)];
+        let mut loaded = 0;
+        if let (Some(read), true) = (reader, usable) {
+            for (layer, texture) in detail.textures.iter().enumerate() {
+                let Some(bytes) = read(&texture.color) else {
+                    log::warn!("missing detail texture {}", texture.color);
+                    continue;
+                };
+                if let Some(c) = a3_paa::PaaHeader::read(&bytes)
+                    .ok()
+                    .and_then(|h| h.meta.average_color)
+                {
+                    averages[layer] = [c.r, c.g, c.b, c.a].map(|v| f32::from(v) / 255.0);
+                }
+                match color_format.decode_scaled(&bytes) {
+                    Some(data) => upload_layer(&gpu.queue, &color.texture, &data, layer as u32),
+                    None => {
+                        log::warn!("unusable detail texture {}", texture.color);
+                        continue;
+                    }
+                }
+                let normal_data = texture
+                    .normal
+                    .as_ref()
+                    .and_then(|p| read(p))
+                    .and_then(|b| normal_format.decode_scaled(&b))
+                    .or_else(|| normal_format.solid([128, 128, 255, 0]));
+                if let Some(data) = normal_data {
+                    upload_layer(&gpu.queue, &normal.texture, &data, layer as u32);
+                }
+                loaded += 1;
+            }
+        }
+        DetailArrays {
+            color,
+            normal,
+            averages,
+            loaded,
+        }
+    }
 }
 
 /// Draws the Landscape. Register with [`Renderer::add_feature`].
@@ -99,7 +261,8 @@ pub struct TerrainRenderer {
     params_buffer: wgpu::Buffer,
     tiles: Vec<TileGpu>,
     tile_buffer: wgpu::Buffer,
-    near_tiles: wgpu::Texture,
+    near_tiles: LayerArray,
+    masks: LayerArray,
     patch_vertices: wgpu::Buffer,
     patch_indices: wgpu::Buffer,
     full_indices: std::ops::Range<u32>,
@@ -107,13 +270,14 @@ pub struct TerrainRenderer {
     instance_buffer: wgpu::Buffer,
 
     streaming: Option<Streaming>,
+    detail_textures: u32,
     sea: bool,
     stats: Arc<Mutex<TerrainStats>>,
 }
 
 impl TerrainRenderer {
     /// Upload the Landscape. `reader` (VFS file access) enables streaming of full-resolution
-    /// satellite tiles; without it only the overview is used.
+    /// satellite and mask tiles and the detail layers; without it only the overview is used.
     pub fn new(
         gpu: &Gpu,
         renderer: &Renderer,
@@ -154,59 +318,55 @@ impl TerrainRenderer {
         )
         .expect("the overview atlas is a valid RGBA8 texture");
         let cells = landscape.land_cells.max(1);
-        let cell_tiles: Vec<u16> =
-            if landscape.tiles.cell_tiles.as_slice().len() == (cells * cells) as usize {
-                landscape.tiles.cell_tiles.as_slice().to_vec()
+        let cell_materials: Vec<u16> =
+            if landscape.material_indices.as_slice().len() == (cells * cells) as usize {
+                landscape.material_indices.as_slice().to_vec()
             } else {
-                vec![NO_TILE; (cells * cells) as usize]
+                vec![0; (cells * cells) as usize]
             };
-        let cell_tiles = texture_2d(
+        let cell_materials = texture_2d(
             gpu,
-            "terrain cell tiles",
+            "terrain cell materials",
             (cells, cells),
             wgpu::TextureFormat::R16Uint,
-            bytemuck::cast_slice(&cell_tiles),
+            bytemuck::cast_slice(&cell_materials),
             2,
         );
+        let materials = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("terrain materials"),
+            contents: bytemuck::cast_slice(&materials_gpu(&landscape.detail)),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
 
-        // Full-resolution tile array, shaped like the first satellite tile.
-        let first_tile = reader.as_ref().and_then(|read| {
-            landscape
-                .tiles
-                .tiles
-                .iter()
-                .filter_map(|t| t.satellite.as_ref())
-                .find_map(|p| read(p))
-                .and_then(|b| TileFormat::probe(&b, Renderer::supports_bc(gpu)))
-        });
-        let tile_format = first_tile.unwrap_or(TileFormat {
-            bc1: false,
-            size: 4,
-            mips: 1,
-        });
-        let layers = if first_tile.is_some() { TILE_SLOTS } else { 1 };
-        let near_format = if tile_format.bc1 {
-            a3_render::TextureFormat::Bc1
-        } else {
-            a3_render::TextureFormat::Rgba8
+        // Full-resolution satellite and mask arrays, shaped like the first tile's textures.
+        let bc = Renderer::supports_bc(gpu);
+        let probe = |path: Option<&a3_core::VfsPath>| {
+            let read = reader.as_ref()?;
+            read(path?).and_then(|b| TileFormat::probe(&b, bc))
         };
-        let near_tiles = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("terrain satellite tiles"),
-            size: wgpu::Extent3d {
-                width: tile_format.size,
-                height: tile_format.size,
-                depth_or_array_layers: layers,
-            },
-            mip_level_count: tile_format.mips,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: near_format.wgpu_format(ColorSpace::Srgb),
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[],
-        });
-        let near_view = near_tiles.create_view(&wgpu::TextureViewDescriptor {
-            dimension: Some(wgpu::TextureViewDimension::D2Array),
-            ..Default::default()
+        let first = landscape.tiles.tiles.iter().find(|t| t.satellite.is_some());
+        let tile_format = probe(first.and_then(|t| t.satellite.as_ref()));
+        let mask_format = probe(first.and_then(|t| t.mask.as_ref()));
+        let slots = if tile_format.is_some() { TILE_SLOTS } else { 1 };
+        let near_tiles = LayerArray::new(
+            device,
+            "terrain satellite tiles",
+            tile_format,
+            slots,
+            ColorSpace::Srgb,
+        );
+        let masks = LayerArray::new(
+            device,
+            "terrain mask tiles",
+            mask_format.filter(|_| tile_format.is_some()),
+            slots,
+            ColorSpace::Linear,
+        );
+        let detail = DetailArrays::load(gpu, &landscape.detail, reader.as_ref());
+        let averages = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("terrain detail averages"),
+            contents: bytemuck::cast_slice(&detail.averages),
+            usage: wgpu::BufferUsages::STORAGE,
         });
 
         let mut tiles: Vec<TileGpu> = landscape.tiles.tiles.iter().map(tile_gpu).collect();
@@ -230,7 +390,14 @@ impl TerrainRenderer {
             cells as f32,
             landscape.tiles.tiles.len() as f32,
             SEA_EXTENT,
-            0.0,
+            if detail.loaded > 0 { 1.0 } else { 0.0 },
+        ];
+        let shading = &landscape.shading;
+        params.detail = [
+            shading.full_detail_dist,
+            shading.no_detail_dist.max(shading.full_detail_dist + 0.1),
+            shading.max_darken,
+            shading.max_brighten,
         ];
         for level in 0..tree.levels().min(MAX_LEVELS as u32) {
             let (start, end) = tree.morph_range(level);
@@ -244,23 +411,23 @@ impl TerrainRenderer {
             mapped_at_creation: false,
         });
 
-        let linear_clamp = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("terrain linear clamp"),
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::MipmapFilterMode::Linear,
-            anisotropy_clamp: 16,
-            ..Default::default()
-        });
-        let tile_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("terrain tile sampler"),
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::MipmapFilterMode::Linear,
-            anisotropy_clamp: 16,
-            ..Default::default()
-        });
+        let sampler = |label, address_mode| {
+            device.create_sampler(&wgpu::SamplerDescriptor {
+                label: Some(label),
+                address_mode_u: address_mode,
+                address_mode_v: address_mode,
+                mag_filter: wgpu::FilterMode::Linear,
+                min_filter: wgpu::FilterMode::Linear,
+                mipmap_filter: wgpu::MipmapFilterMode::Linear,
+                anisotropy_clamp: 16,
+                ..Default::default()
+            })
+        };
+        let linear_clamp = sampler("terrain linear clamp", wgpu::AddressMode::ClampToEdge);
+        let tile_sampler = sampler("terrain tile sampler", wgpu::AddressMode::ClampToEdge);
+        let repeat = sampler("terrain detail sampler", wgpu::AddressMode::Repeat);
 
+        let float = wgpu::TextureSampleType::Float { filterable: true };
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("terrain layout"),
             entries: &[
@@ -269,16 +436,8 @@ impl TerrainRenderer {
                     wgpu::TextureSampleType::Float { filterable: false },
                     false,
                 ),
-                texture_entry(
-                    1,
-                    wgpu::TextureSampleType::Float { filterable: true },
-                    false,
-                ),
-                texture_entry(
-                    2,
-                    wgpu::TextureSampleType::Float { filterable: true },
-                    false,
-                ),
+                texture_entry(1, float, false),
+                texture_entry(2, float, false),
                 sampler_entry(3),
                 wgpu::BindGroupLayoutEntry {
                     binding: 4,
@@ -291,24 +450,21 @@ impl TerrainRenderer {
                     count: None,
                 },
                 texture_entry(5, wgpu::TextureSampleType::Uint, false),
-                wgpu::BindGroupLayoutEntry {
-                    binding: 6,
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                texture_entry(7, wgpu::TextureSampleType::Float { filterable: true }, true),
+                storage_entry(6),
+                texture_entry(7, float, true),
                 sampler_entry(8),
+                texture_entry(9, float, true),
+                texture_entry(10, float, true),
+                texture_entry(11, float, true),
+                sampler_entry(12),
+                storage_entry(13),
+                storage_entry(14),
             ],
         });
         let views = [
             heights.create_view(&Default::default()),
             normals.create_view(&Default::default()),
-            cell_tiles.create_view(&Default::default()),
+            cell_materials.create_view(&Default::default()),
         ];
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("terrain"),
@@ -317,27 +473,20 @@ impl TerrainRenderer {
                 view_entry(0, &views[0]),
                 view_entry(1, &views[1]),
                 view_entry(2, &overview.view),
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::Sampler(&linear_clamp),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: params_buffer.as_entire_binding(),
-                },
+                sampler_binding(3, &linear_clamp),
+                buffer_binding(4, &params_buffer),
                 view_entry(5, &views[2]),
-                wgpu::BindGroupEntry {
-                    binding: 6,
-                    resource: tile_buffer.as_entire_binding(),
-                },
-                view_entry(7, &near_view),
-                wgpu::BindGroupEntry {
-                    binding: 8,
-                    resource: wgpu::BindingResource::Sampler(&tile_sampler),
-                },
+                buffer_binding(6, &tile_buffer),
+                view_entry(7, &near_tiles.view),
+                sampler_binding(8, &tile_sampler),
+                view_entry(9, &masks.view),
+                view_entry(10, &detail.color.view),
+                view_entry(11, &detail.normal.view),
+                sampler_binding(12, &repeat),
+                buffer_binding(13, &materials),
+                buffer_binding(14, &averages),
             ],
         });
-
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("terrain"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/terrain.wgsl").into()),
@@ -424,10 +573,10 @@ impl TerrainRenderer {
         });
         let instance_buffer = instance_buffer(device, 1024);
 
-        let streaming = match (reader, first_tile, landscape.tiles.grid) {
+        let streaming = match (reader, tile_format, landscape.tiles.grid) {
             (Some(reader), Some(format), Some(grid)) => Some(Streaming {
                 grid,
-                loader: TileLoader::spawn(reader, format, 2),
+                loader: TileLoader::spawn(reader, format, mask_format, 2),
                 residency: TileResidency::new(TILE_SLOTS),
                 tiles: landscape.tiles.tiles.clone(),
                 last_centre: None,
@@ -451,12 +600,14 @@ impl TerrainRenderer {
             tiles,
             tile_buffer,
             near_tiles,
+            masks,
             patch_vertices,
             patch_indices,
             full_indices: full,
             quarter_indices: quarter,
             instance_buffer,
             streaming,
+            detail_textures: detail.loaded,
             sea: true,
             stats: Arc::default(),
         }
@@ -528,21 +679,25 @@ impl TerrainRenderer {
                 TILE_RADIUS,
             );
             for tile in s.residency.want(wanted) {
-                if let Some(path) = s
-                    .tiles
-                    .get(usize::from(tile))
-                    .and_then(|t| t.satellite.clone())
-                {
-                    s.loader.request(tile, path);
+                let Some(t) = s.tiles.get(usize::from(tile)) else {
+                    continue;
+                };
+                if let Some(satellite) = t.satellite.clone() {
+                    s.loader.request(TileRequest {
+                        tile,
+                        satellite,
+                        mask: t.mask.clone(),
+                    });
                 }
             }
         }
         let mut dirty = false;
         for _ in 0..UPLOADS_PER_FRAME {
-            let Some((tile, data)) = s.loader.try_recv() else {
+            let Some(loaded) = s.loader.try_recv() else {
                 break;
             };
-            let Some(data) = data else {
+            let tile = loaded.tile;
+            let Some(data) = loaded.satellite else {
                 // Unreadable: drop the request so the tile does not stay pending.
                 s.residency.failed(tile);
                 continue;
@@ -550,11 +705,19 @@ impl TerrainRenderer {
             let Some(placement) = s.residency.arrived(tile) else {
                 continue;
             };
-            upload_layer(cx.queue, &self.near_tiles, &data, placement.slot);
-            if let Some(old) = placement.evicted {
-                self.tiles[usize::from(old)].slot[0] = -1;
+            upload_layer(cx.queue, &self.near_tiles.texture, &data, placement.slot);
+            if let Some(mask) = &loaded.mask {
+                upload_layer(cx.queue, &self.masks.texture, mask, placement.slot);
             }
-            self.tiles[usize::from(tile)].slot[0] = placement.slot as i32;
+            if let Some(old) = placement.evicted {
+                self.tiles[usize::from(old)].slot = [-1, 0, 0, 0];
+            }
+            self.tiles[usize::from(tile)].slot = [
+                placement.slot as i32,
+                i32::from(loaded.mask.is_some()),
+                0,
+                0,
+            ];
             dirty = true;
         }
         if dirty {
@@ -581,6 +744,7 @@ impl RenderFeature for TerrainRenderer {
                 stats.resident_tiles = s.residency.resident() as u32;
                 stats.pending_tiles = s.residency.pending() as u32;
             }
+            stats.detail_textures = self.detail_textures;
         }
     }
 
@@ -735,6 +899,33 @@ fn texture_entry(
             multisampled: false,
         },
         count: None,
+    }
+}
+
+fn storage_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Storage { read_only: true },
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    }
+}
+
+fn sampler_binding(binding: u32, sampler: &wgpu::Sampler) -> wgpu::BindGroupEntry<'_> {
+    wgpu::BindGroupEntry {
+        binding,
+        resource: wgpu::BindingResource::Sampler(sampler),
+    }
+}
+
+fn buffer_binding(binding: u32, buffer: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
+    wgpu::BindGroupEntry {
+        binding,
+        resource: buffer.as_entire_binding(),
     }
 }
 
