@@ -562,9 +562,12 @@ impl fmt::Debug for Array {
 #[derive(Clone, Default)]
 pub struct HashMap(Rc<HashMapInner>);
 
+/// The entry map of a [`HashMap`] (insertion-ordered, fast hashing).
+pub type HashMapEntries = IndexMap<HashKey, Value, rustc_hash::FxBuildHasher>;
+
 #[derive(Default)]
 struct HashMapInner {
-    map: RefCell<IndexMap<HashKey, Value>>,
+    map: RefCell<HashMapEntries>,
     read_only: Cell<bool>,
     object: RefCell<Option<Rc<ObjectInfo>>>,
 }
@@ -594,7 +597,7 @@ impl HashMap {
         HashMap::default()
     }
 
-    pub fn from_map(map: IndexMap<HashKey, Value>) -> HashMap {
+    pub fn from_map(map: HashMapEntries) -> HashMap {
         HashMap(Rc::new(HashMapInner {
             map: RefCell::new(map),
             read_only: Cell::new(false),
@@ -617,11 +620,11 @@ impl HashMap {
         self.0.object.borrow().as_ref().is_some_and(|o| o.sealed)
     }
 
-    pub fn borrow(&self) -> Ref<'_, IndexMap<HashKey, Value>> {
+    pub fn borrow(&self) -> Ref<'_, HashMapEntries> {
         self.0.map.borrow()
     }
 
-    pub fn borrow_mut(&self) -> RefMut<'_, IndexMap<HashKey, Value>> {
+    pub fn borrow_mut(&self) -> RefMut<'_, HashMapEntries> {
         self.0.map.borrow_mut()
     }
 
@@ -646,7 +649,7 @@ impl HashMap {
         self.0.read_only.set(true);
     }
 
-    fn try_borrow(&self) -> Result<Ref<'_, IndexMap<HashKey, Value>>, std::cell::BorrowError> {
+    fn try_borrow(&self) -> Result<Ref<'_, HashMapEntries>, std::cell::BorrowError> {
         self.0.map.try_borrow()
     }
 }
