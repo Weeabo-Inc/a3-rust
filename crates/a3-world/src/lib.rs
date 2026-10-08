@@ -21,6 +21,7 @@ mod id;
 mod object_ref;
 mod statics;
 mod terrain;
+mod types;
 mod world;
 
 pub use class::{EntityClass, SimulationClass};
@@ -28,6 +29,7 @@ pub use entity::{Entity, EntitySpec, Locality};
 pub use id::{ClientId, EntityId, NetworkId, ParseNetworkIdError};
 pub use object_ref::ObjectRef;
 pub use statics::{StaticKey, StaticObject};
+pub use types::{DEFAULT_SIMULATION_STEP, EntityType, Scope, TypeBank, TypeSource};
 pub use world::{LocalityChange, World};
 
 /// Errors from World operations.
@@ -43,6 +45,15 @@ pub enum Error {
     /// The Entity was deleted (or never existed).
     #[error("no entity {0:?}")]
     NoSuchEntity(EntityId),
+    /// No class of this name in CfgVehicles, CfgAmmo or CfgNonAIVehicles.
+    #[error("no config class {0:?} in CfgVehicles, CfgAmmo or CfgNonAIVehicles")]
+    UnknownType(String),
+    /// The class's `simulation` value has no engine class (yet).
+    #[error("config class {type_name:?} has unknown simulation {simulation:?}")]
+    UnknownSimulation {
+        type_name: String,
+        simulation: String,
+    },
     /// No Static object has this key.
     #[error("no static object {0:?}")]
     NoSuchStatic(StaticKey),

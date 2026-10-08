@@ -72,7 +72,7 @@ Every replicated thing, groups included, derives from `NetworkObject`. **High** 
 | `+0x168` | Object | flag byte: bit 3 = static, printed as `1:` instead of `0:` by `netId` outside a session (medium); bits 2 and 7 enter the update error metric | medium |
 | `+0x170` | ObjectTyped | `EntityType*` (the vehicle type created from the config class) | high |
 | `+0x188`, `+0x190` | Entity | history of `ObjectVisualState*` and its count. Each state stores the dt it covered (`+0x50`). The renderer interpolates between them; this is visual smoothing, not network | medium |
-| `+0x1bc` | Entity | simulation step (precision) in seconds | high |
+| `+0x1bc` | Entity | simulation step (precision) in seconds. The `Entity` constructor (`0x140e6efa0`) sets 1/15 s. `SetSimulationPrecision` (`0x140e94b20`; `0x140e94b30` also sets `+0x1c0`) changes it at run time, called from the `Simulate` of `Man`, `Transport`, `Airplane` and others. Ammo types read `simulationStep` from CfgAmmo (`0x141105920`) | high |
 | `+0x1c4` | Entity | accumulated time not yet simulated | high |
 | `+0x1cd` | Entity | flags: `0x20` = skip simulation (simulation disabled), `0x04` = simulate now regardless of step | medium |
 | `+0x452` | Entity | flags: bit 4 = **local**, bit 3 = "deleted/finished" (set after the destroy path), bits 0-2 and 6 are vehicle state used by `Car::Simulate` | high (bit 4), medium (others) |
@@ -205,6 +205,26 @@ way the extraction script missed): `tankx`, `shipx`, `house`, `church`, `housesi
 `shotRocket`, ...). By name, `tankx` → `TankEPE`, `shipx` → `ShipEPE` and `house` → `Building`
 (**medium**). Follow-up: finish the table and cross-check it against every `simulation` value in
 the merged game config.
+
+Values in the shipped config (2.22 base game and DLC, merged):
+
+- **CfgVehicles:** `soldier` (979 classes), `house` (4897), `thingx` (999), `carx` (359),
+  `invisible` (291, logic), `tankx` (194), `helicopterrtd` (133), `airplanex` (82), `thing`,
+  `shipx`, `flagcarrier`, `church`, `thingeffect`, `animal`, `motorcycle`, `car`, `parachute`,
+  `fire`, `uavpilot`, `fountain`, `lasertarget`, `nvmarker`, `vasi`, `submarinex`, `tank`,
+  `ship`, `helicopter`, `artillerymarker`, `airport`, `paraglide`, `curator`, `headlessclient`,
+  `rope`, `suppresstarget`, `windanomaly`. There is no `helicopterx`, `airplane` or
+  `hovercraftx` class in the base game.
+- **CfgAmmo:** `shotbullet`, `shotmissile`, `shotshell`, `shotmine`, `shotilluminating`,
+  `shotsmokex`, `shotsubmunitions`, `shotdeploy`, `shotrocket`, `shotcm`,
+  `shotdirectionalbomb`, `shotgrenade`, `shotnvgmarker`, `shotboundingmine`, `shotspread`,
+  `shotsmoke`, `shotlaser`, `shottimebomb`, `laserdesignate`.
+- **CfgNonAIVehicles:** `detector`, `camera`, `camconstruct`, `camcurator`, `editcursor`,
+  `objview`, `seagull`, `streetlamp`, `windsock`, `ropesegment`, `road`, `flag`, `proxy*`,
+  `alwayshide`, `alwaysshow`, `magazine`, `maverickweapon`, `pylonpod`, `randomshape`, `temp`.
+
+`a3-world`'s `TypeBank` builds a type for each of the 8320 creatable classes. 23 public
+CfgVehicles classes have no `simulation` (sound sources, `placed_*_IR_grenade`).
 
 ### `createVehicle` — `World_CreateVehicleImpl` `0x1404858c0` — high
 

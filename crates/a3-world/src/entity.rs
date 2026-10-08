@@ -1,8 +1,10 @@
 //! An Entity and what it is created from.
 
+use std::sync::Arc;
+
 use glam::DVec3;
 
-use crate::{ClientId, EntityId, NetworkId, SimulationClass};
+use crate::{ClientId, EntityId, EntityType, NetworkId, SimulationClass};
 
 /// Whether this machine owns an Entity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -20,22 +22,18 @@ impl Locality {
     }
 }
 
-/// What to create: the config class and where.
+/// What to create: a type and where.
 #[derive(Debug, Clone, PartialEq)]
 pub struct EntitySpec {
-    /// The CfgVehicles (or CfgAmmo, CfgNonAIVehicles) class name.
-    pub type_name: String,
-    /// The engine class, from the type's `simulation` value.
-    pub class: SimulationClass,
+    pub entity_type: Arc<EntityType>,
     /// World-space position (ADR 0003).
     pub position: DVec3,
 }
 
 impl EntitySpec {
-    pub fn new(type_name: impl Into<String>, class: SimulationClass, position: DVec3) -> Self {
+    pub fn new(entity_type: Arc<EntityType>, position: DVec3) -> Self {
         Self {
-            type_name: type_name.into(),
-            class,
+            entity_type,
             position,
         }
     }
@@ -47,8 +45,7 @@ pub struct Entity {
     pub(crate) id: EntityId,
     pub(crate) network_id: Option<NetworkId>,
     pub(crate) locality: Locality,
-    pub(crate) type_name: String,
-    pub(crate) class: SimulationClass,
+    pub(crate) entity_type: Arc<EntityType>,
     pub(crate) position: DVec3,
 }
 
@@ -70,12 +67,17 @@ impl Entity {
         self.locality.is_local()
     }
 
+    pub fn entity_type(&self) -> &Arc<EntityType> {
+        &self.entity_type
+    }
+
+    /// The config class name (`typeOf`).
     pub fn type_name(&self) -> &str {
-        &self.type_name
+        self.entity_type.name()
     }
 
     pub fn class(&self) -> SimulationClass {
-        self.class
+        self.entity_type.class()
     }
 
     pub fn position(&self) -> DVec3 {

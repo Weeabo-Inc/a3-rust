@@ -231,6 +231,8 @@ dependencies = [
 name = "a3-world"
 version = "0.1.0"
 dependencies = [
+ "a3-config",
+ "a3-gamedata",
  "a3-pbo",
  "a3-wrp",
  "glam",

@@ -9,7 +9,7 @@ use glam::DVec3;
 const CLIENT: ClientId = ClientId(1_234_567);
 
 fn spec(class: SimulationClass) -> EntitySpec {
-    EntitySpec::new("B_Quadbike_01_F", class, DVec3::new(100.0, 5.0, 200.0))
+    EntitySpec::new(ty("B_Quadbike_01_F", class), DVec3::new(100.0, 5.0, 200.0))
 }
 
 #[test]
@@ -222,4 +222,8 @@ fn engine_kind_questions_follow_the_original_class_tree() {
     assert!(SimulationClass::House.is_kind_of(Building));
     assert!(!SimulationClass::House.is_kind_of(EntityAiFull));
     assert!(SimulationClass::Thing.is_kind_of(EntityAi));
+}
+
+fn ty(name: &str, class: SimulationClass) -> std::sync::Arc<a3_world::EntityType> {
+    std::sync::Arc::new(a3_world::EntityType::new(name, class))
 }
