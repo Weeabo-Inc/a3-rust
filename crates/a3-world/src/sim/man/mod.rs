@@ -8,6 +8,10 @@ use crate::Entity;
 
 use super::StepContext;
 
+mod ground;
+
+pub use ground::{GRAVITY, GroundContact, GroundQuery, MAX_STEP_DOWN, MAX_STEP_UP, Motion};
+
 /// Class-specific state of this family (`ClassState`).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ManState {}

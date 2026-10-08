@@ -104,7 +104,10 @@ pub use groups::{ENEMY_THRESHOLD, Group, GroupId, Side, default_group_name, side
 pub use id::{ClientId, EntityId, NetworkId, ParseNetworkIdError};
 pub use object_ref::ObjectRef;
 pub use query::Near;
-pub use sim::{AirState, ClassState, GroundState, ManState, ProjectileState, SUB_STEP};
+pub use sim::{
+    AirState, ClassState, GRAVITY, GroundContact, GroundQuery, GroundState, MAX_STEP_DOWN,
+    MAX_STEP_UP, ManState, Motion, ProjectileState, SUB_STEP,
+};
 pub use statics::{StaticKey, StaticObject};
 pub use types::{DEFAULT_SIMULATION_STEP, EntityType, Scope, TypeBank, TypeSource};
 pub use world::{Create, POSITION_MAX, POSITION_MIN, Placement, World, WorldEvent};

@@ -34,7 +34,7 @@ use crate::{Create, EntityClass, EntityId, ListKind, SimulationClass, World};
 
 pub use air::AirState;
 pub use ground::GroundState;
-pub use man::ManState;
+pub use man::{GRAVITY, GroundContact, GroundQuery, MAX_STEP_DOWN, MAX_STEP_UP, ManState, Motion};
 pub use projectile::ProjectileState;
 
 use crate::Entity;
