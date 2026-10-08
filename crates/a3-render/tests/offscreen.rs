@@ -1,26 +1,18 @@
 //! Renders tiny offscreen frames and checks a few pixels. Skips when no GPU adapter (not even
 //! a software one) is available.
 
+mod common;
+
+use common::gpu;
+
 use a3_render::texture::{bc1_block, rgb565};
 use a3_render::{
-    Camera, ColorSpace, DrawList, Gpu, MeshData, MeshDraw, Renderer, TextureData, TextureFormat,
+    Camera, ColorSpace, DrawList, MeshData, MeshDraw, Renderer, TextureData, TextureFormat,
 };
 use glam::{DVec3, Vec3};
 
 const SIZE: u32 = 64;
-
-fn gpu() -> Option<Gpu> {
-    match Gpu::headless() {
-        Ok(gpu) => {
-            eprintln!("adapter: {}", gpu.adapter_name());
-            Some(gpu)
-        }
-        Err(e) => {
-            eprintln!("skipping: no GPU adapter ({e})");
-            None
-        }
-    }
-}
+const DT: f32 = 1.0 / 60.0;
 
 fn pixel(image: &[u8], x: u32, y: u32) -> [u8; 4] {
     let i = ((y * SIZE + x) * 4) as usize;
@@ -49,7 +41,7 @@ fn cube_in_front_of_camera_is_drawn_over_the_sky() {
     ));
 
     let image = renderer
-        .render_to_image(&gpu, SIZE, SIZE, &camera, &draws)
+        .render_to_image(&gpu, SIZE, SIZE, &camera, &draws, DT)
         .expect("render");
 
     let [r, g, b, _] = pixel(&image, SIZE / 2, SIZE / 2);
@@ -71,7 +63,7 @@ fn back_faces_are_culled() {
     // Camera inside the cube: every face is seen from behind and culled, so we see sky.
     draws.mesh(MeshDraw::at(cube, camera.position, [1.0, 0.0, 0.0, 1.0]));
     let image = renderer
-        .render_to_image(&gpu, SIZE, SIZE, &camera, &draws)
+        .render_to_image(&gpu, SIZE, SIZE, &camera, &draws, DT)
         .expect("render");
     let [r, _, b, _] = pixel(&image, SIZE / 2, SIZE / 2);
     assert!(b > r, "inside a cube only sky is visible: r {r} b {b}");
@@ -104,7 +96,7 @@ fn bc1_texture_is_sampled() {
         ..MeshDraw::at(cube, camera.position + DVec3::new(0.0, 0.0, 5.0), [1.0; 4])
     });
     let image = renderer
-        .render_to_image(&gpu, SIZE, SIZE, &camera, &draws)
+        .render_to_image(&gpu, SIZE, SIZE, &camera, &draws, DT)
         .expect("render");
     let [r, g, b, _] = pixel(&image, SIZE / 2, SIZE / 2);
     assert!(
@@ -128,7 +120,7 @@ fn debug_text_and_lines_reach_the_output() {
         [1.0, 1.0, 0.0, 1.0],
     );
     let image = renderer
-        .render_to_image(&gpu, SIZE, SIZE, &camera, &draws)
+        .render_to_image(&gpu, SIZE, SIZE, &camera, &draws, DT)
         .expect("render");
     assert_eq!(pixel(&image, 3, 5), [255, 0, 255, 255], "text pixel");
     let centre_column: Vec<[u8; 4]> = (SIZE / 2 - 1..=SIZE / 2)

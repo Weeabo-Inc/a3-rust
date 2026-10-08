@@ -12,7 +12,8 @@ use crate::draw::DrawList;
 ///    ([`Renderer::SCENE_COLOR_FORMAT`](crate::Renderer::SCENE_COLOR_FORMAT)) with the
 ///    reversed-Z depth buffer ([`Renderer::DEPTH_FORMAT`](crate::Renderer::DEPTH_FORMAT), clear
 ///    0, compare `Greater`). Alpha draws come after all opaque draws, without depth writes.
-/// 4. **Post**: the renderer resolves sky and fog into the output target.
+/// 4. **Post**: the renderer adds sky and fog into an HDR image, measures its luminance
+///    (eye adaptation), tonemaps it and anti-aliases it into the output target.
 /// 5. **Ui**: one render pass into the output target (no depth), for overlays and text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Phase {

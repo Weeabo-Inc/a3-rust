@@ -1,4 +1,5 @@
-//! The frame: uniforms, built-in pipelines (meshes, debug lines, text, post) and phase order.
+//! The frame: uniforms, built-in pipelines (meshes, debug lines, text), the post chain and
+//! phase order.
 
 use std::sync::mpsc;
 
@@ -11,7 +12,19 @@ use crate::feature::{Phase, PrepareContext, RenderFeature};
 use crate::font;
 use crate::gpu::{Gpu, RenderError};
 use crate::mesh::{Mesh, MeshData, Vertex};
+use crate::post::{HdrSettings, PostChain};
 use crate::texture::{ColorSpace, GpuTexture, TextureData, TextureError};
+
+/// Eye adaptation state read back from the GPU.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ExposureReadout {
+    /// Luminance the eye is adapted to (RV's aperture analogue).
+    pub adapted_luminance: f32,
+    /// Multiplier applied to scene colour before tonemapping.
+    pub exposure: f32,
+    /// Average scene luminance measured this frame.
+    pub average_luminance: f32,
+}
 
 /// Lighting and atmosphere parameters.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -27,6 +40,8 @@ pub struct RenderSettings {
     pub sky_horizon: Vec3,
     /// Exponential fog density per metre.
     pub fog_density: f32,
+    /// Eye adaptation, tonemapping and anti-aliasing.
+    pub hdr: HdrSettings,
 }
 
 impl Default for RenderSettings {
@@ -38,6 +53,7 @@ impl Default for RenderSettings {
             sky_zenith: Vec3::new(0.12, 0.28, 0.65),
             sky_horizon: Vec3::new(0.62, 0.72, 0.85),
             fog_density: 0.000_08,
+            hdr: HdrSettings::default(),
         }
     }
 }
@@ -133,7 +149,6 @@ struct Targets {
     size: (u32, u32),
     color_view: wgpu::TextureView,
     depth_view: wgpu::TextureView,
-    post_bind_group: wgpu::BindGroup,
 }
 
 /// The renderer: owns uploaded meshes and textures, built-in pipelines and registered features.
@@ -165,8 +180,7 @@ pub struct Renderer {
     glyphs: DynamicBuffer,
     glyph_count: u32,
 
-    post_layout: wgpu::BindGroupLayout,
-    post_pipeline: wgpu::RenderPipeline,
+    post: PostChain,
     targets: Option<Targets>,
 
     features: Vec<Box<dyn RenderFeature>>,
@@ -364,36 +378,7 @@ impl Renderer {
             cache: None,
         });
 
-        let post_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("post layout"),
-            entries: &[
-                texture_entry(0, wgpu::TextureSampleType::Float { filterable: false }),
-                texture_entry(1, wgpu::TextureSampleType::Depth),
-            ],
-        });
-        let post_shader = shader(device, "post", include_str!("../shaders/post.wgsl"));
-        let post_pipeline_layout = pipeline_layout(device, "post", &[&frame_layout, &post_layout]);
-        let post_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("post"),
-            layout: Some(&post_pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &post_shader,
-                entry_point: Some("vs_main"),
-                compilation_options: Default::default(),
-                buffers: &[],
-            },
-            primitive: Default::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &post_shader,
-                entry_point: Some("fs_main"),
-                compilation_options: Default::default(),
-                targets: &[Some(output_format.into())],
-            }),
-            multiview_mask: None,
-            cache: None,
-        });
+        let post = PostChain::new(device, &frame_layout, output_format);
 
         let mut renderer = Renderer {
             output_format,
@@ -417,8 +402,7 @@ impl Renderer {
             font_bind_group,
             glyphs: DynamicBuffer::new(device, "glyphs", wgpu::BufferUsages::VERTEX),
             glyph_count: 0,
-            post_layout,
-            post_pipeline,
+            post,
             targets: None,
             features: Vec::new(),
         };
@@ -483,7 +467,13 @@ impl Renderer {
             .contains(wgpu::Features::TEXTURE_COMPRESSION_BC)
     }
 
+    /// Jump straight to the target exposure on the next frame (after a camera cut).
+    pub fn reset_eye_adaptation(&mut self) {
+        self.post.reset_adaptation();
+    }
+
     /// Render one frame into `target` (of [`output_format`](Self::output_format)) of `size`.
+    /// `dt` is the frame time in seconds, used for eye adaptation.
     pub fn render(
         &mut self,
         gpu: &Gpu,
@@ -491,6 +481,7 @@ impl Renderer {
         size: (u32, u32),
         camera: &Camera,
         draws: &DrawList,
+        dt: f32,
     ) {
         let size = (size.0.max(1), size.1.max(1));
         self.ensure_targets(gpu, size);
@@ -558,25 +549,14 @@ impl Renderer {
                 feature.draw(Phase::Alpha, &mut pass);
             }
         }
-        {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("post"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: target,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                ..Default::default()
-            });
-            pass.set_pipeline(&self.post_pipeline);
-            pass.set_bind_group(0, &self.frame_bind_group, &[]);
-            pass.set_bind_group(1, &targets.post_bind_group, &[]);
-            pass.draw(0..3, 0..1);
-        }
+        self.post.encode(
+            &gpu.queue,
+            &mut encoder,
+            &self.frame_bind_group,
+            target,
+            &self.settings.hdr,
+            dt,
+        );
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("ui"),
@@ -616,6 +596,7 @@ impl Renderer {
         height: u32,
         camera: &Camera,
         draws: &DrawList,
+        dt: f32,
     ) -> Result<Vec<u8>, RenderError> {
         let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("offscreen output"),
@@ -632,7 +613,7 @@ impl Renderer {
             view_formats: &[],
         });
         let view = texture.create_view(&Default::default());
-        self.render(gpu, &view, (width, height), camera, draws);
+        self.render(gpu, &view, (width, height), camera, draws, dt);
         let mut pixels = read_texture(gpu, &texture, width, height)?;
         if matches!(
             self.output_format,
@@ -643,6 +624,27 @@ impl Renderer {
             }
         }
         Ok(pixels)
+    }
+
+    /// Eye adaptation state after the last submitted frame. Blocks until the GPU is done.
+    pub fn read_exposure(&self, gpu: &Gpu) -> Result<ExposureReadout, RenderError> {
+        let buffer = self.post.exposure_state();
+        let staging = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("exposure readback"),
+            size: buffer.size(),
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        let mut encoder = gpu.device.create_command_encoder(&Default::default());
+        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, buffer.size());
+        gpu.queue.submit([encoder.finish()]);
+        let bytes = map_read(gpu, &staging)?;
+        let values: &[f32] = bytemuck::cast_slice(&bytes);
+        Ok(ExposureReadout {
+            adapted_luminance: values[0],
+            exposure: values[1],
+            average_luminance: values[2],
+        })
     }
 
     fn ensure_targets(&mut self, gpu: &Gpu, size: (u32, u32)) {
@@ -670,25 +672,12 @@ impl Renderer {
         let depth = make("scene depth", Self::DEPTH_FORMAT);
         let color_view = color.create_view(&Default::default());
         let depth_view = depth.create_view(&Default::default());
-        let post_bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("post inputs"),
-            layout: &self.post_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&color_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&depth_view),
-                },
-            ],
-        });
+        self.post
+            .resize(&gpu.device, size, &color_view, &depth_view);
         self.targets = Some(Targets {
             size,
             color_view,
             depth_view,
-            post_bind_group,
         });
     }
 
@@ -840,14 +829,14 @@ impl Renderer {
     }
 }
 
-fn shader(device: &wgpu::Device, label: &str, source: &str) -> wgpu::ShaderModule {
+pub(crate) fn shader(device: &wgpu::Device, label: &str, source: &str) -> wgpu::ShaderModule {
     device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some(label),
         source: wgpu::ShaderSource::Wgsl(source.into()),
     })
 }
 
-fn pipeline_layout(
+pub(crate) fn pipeline_layout(
     device: &wgpu::Device,
     label: &str,
     groups: &[&wgpu::BindGroupLayout],
@@ -963,6 +952,16 @@ fn read_texture(
     );
     gpu.queue.submit([encoder.finish()]);
 
+    let data = map_read(gpu, &buffer)?;
+    let mut pixels = Vec::with_capacity((unpadded * height) as usize);
+    for row in data.chunks_exact(padded as usize) {
+        pixels.extend_from_slice(&row[..unpadded as usize]);
+    }
+    Ok(pixels)
+}
+
+/// Map a `MAP_READ` buffer after all submitted work and copy its contents out.
+fn map_read(gpu: &Gpu, buffer: &wgpu::Buffer) -> Result<Vec<u8>, RenderError> {
     let slice = buffer.slice(..);
     let (tx, rx) = mpsc::channel();
     slice.map_async(wgpu::MapMode::Read, move |result| {
@@ -978,11 +977,8 @@ fn read_texture(
     let data = slice
         .get_mapped_range()
         .map_err(|e| RenderError::Readback(e.to_string()))?;
-    let mut pixels = Vec::with_capacity((unpadded * height) as usize);
-    for row in data.chunks_exact(padded as usize) {
-        pixels.extend_from_slice(&row[..unpadded as usize]);
-    }
+    let bytes = data.to_vec();
     drop(data);
     buffer.unmap();
-    Ok(pixels)
+    Ok(bytes)
 }

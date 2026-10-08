@@ -67,7 +67,14 @@ pub fn screenshot(path: &Path, width: u32, height: u32, frames: u64) -> anyhow::
         draws.clear();
         scene.draw(&mut draws);
         scene.overlay(&mut draws, &fps, &adapter, false);
-        image = renderer.render_to_image(&gpu, width, height, &scene.camera, &draws)?;
+        image = renderer.render_to_image(
+            &gpu,
+            width,
+            height,
+            &scene.camera,
+            &draws,
+            FRAME.as_secs_f32(),
+        )?;
         fps.frame(started.elapsed().as_secs_f64());
     }
     write_png(path, width, height, &image)?;

@@ -1,4 +1,4 @@
-// Post-process: sky where nothing was drawn, distance fog elsewhere, then output.
+// Atmosphere: sky where nothing was drawn, distance fog elsewhere, into the HDR target.
 // Reads the HDR scene colour and the reversed-Z depth buffer.
 
 struct Frame {
