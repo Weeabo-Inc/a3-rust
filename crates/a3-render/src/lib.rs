@@ -23,6 +23,7 @@ mod gpu;
 pub mod mesh;
 mod post;
 mod renderer;
+pub mod roads;
 pub mod shadow;
 pub mod texture;
 
