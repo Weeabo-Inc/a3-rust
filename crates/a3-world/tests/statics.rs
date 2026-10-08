@@ -1,7 +1,7 @@
 //! Static objects loaded from a terrain.
 
 use a3_world::{
-    ClientId, EntitySpec, Error, Locality, NetworkId, ObjectRef, SimulationClass, StaticKey, World,
+    ClientId, Error, Locality, NetworkId, ObjectRef, SimulationClass, StaticKey, World,
 };
 use a3_wrp::{Terrain, TerrainBuilder, Transform};
 use glam::{DVec3, Vec3};
@@ -18,7 +18,7 @@ fn terrain() -> Terrain {
 
 fn world(client: ClientId) -> World {
     let mut world = World::new(client);
-    world.load_terrain(&terrain()).unwrap();
+    world.load_terrain(std::sync::Arc::new(terrain())).unwrap();
     world
 }
 
@@ -76,10 +76,7 @@ fn promoted_static_objects_keep_their_network_id() {
     let Some(ObjectRef::Static(key)) = world.find_static(DVec3::ZERO, 1) else {
         panic!()
     };
-    let spec = EntitySpec::new(
-        ty("Land_House_1", SimulationClass::House),
-        DVec3::new(120.0, 0.0, 160.0),
-    );
+    let spec = ty("Land_House_1", SimulationClass::House);
 
     let id = world.promote_static(key, spec.clone()).unwrap();
 
@@ -97,6 +94,49 @@ fn promoted_static_objects_keep_their_network_id() {
 }
 
 #[test]
+fn promoted_static_objects_keep_their_position_and_have_their_own_list() {
+    let mut world = world(ClientId::SERVER);
+    let Some(ObjectRef::Static(key)) = world.find_static(DVec3::ZERO, 1) else {
+        panic!()
+    };
+
+    let id = world
+        .promote_static(key, ty("Land_House_1", SimulationClass::House))
+        .unwrap();
+
+    assert_eq!(
+        world.entity(id).unwrap().position(),
+        DVec3::new(120.0, 0.0, 160.0)
+    );
+    assert_eq!(world.list(a3_world::ListKind::Static), [id]);
+}
+
+#[test]
+fn entities_created_on_the_surface_stand_on_the_terrain() {
+    // Heights rise 1 m per height sample eastwards; samples are 25 m apart (8 samples, 200 m).
+    let terrain = TerrainBuilder::new(4, 8, 50.0)
+        .heights(|i, _| i as f32)
+        .build();
+    let mut world = World::new(ClientId::SERVER);
+    world.load_terrain(std::sync::Arc::new(terrain)).unwrap();
+
+    let id = world
+        .create(
+            a3_world::Create::new(
+                ty("C_Offroad_01_F", SimulationClass::CarX),
+                DVec3::new(50.0, 0.5, 10.0),
+            )
+            .on_surface(),
+        )
+        .unwrap();
+
+    assert_eq!(
+        world.entity(id).unwrap().position(),
+        DVec3::new(50.0, 2.5, 10.0)
+    );
+}
+
+#[test]
 fn on_a_client_promoted_static_objects_are_owned_by_the_server() {
     let mut world = world(ClientId(5000));
     let Some(ObjectRef::Static(key)) = world.find_static(DVec3::ZERO, 0) else {
@@ -104,10 +144,7 @@ fn on_a_client_promoted_static_objects_are_owned_by_the_server() {
     };
 
     let id = world
-        .promote_static(
-            key,
-            EntitySpec::new(ty("Land_Pine", SimulationClass::Thing), DVec3::ZERO),
-        )
+        .promote_static(key, ty("Land_Pine", SimulationClass::Thing))
         .unwrap();
 
     assert_eq!(
@@ -125,21 +162,16 @@ fn a_deleted_promoted_static_object_is_gone_for_good() {
         panic!()
     };
     let id = world
-        .promote_static(
-            key,
-            EntitySpec::new(ty("Land_Pine", SimulationClass::Thing), DVec3::ZERO),
-        )
+        .promote_static(key, ty("Land_Pine", SimulationClass::Thing))
         .unwrap();
 
     world.delete(id);
+    world.flush_deletions();
 
     assert_eq!(world.resolve(key.network_id()), None);
     assert_eq!(world.find_static(DVec3::ZERO, 0), None);
     assert!(matches!(
-        world.promote_static(
-            key,
-            EntitySpec::new(ty("Land_Pine", SimulationClass::Thing), DVec3::ZERO)
-        ),
+        world.promote_static(key, ty("Land_Pine", SimulationClass::Thing)),
         Err(Error::NoSuchStatic(_))
     ));
 }

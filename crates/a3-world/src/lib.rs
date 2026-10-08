@@ -10,7 +10,7 @@
 //!   here, the announced pair when created by another machine. Creator 0 is null, creator 1 is a
 //!   Static object.
 //! - [`Locality`] says whether this machine owns the Entity; [`World::set_locality`] records the
-//!   changes for the `Local` event.
+//!   changes for the `Local` event ([`WorldEvent`]).
 //! - Static objects stay in a compact per-cell table loaded from the WRP and become Entities only
 //!   when promoted.
 //! - [`ObjectRef`] is what SQF `Object` values refer to; it encodes into an `a3-sqf` handle id.
@@ -25,12 +25,12 @@ mod types;
 mod world;
 
 pub use class::{EntityClass, SimulationClass};
-pub use entity::{Entity, EntitySpec, Locality};
+pub use entity::{Entity, ListKind, Locality};
 pub use id::{ClientId, EntityId, NetworkId, ParseNetworkIdError};
 pub use object_ref::ObjectRef;
 pub use statics::{StaticKey, StaticObject};
 pub use types::{DEFAULT_SIMULATION_STEP, EntityType, Scope, TypeBank, TypeSource};
-pub use world::{LocalityChange, World};
+pub use world::{Create, POSITION_MAX, POSITION_MIN, Placement, World, WorldEvent};
 
 /// Errors from World operations.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -45,6 +45,9 @@ pub enum Error {
     /// The Entity was deleted (or never existed).
     #[error("no entity {0:?}")]
     NoSuchEntity(EntityId),
+    /// The type has `scope = 0`; the original refuses: "Cannot create entity with abstract type".
+    #[error("cannot create entity with abstract type {0:?} (scope = private?)")]
+    AbstractType(String),
     /// No class of this name in CfgVehicles, CfgAmmo or CfgNonAIVehicles.
     #[error("no config class {0:?} in CfgVehicles, CfgAmmo or CfgNonAIVehicles")]
     UnknownType(String),

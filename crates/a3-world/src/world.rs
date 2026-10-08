@@ -1,18 +1,79 @@
-//! The World container: the Entity arena, the Network object ID index and Locality changes.
+//! The World container: the Entity arena, the Network object ID index, the simulation lists,
+//! creation, deferred deletion and the events scripts observe.
 
 use std::collections::HashMap;
+use std::sync::Arc;
+
+use a3_wrp::Terrain;
+use glam::DVec3;
 
 use crate::statics::StaticObjects;
 use crate::{
-    ClientId, Entity, EntityId, EntitySpec, Error, Locality, NetworkId, ObjectRef, StaticKey,
+    ClientId, Entity, EntityId, EntityType, Error, ListKind, Locality, NetworkId, ObjectRef, Scope,
+    StaticKey,
 };
 
-/// A change of an Entity's locality on this machine, for the `Local` event handler.
+/// The original clamps created positions to this box on every axis (`World_CreateVehicleImpl`).
+pub const POSITION_MIN: f64 = -50_000.0;
+pub const POSITION_MAX: f64 = 500_000.0;
+
+/// How [`World::create`] places the new Entity vertically.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Placement {
+    /// At `position` exactly; `y` is above sea level (`CAN_COLLIDE`).
+    #[default]
+    Exact,
+    /// `y` is height above the terrain surface at `x`/`z`.
+    OnSurface,
+}
+
+/// A request to create an Entity on this machine (the `createVehicle` path).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Create {
+    pub entity_type: Arc<EntityType>,
+    /// World space (ADR 0003); see [`Placement`] for `y`.
+    pub position: DVec3,
+    pub placement: Placement,
+    /// `createVehicleLocal`: exists on this machine only, without a Network object ID.
+    pub local_only: bool,
+}
+
+impl Create {
+    /// A networked Entity at an exact position.
+    pub fn new(entity_type: Arc<EntityType>, position: DVec3) -> Self {
+        Self {
+            entity_type,
+            position,
+            placement: Placement::Exact,
+            local_only: false,
+        }
+    }
+
+    pub fn on_surface(mut self) -> Self {
+        self.placement = Placement::OnSurface;
+        self
+    }
+
+    pub fn local_only(mut self) -> Self {
+        self.local_only = true;
+        self
+    }
+}
+
+/// Something that happened in the World that scripts or the network layer react to. Drained
+/// with [`World::drain_events`], oldest first.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct LocalityChange {
-    pub entity: EntityId,
-    /// The new state: `true` when this machine became the owner.
-    pub local: bool,
+pub enum WorldEvent {
+    /// An Entity was created on this machine, locally or as the copy of a remote one
+    /// (`EntityCreated` mission event).
+    EntityCreated(EntityId),
+    /// A deletion took effect (at [`World::flush_deletions`]).
+    EntityDeleted {
+        entity: EntityId,
+        network_id: Option<NetworkId>,
+    },
+    /// This machine gained (`local: true`) or lost ownership (`Local` event handler).
+    LocalityChanged { entity: EntityId, local: bool },
 }
 
 #[derive(Debug, Default)]
@@ -22,7 +83,7 @@ struct Slot {
 }
 
 /// The session state of the World: every Entity, indexed by Entity ID and by Network object ID,
-/// plus the Static objects of the terrain.
+/// sorted into simulation lists, plus the terrain and its Static objects.
 #[derive(Debug)]
 pub struct World {
     local_client: ClientId,
@@ -30,9 +91,12 @@ pub struct World {
     slots: Vec<Slot>,
     free: Vec<u32>,
     by_network_id: HashMap<NetworkId, EntityId>,
+    lists: [Vec<EntityId>; ListKind::COUNT],
+    pending_deletions: Vec<EntityId>,
+    terrain: Option<Arc<Terrain>>,
     statics: StaticObjects,
     promoted: HashMap<StaticKey, EntityId>,
-    locality_changes: Vec<LocalityChange>,
+    events: Vec<WorldEvent>,
 }
 
 impl World {
@@ -45,9 +109,12 @@ impl World {
             slots: Vec::new(),
             free: Vec::new(),
             by_network_id: HashMap::new(),
+            lists: Default::default(),
+            pending_deletions: Vec::new(),
+            terrain: None,
             statics: StaticObjects::default(),
             promoted: HashMap::new(),
-            locality_changes: Vec::new(),
+            events: Vec::new(),
         }
     }
 
@@ -56,25 +123,37 @@ impl World {
         self.local_client
     }
 
-    /// Creates a local Entity with a new Network object ID `{local client, serial}`.
-    pub fn spawn(&mut self, spec: EntitySpec) -> EntityId {
-        let network_id = NetworkId::new(self.local_client.0, self.next_serial);
-        self.next_serial += 1;
-        let id = self.insert(spec, Some(network_id), Locality::Local);
-        self.by_network_id.insert(network_id, id);
-        id
-    }
-
-    /// Creates a local Entity that exists on this machine only (`createVehicleLocal`): it has no
-    /// Network object ID.
-    pub fn spawn_local_only(&mut self, spec: EntitySpec) -> EntityId {
-        self.insert(spec, None, Locality::Local)
+    /// Creates a local Entity (`createVehicle` / `createVehicleLocal`).
+    ///
+    /// Refuses abstract types (`scope = 0`). Clamps the position to the original's box, applies
+    /// the [`Placement`], gives a networked Entity a new Network object ID
+    /// `{local client, serial}`, sorts it into its simulation list and records
+    /// [`WorldEvent::EntityCreated`].
+    pub fn create(&mut self, request: Create) -> Result<EntityId, Error> {
+        let ty = request.entity_type;
+        if ty.scope() == Scope::Private {
+            return Err(Error::AbstractType(ty.name().to_owned()));
+        }
+        let mut position = request
+            .position
+            .clamp(DVec3::splat(POSITION_MIN), DVec3::splat(POSITION_MAX));
+        if request.placement == Placement::OnSurface {
+            position.y += self.surface_height(position.x, position.z);
+        }
+        let network_id = (!request.local_only).then(|| {
+            let id = NetworkId::new(self.local_client.0, self.next_serial);
+            self.next_serial += 1;
+            id
+        });
+        let list = ListKind::for_class(ty.class());
+        Ok(self.insert(ty, position, network_id, Locality::Local, list))
     }
 
     /// Creates the copy of an Entity that another machine created and announced.
     pub fn spawn_remote(
         &mut self,
-        spec: EntitySpec,
+        entity_type: Arc<EntityType>,
+        position: DVec3,
         network_id: NetworkId,
         owner: Option<ClientId>,
     ) -> Result<EntityId, Error> {
@@ -84,16 +163,23 @@ impl World {
         if self.by_network_id.contains_key(&network_id) {
             return Err(Error::DuplicateNetworkId(network_id));
         }
-        let id = self.insert(spec, Some(network_id), Locality::Remote { owner });
-        self.by_network_id.insert(network_id, id);
-        Ok(id)
+        let list = ListKind::for_class(entity_type.class());
+        Ok(self.insert(
+            entity_type,
+            position,
+            Some(network_id),
+            Locality::Remote { owner },
+            list,
+        ))
     }
 
-    fn insert(
+    pub(crate) fn insert(
         &mut self,
-        spec: EntitySpec,
+        entity_type: Arc<EntityType>,
+        position: DVec3,
         network_id: Option<NetworkId>,
         locality: Locality,
+        list: ListKind,
     ) -> EntityId {
         let index = match self.free.pop() {
             Some(index) => index,
@@ -107,17 +193,23 @@ impl World {
             index,
             generation: slot.generation,
         };
-        slot.entity = Some(Entity {
+        slot.entity = Some(Entity::new(
             id,
             network_id,
             locality,
-            entity_type: spec.entity_type,
-            position: spec.position,
-        });
+            entity_type,
+            position,
+            list,
+        ));
+        if let Some(net) = network_id {
+            self.by_network_id.insert(net, id);
+        }
+        self.lists[list as usize].push(id);
+        self.events.push(WorldEvent::EntityCreated(id));
         id
     }
 
-    /// The Entity, or `None` if `id` was deleted.
+    /// The Entity, or `None` once its deletion took effect.
     pub fn entity(&self, id: EntityId) -> Option<&Entity> {
         self.slots
             .get(id.index as usize)
@@ -132,34 +224,54 @@ impl World {
             .and_then(|s| s.entity.as_mut())
     }
 
-    /// Every live Entity, in arena order.
+    /// Every Entity, in arena order (Entities scheduled for deletion included).
     pub fn entities(&self) -> impl Iterator<Item = &Entity> {
         self.slots.iter().filter_map(|s| s.entity.as_ref())
     }
 
-    /// Removes an Entity. Returns `false` if it was already gone. Its Entity ID and Network
-    /// object ID stop resolving and are never reused.
+    /// The Entities of one simulation list, in creation order.
+    pub fn list(&self, kind: ListKind) -> &[EntityId] {
+        &self.lists[kind as usize]
+    }
+
+    /// Schedules an Entity for deletion (`deleteVehicle`). Like the original, the Entity stays
+    /// until the end of the step ([`flush_deletions`](Self::flush_deletions)); until then
+    /// [`Entity::is_deleted`] is true. Returns `false` if it is gone or already scheduled.
     pub fn delete(&mut self, id: EntityId) -> bool {
-        let Some(slot) = self.slots.get_mut(id.index as usize) else {
-            return false;
-        };
-        if slot.generation != id.generation {
-            return false;
-        }
-        let Some(entity) = slot.entity.take() else {
-            return false;
-        };
-        slot.generation = slot.generation.wrapping_add(1) & ENTITY_GENERATION_MASK;
-        self.free.push(id.index);
-        if let Some(net) = entity.network_id {
-            self.by_network_id.remove(&net);
-            if let Some(key) = StaticKey::from_network_id(net) {
-                // A deleted Static object stays gone; it does not fall back to the WRP record.
-                self.promoted.remove(&key);
-                self.statics.remove(key);
+        match self.entity_mut(id) {
+            Some(e) if !e.deleted => {
+                e.deleted = true;
+                self.pending_deletions.push(id);
+                true
             }
+            _ => false,
         }
-        true
+    }
+
+    /// Applies the scheduled deletions: their Entity IDs and Network object IDs stop resolving
+    /// and are never reused. Records [`WorldEvent::EntityDeleted`] for each.
+    pub fn flush_deletions(&mut self) {
+        for id in std::mem::take(&mut self.pending_deletions) {
+            let slot = &mut self.slots[id.index as usize];
+            let Some(entity) = slot.entity.take() else {
+                continue;
+            };
+            slot.generation = slot.generation.wrapping_add(1) & ENTITY_GENERATION_MASK;
+            self.free.push(id.index);
+            self.lists[entity.list as usize].retain(|&e| e != id);
+            if let Some(net) = entity.network_id {
+                self.by_network_id.remove(&net);
+                if let Some(key) = StaticKey::from_network_id(net) {
+                    // A deleted Static object stays gone; it does not fall back to the WRP record.
+                    self.promoted.remove(&key);
+                    self.statics.remove(key);
+                }
+            }
+            self.events.push(WorldEvent::EntityDeleted {
+                entity: id,
+                network_id: entity.network_id,
+            });
+        }
     }
 
     /// The Object a Network object ID refers to: an Entity, or a Static object (creator 1).
@@ -177,14 +289,14 @@ impl World {
             .map(ObjectRef::Entity)
     }
 
-    /// Sets an Entity's locality, recording a [`LocalityChange`] when this machine gains or
-    /// loses ownership. An owner change between two other machines is not a change here.
+    /// Sets an Entity's locality, recording [`WorldEvent::LocalityChanged`] when this machine
+    /// gains or loses ownership. An owner change between two other machines is not a change here.
     pub fn set_locality(&mut self, id: EntityId, locality: Locality) -> Result<(), Error> {
         let entity = self.entity_mut(id).ok_or(Error::NoSuchEntity(id))?;
         let was_local = entity.locality.is_local();
         entity.locality = locality;
         if was_local != locality.is_local() {
-            self.locality_changes.push(LocalityChange {
+            self.events.push(WorldEvent::LocalityChanged {
                 entity: id,
                 local: locality.is_local(),
             });
@@ -192,13 +304,27 @@ impl World {
         Ok(())
     }
 
-    /// Takes the locality changes recorded since the last call, oldest first.
-    pub fn drain_locality_changes(&mut self) -> Vec<LocalityChange> {
-        std::mem::take(&mut self.locality_changes)
+    /// Takes the events recorded since the last call, oldest first.
+    pub fn drain_events(&mut self) -> Vec<WorldEvent> {
+        std::mem::take(&mut self.events)
     }
 
-    pub(crate) fn statics_mut(&mut self) -> &mut StaticObjects {
-        &mut self.statics
+    /// The terrain surface height at world `x`/`z` (0 without a terrain).
+    pub fn surface_height(&self, x: f64, z: f64) -> f64 {
+        self.terrain
+            .as_ref()
+            .map_or(0.0, |t| f64::from(t.surface_height(x as f32, z as f32)))
+    }
+
+    /// The loaded terrain.
+    pub fn terrain(&self) -> Option<&Arc<Terrain>> {
+        self.terrain.as_ref()
+    }
+
+    pub(crate) fn set_terrain(&mut self, terrain: Arc<Terrain>, statics: StaticObjects) {
+        self.terrain = Some(terrain);
+        self.statics = statics;
+        self.promoted.clear();
     }
 
     pub(crate) fn statics(&self) -> &StaticObjects {
@@ -212,12 +338,17 @@ impl World {
     pub(crate) fn insert_promoted(
         &mut self,
         key: StaticKey,
-        spec: EntitySpec,
+        entity_type: Arc<EntityType>,
+        position: DVec3,
         locality: Locality,
     ) -> EntityId {
-        let network_id = key.network_id();
-        let id = self.insert(spec, Some(network_id), locality);
-        self.by_network_id.insert(network_id, id);
+        let id = self.insert(
+            entity_type,
+            position,
+            Some(key.network_id()),
+            locality,
+            ListKind::Static,
+        );
         self.promoted.insert(key, id);
         id
     }

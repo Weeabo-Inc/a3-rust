@@ -74,7 +74,8 @@ fn shipped_terrains_load_as_static_objects_findable_by_object_id() {
         let terrain = load(Path::new(&root), pbo, wrp);
         let mut world = World::new(ClientId::SERVER);
 
-        world.load_terrain(&terrain).unwrap();
+        let terrain = std::sync::Arc::new(terrain);
+        world.load_terrain(terrain.clone()).unwrap();
 
         assert_eq!(world.static_object_count(), terrain.objects.len(), "{wrp}");
         let step = (terrain.objects.len() / 2000).max(1);
