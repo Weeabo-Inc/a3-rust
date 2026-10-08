@@ -140,6 +140,7 @@ dependencies = [
 name = "a3-tools"
 version = "0.1.0"
 dependencies = [
+ "a3-audio-formats",
  "a3-config",
  "a3-core",
  "a3-gamedata",

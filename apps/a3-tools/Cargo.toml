@@ -14,6 +14,7 @@ a3-core.workspace = true
 a3-paa.workspace = true
 a3-pbo.workspace = true
 a3-vfs.workspace = true
+a3-audio-formats.workspace = true
 a3-config.workspace = true
 a3-gamedata.workspace = true
 a3-p3d.workspace = true

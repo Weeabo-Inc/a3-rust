@@ -47,7 +47,10 @@ fn every_sound_in_the_install_probes_and_wss_decodes() {
                         decoded += 1;
                         assert_eq!(sound.channels, info.channels, "{path}");
                         assert_eq!(Some(sound.frames() as u64), info.frames, "{path}");
-                        let clipped = sound.samples.iter().any(|&s| s == i16::MAX || s == i16::MIN);
+                        let clipped = sound
+                            .samples
+                            .iter()
+                            .any(|&s| s == i16::MAX || s == i16::MIN);
                         if is_wss {
                             let entry = full_scale.entry(format!("{:?}", info.format)).or_default();
                             entry.0 += usize::from(clipped);
@@ -68,5 +71,8 @@ fn every_sound_in_the_install_probes_and_wss_decodes() {
         eprintln!("FAIL {failure}");
     }
     assert!(failures.is_empty(), "{} failures", failures.len());
-    assert!(kinds.values().sum::<usize>() > 200_000, "expected the full install");
+    assert!(
+        kinds.values().sum::<usize>() > 200_000,
+        "expected the full install"
+    );
 }

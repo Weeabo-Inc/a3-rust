@@ -1,4 +1,4 @@
-//! BI `WSS0` sounds: a 26-byte header and PCM or logarithmic-delta sample data.
+//! BI `WSS0` sounds: a 26-byte header and PCM or delta-coded sample data.
 
 use std::sync::OnceLock;
 
@@ -6,13 +6,14 @@ use crate::{Error, Format, Result, Sound, SoundInfo};
 
 const HEADER_SIZE: usize = 26;
 
-/// How the sample data of a WSS file is stored.
+/// How the sample data of a WSS file is stored (the `u32` after the signature).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WssCompression {
-    /// Plain little-endian PCM (8-bit unsigned, 16- or 24-bit signed).
+    /// 0: plain little-endian PCM (8-bit unsigned, 16- or 24-bit signed).
     None,
-    /// One signed byte per 16-bit sample, a logarithmically quantised delta from the previous
-    /// sample of the same channel (compression value 8).
+    /// 4: two 4-bit codes per byte (high nibble first), each a delta from a fixed table.
+    Delta4,
+    /// 8: one signed byte per 16-bit sample, a logarithmically quantised delta.
     Delta8,
 }
 
@@ -31,6 +32,7 @@ fn header(data: &[u8]) -> Result<Header> {
     // and a trailing u16 that is 0 except in a few files where it holds garbage).
     let compression = match u32_at(4) {
         0 => WssCompression::None,
+        4 => WssCompression::Delta4,
         8 => WssCompression::Delta8,
         other => return Err(Error::Unsupported(format!("WSS compression {other}"))),
     };
@@ -49,7 +51,7 @@ fn header(data: &[u8]) -> Result<Header> {
     }
     let bits_ok = match compression {
         WssCompression::None => matches!(header.bits, 8 | 16 | 24),
-        WssCompression::Delta8 => header.bits == 16,
+        WssCompression::Delta4 | WssCompression::Delta8 => header.bits == 16,
     };
     if !bits_ok {
         return Err(Error::Unsupported(format!(
@@ -61,34 +63,33 @@ fn header(data: &[u8]) -> Result<Header> {
 }
 
 impl Header {
-    /// Bytes of file data per stored sample.
-    fn stored_sample_size(&self) -> usize {
+    /// Whole frames held by `len` bytes of sample data.
+    fn frames(&self, len: usize) -> usize {
+        let channels = usize::from(self.channels);
         match self.compression {
-            WssCompression::None => usize::from(self.bits / 8),
-            WssCompression::Delta8 => 1,
+            WssCompression::None => len / (usize::from(self.bits / 8) * channels),
+            WssCompression::Delta4 => len * 2 / channels,
+            WssCompression::Delta8 => len / channels,
         }
     }
 }
 
 pub fn probe(data: &[u8]) -> Result<SoundInfo> {
     let h = header(data)?;
-    let frame_size = h.stored_sample_size() * usize::from(h.channels);
     Ok(SoundInfo {
         format: Format::Wss(h.compression),
         sample_rate: h.sample_rate,
         channels: h.channels,
         bits_per_sample: Some(h.bits),
-        frames: Some(((data.len() - HEADER_SIZE) / frame_size) as u64),
+        frames: Some(h.frames(data.len() - HEADER_SIZE) as u64),
     })
 }
 
 pub fn decode(data: &[u8]) -> Result<Sound> {
     let h = header(data)?;
     let body = &data[HEADER_SIZE..];
-    // A trailing partial frame (seen in some files) is dropped.
-    let frame_size = h.stored_sample_size() * usize::from(h.channels);
-    let body = &body[..body.len() - body.len() % frame_size];
-    let samples = match (h.compression, h.bits) {
+    let channels = usize::from(h.channels);
+    let mut samples: Vec<i16> = match (h.compression, h.bits) {
         (WssCompression::None, 8) => body.iter().map(|&b| (i16::from(b) - 128) << 8).collect(),
         (WssCompression::None, 16) => body
             .chunks_exact(2)
@@ -98,19 +99,14 @@ pub fn decode(data: &[u8]) -> Result<Sound> {
             .chunks_exact(3)
             .map(|s| i16::from_le_bytes([s[1], s[2]]))
             .collect(),
-        (WssCompression::Delta8, _) => {
-            let channels = usize::from(h.channels);
-            let mut last = vec![0i16; channels];
-            body.iter()
-                .enumerate()
-                .map(|(i, &code)| {
-                    let channel = &mut last[i % channels];
-                    *channel = channel.saturating_add(delta8_step(code));
-                    *channel
-                })
-                .collect()
+        (WssCompression::Delta4, _) => {
+            let codes = body.iter().flat_map(|&b| [b >> 4, b & 0x0f]);
+            accumulate(codes.map(delta4_step), channels)
         }
+        (WssCompression::Delta8, _) => accumulate(body.iter().map(|&c| delta8_step(c)), channels),
     };
+    // A trailing partial frame (seen in some files) is dropped.
+    samples.truncate(h.frames(body.len()) * channels);
     Ok(Sound {
         sample_rate: h.sample_rate,
         channels: h.channels,
@@ -118,20 +114,43 @@ pub fn decode(data: &[u8]) -> Result<Sound> {
     })
 }
 
-/// The sample change a `Delta8` code stands for: `sign(c) * round(32767^(|c| / 127))` for the
-/// code `c` read as a signed byte, and 0 for code 0.
-pub fn delta8_step(code: u8) -> i16 {
-    static TABLE: OnceLock<[i16; 256]> = OnceLock::new();
+/// Sums interleaved deltas per channel. The running sums are unbounded `i32`s; only the output
+/// samples saturate to the `i16` range (as the engine does).
+fn accumulate(deltas: impl Iterator<Item = i32>, channels: usize) -> Vec<i16> {
+    let mut sums = vec![0i32; channels];
+    deltas
+        .enumerate()
+        .map(|(i, delta)| {
+            let sum = &mut sums[i % channels];
+            *sum += delta;
+            (*sum).clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16
+        })
+        .collect()
+}
+
+/// The sample change a `Delta4` nibble stands for.
+pub fn delta4_step(nibble: u8) -> i32 {
+    const TABLE: [i32; 16] = [
+        -8192, -4096, -2048, -1024, -512, -256, -64, 0, 64, 256, 512, 1024, 2048, 4096, 8192, 0,
+    ];
+    TABLE[usize::from(nibble & 0x0f)]
+}
+
+/// The sample change a `Delta8` code stands for. For the code `c` read as a signed byte:
+/// `sign(c) * round(1.0853122^|c|)`, computed in double precision, narrowed to `f32` and rounded
+/// to nearest-even; 0 for `c = 0` and for `c = -128`.
+pub fn delta8_step(code: u8) -> i32 {
+    static TABLE: OnceLock<[i32; 256]> = OnceLock::new();
     TABLE.get_or_init(|| {
+        // About 32767^(1/127); the engine's constant is this f32 (1.0853122...).
+        let base = f64::from(f32::from_bits(0x3f8a_eb83));
         std::array::from_fn(|i| {
             let code = i as u8 as i8;
-            if code == 0 {
+            if code == 0 || code == i8::MIN {
                 return 0;
             }
-            let magnitude = (f64::from(code.unsigned_abs()) * 32767f64.ln() / 127.0)
-                .exp()
-                .round() as i16;
-            magnitude * i16::from(code.signum())
+            let magnitude = (base.powf(f64::from(code.unsigned_abs())) as f32).round_ties_even();
+            magnitude as i32 * i32::from(code.signum())
         })
     })[usize::from(code)]
 }

@@ -23,7 +23,9 @@ pub fn probe(data: &[u8]) -> Result<SoundInfo> {
     let channels = u16::from(id[11]);
     let sample_rate = u32::from_le_bytes([id[12], id[13], id[14], id[15]]);
     if channels == 0 || sample_rate == 0 {
-        return Err(Error::Malformed("Vorbis header with 0 channels or rate".into()));
+        return Err(Error::Malformed(
+            "Vorbis header with 0 channels or rate".into(),
+        ));
     }
     Ok(SoundInfo {
         format: Format::OggVorbis,
