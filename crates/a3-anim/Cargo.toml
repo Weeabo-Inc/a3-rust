@@ -1,0 +1,17 @@
+[package]
+name = "a3-anim"
+description = "Model animation: model.cfg animations, skeletal poses and skinning matrices"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+a3-p3d.workspace = true
+glam.workspace = true
+
+[dev-dependencies]
+a3-vfs.workspace = true
+
+[lints]
+workspace = true
