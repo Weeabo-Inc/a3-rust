@@ -96,6 +96,8 @@ pub struct Odol {
     /// Per LOD: per animation, bone index (or -1) and axis.
     pub anims_to_bones: Vec<Vec<(i32, [f32; 6])>>,
     pub lod_bodies: Vec<Vec<u8>>,
+    /// The obsolete name list after the `frequent` flag.
+    pub obsolete_names: Vec<&'static str>,
 }
 
 impl Odol {
@@ -108,6 +110,7 @@ impl Odol {
             bones_to_anims: vec![],
             anims_to_bones: vec![],
             lod_bodies: vec![empty_lod_body(); resolutions.len()],
+            obsolete_names: vec![],
         }
     }
 
@@ -140,7 +143,7 @@ impl Odol {
             .raw(&[1, 0, 1, 1, 0]) // autocenter .. aicovers
             .floats(&[0.0; 6]) // thermal
             .u8(0)
-            .i32(0)
+            .i32(2) // sbsource = explicit
             .u8(0)
             .f32(f32::MAX)
             .u8(u8::from(self.skeleton.is_some()));
@@ -175,8 +178,11 @@ impl Odol {
             .u8(0)
             .asciiz("house")
             .asciiz("building")
-            .u8(0)
-            .u32(0);
+            .u8(0);
+        b.u32(self.obsolete_names.len() as u32);
+        for name in &self.obsolete_names {
+            b.asciiz(name);
+        }
         for _ in 0..3 {
             for _ in 0..n {
                 b.i32(-1);
@@ -386,7 +392,9 @@ pub fn sample_lod_body() -> Vec<u8> {
     // Sections: [0, 20) texture 0 material 0; [20, 36) texture 1, no material.
     b.u32(2);
     b.u32(0).u32(20).u32(0).u32(2).u32(0).i16(0).u32(0).i32(0);
-    b.u32(2).f32(1.0).f32(-1000.0).u32(0);
+    // Area over texture, then a collimator block (flag 1 + 11 floats).
+    b.u32(2).f32(1.0).f32(-1000.0).u32(1);
+    b.floats(&[0.0, 0.05, 0.0, 0.0, 0.0, 1.0, 0.04, 0.0, -1.0, 0.0, 0.04]);
     b.u32(20)
         .u32(36)
         .u32(0)

@@ -6,8 +6,8 @@ use glam::{Vec2, Vec3, Vec4};
 
 use crate::error::{Error, Result};
 use crate::model::{
-    BoneWeights, Face, Frame, Lod, Material, MaterialStage, NamedSelection, NeighborBones, OdolLod,
-    OdolSection, Proxy, Section, TexGen, Vertices,
+    BoneWeights, Collimator, Face, Frame, Lod, Material, MaterialStage, NamedSelection,
+    NeighborBones, OdolLod, OdolSection, Proxy, Section, TexGen, Vertices,
 };
 use crate::reader::Reader;
 
@@ -93,7 +93,7 @@ pub(crate) fn read(data: &[u8], start: usize, end: usize, lod: &mut Lod) -> Resu
     let rest_start = r.pos();
 
     lod.vertices = vertices(&mut r, vertex_count, &mut odol)?;
-    odol.unknown_u32 = r.u32()?;
+    odol.collimator = collimator(&mut r)?;
     if r.pos() - rest_start != rest_size {
         return Err(r.malformed(format!(
             "vertex block is {} bytes, header says {rest_size}",
@@ -253,15 +253,7 @@ fn section(
     };
     let n = r.count(4)?;
     let area_over_tex = (0..n).map(|_| r.f32()).collect::<Result<_>>()?;
-    let unknown = if r.u32()? != 0 {
-        let mut f = [0.0; 11];
-        for v in &mut f {
-            *v = r.f32()?;
-        }
-        Some(f)
-    } else {
-        None
-    };
+    let collimator = collimator(r)?;
     let index = |i: i64, len: usize, what: &str| -> Result<Option<u32>> {
         match i {
             -1 => Ok(None),
@@ -279,9 +271,23 @@ fn section(
             bone_count,
             material_name,
             area_over_tex,
-            unknown,
+            collimator,
         }),
     })
+}
+
+/// A `u32` presence flag, then (when non-zero) a `CollimatorInfo`.
+fn collimator(r: &mut Reader) -> Result<Option<Collimator>> {
+    if r.u32()? == 0 {
+        return Ok(None);
+    }
+    Ok(Some(Collimator {
+        origin: r.vec3()?,
+        axis_a: r.vec3()?,
+        size_a: r.f32()?,
+        axis_b: r.vec3()?,
+        size_b: r.f32()?,
+    }))
 }
 
 fn named_selection(r: &mut Reader) -> Result<NamedSelection> {

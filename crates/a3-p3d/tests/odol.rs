@@ -4,7 +4,7 @@ mod common;
 
 use a3_p3d::{
     AnimationAxis, AnimationBinding, AnimationTransform, Encoding, Error, LodKind, Model,
-    SourceAddress,
+    ShadowSource, SourceAddress,
 };
 use common::{Odol, OdolAnim};
 use glam::{Mat3, Vec3};
@@ -49,6 +49,8 @@ fn reads_header_model_info_and_lod_table() {
     assert_eq!(info.class, "house");
     assert_eq!(info.damage, "building");
     assert_eq!(info.preferred_shadow_volume_lod, [-1; 4]);
+    assert_eq!(info.shadow_source, ShadowSource::Explicit);
+    assert!(info.obsolete_names.is_empty());
 
     let odol = model.lods[0].odol.as_ref().unwrap();
     assert!(!odol.permanent);
@@ -57,6 +59,16 @@ fn reads_header_model_info_and_lod_table() {
     assert_eq!(summary.face_area, 1.5);
     let memory = model.lods[3].odol.as_ref().unwrap();
     assert!(memory.permanent && memory.summary.is_none());
+}
+
+#[test]
+fn reads_and_keeps_the_obsolete_name_list() {
+    // The engine reads a u32 count and that many strings, then discards them.
+    let mut file = Odol::new(&[1.0, 1e15]);
+    file.obsolete_names = vec!["old", "names"];
+    let model = Model::from_bytes(&file.build()).unwrap();
+    assert_eq!(model.info.obsolete_names, ["old", "names"]);
+    assert_eq!(model.lods.len(), 2);
 }
 
 #[test]

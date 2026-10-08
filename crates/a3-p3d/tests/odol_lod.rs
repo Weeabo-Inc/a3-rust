@@ -66,7 +66,13 @@ fn converts_section_byte_offsets_to_face_ranges() {
     assert_eq!(second.material, None);
     assert_eq!(second.flags, 0x40);
     assert_eq!(lod.section_triangles(second), [1, 4, 2]);
-    assert_eq!(first.odol.as_ref().unwrap().bone_count, 2);
+    let odol = first.odol.as_ref().unwrap();
+    assert_eq!(odol.bone_count, 2);
+    let collimator = odol.collimator.expect("section 0 stores a collimator");
+    assert_eq!(collimator.origin, Vec3::new(0.0, 0.05, 0.0));
+    assert_eq!(collimator.axis_a, Vec3::Z);
+    assert_eq!(collimator.size_b, 0.04);
+    assert_eq!(second.odol.as_ref().unwrap().collimator, None);
 }
 
 #[test]

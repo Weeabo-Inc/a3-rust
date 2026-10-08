@@ -102,7 +102,7 @@ The values match the LOD's own data (e.g. `face_area`).
 | auto_center, lock_auto_center, can_occlude, can_be_occluded, ai_covers | bool ×5 | |
 | ht_min, ht_max, af_max, mf_max, m_fact, t_body | f32 ×6 | thermal imaging _(meanings uncertain)_ |
 | force_not_alpha | bool | |
-| sb_source | i32 | shadow source _(uncertain)_ |
+| sb_source | i32 | model property `sbsource`: 0 `visual`, 1 `shadowvolume`, 2 `explicit`, 3 `none`, 4 `visualex` (strings at `0x104190` ff., set in the MLOD loader `0x15bf6e0`) _(high)_ |
 | prefer_shadow_volume | bool | |
 | shadow_offset | f32 | `f32::MAX` when unset |
 | animated | bool | |
@@ -111,14 +111,14 @@ The values match the LOD's own data (e.g. `face_area`).
 | mass_array | carray\<f32\> | always empty in shipped models |
 | mass, inv_mass, armor, inv_armor, explosion_shielding | f32 ×5 | `inv_mass` = 1e10 when mass is 0 |
 | special LOD indices | i8 ×14 | order: memory, geometry, geometry_simple, geometry_physx, fire_geometry, view_geometry, view_pilot_geometry, view_gunner_geometry, view_commander_geometry (always -1), view_cargo_geometry, land_contact, roadway, paths, hitpoints. _Verified_ against the resolution of the LOD each index points to. Without a 7e15 LOD, fire_geometry points at the View Geometry or, failing that, the Geometry; without a 6e15 LOD, view_geometry points at the Geometry (counts over all shipped models: fire → Fire 2438, View 1299, Geometry 2602; view → View 3482, Geometry 2853). |
-| min_shadow | u32 | mostly equals `lod_count` _(meaning uncertain)_ |
+| min_shadow | u32 | index of the first LOD that casts shadows from visual geometry; `lod_count` = none. On load the engine resets it to `lod_count` if that LOD's resolution is >= 900 and moves it to the first LOD with under 1000 faces ("Too detailed shadow lod ... shadows disabled" over 1999), `0x15da1d0` _(high)_ |
 | can_blend | bool | |
 | class, damage | asciiz ×2 | model properties |
 | frequent | bool | |
-| unknown | u32 | always 0 |
-| preferred_shadow_volume_lod | i32 × lod_count | |
-| preferred_shadow_buffer_lod | i32 × lod_count | |
-| preferred_shadow_buffer_lod_visible | i32 × lod_count | |
+| obsolete_names | u32 n + asciiz × n | read and discarded by the engine (`0x15df800`, v >= 31); always 0 strings shipped _(high)_ |
+| preferred_shadow_volume_lod | i32 × lod_count | per LOD, its named property `shadowLOD` / `shadowVolumeLOD` (a shadow-volume level), -1 if absent (`0x15cfc10`) _(high)_ |
+| preferred_shadow_buffer_lod | i32 × lod_count | per LOD, its property `shadowBufferLOD` _(high)_ |
+| preferred_shadow_buffer_lod_visible | i32 × lod_count | per LOD, its property `shadowBufferLODVis` _(high)_ |
 
 ### Skeleton (_verified_)
 
@@ -190,7 +190,7 @@ u32     n;  { f32 time; u32 k; vec3 pos[k]; }[n] // frames; none shipped
 u32     icon_color, selected_color
 u32     special
 bool    vertex_bone_ref_is_simple
-u32     size_of_rest                             // bytes from here up to and including `unknown_u32` below
+u32     size_of_rest                             // bytes from here up to and including the collimator below
 fill<u32>        clip_flags                      // per vertex
 UVSet            uv0
 u32              uv_set_count                    // including uv0; 1 or 2 in shipped data
@@ -200,8 +200,9 @@ fill<u32>        normals                         // compressed, see below
 carray<STPair>   tangents                        // 8 bytes each, 0 or vertex_count
 carray<BoneWeights> vertex_bone_ref              // 12 bytes each, 0 or vertex_count
 carray<NeighborBones> neighbor_bone_ref          // 32 bytes each, 0 or vertex_count
-u32     unknown_u32                              // 0 in shipped data
-u8      unknown_u8                               // 1 in all but one LOD of a 10 % sample
+u32     has_collimator                           // v >= 66; 0 in shipped data
+if has_collimator: CollimatorInfo                // 11 floats, see below
+u8      unknown_u8                               // v >= 69, engine LOD field +0x271; 1 in all but one LOD of a 10 % sample
 ```
 
 Face winding and quad split: a quad `a b c d` renders as `(a,b,c)` and `(a,c,d)` _(medium)_.
@@ -218,9 +219,18 @@ u32 face_flags
 i32 material                // index into materials, -1 none
 if material == -1: asciiz material_name        // always "" in shipped data
 u32 n; f32 area_over_tex[n]                    // n = 2 in all shipped sections
-u32 unknown                                    // 0 except in one section of a 10 % sample
-if unknown != 0: f32 unknown_floats[11]
+u32 has_collimator                             // v >= 67; 1 in one section of a 10 % sample (a holosight)
+if has_collimator: CollimatorInfo
 ```
+
+`CollimatorInfo` (RTTI class, serialiser `0x8ff640`): `vec3, vec3, f32, vec3, f32`. In the one
+shipped instance (`acco_holosight_khk_f`): a point near the sight, the axis (0, 0, 1), 0.041, the
+axis (0, -1, 0), 0.041: the reticle geometry of a collimator sight _(field meanings
+uncertain)_. The engine also serialises one per LOD (`0x15dc070`).
+
+Face flags checked by the MLOD loader (`0x15bf6e0`, model-level OR of face flags): `0x100` On
+Surface, `0x800` Keep Height (both force software animation), `0x3000` with no `0xf00` bits:
+obsolete decal flags; `0x70000`: obsolete lighting flags (warning). _(high for those bits)_
 
 Section `face_flags` bit `0x10000000` marks the sections of proxy triangles: in a third of the
 `Addons` models, all 1,929 sections that some proxy references have the bit and no other section
@@ -253,7 +263,8 @@ i32    section              // -1 none
 ```
 
 The proxy triangle itself is not kept: the proxy's named selection has no vertices in ODOL.
-Whether the 9 orientation floats are rows or columns is not settled _(medium)_.
+The 12 floats are the engine's `Matrix4`: columns `aside`, `up`, `dir`, then the position
+(column-vector convention, see `model-animations.md`) _(high)_.
 
 ### EmbeddedMaterial (_verified_ for material version 11, the only one shipped)
 
@@ -287,12 +298,15 @@ Three signed 10-bit fields: x = bits 0..9, y = 10..19, z = 20..29 (bits 30..31 z
 value `f` in -512..=511 decodes to `f / 511`. _High_: decoded normals and tangents have length
 1 ± 0.01 (or are zero in degenerate geometry).
 
-**Sign.** Community readers decode `-f / 511`; with that sign the normals of a closed convex model
+**Sign.** The engine decodes `-f / 511` too (`0x15e54b0`, constant `0x1bb3f90`), so its
+normals point inward and its shaders account for that. `a3-p3d` negates them on purpose to
+return outward normals (and tangents). With `-f / 511` the normals of a closed convex model
 (`bottleplastic_v1_f.p3d`: 79 of 79 vertices) point **inward**. With `+f / 511` they point outward,
 and the right-handed cross product `(b - a) x (c - a)` of each face agrees with its vertex normals
 (MX rifle 8144/8144, house 7078/7078, soldier 8697/8775 triangles). So faces are wound clockwise
 seen from outside in the engine's left-handed space (the D3D front-face convention). The reader
-returns outward normals. The tangent sign uses the same rule _(unverified)_.
+returns outward normals; S/T tangents are decoded with the same constant in the engine (also used
+at `0x15e3930`) and negated the same way by `a3-p3d`, so the tangent frame stays consistent.
 
 `STPair` = two compressed vectors (S then T).
 
