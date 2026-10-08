@@ -4,7 +4,9 @@
 //!   Includes an encoder for writing PBOs and rapified files.
 //! - [`lzo`]: LZO1X decompression.
 //! - [`lz4`]: LZ4 block decompression.
-//! - [`read_compressed_block`] / [`read_compressed_array`]: inline blocks in ODOL and WRP streams.
+//! - [`read_compressed_block`]: an inline block in an ODOL or WRP stream.
+//! - [`read_compressed_array`]: the WRP (OPRW) compressed-array rule (raw below 1024 bytes).
+//!   ODOL v73 does **not** follow it: there a flag byte decides (see the table below).
 //!
 //! Every decoder takes the exact output length, as the formats always store it, and reports how
 //! many input bytes the block occupied (or, from a stream, stops right after it).
@@ -15,7 +17,7 @@
 //! |---------------------------------------------------|-----------------------------------------|
 //! | PAA DXT1/DXT5 mipmap, width field top bit set     | LZO1X, ends with its end marker          |
 //! | PAA ARGB4444 / ARGB1555 / AI88 mipmap             | LZSS, [`ChecksumKind::Signed`]           |
-//! | ODOL v73 arrays of 1024+ bytes                    | LZO1X, after a flag byte `0x02` that follows the `u32` element count _(uncertain: flag semantics; a few arrays had no flag byte)_ |
+//! | ODOL v73 arrays (any size)                        | `u32` count, then (if the data is non-empty) a flag byte: `0` raw, `2` LZO1X. The flag decides, not the size. Verified on every shipped model (`a3-p3d`) |
 //! | OPRW (WRP) v25 elevation grid and other arrays    | LZO1X, inline with no flag byte          |
 //! | PBO entries packed with `Cprs`                    | LZSS _(none in the shipped PBOs)_        |
 //!

@@ -5,8 +5,8 @@ use std::io::Read;
 use crate::lzss::ChecksumKind;
 use crate::{Error, lz4, lzo, lzss};
 
-/// Arrays whose data is at least this many bytes are stored compressed in ODOL and WRP; smaller
-/// ones are stored raw.
+/// In WRP (OPRW) files, arrays whose data is at least this many bytes are stored compressed and
+/// smaller ones raw. ODOL v73 does not use this rule: a per-array flag byte decides there.
 pub const COMPRESSED_ARRAY_THRESHOLD: usize = 1024;
 
 /// Which codec a compressed block uses. The file format and its version decide.
@@ -50,11 +50,12 @@ pub fn read_compressed_block<R: Read>(
     }
 }
 
-/// Reads the data of an ODOL/WRP compressed array of `byte_len` bytes: raw when it is shorter
+/// Reads the data of a WRP (OPRW) compressed array of `byte_len` bytes: raw when it is shorter
 /// than [`COMPRESSED_ARRAY_THRESHOLD`], otherwise a [`read_compressed_block`] of `codec`.
 ///
-/// The caller reads any element count or per-array flag byte first; see the crate docs for what
-/// is known about each format version.
+/// Do not use it for ODOL v73: those arrays carry a flag byte (`0` raw, `2` LZO1X) that decides
+/// regardless of size; small arrays can be LZO and large ones raw. The caller reads the element
+/// count first.
 pub fn read_compressed_array<R: Read>(
     mut reader: R,
     byte_len: usize,
