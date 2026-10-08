@@ -1,0 +1,27 @@
+{
+  "mcpServers": {
+    "ghidra-mcp": {
+      "command": "P:\\a3-rust\\.work\\tools\\ghidra-mcp\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "bridge_mcp_ghidra", "--transport", "stdio"],
+      "env": {
+        "GHIDRA_MCP_URL": "http://127.0.0.1:8089"
+      }
+    },
+    "rea": {
+      "command": "C:\\Program Files\\Volta\\node.exe",
+      "args": ["P:\\a3-rust\\.work\\tools\\rea-npm\\node_modules\\rea-agents\\scripts\\rea.mjs", "mcp"],
+      "env": {
+        "REA_ANALYSIS_PROVIDER": "ghidra",
+        "GHIDRA_INSTALL_DIR": "P:\\a3-rust\\.resources\\ghidra_12.1.4_PUBLIC",
+        "JAVA_HOME": "C:\\Program Files\\Java\\jdk-27"
+      }
+    },
+    "ida-pro-mcp": {
+      "command": "P:\\a3-rust\\.work\\venvs\\ida-pro-mcp\\Scripts\\python.exe",
+      "args": ["-m", "ida_pro_mcp.server"],
+      "env": {
+        "IDADIR": "P:\\a3-rust\\.resources\\IDA"
+      }
+    }
+  }
+}
