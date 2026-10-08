@@ -73,3 +73,73 @@ fn last_granule_position(data: &[u8]) -> Option<u64> {
     // -1 marks a page on which no packet ends.
     (value != u64::MAX).then_some(value)
 }
+
+/// Incremental Ogg Vorbis decoding, one Vorbis packet at a time, for streaming long files.
+///
+/// `D` is the whole file (for example a memory-mapped VFS entry); only the decoded audio is
+/// produced in chunks.
+pub struct VorbisStream<D: AsRef<[u8]> + Clone> {
+    data: D,
+    reader: OggStreamReader<Cursor<D>>,
+    total_frames: Option<u64>,
+    emitted_frames: u64,
+}
+
+impl<D: AsRef<[u8]> + Clone> VorbisStream<D> {
+    /// Opens a stream and reads its headers.
+    pub fn new(data: D) -> Result<Self> {
+        let total_frames = last_granule_position(data.as_ref());
+        let reader = OggStreamReader::new(Cursor::new(data.clone()))
+            .map_err(|e| Error::Vorbis(e.to_string()))?;
+        Ok(Self {
+            data,
+            reader,
+            total_frames,
+            emitted_frames: 0,
+        })
+    }
+
+    /// Frames per second.
+    pub fn sample_rate(&self) -> u32 {
+        self.reader.ident_hdr.audio_sample_rate
+    }
+
+    /// Interleaved channels per frame.
+    pub fn channels(&self) -> u16 {
+        u16::from(self.reader.ident_hdr.audio_channels)
+    }
+
+    /// Stream length in frames, from the last page's granule position.
+    pub fn total_frames(&self) -> Option<u64> {
+        self.total_frames
+    }
+
+    /// The next chunk of interleaved 16-bit samples, or `None` at the end of the stream. Chunks
+    /// may be empty; the padding past the stream length is dropped as in [`crate::decode`].
+    pub fn next_chunk(&mut self) -> Result<Option<Vec<i16>>> {
+        let Some(mut packet) = self
+            .reader
+            .read_dec_packet_itl()
+            .map_err(|e| Error::Vorbis(e.to_string()))?
+        else {
+            return Ok(None);
+        };
+        let channels = u64::from(self.channels().max(1));
+        if let Some(total) = self.total_frames {
+            let left = total.saturating_sub(self.emitted_frames);
+            if packet.len() as u64 / channels > left {
+                packet.truncate(usize::try_from(left * channels).unwrap_or(usize::MAX));
+            }
+        }
+        self.emitted_frames += packet.len() as u64 / channels;
+        Ok(Some(packet))
+    }
+
+    /// Restarts the stream from its first frame.
+    pub fn rewind(&mut self) -> Result<()> {
+        self.reader = OggStreamReader::new(Cursor::new(self.data.clone()))
+            .map_err(|e| Error::Vorbis(e.to_string()))?;
+        self.emitted_frames = 0;
+        Ok(())
+    }
+}

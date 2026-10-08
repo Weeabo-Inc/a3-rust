@@ -13,6 +13,7 @@ rust-version = "1.85"
 a3-core = { path = "crates/a3-core" }
 a3-pbo = { path = "crates/a3-pbo" }
 a3-vfs = { path = "crates/a3-vfs" }
+a3-audio = { path = "crates/a3-audio" }
 a3-fonts = { path = "crates/a3-fonts" }
 a3-audio-formats = { path = "crates/a3-audio-formats" }
 a3-signing = { path = "crates/a3-signing" }
@@ -70,6 +71,9 @@ hound = "3.5"
 num-bigint = "0.4"
 # a3-stringtable
 roxmltree = "0.21"
+
+# a3-audio
+cpal = "0.16"
 
 # CLI
 clap = { version = "4", features = ["derive", "env"] }
