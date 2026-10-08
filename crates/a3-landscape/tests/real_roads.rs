@@ -3,7 +3,9 @@
 use std::collections::BTreeMap;
 
 use a3_gamedata::{GameData, LoadOptions};
-use a3_landscape::{RoadNetwork, WorldConfig, world_classes};
+use std::time::Instant;
+
+use a3_landscape::{RoadGraph, RoadNetwork, WorldConfig, world_classes};
 use a3_wrp::Terrain;
 
 #[test]
@@ -68,6 +70,39 @@ fn every_world_road_network_lies_on_its_land() {
             net.library.types.len(),
         );
         assert!(!net.roads.is_empty(), "{class}: no roads");
+
+        let start = Instant::now();
+        let graph = RoadGraph::new(&net);
+        let built = start.elapsed();
+        let junctions = graph.nodes.iter().filter(|n| n.is_junction()).count();
+        let dead_ends = graph.nodes.iter().filter(|n| n.is_dead_end()).count();
+        let continued = graph
+            .continuations
+            .iter()
+            .flatten()
+            .filter(|c| c.is_some())
+            .count();
+        // Every road's own midpoint is on a road, and its nearest centre line is (f32-)0 m away.
+        for (i, road) in net.roads.iter().enumerate() {
+            let mid = (road.points[0] + road.points[1]) * 0.5;
+            let near = graph.nearest(mid, 1.0).unwrap();
+            assert!(near.distance < 0.01, "{class}: road {i}: {}", near.distance);
+            if net.road_type(road).width > 0.0 {
+                assert!(
+                    graph.is_on_road(mid),
+                    "{class}: road {i} midpoint not on road"
+                );
+            }
+            for seg in graph.curve(i) {
+                assert!(seg.point(1.0).distance(seg.p1) < 1e-2);
+            }
+        }
+        eprintln!(
+            "  graph: {} nodes ({junctions} junctions, {dead_ends} dead ends), {continued} of {} road ends continue, {} T attachments, built in {built:.2?}",
+            graph.nodes.len(),
+            2 * net.roads.len(),
+            graph.attachments.len(),
+        );
         assert!(land_share > 0.95, "{class}: roads mostly in the sea?");
         checked += 1;
     }

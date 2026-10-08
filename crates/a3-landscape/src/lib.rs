@@ -15,6 +15,7 @@ mod cfg;
 mod error;
 mod layers;
 mod material;
+mod road_graph;
 mod roads;
 pub mod shapefile;
 mod surfaces;
@@ -23,6 +24,10 @@ mod world;
 pub use error::Error;
 pub use layers::{CellSurface, TerrainLayers};
 pub use material::{LayerMaterial, SurfaceLayer, TextureStage, UvSource, UvTransform};
+pub use road_graph::{
+    Attachment, CONTINUE_DOT, CurveSegment, JOIN_DISTANCE, RoadEnd, RoadGraph, RoadNode, RoadPoint,
+    catmull_rom_controls,
+};
 pub use roads::{EASTING_OFFSET, Road, RoadNetwork, RoadType, RoadsError, RoadsLib, to_world};
 pub use surfaces::{Surface, SurfaceCharacter, Surfaces};
 pub use world::{
