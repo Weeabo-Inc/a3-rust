@@ -1,0 +1,19 @@
+[package]
+name = "a3-preproc"
+description = "The Real Virtuality preprocessor (#define, #include, #if, __EVAL/__EXEC) for configs and SQF"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+a3-core.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+a3-vfs.workspace = true
+proptest.workspace = true
+
+[lints]
+workspace = true
