@@ -24,7 +24,7 @@ then rendering, simulation, UI, and finally multiplayer. See [docs/ROADMAP.md](d
 | Path            | Contents                                                            |
 | --------------- | ------------------------------------------------------------------- |
 | `crates/a3-*`   | Library crates, one per engine area (`a3-core`, later `a3-pbo`, ...) |
-| `apps/*`        | Binaries (`a3-tools` CLI; later the game client and server)         |
+| `apps/*`        | Binaries (`a3-tools` CLI, `arma3` game client; later the server)   |
 | `docs/adr/`     | Architecture decision records                                       |
 | `docs/re/`      | Reverse-engineering notes (addresses, struct layouts, behaviours)   |
 | `docs/ROADMAP.md` | Phases and exit criteria                                          |
@@ -56,6 +56,17 @@ Try the CLI:
 
 ```sh
 cargo run -p a3-tools -- version
+```
+
+Run the client (free-fly debug camera; WASD/Q/Z move, Shift/Ctrl faster, click to mouse-look,
+Tab releases the mouse, Esc quits):
+
+```sh
+cargo run -p arma3 -- --windowed --width 1600 --height 900
+# Render N frames offscreen and save the last as PNG (for checking rendering changes):
+cargo run -p arma3 -- --screenshot .work/shot.png --frames 10
+# Main loop without window or GPU (smoke test):
+cargo run -p arma3 -- --headless --frames 120
 ```
 
 Windows is the primary development platform; CI also builds and tests on Linux.

@@ -256,6 +256,12 @@ The engine object owning the current session state: the Landscape, all Entities,
 and the simulation loop.
 _Avoid_: scene, level
 
+**World space**:
+The engine's coordinate system: left-handed, X east, Y up, Z north, in metres, positions held
+as `f64`. Script positions (`[x, y, z]` in SQF) are east, north, height, so Y and Z swap at the
+script boundary. See ADR 0003.
+_Avoid_: map coordinates, grid coordinates (those are the 100 m map grid references)
+
 **Entity**:
 A dynamic, simulated object in the World (soldier, vehicle, projectile).
 _Avoid_: actor, game object
