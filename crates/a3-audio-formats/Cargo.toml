@@ -1,0 +1,18 @@
+[package]
+name = "a3-audio-formats"
+description = "Decoders for the game's sound files: BI WSS, Ogg Vorbis and WAV"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+hound.workspace = true
+lewton.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+a3-vfs.workspace = true
+
+[lints]
+workspace = true
