@@ -6,6 +6,7 @@
 
 mod engine;
 mod keys;
+mod models;
 mod offline;
 mod scene;
 mod windowed;
@@ -62,6 +63,28 @@ struct Cli {
     /// Distance fog density per metre (default 8e-5, Altis' `hazeBaseBeta0`).
     #[arg(long, value_name = "DENSITY")]
     fog: Option<f32>,
+    /// Objects quality (`VeryLow`, `Low`, `High`, `VeryHigh`, `Ultra`, `Extreme`): LOD
+    /// coefficients and how far small objects stay visible.
+    #[arg(long, default_value = "High")]
+    objects_quality: a3_render_models::ObjectsQuality,
+    /// Object view distance in metres.
+    #[arg(long, default_value_t = 1600.0)]
+    view_distance: f32,
+    /// Model viewer: show one P3D from the game data (VFS path) with an orbit camera.
+    #[arg(long, value_name = "VFS_PATH", conflicts_with = "world")]
+    model: Option<String>,
+    /// Model viewer camera heading in degrees (0 looks north; the default keeps the sun behind).
+    #[arg(long, default_value_t = 325.0, allow_hyphen_values = true)]
+    view_yaw: f32,
+    /// Model viewer camera pitch in degrees (negative looks down).
+    #[arg(long, default_value_t = -20.0, allow_hyphen_values = true)]
+    view_pitch: f32,
+    /// Model viewer: always draw this Resolution LOD (0 = most detailed).
+    #[arg(long, value_name = "N")]
+    lod: Option<usize>,
+    /// `--screenshot`: after loading, time this many frames and print the average.
+    #[arg(long, default_value_t = 0)]
+    bench_frames: u64,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -82,6 +105,16 @@ fn main() -> anyhow::Result<()> {
         world: cli.world.clone(),
         camera: cli.camera,
         fog: cli.fog,
+        objects: models::ObjectOptions {
+            quality: cli.objects_quality,
+            view_distance: cli.view_distance,
+        },
+        model: cli.model.as_ref().map(|path| models::ModelSpec {
+            path: path.clone(),
+            yaw: cli.view_yaw,
+            pitch: cli.view_pitch,
+            lod: cli.lod,
+        }),
     };
     log::info!(
         "a3-rust {} (targets Arma 3 {}), game dir: {:?}",
@@ -99,7 +132,13 @@ fn main() -> anyhow::Result<()> {
         return Ok(());
     }
     if let Some(path) = &cli.screenshot {
-        return offline::screenshot(&engine, path, cli.width, cli.height, cli.frames);
+        return offline::screenshot(
+            &engine,
+            path,
+            (cli.width, cli.height),
+            cli.frames,
+            cli.bench_frames,
+        );
     }
 
     let config = WindowConfig {

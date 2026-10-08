@@ -58,9 +58,9 @@ pub fn run_headless(frames: u64) -> HeadlessReport {
 pub fn screenshot(
     engine: &EngineContext,
     path: &Path,
-    width: u32,
-    height: u32,
+    (width, height): (u32, u32),
     frames: u64,
+    bench_frames: u64,
 ) -> anyhow::Result<()> {
     let gpu = Gpu::headless().context("no GPU adapter for offscreen rendering")?;
     let adapter = gpu.adapter_name();
@@ -71,6 +71,9 @@ pub fn screenshot(
     scene.load(&gpu, &mut renderer);
     if let Some(world) = engine.load_world()? {
         scene.load_world(&gpu, &mut renderer, world, engine.camera);
+    }
+    if let Some((vfs, spec)) = engine.load_model_vfs()? {
+        scene.load_model(&gpu, &mut renderer, vfs, spec);
     }
     let input = InputState::new();
     let mut fps = FpsCounter::default();
@@ -93,7 +96,8 @@ pub fn screenshot(
         )?;
         fps.frame(started.elapsed().as_secs_f64());
         frame += 1;
-        let streaming = scene.terrain_stats().is_some_and(|s| s.pending_tiles > 0);
+        let streaming =
+            scene.terrain_stats().is_some_and(|s| s.pending_tiles > 0) || scene.models_loading();
         if frame >= frames.max(1) && (!streaming || start.elapsed() > STREAMING_TIMEOUT) {
             break image;
         }
@@ -104,9 +108,70 @@ pub fn screenshot(
         fps.frame_ms(),
         scene.terrain_stats()
     );
+    if bench_frames > 0 {
+        bench(
+            &gpu,
+            &mut renderer,
+            &mut scene,
+            (width, height),
+            bench_frames,
+        );
+    }
     write_png(path, width, height, &image)?;
     log::info!("wrote {}", path.display());
     Ok(())
+}
+
+/// Time `frames` frames rendered into an offscreen target (no readback) and print the average.
+fn bench(
+    gpu: &Gpu,
+    renderer: &mut Renderer,
+    scene: &mut DebugScene,
+    size: (u32, u32),
+    frames: u64,
+) {
+    use a3_render::wgpu;
+    let target = gpu.device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bench frame"),
+        size: wgpu::Extent3d {
+            width: size.0,
+            height: size.1,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: renderer.output_format(),
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        view_formats: &[],
+    });
+    let view = target.create_view(&Default::default());
+    let input = InputState::new();
+    let mut draws = DrawList::default();
+    let (mut total, mut worst) = (Duration::ZERO, Duration::ZERO);
+    for _ in 0..frames {
+        let started = Instant::now();
+        scene.update(&input, false, FRAME.as_secs_f64());
+        draws.clear();
+        scene.draw(&mut draws);
+        renderer.render(gpu, &view, size, &scene.camera, &draws, FRAME.as_secs_f32());
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        let t = started.elapsed();
+        total += t;
+        worst = worst.max(t);
+    }
+    let avg = total / frames as u32;
+    println!(
+        "bench: {frames} frames at {}x{}, avg {:.2} ms ({:.0} fps), worst {:.2} ms",
+        size.0,
+        size.1,
+        avg.as_secs_f64() * 1000.0,
+        1.0 / avg.as_secs_f64(),
+        worst.as_secs_f64() * 1000.0
+    );
+    if let Some(stats) = scene.model_stats() {
+        println!("bench: {stats:?}");
+    }
 }
 
 fn write_png(path: &Path, width: u32, height: u32, rgba: &[u8]) -> anyhow::Result<()> {

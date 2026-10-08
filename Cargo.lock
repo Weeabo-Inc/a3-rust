@@ -201,6 +201,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-render-models"
+version = "0.1.0"
+dependencies = [
+ "a3-core",
+ "a3-p3d",
+ "a3-paa",
+ "a3-render",
+ "a3-vfs",
+ "a3-wrp",
+ "bytemuck",
+ "glam",
+ "log",
+ "thiserror 2.0.21",
+ "wgpu",
+]
+
+[[package]]
 name = "a3-rtm"
 version = "0.1.0"
 dependencies = [
@@ -490,6 +507,8 @@ dependencies = [
  "a3-landscape-render",
  "a3-platform",
  "a3-render",
+ "a3-render-models",
+ "a3-vfs",
  "a3-wrp",
  "anyhow",
  "clap",

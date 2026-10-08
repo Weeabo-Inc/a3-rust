@@ -92,6 +92,7 @@ criterion = { version = "0.5", default-features = false }
 a3-input = { path = "crates/a3-input" }
 a3-platform = { path = "crates/a3-platform" }
 a3-render = { path = "crates/a3-render" }
+a3-render-models = { path = "crates/a3-render-models" }
 winit = "0.30"
 gilrs = "0.11"
 wgpu = "30"
