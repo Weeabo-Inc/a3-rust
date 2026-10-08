@@ -184,7 +184,6 @@ impl DebugScene {
         });
     }
 
-    /// Terrain statistics of the loaded World.
     /// Show one model with an orbit camera (the model viewer).
     pub fn load_model(
         &mut self,
@@ -208,6 +207,7 @@ impl DebugScene {
         self.models.as_ref().map(|m| m.lock().stats())
     }
 
+    /// Terrain statistics of the loaded World.
     pub fn terrain_stats(&self) -> Option<TerrainStats> {
         let world = self.world.as_ref()?;
         world.stats.lock().ok().map(|s| *s)
