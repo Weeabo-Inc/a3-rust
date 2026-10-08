@@ -1,13 +1,15 @@
 //! The a3-rust game client.
 //!
-//! For now: a window with a free-fly camera over a procedural test scene, an FPS overlay, a
-//! headless smoke-test mode and an offscreen screenshot mode for checking rendering changes.
+//! For now: a window with a free-fly camera over a procedural test scene or a World's terrain
+//! (`--world altis`), an FPS overlay, a headless smoke-test mode and an offscreen screenshot
+//! mode for checking rendering changes.
 
 mod engine;
 mod keys;
 mod offline;
 mod scene;
 mod windowed;
+mod world;
 
 use std::path::PathBuf;
 
@@ -50,6 +52,16 @@ struct Cli {
     /// Frame count for `--headless` and `--screenshot`.
     #[arg(long, default_value_t = 60)]
     frames: u64,
+    /// Fly over this World's terrain (a CfgWorlds class, e.g. `altis`); needs the game dir.
+    #[arg(long, value_name = "NAME")]
+    world: Option<String>,
+    /// Camera placement over the world: `east,north[,altitude,heading,pitch]` (metres above
+    /// the terrain, degrees).
+    #[arg(long, value_name = "SPEC", requires = "world")]
+    camera: Option<world::CameraSpec>,
+    /// Distance fog density per metre (default 8e-5, Altis' `hazeBaseBeta0`).
+    #[arg(long, value_name = "DENSITY")]
+    fog: Option<f32>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -67,6 +79,9 @@ fn main() -> anyhow::Result<()> {
             preset: cli.keys_preset.clone(),
             profile: cli.profile.clone(),
         },
+        world: cli.world.clone(),
+        camera: cli.camera,
+        fog: cli.fog,
     };
     log::info!(
         "a3-rust {} (targets Arma 3 {}), game dir: {:?}",
@@ -84,7 +99,7 @@ fn main() -> anyhow::Result<()> {
         return Ok(());
     }
     if let Some(path) = &cli.screenshot {
-        return offline::screenshot(path, cli.width, cli.height, cli.frames);
+        return offline::screenshot(&engine, path, cli.width, cli.height, cli.frames);
     }
 
     let config = WindowConfig {
@@ -113,5 +128,14 @@ mod tests {
         let cli = Cli::try_parse_from(["arma3", "--game-dir", "X:/Arma 3", "--windowed"]).unwrap();
         assert_eq!(cli.game_dir, Some(PathBuf::from("X:/Arma 3")));
         assert!(cli.windowed);
+    }
+
+    #[test]
+    fn world_and_camera_flags_are_parsed() {
+        let cli = Cli::try_parse_from(["arma3", "--world", "altis", "--camera", "3600,13000,200"])
+            .unwrap();
+        assert_eq!(cli.world.as_deref(), Some("altis"));
+        assert_eq!(cli.camera.map(|c| c.altitude), Some(200.0));
+        assert!(Cli::try_parse_from(["arma3", "--camera", "1,2"]).is_err());
     }
 }
