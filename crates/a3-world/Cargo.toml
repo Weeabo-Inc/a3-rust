@@ -1,0 +1,19 @@
+[package]
+name = "a3-world"
+description = "The World: Entities, their network identity and Locality, and Static objects"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+a3-wrp.workspace = true
+glam.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+a3-pbo.workspace = true
+proptest.workspace = true
+
+[lints]
+workspace = true
