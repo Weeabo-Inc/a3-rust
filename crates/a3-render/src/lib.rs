@@ -35,7 +35,7 @@ pub use frustum::Frustum;
 pub use gpu::{Gpu, RenderError, WindowSurface};
 pub use mesh::{Mesh, MeshData, Vertex};
 pub use post::{AntiAliasing, BloomSettings, FilmicCurve, HdrSettings, Tonemap};
-pub use renderer::{ExposureReadout, RenderSettings, Renderer};
+pub use renderer::{ExposureReadout, HemisphereAmbient, RenderSettings, Renderer};
 pub use shadow::ShadowSettings;
 pub use texture::{ColorSpace, GpuTexture, TextureData, TextureError, TextureFormat};
 

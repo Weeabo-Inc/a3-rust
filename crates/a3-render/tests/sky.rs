@@ -67,9 +67,11 @@ fn the_sky_feature_fills_the_background_behind_geometry() {
         [1.0, 0.0, 0.0, 1.0],
     ));
     renderer.settings.sun_color = Vec3::ZERO;
-    renderer.settings.ambient_sky = Vec3::splat(1.0);
-    renderer.settings.ambient_mid = Vec3::splat(1.0);
-    renderer.settings.ambient_ground = Vec3::splat(1.0);
+    renderer.settings.hemisphere = Some(a3_render::HemisphereAmbient {
+        sky: Vec3::splat(1.0),
+        mid: Vec3::splat(1.0),
+        ground: Vec3::splat(1.0),
+    });
     let image = renderer
         .render_to_image(&gpu, SIZE, SIZE, &cam, &draws, DT)
         .unwrap();
@@ -122,9 +124,11 @@ fn hemisphere_ambient_lights_up_facing_faces_from_the_sky_and_down_facing_from_t
     renderer.settings.hdr.fixed_exposure = Some(1.0);
     renderer.settings.fog_density = 0.0;
     renderer.settings.sun_color = Vec3::ZERO;
-    renderer.settings.ambient_sky = Vec3::new(0.0, 0.0, 1.0);
-    renderer.settings.ambient_mid = Vec3::new(0.0, 0.0, 0.0);
-    renderer.settings.ambient_ground = Vec3::new(1.0, 0.0, 0.0);
+    renderer.settings.hemisphere = Some(a3_render::HemisphereAmbient {
+        sky: Vec3::new(0.0, 0.0, 1.0),
+        mid: Vec3::new(0.0, 0.0, 0.0),
+        ground: Vec3::new(1.0, 0.0, 0.0),
+    });
     let cube = renderer.upload_mesh(&gpu, &MeshData::cuboid(Vec3::splat(2.0)));
     let cam = camera();
     let mut draws = DrawList::default();
@@ -154,9 +158,11 @@ fn height_fog_is_thicker_low_down() {
     let mut renderer = Renderer::new(&gpu, TextureFormat::Rgba8UnormSrgb);
     renderer.settings.hdr.fixed_exposure = Some(1.0);
     renderer.settings.sun_color = Vec3::ZERO;
-    renderer.settings.ambient_sky = Vec3::ZERO;
-    renderer.settings.ambient_mid = Vec3::ZERO;
-    renderer.settings.ambient_ground = Vec3::ZERO;
+    renderer.settings.hemisphere = Some(a3_render::HemisphereAmbient {
+        sky: Vec3::ZERO,
+        mid: Vec3::ZERO,
+        ground: Vec3::ZERO,
+    });
     renderer.settings.sky_horizon = Vec3::ONE;
     renderer.settings.fog_density = 0.02;
     renderer.settings.fog_decay = 0.05;
@@ -190,9 +196,11 @@ fn linear_fog_hides_everything_past_the_fog_end() {
     renderer.settings.hdr.fixed_exposure = Some(1.0);
     renderer.settings.fog_density = 0.0;
     renderer.settings.sun_color = Vec3::ZERO;
-    renderer.settings.ambient_sky = Vec3::ZERO;
-    renderer.settings.ambient_mid = Vec3::ZERO;
-    renderer.settings.ambient_ground = Vec3::ZERO;
+    renderer.settings.hemisphere = Some(a3_render::HemisphereAmbient {
+        sky: Vec3::ZERO,
+        mid: Vec3::ZERO,
+        ground: Vec3::ZERO,
+    });
     renderer.settings.sky_horizon = Vec3::ONE;
     renderer.settings.fog_start = 20.0;
     renderer.settings.fog_end = 50.0;

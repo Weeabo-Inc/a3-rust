@@ -29,6 +29,18 @@ pub struct ExposureReadout {
     pub average_luminance: f32,
 }
 
+/// RV's hemisphere ambient (`docs/re/render-materials.md` §3.1): light from straight above,
+/// from the horizon and from below.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HemisphereAmbient {
+    /// From above (RV `AE`).
+    pub sky: Vec3,
+    /// From the horizon (RV `AmbientMid`).
+    pub mid: Vec3,
+    /// From below (RV `GE`, ground reflection).
+    pub ground: Vec3,
+}
+
 /// Lighting and atmosphere parameters.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RenderSettings {
@@ -36,14 +48,12 @@ pub struct RenderSettings {
     pub sun_direction: Vec3,
     /// Linear sun colour and intensity.
     pub sun_color: Vec3,
-    /// Ambient light level (scalar, for shaders without hemisphere ambient).
+    /// Ambient light level, used when `hemisphere` is `None` and by shaders without
+    /// hemisphere ambient.
     pub ambient: f32,
-    /// Hemisphere ambient: light from straight above (RV `AE`).
-    pub ambient_sky: Vec3,
-    /// Hemisphere ambient: light from the horizon (RV `AmbientMid`).
-    pub ambient_mid: Vec3,
-    /// Hemisphere ambient: light from below (RV `GE`, ground reflection).
-    pub ambient_ground: Vec3,
+    /// RV's hemisphere ambient (sky, horizon and ground colours); `None` lights evenly with
+    /// `ambient`.
+    pub hemisphere: Option<HemisphereAmbient>,
     pub sky_zenith: Vec3,
     /// Horizon and fog colour.
     pub sky_horizon: Vec3,
@@ -73,9 +83,7 @@ impl Default for RenderSettings {
             sun_direction: Vec3::new(0.45, 0.6, -0.65).normalize(),
             sun_color: Vec3::new(1.0, 0.95, 0.85),
             ambient: 0.3,
-            ambient_sky: Vec3::splat(0.3),
-            ambient_mid: Vec3::splat(0.3),
-            ambient_ground: Vec3::splat(0.3),
+            hemisphere: None,
             sky_zenith: Vec3::new(0.12, 0.28, 0.65),
             sky_horizon: Vec3::new(0.62, 0.72, 0.85),
             fog_density: 0.000_08,
@@ -817,9 +825,15 @@ impl Renderer {
             sky_horizon: s.sky_horizon.extend(s.fog_density).to_array(),
             viewport: [w, h, 1.0 / w, 1.0 / h],
             params: [camera.near, 0.0, 0.0, 0.0],
-            ambient_sky: s.ambient_sky.extend(1.0).to_array(),
-            ambient_mid: s.ambient_mid.extend(1.0).to_array(),
-            ambient_ground: s.ambient_ground.extend(1.0).to_array(),
+            ambient_sky: s
+                .hemisphere
+                .map_or([0.0; 4], |h| h.sky.extend(1.0).to_array()),
+            ambient_mid: s
+                .hemisphere
+                .map_or([0.0; 4], |h| h.mid.extend(1.0).to_array()),
+            ambient_ground: s
+                .hemisphere
+                .map_or([0.0; 4], |h| h.ground.extend(1.0).to_array()),
             fog: [
                 s.fog_density,
                 s.fog_decay,

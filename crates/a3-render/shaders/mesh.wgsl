@@ -135,6 +135,10 @@ fn sun_visibility(relative: vec3<f32>, normal: vec3<f32>) -> f32 {
 // RV's hemisphere ambient (docs/re/render-materials.md): mid at the horizon, towards the
 // sky colour above and the ground colour below.
 fn hemisphere_ambient(n: vec3<f32>) -> vec3<f32> {
+    if frame.ambient_sky.w < 0.5 {
+        // No hemisphere set: even ambient.
+        return vec3<f32>(frame.sun_color.w);
+    }
     if n.y > 0.0 {
         return mix(frame.ambient_mid.rgb, frame.ambient_sky.rgb, saturate(n.y));
     }
