@@ -37,6 +37,15 @@ name = "a3-core"
 version = "0.1.0"
 
 [[package]]
+name = "a3-fonts"
+version = "0.1.0"
+dependencies = [
+ "a3-paa",
+ "a3-vfs",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "a3-gamedata"
 version = "0.1.0"
 dependencies = [
@@ -180,6 +189,7 @@ dependencies = [
  "a3-audio-formats",
  "a3-config",
  "a3-core",
+ "a3-fonts",
  "a3-gamedata",
  "a3-p3d",
  "a3-paa",
