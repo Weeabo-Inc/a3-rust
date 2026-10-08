@@ -91,6 +91,38 @@ behaviour, not a traced one:
 Note that all sources at 0 is not the rest pose: for example a damper `translation` with
 `offset0 = 0.5` already shifts the wheels.
 
+## RTM skeletal poses
+
+Engine functions (RVAs): BMTR serialiser `0x12557a0`; transform decode `0x1212520`; load-time
+conversion `0x124d370`; skeleton pivots `0x1252020` (from `0x1251c20`); keyframe/animation
+blending `0x12114b0`; the pose builder that calls it `0x12105b0`.
+
+- **Bone binding** (high): RTM bone names map to Skeleton bones by name (`0x12531f0`).
+- **Rotation** (high): the decoder `0x1212520` turns the `i16` quaternion (x, y, z, w) / 16384
+  into a `Matrix4` whose columns are the **rows** of the usual quaternion matrix, i.e. the
+  matrix of the conjugate quaternion. `a3-rtm` returns the quaternion as stored; `a3-anim` uses
+  its conjugate.
+- **Pivots** (high): CfgSkeletonParameters `>> skeleton >> pivotsModel` (for
+  `OFP2_ManSkeleton`: `A3\anims_f\data\skeleton\SkeletonPivots.p3d`, not autocentred, pelvis at
+  the origin). Each bone's pivot is the memory point named like the bone; without one it takes
+  the parent's pivot, else the origin. `weaponBone` (same class) names one bone the conversion
+  below skips.
+- **Load conversion** (high): after reading a keyframe, every bound bone except the weapon bone
+  gets its translation replaced by `R * pivot + t` (written back as half floats). So the engine's
+  bone matrix is `[R | R * pivot + t]`. On the shipped soldier its translation behaves like the
+  **posed position of the joint**: trunk and leg bone lengths are kept within a few cm
+  (`crates/a3-anim/tests/real_data.rs`).
+- **Blending** (high): keyframes and simultaneous animations are blended by weighting whole
+  matrices linearly (`0x14035bf70` set-scaled, `0x14035a170` add-scaled); no slerp.
+- **Skinning** (open): `a3-anim` currently skins with `frame * translate(-pivot)` (rest frame at
+  the pivot onto the posed frame). For the soldier idle (`amovpercmstpsraswrfldnon`), the spine,
+  head and legs come out right. The arm chains don't: their posed joints drift apart (forearm
+  0.66 m, hand 1.37 m from the parent joint instead of 0.14–0.16 m), and the root bone `pelvis`
+  carries an extra 0.91 m upward translation. Pure local-rotation and absolute-rotation
+  hierarchies about the pivots give connected bodies but not the rifle stance. The pose builder
+  `0x12105b0` (quaternion path with pivots and a recursion to the parent bone) is the next
+  place to read.
+
 ## Open questions
 
 - The bone walk and the order of several animations on one bone (see above).

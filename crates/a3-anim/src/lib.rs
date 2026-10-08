@@ -7,6 +7,9 @@
 //!   bone parents, plus which bones are hidden.
 //! - [`Pose::skinning`], [`skin`], [`hidden_sections`]: per-LOD-bone matrices, skinned vertex
 //!   positions and normals, and the sections a pose hides.
+//! - [`RtmBinding`], [`SkeletonPivots`], [`blend`], [`Pose::from_rtm_frames`], [`Pose::compose`]:
+//!   RTM bone frames as the engine builds them, blending, and combining with model.cfg
+//!   animations (the final skinning step for RTMs is not confirmed yet; see `skeletal`).
 //!
 //! Conventions (matrix layout, rotation signs, value mapping) follow `arma3_x64.exe`; see
 //! `docs/re/model-animations.md`. All matrices act on column vectors in the engine's model
@@ -14,8 +17,10 @@
 
 mod eval;
 mod pose;
+mod skeletal;
 mod sources;
 
 pub use eval::{AnimTransform, animation_transform, interpolate};
 pub use pose::{Pose, SkinnedVertices, hidden_sections, pose, skin};
+pub use skeletal::{RtmBinding, SkeletonPivots, blend};
 pub use sources::Sources;

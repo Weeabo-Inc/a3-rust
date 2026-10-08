@@ -39,6 +39,21 @@ enum P3dCommand {
         /// repeatable. Sources not given are 0. Hidden sections are left out.
         #[arg(long = "source", value_name = "NAME=VALUE")]
         sources: Vec<String>,
+        /// Pose the skeleton with an RTM animation (file or VFS path).
+        #[arg(long, value_name = "RTM")]
+        rtm: Option<String>,
+        /// Phase of the RTM to sample, 0..1.
+        #[arg(long, default_value_t = 0.0)]
+        phase: f32,
+        /// A second RTM to blend with the first (at its own `--phase`).
+        #[arg(long, value_name = "RTM", requires = "rtm")]
+        blend_rtm: Option<String>,
+        /// Blend weight of `--blend-rtm`, 0..1.
+        #[arg(long, default_value_t = 0.5)]
+        blend: f32,
+        /// The skeleton's pivots model (CfgSkeletonParameters `pivotsModel`) for `--rtm`.
+        #[arg(long, default_value = r"a3\anims_f\data\skeleton\skeletonpivots.p3d")]
+        pivots: String,
     },
 }
 
@@ -61,6 +76,11 @@ pub fn run(args: P3dArgs) -> anyhow::Result<()> {
             out,
             lod,
             sources,
+            rtm,
+            phase,
+            blend_rtm,
+            blend,
+            pivots,
         } => {
             let bytes = load(&model, args.game_dir.as_deref())?;
             let model =
@@ -69,10 +89,44 @@ pub fn run(args: P3dArgs) -> anyhow::Result<()> {
                 bail!("model has {} LODs, no LOD {lod}", model.lods.len());
             };
             let posed;
-            let l = if sources.is_empty() {
+            let l = if sources.is_empty() && rtm.is_none() {
                 l
             } else {
-                posed = posed_lod(&model, lod, &parse_sources(&sources)?);
+                let mut pose = a3_anim::pose(&model, lod, &parse_sources(&sources)?);
+                if let Some(rtm) = rtm {
+                    let skeleton = model
+                        .skeleton
+                        .as_ref()
+                        .context("--rtm needs a model with a skeleton")?;
+                    let read = |path: &str| -> anyhow::Result<a3_rtm::Animation> {
+                        let bytes = load(path, args.game_dir.as_deref())?;
+                        a3_rtm::Animation::read(&bytes).with_context(|| format!("decoding {path}"))
+                    };
+                    let pivots_model = Model::from_bytes(&load(&pivots, args.game_dir.as_deref())?)
+                        .with_context(|| format!("decoding pivots model {pivots}"))?;
+                    let pivots = a3_anim::SkeletonPivots::from_model(skeleton, &pivots_model, "");
+                    let first = read(&rtm)?;
+                    let binding = a3_anim::RtmBinding::new(skeleton, &first);
+                    eprintln!(
+                        "{rtm}: {} of {} skeleton bones animated",
+                        binding.bound(),
+                        skeleton.bones.len()
+                    );
+                    let mut frames = binding.frames(&first, phase, &pivots);
+                    if let Some(second) = blend_rtm {
+                        let other = read(&second)?;
+                        let b = a3_anim::RtmBinding::new(skeleton, &other)
+                            .frames(&other, phase, &pivots);
+                        frames = a3_anim::blend(&frames, &b, blend);
+                    }
+                    let offset = if pivots_model.info.auto_center {
+                        model.info.bounding_center - pivots_model.info.bounding_center
+                    } else {
+                        model.info.bounding_center
+                    };
+                    pose = a3_anim::Pose::from_rtm_frames(&frames, &pivots, offset).compose(&pose);
+                }
+                posed = posed_lod(&model.lods[lod], &pose);
                 &posed
             };
             let mesh = crate::p3d_export::Mesh::from_lod(l);
@@ -102,10 +156,9 @@ fn parse_sources(items: &[String]) -> anyhow::Result<a3_anim::Sources> {
     Ok(sources)
 }
 
-/// A copy of LOD `lod` posed by `sources`: vertices skinned, sections the pose hides removed.
-fn posed_lod(model: &Model, lod: usize, sources: &a3_anim::Sources) -> Lod {
-    let mut l = model.lods[lod].clone();
-    let pose = a3_anim::pose(model, lod, sources);
+/// A copy of `lod` posed by `pose`: vertices skinned, sections the pose hides removed.
+fn posed_lod(lod: &Lod, pose: &a3_anim::Pose) -> Lod {
+    let mut l = lod.clone();
     let skinning = pose.skinning(&l);
     let skinned = a3_anim::skin(&l, &skinning);
     let hidden = a3_anim::hidden_sections(&l, &skinning);

@@ -7,6 +7,7 @@ name = "a3-anim"
 version = "0.1.0"
 dependencies = [
  "a3-p3d",
+ "a3-rtm",
  "a3-vfs",
  "glam",
 ]
