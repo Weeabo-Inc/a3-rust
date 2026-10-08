@@ -9,9 +9,7 @@ use crate::cursor::{Codec, Reader, Writer};
 use crate::geography::Geography;
 use crate::grid::{Grid, GridSize};
 use crate::map::{MapObject, read_map_object, write_map_object};
-use crate::objects::{
-    ObjectInstance, RoadConnection, RoadNet, RoadPart, StaticEntity, Transform,
-};
+use crate::objects::{ObjectInstance, RoadConnection, RoadNet, RoadPart, StaticEntity, Transform};
 use crate::{Error, Result, quadtree};
 
 /// The file signature.
@@ -22,6 +20,10 @@ pub const LATEST_VERSION: u32 = 25;
 
 /// The oldest version the reader accepts (the engine accepts 15 to 25, and 3).
 pub const MIN_VERSION: u32 = 15;
+
+/// The default `soundMapSizeCoef` of CfgWorlds: the sound map has this many cells per land cell
+/// along each axis.
+pub const SOUND_MAP_SIZE_COEF: u32 = 4;
 
 /// Bytes of one object record.
 const OBJECT_SIZE: usize = 60;
@@ -53,7 +55,8 @@ pub struct Terrain {
     pub land_grid: GridSize,
     /// Geography flags per land cell.
     pub geography: Grid<Geography>,
-    /// Sound environment index per land cell.
+    /// Sound environment index per sound cell. The sound grid is
+    /// [`SOUND_MAP_SIZE_COEF`] (a CfgWorlds value) times finer than the land grid.
     pub sound_map: Grid<u8>,
     /// Mountain peaks (positions of local height maxima).
     pub mountains: Vec<Vec3>,
@@ -172,7 +175,11 @@ impl<'a> Parser<'a> {
         if !(MIN_VERSION..=LATEST_VERSION).contains(&version) {
             return Err(Error::UnsupportedVersion(version));
         }
-        let codec = if version >= 23 { Codec::Lzo } else { Codec::Lzss };
+        let codec = if version >= 23 {
+            Codec::Lzo
+        } else {
+            Codec::Lzss
+        };
         Ok(Self { r, version, codec })
     }
 
@@ -184,7 +191,11 @@ impl<'a> Parser<'a> {
     fn terrain(mut self) -> Result<Terrain> {
         let v = self.version;
         let r = &mut self.r;
-        let app_id = if v >= 25 { Some(r.u32("app id")?) } else { None };
+        let app_id = if v >= 25 {
+            Some(r.u32("app id")?)
+        } else {
+            None
+        };
         let land = GridSize::new(r.u32("land grid")?, r.u32("land grid")?);
         let terrain = GridSize::new(r.u32("terrain grid")?, r.u32("terrain grid")?);
         let land_cell_size = r.f32("cell size")?;
@@ -197,15 +208,22 @@ impl<'a> Parser<'a> {
                 return Err(Error::Invalid {
                     offset: 8,
                     what,
-                    detail: format!("{}x{} is not a square power of two", size.width, size.height),
+                    detail: format!(
+                        "{}x{} is not a square power of two",
+                        size.width, size.height
+                    ),
                 });
             }
         }
 
         let geography = quadtree::read::<u16>(r, land)?;
-        let geography = Grid::from_vec(land, geography.into_vec().into_iter().map(Geography).collect())
-            .expect("same size");
-        let sound_map = quadtree::read::<u8>(r, land)?;
+        let geography = Grid::from_vec(
+            land,
+            geography.into_vec().into_iter().map(Geography).collect(),
+        )
+        .expect("same size");
+        let sound_size = sound_map_size(r, land)?;
+        let sound_map = quadtree::read::<u8>(r, sound_size)?;
         let n = r.count(12, "mountain count")?;
         let mountains = (0..n)
             .map(|_| r.vec3("mountain"))
@@ -228,7 +246,9 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
-        let bytes = self.r.compressed(terrain.len() * 4, self.codec, "heightmap")?;
+        let bytes = self
+            .r
+            .compressed(terrain.len() * 4, self.codec, "heightmap")?;
         let heightmap = Grid::from_vec(terrain, le_f32s(&bytes)).expect("length");
         drop(bytes);
 
@@ -299,7 +319,8 @@ impl<'a> Parser<'a> {
         let mut mr = Reader::new(map_block);
         let mut map_objects = Vec::with_capacity(map_size / 16);
         while mr.remaining() > 0 {
-            map_objects.push(read_map_object(&mut mr, self.codec).map_err(|e| e.shifted(map_start))?);
+            map_objects
+                .push(read_map_object(&mut mr, self.codec).map_err(|e| e.shifted(map_start))?);
         }
         if self.r.remaining() != 0 {
             return Err(Error::Invalid {
@@ -335,6 +356,22 @@ impl<'a> Parser<'a> {
             map_objects,
         })
     }
+}
+
+/// The sound map covers `land * soundMapSizeCoef` cells, where the coefficient comes from the
+/// world's config (4 in every shipped world) and is not stored in the file. Picks 4 when the
+/// tree fits it, else the smallest power of two that does.
+fn sound_map_size(r: &Reader<'_>, land: GridSize) -> Result<GridSize> {
+    let depth = quadtree::node_levels(r)?;
+    [SOUND_MAP_SIZE_COEF, 1, 2, 8, 16]
+        .into_iter()
+        .map(|coef| GridSize::new(land.width * coef, land.height * coef))
+        .find(|&size| quadtree::levels_for::<u8>(size) >= depth)
+        .ok_or_else(|| Error::Invalid {
+            offset: r.pos(),
+            what: "sound map",
+            detail: format!("quad tree of {depth} levels is too deep"),
+        })
 }
 
 fn le_u16s(bytes: &[u8]) -> Vec<u16> {
@@ -385,7 +422,10 @@ fn read_roads(r: &mut Reader<'_>, version: u32, land: GridSize) -> Result<RoadNe
                 }
                 let object_id = r.u32("road object id")?;
                 let (model, transform) = if version >= 16 {
-                    (r.asciiz("road model")?, Transform(r.f32s::<12>("road transform")?))
+                    (
+                        r.asciiz("road model")?,
+                        Transform(r.f32s::<12>("road transform")?),
+                    )
                 } else {
                     (String::new(), Transform::from_position(Vec3::ZERO))
                 };
@@ -422,7 +462,6 @@ fn write_terrain(t: &Terrain) -> Result<Vec<u8>> {
         }
     };
     check(t.geography.size() == land, "geography")?;
-    check(t.sound_map.size() == land, "sound map")?;
     check(t.material_indices.size() == land, "material indices")?;
     check(t.persistent.size() == land, "persistent flags")?;
     check(t.subdivision_hints.size() == terrain, "subdivision hints")?;
@@ -456,7 +495,11 @@ fn write_terrain(t: &Terrain) -> Result<Vec<u8>> {
     quadtree::write(&mut w, &t.material_indices);
     if let Some(random) = &t.random {
         check(random.size() == land, "random")?;
-        let raw: Vec<u8> = random.as_slice().iter().flat_map(|v| v.to_le_bytes()).collect();
+        let raw: Vec<u8> = random
+            .as_slice()
+            .iter()
+            .flat_map(|v| v.to_le_bytes())
+            .collect();
         w.compressed(&raw, "random")?;
     }
     if let Some(grass) = &t.grass_approx {
@@ -467,7 +510,12 @@ fn write_terrain(t: &Terrain) -> Result<Vec<u8>> {
         check(prim.size() == terrain, "primary texture")?;
         w.compressed(prim.as_slice(), "primary texture")?;
     }
-    let raw: Vec<u8> = t.heightmap.as_slice().iter().flat_map(|h| h.to_le_bytes()).collect();
+    let raw: Vec<u8> = t
+        .heightmap
+        .as_slice()
+        .iter()
+        .flat_map(|h| h.to_le_bytes())
+        .collect();
     w.compressed(&raw, "heightmap")?;
     w.u32(t.materials.len() as u32);
     for m in &t.materials {
@@ -514,7 +562,10 @@ fn write_terrain(t: &Terrain) -> Result<Vec<u8>> {
     for part in &t.roads.parts {
         let (x, z) = (u32::from(part.cell.0), u32::from(part.cell.1));
         if x >= land.width || z >= land.height {
-            return Err(Error::Write(format!("road part cell {:?} outside the grid", part.cell)));
+            return Err(Error::Write(format!(
+                "road part cell {:?} outside the grid",
+                part.cell
+            )));
         }
         by_cell[(x * land.height + z) as usize].push(part);
     }
@@ -566,7 +617,10 @@ impl TerrainBuilder {
                 land_cell_size: cell_size,
                 land_grid: land_size,
                 geography: Grid::new(land_size),
-                sound_map: Grid::new(land_size),
+                sound_map: Grid::new(GridSize::new(
+                    land * SOUND_MAP_SIZE_COEF,
+                    land * SOUND_MAP_SIZE_COEF,
+                )),
                 mountains: Vec::new(),
                 material_indices: Grid::new(land_size),
                 random: None,
@@ -600,8 +654,11 @@ impl TerrainBuilder {
         t.random = (version < 21).then(|| t.random.take().unwrap_or_else(|| Grid::new(land)));
         t.grass_approx =
             (version >= 18).then(|| t.grass_approx.take().unwrap_or_else(|| Grid::new(heights)));
-        t.primary_texture = (version >= 22)
-            .then(|| t.primary_texture.take().unwrap_or_else(|| Grid::new(heights)));
+        t.primary_texture = (version >= 22).then(|| {
+            t.primary_texture
+                .take()
+                .unwrap_or_else(|| Grid::new(heights))
+        });
         if version < 17 {
             t.materials.iter_mut().for_each(|m| m.major = -1);
         }

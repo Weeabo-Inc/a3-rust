@@ -69,8 +69,8 @@ impl Shape {
         };
         let bits = |n: u32| u32::BITS - n.saturating_sub(1).leading_zeros();
         let levels_for = |total: u32, leaf: u32| total.saturating_sub(leaf).div_ceil(LOG_NODE);
-        let levels = levels_for(bits(size.width), leaf_log.0)
-            .max(levels_for(bits(size.height), leaf_log.1));
+        let levels =
+            levels_for(bits(size.width), leaf_log.0).max(levels_for(bits(size.height), leaf_log.1));
         Self { leaf_log, levels }
     }
 
@@ -79,6 +79,40 @@ impl Shape {
         let up = (self.levels - depth) * LOG_NODE;
         (self.leaf_log.0 + up, self.leaf_log.1 + up)
     }
+}
+
+/// The number of node levels of the quad tree starting at the reader's position (0 when the
+/// root is a leaf), without consuming it.
+pub(crate) fn node_levels(r: &Reader<'_>) -> Result<u32> {
+    fn node(r: &mut Reader<'_>, depth: u32) -> Result<u32> {
+        if depth > 16 {
+            return Err(Error::Invalid {
+                offset: r.pos(),
+                what: "quad tree",
+                detail: "deeper than 16 levels".into(),
+            });
+        }
+        let mask = r.u16("quad tree node")?;
+        let mut deepest = depth;
+        for i in 0..16 {
+            if mask & (1 << i) != 0 {
+                deepest = deepest.max(node(r, depth + 1)?);
+            } else {
+                r.take(4, "quad tree leaf")?;
+            }
+        }
+        Ok(deepest)
+    }
+    let mut r = r.clone();
+    if r.u8("quad tree root flag")? == 0 {
+        return Ok(0);
+    }
+    node(&mut r, 1)
+}
+
+/// The number of node levels a quad tree of `T` over `size` cells has.
+pub(crate) fn levels_for<T: Element>(size: GridSize) -> u32 {
+    Shape::new::<T>(size).levels
 }
 
 /// Reads a quad tree over a grid of `size` cells.
@@ -167,7 +201,14 @@ pub(crate) fn write<T: Element>(w: &mut Writer, grid: &Grid<T>) {
     }
 }
 
-fn write_node<T: Element>(w: &mut Writer, grid: &Grid<T>, shape: Shape, depth: u32, x0: u32, z0: u32) {
+fn write_node<T: Element>(
+    w: &mut Writer,
+    grid: &Grid<T>,
+    shape: Shape,
+    depth: u32,
+    x0: u32,
+    z0: u32,
+) {
     let (cx_log, cz_log) = shape.log_extent(depth + 1);
     let children: Vec<(u32, u32, Option<[u8; 4]>)> = (0..16u32)
         .map(|i| {
@@ -245,7 +286,12 @@ mod tests {
         let rows: Vec<&[u8]> = (0..4).map(|z| grid.row(z)).collect();
         assert_eq!(
             rows,
-            [[1, 2, 5, 6], [3, 4, 7, 8], [9, 10, 13, 14], [11, 12, 15, 16]]
+            [
+                [1, 2, 5, 6],
+                [3, 4, 7, 8],
+                [9, 10, 13, 14],
+                [11, 12, 15, 16]
+            ]
         );
     }
 

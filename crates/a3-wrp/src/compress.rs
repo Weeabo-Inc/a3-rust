@@ -1,4 +1,6 @@
-//! Bridge to the decompression codecs.
+//! Bridge to the decompression codecs of `a3-compress`.
+
+use a3_compress::lzss::ChecksumKind;
 
 use crate::cursor::Codec;
 
@@ -9,7 +11,10 @@ pub(crate) fn decompress(
     input: &[u8],
     len: usize,
 ) -> Result<(Vec<u8>, usize), String> {
-    // Placeholder until `a3-compress` (#8) lands.
-    let _ = (input, len);
-    Err(format!("{codec:?} decompression is not available yet"))
+    let result = match codec {
+        Codec::Lzo => a3_compress::lzo::decompress(input, len),
+        // Pre-23 terrains: LZSS with an unsigned checksum _(uncertain: no such file shipped)_.
+        Codec::Lzss => a3_compress::lzss::decompress(input, len, ChecksumKind::Unsigned),
+    };
+    result.map_err(|e| e.to_string())
 }

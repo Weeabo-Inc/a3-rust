@@ -66,7 +66,10 @@ fn full_terrain() -> Terrain {
             "a3\\plants_f\\tree.p3d",
             Transform::from_position(Vec3::new(10.0, 2.0, 190.0)),
         )
-        .object("a3\\structures_f\\house.p3d", Transform::from_position(Vec3::ONE))
+        .object(
+            "a3\\structures_f\\house.p3d",
+            Transform::from_position(Vec3::ONE),
+        )
         .edit(|t| {
             t.app_id = Some(107_410);
             for (k, g) in t.geography.as_mut_slice().iter_mut().enumerate() {
@@ -224,7 +227,10 @@ fn rejects_other_files() {
 fn truncated_files_fail_cleanly() {
     let bytes = full_terrain().to_bytes().unwrap();
     for len in (0..bytes.len()).step_by(7) {
-        assert!(Terrain::parse(&bytes[..len]).is_err(), "prefix of {len} bytes");
+        assert!(
+            Terrain::parse(&bytes[..len]).is_err(),
+            "prefix of {len} bytes"
+        );
     }
 }
 

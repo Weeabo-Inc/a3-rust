@@ -18,6 +18,7 @@ pub(crate) enum Codec {
     Lzo,
 }
 
+#[derive(Clone)]
 pub(crate) struct Reader<'a> {
     data: &'a [u8],
     pos: usize,
@@ -128,13 +129,12 @@ impl<'a> Reader<'a> {
         }
         let offset = self.pos;
         let input = &self.data[self.pos..];
-        let (out, consumed) = crate::compress::decompress(codec, input, len).map_err(|detail| {
-            Error::Decompress {
+        let (out, consumed) =
+            crate::compress::decompress(codec, input, len).map_err(|detail| Error::Decompress {
                 offset,
                 what,
                 detail,
-            }
-        })?;
+            })?;
         self.pos += consumed;
         Ok(Cow::Owned(out))
     }

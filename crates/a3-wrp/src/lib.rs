@@ -26,9 +26,8 @@ pub use error::{Error, Result};
 pub use geography::Geography;
 pub use grid::{Grid, GridSize};
 pub use map::{MapObject, MapShape, MapShapeKind, MapType};
-pub use objects::{
-    ObjectInstance, RoadConnection, RoadNet, RoadPart, StaticEntity, Transform,
-};
+pub use objects::{ObjectInstance, RoadConnection, RoadNet, RoadPart, StaticEntity, Transform};
 pub use terrain::{
-    LATEST_VERSION, MIN_VERSION, SIGNATURE, Terrain, TerrainBuilder, TerrainMaterial,
+    LATEST_VERSION, MIN_VERSION, SIGNATURE, SOUND_MAP_SIZE_COEF, Terrain, TerrainBuilder,
+    TerrainMaterial,
 };
