@@ -22,6 +22,7 @@ a3-p3d = { path = "crates/a3-p3d" }
 a3-compress = { path = "crates/a3-compress" }
 a3-wrp = { path = "crates/a3-wrp" }
 a3-paa = { path = "crates/a3-paa" }
+a3-landscape = { path = "crates/a3-landscape" }
 
 # Errors
 thiserror = "2"

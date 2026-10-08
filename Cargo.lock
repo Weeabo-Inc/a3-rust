@@ -58,6 +58,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-landscape"
+version = "0.1.0"
+dependencies = [
+ "a3-config",
+ "a3-core",
+ "a3-gamedata",
+ "a3-vfs",
+ "a3-wrp",
+ "glam",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "a3-p3d"
 version = "0.1.0"
 dependencies = [
