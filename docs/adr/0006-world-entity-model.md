@@ -62,9 +62,11 @@ behind this is in `docs/re/world-object-model.md` and `docs/re/net-object-model.
 
 1. Apply received network state to remote Entities.
 2. Projectiles (the original's "fast vehicles"), each at its own step.
-3. Vehicles, agents and other simulated Entities: sub-steps of 0.05 s while the frame dt is
-   above 0.025 s. Each Entity accumulates time and runs `simulate_entity` when the accumulator
-   reaches its simulation step. Physics (rapier) steps inside this phase on the ADR 0002 fixed
+3. Vehicles, agents and other simulated Entities: the frame is cut into 0.025 s sub-steps (the
+   original's catch-up threshold), then the remainder. Each Entity accumulates time and runs one
+   step of its simulation step's length when the accumulator reaches it. The original's
+   interleaved catch-up loop is not reproduced exactly (`world-object-model.md`, issue #117);
+   every Entity covers exactly the frame time. Physics (rapier) steps inside this phase on the ADR 0002 fixed
    accumulator.
 4. Attached positions.
 5. AI.

@@ -97,6 +97,7 @@ pub struct World {
     statics: StaticObjects,
     promoted: HashMap<StaticKey, EntityId>,
     events: Vec<WorldEvent>,
+    time: f64,
 }
 
 impl World {
@@ -115,6 +116,7 @@ impl World {
             statics: StaticObjects::default(),
             promoted: HashMap::new(),
             events: Vec::new(),
+            time: 0.0,
         }
     }
 
@@ -307,6 +309,35 @@ impl World {
     /// Takes the events recorded since the last call, oldest first.
     pub fn drain_events(&mut self) -> Vec<WorldEvent> {
         std::mem::take(&mut self.events)
+    }
+
+    /// Simulated time since the World was created, in seconds (`time`).
+    pub fn time(&self) -> f64 {
+        self.time
+    }
+
+    pub(crate) fn advance_time(&mut self, dt: f64) {
+        self.time += dt;
+    }
+
+    pub(crate) fn slots_mut(&mut self) -> impl Iterator<Item = &mut Option<Entity>> {
+        self.slots.iter_mut().map(|s| &mut s.entity)
+    }
+
+    /// Takes a live Entity out of its slot for its step; [`put_entity`](Self::put_entity)
+    /// returns it. Meanwhile the slot looks empty but keeps its generation.
+    pub(crate) fn take_entity(&mut self, id: EntityId) -> Option<Entity> {
+        let slot = self.slots.get_mut(id.index as usize)?;
+        if slot.generation != id.generation {
+            return None;
+        }
+        slot.entity.take()
+    }
+
+    pub(crate) fn put_entity(&mut self, entity: Entity) {
+        let slot = &mut self.slots[entity.id.index as usize];
+        debug_assert_eq!(slot.generation, entity.id.generation);
+        slot.entity = Some(entity);
     }
 
     /// The terrain surface height at world `x`/`z` (0 without a terrain).
