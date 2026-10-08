@@ -11,12 +11,15 @@
 //! `(x, z, y)`.
 
 mod create;
+mod groups;
 mod query;
 mod state;
 mod transform;
 
 use a3_sqf::{Handle, HandleKind, Host, Registry, Type, TypeSet, Value};
 use glam::DVec3;
+
+pub use groups::{group_arg, group_value, null_group};
 
 use crate::{ClientId, ObjectRef, TypeBank, World};
 
@@ -31,6 +34,7 @@ pub trait WorldHost: Host {
 /// Registers every world command implemented so far.
 pub fn register_world_commands<H: WorldHost>(r: &mut Registry<H>) {
     create::register(r);
+    groups::register(r);
     state::register(r);
     transform::register(r);
     query::register(r);
@@ -84,22 +88,36 @@ pub fn object_arg(world: &World, value: &Value) -> Option<ObjectRef> {
 pub fn is_null_handle(world: &World, handle: Handle) -> bool {
     match handle.kind {
         HandleKind::Object => object_arg(world, &Value::Handle(handle)).is_none(),
+        HandleKind::Group => group_arg(world, &Value::Handle(handle)).is_none(),
         _ => handle.is_null(),
     }
 }
 
-/// [`Host::format_handle`] for a world host, in the original's `str object` style
-/// (`"<address># <id>: <model>"`); null and deleted Objects print `<NULL-object>`.
+/// [`Host::format_handle`] for a world host, in the original's style: units in a group print
+/// `"B Alpha 1-1:1"`, other Objects `"<address># <id>: <model>"`, groups `"B Alpha 1-1"`;
+/// null and deleted ones print `<NULL-object>` / `<NULL-group>`.
 pub fn format_handle(world: &World, handle: Handle) -> String {
-    if handle.kind != HandleKind::Object || is_null_handle(world, handle) {
+    if is_null_handle(world, handle) {
+        return handle.to_string();
+    }
+    if handle.kind == HandleKind::Group {
+        return match group_arg(world, &Value::Handle(handle)) {
+            Some(g) => groups::format_group(world, g),
+            None => handle.to_string(),
+        };
+    }
+    if handle.kind != HandleKind::Object {
         return handle.to_string();
     }
     let Some(object) = object_arg(world, &Value::Handle(handle)) else {
         return handle.to_string();
     };
     let (id, model) = match object {
-        ObjectRef::Entity(e) => {
-            let e = world.entity(e).expect("checked");
+        ObjectRef::Entity(id) => {
+            if let Some(unit) = groups::format_unit(world, id) {
+                return unit;
+            }
+            let e = world.entity(id).expect("checked");
             let model = e.entity_type().model();
             let file = model.rsplit(['\\', '/']).next().unwrap_or(model);
             let file = if file.is_empty() { e.type_name() } else { file };

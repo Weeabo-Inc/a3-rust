@@ -97,6 +97,7 @@ pub struct Entity {
     pub(crate) damage: f32,
     pub(crate) hidden: bool,
     pub(crate) attachment: Option<Attachment>,
+    pub(crate) group: Option<crate::GroupId>,
 }
 
 /// An `attachTo` link: the Entity follows `to` at `offset` in `to`'s model space.
@@ -143,6 +144,7 @@ impl Entity {
             damage: 0.0,
             hidden: false,
             attachment: None,
+            group: None,
         }
     }
 
@@ -293,6 +295,11 @@ impl Entity {
     /// `hideObject`.
     pub fn set_hidden(&mut self, hidden: bool) {
         self.hidden = hidden;
+    }
+
+    /// The group the unit belongs to.
+    pub fn group(&self) -> Option<crate::GroupId> {
+        self.group
     }
 
     /// `attachedTo`.
