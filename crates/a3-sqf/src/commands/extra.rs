@@ -2,9 +2,9 @@
 //! world-independent helpers.
 
 use super::*;
-use crate::code::compile_source;
+
 use crate::lexer::{TokenKind, tokenize};
-use crate::source::SourceFile;
+
 use crate::vm::Ctx;
 
 fn vector(v: &Value) -> Result<[f32; 3], SqfError> {
@@ -172,23 +172,6 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         Ok(parse_simple_array(string(&a)).unwrap_or_else(|| Value::array([])))
     });
     r.unary("forceUnicode", NUM, NOTHING, |_, _| Ok(Value::Nothing));
-    r.unary("compileScript", ARR, CODE, |ctx, a| {
-        let args = array(&a);
-        let args = args.borrow();
-        let path = expect_str(args.first().unwrap_or(&Value::Nil))?.to_string();
-        let is_final = args.get(1).is_some_and(boolean);
-        let prefix = match args.get(2) {
-            Some(Value::String(s)) => s.to_string(),
-            _ => String::new(),
-        };
-        let text = ctx
-            .host
-            .preprocess_file(&path, true)
-            .map_err(SqfError::Generic)?;
-        let src = SourceFile::new(path.as_str(), format!("{prefix}{text}"));
-        let code = compile_source(&src, ctx.table()).map_err(|e| SqfError::Generic(e.message))?;
-        Ok(Value::Code(if is_final { code.to_final() } else { code }))
-    });
 }
 
 fn select_extreme(a: &Value, better: fn(&f32, &f32) -> bool) -> Value {
