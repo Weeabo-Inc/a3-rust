@@ -13,7 +13,7 @@ mod wss;
 use std::time::Duration;
 
 pub use error::{Error, Result};
-pub use wss::{WssCompression, delta8_step};
+pub use wss::{WssCompression, delta4_step, delta8_step};
 
 /// Decoded PCM audio.
 #[derive(Debug, Clone, PartialEq, Eq)]

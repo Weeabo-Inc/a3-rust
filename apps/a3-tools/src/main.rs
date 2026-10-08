@@ -1,10 +1,12 @@
 //! Command-line tools for Arma 3 data formats (PBO, config, PAA, ...).
 
 mod config_cmd;
+mod input;
 mod p3d_cmd;
 mod p3d_export;
 mod paa_cmd;
 mod pbo_cmd;
+mod sound_cmd;
 mod vfs_cmd;
 mod wrp_cmd;
 
@@ -37,6 +39,9 @@ enum Command {
     Wrp(wrp_cmd::WrpArgs),
     /// Inspect and convert PAA/PAC textures and texHeaders.bin.
     Paa(paa_cmd::PaaArgs),
+    /// Inspect and convert sound files (WSS, Ogg Vorbis, WAV).
+    #[command(subcommand)]
+    Sound(sound_cmd::SoundCommand),
 }
 
 #[derive(Subcommand)]
@@ -136,6 +141,7 @@ fn main() -> anyhow::Result<()> {
         Command::Config(cmd) => config_cmd::run(cmd)?,
         Command::P3d(args) => p3d_cmd::run(args)?,
         Command::Wrp(args) => wrp_cmd::run(args)?,
+        Command::Sound(cmd) => sound_cmd::run(cmd)?,
     }
     Ok(())
 }
