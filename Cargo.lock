@@ -203,6 +203,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-pose"
+version = "0.1.0"
+dependencies = [
+ "a3-anim",
+ "a3-p3d",
+ "a3-rtm",
+ "a3-vfs",
+ "glam",
+]
+
+[[package]]
 name = "a3-preproc"
 version = "0.1.0"
 dependencies = [
