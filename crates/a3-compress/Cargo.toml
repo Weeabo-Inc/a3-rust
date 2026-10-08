@@ -1,0 +1,18 @@
+[package]
+name = "a3-compress"
+description = "Decompression codecs used by Real Virtuality 4 file formats (BI LZSS, LZO1X, LZ4)"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+lz4_flex.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+lzokay-native.workspace = true
+
+[lints]
+workspace = true

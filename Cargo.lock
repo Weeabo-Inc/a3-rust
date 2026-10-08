@@ -3,6 +3,16 @@
 version = 4
 
 [[package]]
+name = "a3-compress"
+version = "0.1.0"
+dependencies = [
+ "lz4_flex",
+ "lzokay-native",
+ "proptest",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "a3-config"
 version = "0.1.0"
 dependencies = [
@@ -940,6 +950,21 @@ name = "log"
 version = "0.4.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
+
+[[package]]
+name = "lz4_flex"
+version = "0.11.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "373f5eceeeab7925e0c1098212f2fbc4d416adec9d35051a6ab251e824c1854a"
+
+[[package]]
+name = "lzokay-native"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "792ba667add2798c6c3e988e630f4eb921b5cbc735044825b7111ef1582c8730"
+dependencies = [
+ "thiserror 1.0.69",
+]
 
 [[package]]
 name = "memchr"
