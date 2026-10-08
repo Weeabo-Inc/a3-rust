@@ -17,8 +17,8 @@ use std::time::{Duration, Instant};
 use a3_preproc::Preprocessor;
 use a3_sqf::registry::Registry;
 use a3_sqf::{
-    Code, CommandTable, Form, Handle, HandleKind, Host, Instr, Namespace, Signature, SourceFile,
-    Type, TypeSet, Value, Vm, compile_source,
+    Code, CommandTable, Form, Handle, HandleKind, Host, Instr, Namespace, SourceFile, Type,
+    TypeSet, Value, Vm, compile_source,
 };
 use a3_vfs::Vfs;
 
@@ -26,43 +26,11 @@ use crate::GameData;
 use crate::sqf_config::{ConfigHost, ConfigRoot, register_config_commands};
 use crate::scripts::{VfsHost, VfsResolver, read_text};
 
-/// The engine's command table exported by reverse engineering (name, form, argument types).
-const ENGINE_COMMANDS_TSV: &str = include_str!("../../../docs/re/sqf-commands.tsv");
-
-/// The a3-sqf builtin table plus every command of the engine's command table
-/// (`docs/re/sqf-commands.tsv`), so that every shipped command parses even before it has an
-/// implementation. Types the table does not resolve become "anything".
+/// The command table game scripts compile against: a3-sqf's builtin table, which holds the
+/// engine's full command list (#82), so every shipped command parses even before it has an
+/// implementation.
 pub fn engine_command_table() -> CommandTable {
-    let mut table = CommandTable::builtin();
-    let types = |s: &str| {
-        if s.is_empty() {
-            TypeSet::default()
-        } else {
-            TypeSet::parse(&s.replace('|', ",")).unwrap_or(TypeSet::ANYTHING)
-        }
-    };
-    for line in ENGINE_COMMANDS_TSV.lines().skip(1) {
-        let cols: Vec<&str> = line.split('\t').collect();
-        if cols.len() < 5 {
-            continue;
-        }
-        let form = match cols[1] {
-            "nular" => Form::Nular,
-            "unary" => Form::Unary,
-            "binary" => Form::Binary,
-            _ => continue,
-        };
-        table.declare(
-            cols[0],
-            form,
-            Signature {
-                left: types(cols[2]),
-                right: types(cols[3]),
-                ret: types(cols[4]),
-            },
-        );
-    }
-    table
+    CommandTable::builtin()
 }
 
 /// Commands whose answer is fixed for a headless retail game at the main menu: no displays,

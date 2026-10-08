@@ -11,7 +11,7 @@ use a3_gamedata::{
     error_category, init_functions, read_text, script_vm,
 };
 use a3_preproc::{ErrorKind, IncludeError, Options, Preprocessor};
-use a3_sqf::{CommandTable, Namespace, SqfEvaluator, Sym};
+use a3_sqf::{Namespace, SqfEvaluator, Sym};
 
 fn preprocess_category(kind: &ErrorKind) -> String {
     match kind {
@@ -121,11 +121,7 @@ fn preprocess_and_compile_every_script() {
     );
     print("preprocess .sqf", &scripts);
     print(
-        "compile .sqf (a3-sqf builtin command table)",
-        &compile_all(vfs, &CommandTable::builtin()),
-    );
-    print(
-        "compile .sqf (builtin + docs/re engine command table)",
+        "compile .sqf (engine command table)",
         &compile_all(vfs, &engine_command_table()),
     );
 

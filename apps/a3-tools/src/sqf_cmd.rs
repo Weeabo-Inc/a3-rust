@@ -39,9 +39,6 @@ pub enum SqfCommand {
     },
     /// Preprocess and compile every `.sqf` in the install and print statistics.
     CompileAll {
-        /// Use only a3-sqf's builtin command table (default: plus the engine's full table).
-        #[arg(long)]
-        builtin_table: bool,
         /// Examples printed per error category.
         #[arg(long, default_value_t = 2)]
         examples: usize,
@@ -87,10 +84,7 @@ pub fn run(args: SqfArgs) -> anyhow::Result<()> {
             }
             Ok(())
         }
-        SqfCommand::CompileAll {
-            builtin_table,
-            examples,
-        } => {
+        SqfCommand::CompileAll { examples } => {
             let vfs = a3_vfs::Vfs::new();
             let mut mods = Vec::new();
             if args.all_mods {
@@ -99,12 +93,7 @@ pub fn run(args: SqfArgs) -> anyhow::Result<()> {
             mods.extend(args.mods.iter().cloned());
             let report = vfs.mount_game(&args.game_dir, &mods);
             eprintln!("mounted {} PBOs, {} files", report.pbos, vfs.len());
-            let table = if builtin_table {
-                a3_sqf::CommandTable::builtin()
-            } else {
-                a3_gamedata::engine_command_table()
-            };
-            let stats = a3_gamedata::compile_all(&vfs, &table);
+            let stats = a3_gamedata::compile_all(&vfs, &a3_gamedata::engine_command_table());
             let total = stats.ok + stats.failed();
             println!(
                 "{} / {total} .sqf files compiled ({:.2}%) in {:.2?}",
