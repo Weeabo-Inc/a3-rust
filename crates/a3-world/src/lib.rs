@@ -89,6 +89,7 @@ mod class;
 mod entity;
 mod groups;
 mod id;
+mod moves;
 mod object_ref;
 mod query;
 pub mod script;
@@ -106,7 +107,7 @@ pub use object_ref::ObjectRef;
 pub use query::Near;
 pub use sim::{
     AirState, ClassState, GRAVITY, GroundContact, GroundQuery, GroundState, MAX_STEP_DOWN,
-    MAX_STEP_UP, ManState, Motion, ProjectileState, SUB_STEP,
+    MAX_STEP_UP, ManInput, ManState, Motion, MoveState, ProjectileState, SUB_STEP,
 };
 pub use statics::{StaticKey, StaticObject};
 pub use types::{DEFAULT_SIMULATION_STEP, EntityType, Scope, TypeBank, TypeSource};

@@ -9,14 +9,22 @@ use crate::{ClassState, Entity};
 use super::StepContext;
 
 mod ground;
+mod input;
+mod moves;
 
 pub use ground::{GRAVITY, GroundContact, GroundQuery, MAX_STEP_DOWN, MAX_STEP_UP, Motion};
+pub use input::ManInput;
+pub use moves::MoveState;
 
 /// Class-specific state of this family (`ClassState`).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ManState {
     /// Where his feet are relative to the ground: standing on it, or falling to it.
     pub motion: Motion,
+    /// What he is asked to do, filled by the controller that drives him.
+    pub input: ManInput,
+    /// Which move he plays and how it blends from the previous one.
+    pub moves: MoveState,
 }
 
 pub(crate) fn simulate(entity: &mut Entity, ctx: &mut StepContext<'_>, dt: f64) {
@@ -30,8 +38,12 @@ pub(crate) fn simulate(entity: &mut Entity, ctx: &mut StepContext<'_>, dt: f64) 
     let Some(terrain) = ctx.world().terrain().cloned() else {
         return;
     };
+    let moves = ctx.world().moves().cloned();
     let next = match entity.class_state_mut() {
-        ClassState::Man(man) => man.motion.step(feet, velocity, terrain.as_ref(), dt),
+        ClassState::Man(man) => {
+            man.moves.advance(moves.as_deref(), &man.input, dt);
+            man.motion.step(feet, velocity, terrain.as_ref(), dt)
+        }
         _ => return,
     };
     entity.position = next;

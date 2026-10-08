@@ -4,6 +4,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use a3_moves::Moves;
 use a3_wrp::Terrain;
 use glam::DVec3;
 
@@ -95,6 +96,9 @@ pub struct World {
     lists: [Vec<EntityId>; ListKind::COUNT],
     pending_deletions: Vec<EntityId>,
     terrain: Option<Arc<Terrain>>,
+    /// The moves type every Man of this World is animated by (`CfgMovesMaleSdr`); see
+    /// [`World::load_moves`].
+    pub(crate) moves: Option<Arc<Moves>>,
     statics: StaticObjects,
     promoted: HashMap<StaticKey, EntityId>,
     events: Vec<WorldEvent>,
@@ -115,6 +119,7 @@ impl World {
             lists: Default::default(),
             pending_deletions: Vec::new(),
             terrain: None,
+            moves: None,
             statics: StaticObjects::default(),
             promoted: HashMap::new(),
             events: Vec::new(),
