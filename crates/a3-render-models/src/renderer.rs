@@ -19,10 +19,37 @@ use crate::lod::{LodMetrics, LodSelector, ObjectBounds, ViewScale, Visibility, o
 use crate::material::{AlphaMode, MaterialDesc, Slot};
 use crate::prepare::{ModelVertex, PreparedModel};
 use crate::shader::ShaderFamily;
+use crate::skin::SkinVertex;
 use crate::texture::TextureOptions;
 
 /// Handle of a model registered with [`ModelRenderer::model`].
 pub type ModelId = u32;
+
+/// One bone palette slot: a skinning matrix in the shader's `mat4x4<f32>` storage layout
+/// (four 16-byte columns).
+type PaletteSlot = [[f32; 4]; 4];
+
+/// Bytes of one palette slot.
+const PALETTE_SLOT_BYTES: u64 = 64;
+
+/// The rest pose, the identity matrix: slot 0 of the palette and the padding of every instance
+/// block, which vertices without influences read.
+const REST_SLOT: PaletteSlot = [
+    [1.0, 0.0, 0.0, 0.0],
+    [0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 1.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0],
+];
+
+/// A skinning matrix as a palette slot (column-major, with the translation last).
+fn palette_slot(m: &Affine3A) -> PaletteSlot {
+    [
+        m.x_axis.extend(0.0).to_array(),
+        m.y_axis.extend(0.0).to_array(),
+        m.z_axis.extend(0.0).to_array(),
+        m.translation.extend(1.0).to_array(),
+    ]
+}
 
 /// Tuning of the model renderer.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -96,14 +123,16 @@ struct InstanceRaw {
     rows: [[f32; 4]; 3],
     /// x: fade (1 = fully drawn, less = dithered in), yzw: unused.
     params: [f32; 4],
+    /// First palette slot of the instance's bone matrices (0 = the rest pose).
+    palette: u32,
 }
 
 impl InstanceRaw {
-    const ATTRIBUTES: [wgpu::VertexAttribute; 4] = wgpu::vertex_attr_array![
-        5 => Float32x4, 6 => Float32x4, 7 => Float32x4, 8 => Float32x4
+    const ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![
+        5 => Float32x4, 6 => Float32x4, 7 => Float32x4, 8 => Float32x4, 11 => Uint32
     ];
 
-    fn new(transform: &DAffine3, camera: DVec3, fade: f32) -> InstanceRaw {
+    fn new(transform: &DAffine3, camera: DVec3, fade: f32, palette: u32) -> InstanceRaw {
         let m = transform.matrix3;
         let t = (transform.translation - camera).as_vec3();
         let row = |i: usize| {
@@ -117,6 +146,7 @@ impl InstanceRaw {
         InstanceRaw {
             rows: [row(0), row(1), row(2)],
             params: [fade, 0.0, 0.0, 0.0],
+            palette,
         }
     }
 }
@@ -124,6 +154,36 @@ impl InstanceRaw {
 const VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![
     0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x2, 4 => Float32x4
 ];
+
+/// The bone influences of a skinned vertex (a3-anim's `SkinVertex`): four palette slots and
+/// their weights.
+const SKIN_ATTRIBUTES: [wgpu::VertexAttribute; 2] =
+    wgpu::vertex_attr_array![9 => Uint32x4, 10 => Float32x4];
+
+/// The vertex buffers the model pipelines read: geometry, the instance, and — for the skinned
+/// variants — the bone influences.
+fn vertex_buffers(skinned: bool) -> Vec<Option<wgpu::VertexBufferLayout<'static>>> {
+    let mut buffers = vec![
+        Some(wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<ModelVertex>() as u64,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &VERTEX_ATTRIBUTES,
+        }),
+        Some(wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<InstanceRaw>() as u64,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &InstanceRaw::ATTRIBUTES,
+        }),
+    ];
+    if skinned {
+        buffers.push(Some(wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<SkinVertex>() as u64,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &SKIN_ATTRIBUTES,
+        }));
+    }
+    buffers
+}
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
@@ -145,6 +205,8 @@ struct GpuSection {
 struct GpuLod {
     vertices: wgpu::Buffer,
     indices: wgpu::Buffer,
+    /// The vertices' bone influences, when the model is skinned (see [`crate::skin`]).
+    skin: Option<wgpu::Buffer>,
     sections: Vec<GpuSection>,
     proxies: Vec<(ModelId, Affine3A)>,
 }
@@ -187,6 +249,24 @@ struct DrawCmd {
     lod: u16,
     section: u16,
     instances: Range<u32>,
+    /// Draw through the skinned pipeline, reading the instances' bone influences.
+    skinned: bool,
+}
+
+/// A placed object queued for LOD selection, with the palette slot its bone matrices start at
+/// (0 when the object is not skinned and stays in the rest pose).
+#[derive(Debug, Clone, Copy)]
+struct Root {
+    object: PlacedObject,
+    palette: u32,
+}
+
+/// A skinned instance staged for this frame: a placed object and the slice of the frame's bone
+/// matrices (one per Skeleton bone) its palette is built from.
+#[derive(Debug, Clone)]
+struct SkinnedInstance {
+    object: PlacedObject,
+    bones: Range<u32>,
 }
 
 /// Renders ODOL models: owns the GPU resources, the model and texture cache and the placed
@@ -194,8 +274,11 @@ struct DrawCmd {
 pub struct ModelRenderer {
     pub settings: ModelSettings,
     material_layout: wgpu::BindGroupLayout,
+    palette_layout: wgpu::BindGroupLayout,
     pipelines: [wgpu::RenderPipeline; 3],
+    skinned_pipelines: [wgpu::RenderPipeline; 3],
     shadow_pipelines: [wgpu::RenderPipeline; 2],
+    skinned_shadow_pipelines: [wgpu::RenderPipeline; 2],
     sampler: wgpu::Sampler,
     /// 1x1 stand-ins for empty slots, by texel and sRGB-ness.
     defaults: HashMap<([u8; 4], bool), GpuTexture>,
@@ -213,7 +296,17 @@ pub struct ModelRenderer {
     grid: ObjectGrid,
     dynamic: Vec<PlacedObject>,
 
-    batcher: InstanceBatcher<(Pass, ModelId, u16), InstanceRaw>,
+    skinned: Vec<SkinnedInstance>,
+    skinned_bones: Vec<Affine3A>,
+    /// This frame's bone palette: the identity block, then one block per skinned instance.
+    palette: Vec<PaletteSlot>,
+    palette_buffer: wgpu::Buffer,
+    palette_bind_group: wgpu::BindGroup,
+    /// Slots every palette block is padded to: one past the largest Skeleton among the
+    /// uploaded skinned models, so any slot a vertex indexes is defined.
+    identity_slots: u32,
+
+    batcher: InstanceBatcher<(Pass, ModelId, u16, bool), InstanceRaw>,
     load_requests: Vec<(f64, ModelId)>,
     instance_buffer: wgpu::Buffer,
     draws: [Vec<DrawCmd>; 3],
@@ -262,39 +355,52 @@ impl ModelRenderer {
             label: Some("model material layout"),
             entries: &entries,
         });
+        let palette_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("model bone palette layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: wgpu::BufferSize::new(PALETTE_SLOT_BYTES),
+                },
+                count: None,
+            }],
+        });
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("model"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/model.wgsl").into()),
         });
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("model"),
-            bind_group_layouts: &[Some(frame_layout), Some(&material_layout)],
+            bind_group_layouts: &[
+                Some(frame_layout),
+                Some(&material_layout),
+                Some(&palette_layout),
+            ],
             immediate_size: 0,
         });
-        let pipeline = |alpha: AlphaMode| {
+        let pipeline = |alpha: AlphaMode, skinned: bool| {
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some(match alpha {
-                    AlphaMode::Opaque => "model opaque",
-                    AlphaMode::Test => "model alpha test",
-                    AlphaMode::Blend => "model blend",
+                label: Some(match (alpha, skinned) {
+                    (AlphaMode::Opaque, false) => "model opaque",
+                    (AlphaMode::Test, false) => "model alpha test",
+                    (AlphaMode::Blend, false) => "model blend",
+                    (AlphaMode::Opaque, true) => "model opaque skinned",
+                    (AlphaMode::Test, true) => "model alpha test skinned",
+                    (AlphaMode::Blend, true) => "model blend skinned",
                 }),
                 layout: Some(&layout),
                 vertex: wgpu::VertexState {
                     module: &shader,
-                    entry_point: Some("vs_main"),
+                    entry_point: Some(if skinned {
+                        "vs_main_skinned"
+                    } else {
+                        "vs_main"
+                    }),
                     compilation_options: Default::default(),
-                    buffers: &[
-                        Some(wgpu::VertexBufferLayout {
-                            array_stride: std::mem::size_of::<ModelVertex>() as u64,
-                            step_mode: wgpu::VertexStepMode::Vertex,
-                            attributes: &VERTEX_ATTRIBUTES,
-                        }),
-                        Some(wgpu::VertexBufferLayout {
-                            array_stride: std::mem::size_of::<InstanceRaw>() as u64,
-                            step_mode: wgpu::VertexStepMode::Instance,
-                            attributes: &InstanceRaw::ATTRIBUTES,
-                        }),
-                    ],
+                    buffers: &vertex_buffers(skinned),
                 },
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
@@ -326,35 +432,34 @@ impl ModelRenderer {
             })
         };
         let pipelines = [
-            pipeline(AlphaMode::Opaque),
-            pipeline(AlphaMode::Test),
-            pipeline(AlphaMode::Blend),
+            pipeline(AlphaMode::Opaque, false),
+            pipeline(AlphaMode::Test, false),
+            pipeline(AlphaMode::Blend, false),
         ];
-        let shadow_pipeline = |alpha: AlphaMode| {
+        let skinned_pipelines = [
+            pipeline(AlphaMode::Opaque, true),
+            pipeline(AlphaMode::Test, true),
+            pipeline(AlphaMode::Blend, true),
+        ];
+        let shadow_pipeline = |alpha: AlphaMode, skinned: bool| {
             let alpha_test = alpha == AlphaMode::Test;
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some(if alpha_test {
-                    "model shadow alpha test"
-                } else {
-                    "model shadow"
+                label: Some(match (alpha_test, skinned) {
+                    (false, false) => "model shadow",
+                    (true, false) => "model shadow alpha test",
+                    (false, true) => "model shadow skinned",
+                    (true, true) => "model shadow alpha test skinned",
                 }),
                 layout: Some(&layout),
                 vertex: wgpu::VertexState {
                     module: &shader,
-                    entry_point: Some("vs_shadow"),
+                    entry_point: Some(if skinned {
+                        "vs_shadow_skinned"
+                    } else {
+                        "vs_shadow"
+                    }),
                     compilation_options: Default::default(),
-                    buffers: &[
-                        Some(wgpu::VertexBufferLayout {
-                            array_stride: std::mem::size_of::<ModelVertex>() as u64,
-                            step_mode: wgpu::VertexStepMode::Vertex,
-                            attributes: &VERTEX_ATTRIBUTES,
-                        }),
-                        Some(wgpu::VertexBufferLayout {
-                            array_stride: std::mem::size_of::<InstanceRaw>() as u64,
-                            step_mode: wgpu::VertexStepMode::Instance,
-                            attributes: &InstanceRaw::ATTRIBUTES,
-                        }),
-                    ],
+                    buffers: &vertex_buffers(skinned),
                 },
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
@@ -385,8 +490,12 @@ impl ModelRenderer {
             })
         };
         let shadow_pipelines = [
-            shadow_pipeline(AlphaMode::Opaque),
-            shadow_pipeline(AlphaMode::Test),
+            shadow_pipeline(AlphaMode::Opaque, false),
+            shadow_pipeline(AlphaMode::Test, false),
+        ];
+        let skinned_shadow_pipelines = [
+            shadow_pipeline(AlphaMode::Opaque, true),
+            shadow_pipeline(AlphaMode::Test, true),
         ];
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("model material sampler"),
@@ -399,11 +508,20 @@ impl ModelRenderer {
             anisotropy_clamp: 8,
             ..Default::default()
         });
+        let palette_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("model bone palette"),
+            contents: bytemuck::cast_slice(&[REST_SLOT]),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        });
+        let palette_bind_group = palette_bind_group(device, &palette_layout, &palette_buffer);
         ModelRenderer {
             settings: ModelSettings::default(),
             material_layout,
+            palette_layout,
             pipelines,
+            skinned_pipelines,
             shadow_pipelines,
+            skinned_shadow_pipelines,
             sampler,
             defaults: HashMap::new(),
             loader: Loader::new(vfs, loader_threads, texture_options),
@@ -417,6 +535,12 @@ impl ModelRenderer {
             objects: Vec::new(),
             grid: ObjectGrid::build(100.0, std::iter::empty()),
             dynamic: Vec::new(),
+            skinned: Vec::new(),
+            skinned_bones: Vec::new(),
+            palette: vec![REST_SLOT],
+            palette_buffer,
+            palette_bind_group,
+            identity_slots: 1,
             batcher: InstanceBatcher::default(),
             load_requests: Vec::new(),
             instance_buffer: device.create_buffer(&wgpu::BufferDescriptor {
@@ -492,6 +616,29 @@ impl ModelRenderer {
 
     pub fn clear_dynamic(&mut self) {
         self.dynamic.clear();
+    }
+
+    /// Stage a skinned instance for this frame: `object` drawn with `bones` applied, in addition
+    /// to the static and dynamic objects. Cleared with [`clear_skinned`](Self::clear_skinned).
+    ///
+    /// `bones` is one skinning matrix per Skeleton bone of the model — the rest pose to posed
+    /// model transform of each bone, which is a3-anim's `Pose::bones` — so `object`'s model must
+    /// be a skinned ODOL model (one whose Skeleton's bones the vertices are weighted to). Bones
+    /// that a `hide` animation has hidden are passed as `Affine3A::ZERO`, which collapses their
+    /// vertices, as a3-anim's `Pose::skinning` does.
+    pub fn add_skinned(&mut self, object: PlacedObject, bones: &[Affine3A]) {
+        let start = self.skinned_bones.len() as u32;
+        self.skinned_bones.extend_from_slice(bones);
+        self.skinned.push(SkinnedInstance {
+            object,
+            bones: start..self.skinned_bones.len() as u32,
+        });
+    }
+
+    /// Forget this frame's skinned instances; call once per frame before [`Self::add_skinned`].
+    pub fn clear_skinned(&mut self) {
+        self.skinned.clear();
+        self.skinned_bones.clear();
     }
 
     /// Request a model now, without waiting for it to become visible.
@@ -674,6 +821,22 @@ impl ModelRenderer {
                 &lod.indices[..]
             };
             bytes += std::mem::size_of_val(vertices) + std::mem::size_of_val(indices);
+            let skin = lod.skin.as_ref().map(|s| {
+                let skin_vertices = if s.vertices.is_empty() {
+                    &[SkinVertex::zeroed()][..]
+                } else {
+                    &s.vertices[..]
+                };
+                bytes += std::mem::size_of_val(skin_vertices);
+                // The palette blocks are padded to the largest Skeleton, so that every slot a
+                // vertex of any skinned model indexes is defined.
+                self.identity_slots = self.identity_slots.max(s.palette_len);
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("model skin weights"),
+                    contents: bytemuck::cast_slice(skin_vertices),
+                    usage: wgpu::BufferUsages::VERTEX,
+                })
+            });
             lods.push(GpuLod {
                 vertices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("model vertices"),
@@ -685,6 +848,7 @@ impl ModelRenderer {
                     contents: bytemuck::cast_slice(indices),
                     usage: wgpu::BufferUsages::INDEX,
                 }),
+                skin,
                 sections,
                 proxies,
             });
@@ -798,6 +962,45 @@ impl ModelRenderer {
         (id, desc.alpha)
     }
 
+    /// Lay this frame's bone matrices out in the CPU palette: the shared identity block (slot
+    /// 0, the rest pose) and then one block per skinned instance, padded to the block size so
+    /// that every slot a vertex of the instance's model can index is defined. Returns each
+    /// instance's palette base, in `skinned` order.
+    fn build_palette(&mut self) -> Vec<u32> {
+        let block = self.identity_slots as usize;
+        let mut bases = Vec::with_capacity(self.skinned.len());
+        self.palette.clear();
+        self.palette.resize(block, REST_SLOT);
+        for instance in &self.skinned {
+            let bones =
+                &self.skinned_bones[instance.bones.start as usize..instance.bones.end as usize];
+            let start = self.palette.len();
+            bases.push(start as u32);
+            self.palette.extend(bones.iter().map(palette_slot));
+            if self.palette.len() - start < block {
+                self.palette.resize(start + block, REST_SLOT);
+            }
+        }
+        bases
+    }
+
+    /// Grow the palette buffer to hold the frame's palette (by powers of two, so it is
+    /// recreated rarely) and upload it.
+    fn upload_palette(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        let bytes = self.palette.len() as u64 * PALETTE_SLOT_BYTES;
+        if bytes > self.palette_buffer.size() {
+            self.palette_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("model bone palette"),
+                size: bytes.next_power_of_two(),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            self.palette_bind_group =
+                palette_bind_group(device, &self.palette_layout, &self.palette_buffer);
+        }
+        queue.write_buffer(&self.palette_buffer, 0, bytemuck::cast_slice(&self.palette));
+    }
+
     fn cull_and_batch(&mut self, cx: &PrepareContext<'_>) {
         let camera = cx.camera.position;
         let frustum = Frustum::from_view_projection(cx.view_projection);
@@ -813,17 +1016,17 @@ impl ModelRenderer {
                 .min(self.settings.view_distance),
         );
 
+        // The frame's bone palette, and where each skinned instance's block of it starts.
+        let palette_bases = self.build_palette();
+        self.upload_palette(cx.device, cx.queue);
+
         // Visible objects.
         let mut candidates = Vec::new();
         self.grid.query(camera, view_distance, Some(&frustum), |i| {
             candidates.push(i)
         });
         self.stats.candidates = candidates.len() as u32;
-        let mut roots: Vec<PlacedObject> = candidates
-            .iter()
-            .map(|&i| self.objects[i as usize])
-            .collect();
-        roots.extend(self.dynamic.iter().copied());
+        let roots = self.roots(&candidates, &palette_bases);
         self.gather(Pass::View, roots, &view, Some(&frustum), view_distance);
 
         // Shadow casters: near objects in every direction (a caster behind the camera can
@@ -832,11 +1035,7 @@ impl ModelRenderer {
             candidates.clear();
             self.grid
                 .query(camera, shadow_distance, None, |i| candidates.push(i));
-            let mut roots: Vec<PlacedObject> = candidates
-                .iter()
-                .map(|&i| self.objects[i as usize])
-                .collect();
-            roots.extend(self.dynamic.iter().copied());
+            let roots = self.roots(&candidates, &palette_bases);
             self.gather(Pass::Shadow, roots, &view, None, shadow_distance);
         }
 
@@ -868,7 +1067,7 @@ impl ModelRenderer {
             list.clear();
         }
         for batch in batches {
-            let (pass, model, lod) = batch.key;
+            let (pass, model, lod, skinned) = batch.key;
             let ModelState::Ready(m) = &self.models[model as usize].state else {
                 continue;
             };
@@ -881,6 +1080,7 @@ impl ModelRenderer {
                     lod,
                     section: s as u16,
                     instances: batch.instances.clone(),
+                    skinned,
                 };
                 match (pass, section.alpha) {
                     (Pass::View, alpha) => self.draws[alpha as usize].push(cmd),
@@ -899,22 +1099,49 @@ impl ModelRenderer {
             .iter_mut()
             .chain(&mut self.shadow_draws[1..])
         {
-            list.sort_by_key(material_of);
+            list.sort_by_key(|d| (d.skinned, material_of(d)));
         }
         self.stats.draw_calls = self.draws.iter().map(|l| l.len() as u32).sum();
+    }
+
+    /// The objects a pass draws: the grid `candidates`, the frame's dynamic objects and its
+    /// skinned instances, each with the palette base its bone matrices start at.
+    fn roots(&self, candidates: &[u32], palette_bases: &[u32]) -> Vec<Root> {
+        let mut roots: Vec<Root> = candidates
+            .iter()
+            .map(|&i| Root {
+                object: self.objects[i as usize],
+                palette: 0,
+            })
+            .collect();
+        roots.extend(self.dynamic.iter().map(|o| Root {
+            object: *o,
+            palette: 0,
+        }));
+        roots.extend(
+            self.skinned
+                .iter()
+                .zip(palette_bases)
+                .map(|(instance, &palette)| Root {
+                    object: instance.object,
+                    palette,
+                }),
+        );
+        roots
     }
 
     /// Select LODs for `roots` and their proxies and queue them as instances of `pass`.
     fn gather(
         &mut self,
         pass: Pass,
-        roots: Vec<PlacedObject>,
+        roots: Vec<Root>,
         view: &CullView,
         frustum: Option<&Frustum>,
         max_distance: f64,
     ) {
-        let mut stack: Vec<(PlacedObject, u32)> = roots.into_iter().map(|o| (o, 0)).collect();
-        while let Some((object, depth)) = stack.pop() {
+        let mut stack: Vec<(Root, u32)> = roots.into_iter().map(|r| (r, 0)).collect();
+        while let Some((root, depth)) = stack.pop() {
+            let object = root.object;
             let relative = object.transform.translation - view.camera;
             let distance = relative.length();
             let horizontal = (relative.x * relative.x + relative.z * relative.z).sqrt();
@@ -959,9 +1186,12 @@ impl ModelRenderer {
                 Visibility::Fade(f) if pass == Pass::View => f,
                 _ => 1.0,
             };
+            // Skinned when the instance carries a bone palette and the LOD has bone weights; an
+            // unweighted LOD (or an unstaged object) draws in the rest pose.
+            let skinned = root.palette != 0 && model.lods[lod].skin.is_some();
             self.batcher.push(
-                (pass, object.model, lod as u16),
-                InstanceRaw::new(&object.transform, view.camera, fade),
+                (pass, object.model, lod as u16, skinned),
+                InstanceRaw::new(&object.transform, view.camera, fade, root.palette),
             );
             if depth < self.settings.max_proxy_depth {
                 for (proxy, transform) in &model.lods[lod].proxies {
@@ -970,9 +1200,13 @@ impl ModelRenderer {
                         translation: transform.translation.as_dvec3(),
                     };
                     stack.push((
-                        PlacedObject {
-                            model: *proxy,
-                            transform: object.transform * local,
+                        Root {
+                            object: PlacedObject {
+                                model: *proxy,
+                                transform: object.transform * local,
+                            },
+                            // Proxies are placed by their own model's skeleton, not the host's.
+                            palette: 0,
                         },
                         depth + 1,
                     ));
@@ -983,27 +1217,54 @@ impl ModelRenderer {
 
     /// Record this frame's draws for `phase`.
     pub fn draw(&self, phase: Phase, pass: &mut wgpu::RenderPass<'_>) {
-        let lists: [(&wgpu::RenderPipeline, &[DrawCmd]); 2] = match phase {
+        /// A pipeline pair and the draws that switch between them: unskinned, skinned.
+        type Lists<'a> = (
+            &'a wgpu::RenderPipeline,
+            &'a wgpu::RenderPipeline,
+            &'a [DrawCmd],
+        );
+        let lists: [Lists; 2] = match phase {
             Phase::Opaque => [
-                (&self.pipelines[0], &self.draws[0]),
-                (&self.pipelines[1], &self.draws[1]),
+                (
+                    &self.pipelines[0],
+                    &self.skinned_pipelines[0],
+                    &self.draws[0],
+                ),
+                (
+                    &self.pipelines[1],
+                    &self.skinned_pipelines[1],
+                    &self.draws[1],
+                ),
             ],
             Phase::Alpha => [
-                (&self.pipelines[2], &self.draws[2]),
-                (&self.pipelines[2], &[]),
+                (
+                    &self.pipelines[2],
+                    &self.skinned_pipelines[2],
+                    &self.draws[2],
+                ),
+                (&self.pipelines[2], &self.skinned_pipelines[2], &[]),
             ],
             Phase::Shadow { .. } => [
-                (&self.shadow_pipelines[0], &self.shadow_draws[0]),
-                (&self.shadow_pipelines[1], &self.shadow_draws[1]),
+                (
+                    &self.shadow_pipelines[0],
+                    &self.skinned_shadow_pipelines[0],
+                    &self.shadow_draws[0],
+                ),
+                (
+                    &self.shadow_pipelines[1],
+                    &self.skinned_shadow_pipelines[1],
+                    &self.shadow_draws[1],
+                ),
             ],
             Phase::Ui => return,
         };
-        for (pipeline, draws) in lists {
+        for (pipeline, skinned_pipeline, draws) in lists {
             if draws.is_empty() {
                 continue;
             }
-            pass.set_pipeline(pipeline);
+            pass.set_bind_group(2, &self.palette_bind_group, &[]);
             pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+            let mut bound_skinned = None;
             let mut bound_material = u32::MAX;
             let mut bound_lod = (u32::MAX, u16::MAX);
             for d in draws {
@@ -1012,6 +1273,14 @@ impl ModelRenderer {
                 };
                 let lod = &m.lods[d.lod as usize];
                 let section = &lod.sections[d.section as usize];
+                if bound_skinned != Some(d.skinned) {
+                    bound_skinned = Some(d.skinned);
+                    pass.set_pipeline(if d.skinned {
+                        skinned_pipeline
+                    } else {
+                        pipeline
+                    });
+                }
                 if section.material != bound_material {
                     bound_material = section.material;
                     pass.set_bind_group(
@@ -1024,11 +1293,30 @@ impl ModelRenderer {
                     bound_lod = (d.model, d.lod);
                     pass.set_vertex_buffer(0, lod.vertices.slice(..));
                     pass.set_index_buffer(lod.indices.slice(..), wgpu::IndexFormat::Uint32);
+                    if let Some(skin) = &lod.skin {
+                        pass.set_vertex_buffer(2, skin.slice(..));
+                    }
                 }
                 pass.draw_indexed(section.indices.clone(), 0, d.instances.clone());
             }
         }
     }
+}
+
+/// The palette bind group: the whole palette buffer, read by the vertex stage.
+fn palette_bind_group(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    buffer: &wgpu::Buffer,
+) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("model bone palette"),
+        layout,
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: buffer.as_entire_binding(),
+        }],
+    })
 }
 
 /// Which pass an instance is batched for.

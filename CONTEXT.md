@@ -206,6 +206,15 @@ _Avoid_: controller, input
 The model-space transform of every Skeleton bone at one moment, from Model animations and/or
 an RTM; skinning applies it to the vertices bound to each bone.
 
+**Skinning**:
+Posing a model's geometry through its Skeleton: each vertex is bound to up to four bones with
+weights, and follows those bones' Pose matrices.
+
+**Bone palette**:
+The matrices one skinned draw samples, one per Skeleton bone in order, plus a trailing identity
+slot for vertices with no influences; a hidden bone's matrix is zero, collapsing its vertices.
+_Avoid_: bone buffer, skin matrices
+
 ## Terrain
 
 **WRP**:

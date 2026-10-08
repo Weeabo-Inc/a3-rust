@@ -195,6 +195,28 @@ fn geometry_stats(model: &Model, stats: &mut BTreeMap<&'static str, usize>) {
             };
             *stats.entry(key).or_default() += 1;
         }
+        // Distinct vertices the drawn (non-proxy) sections of a skinned visual LOD use, but which
+        // carry no bone influence: rigid parts like a helicopter hull or a parachute canopy,
+        // which stay in the model's rest pose (20.3 M of the install's 92.2 M).
+        if model.skeleton.is_some()
+            && lod.resolution.is_visual()
+            && v.bone_weights.iter().any(|w| w.count == 0)
+        {
+            let mut drawn: Vec<u32> = lod
+                .sections
+                .iter()
+                .filter(|s| !s.is_proxy())
+                .flat_map(|s| lod.section_triangles(s))
+                .collect();
+            drawn.sort_unstable();
+            drawn.dedup();
+            *stats
+                .entry("drawn vertices without influences")
+                .or_default() += drawn
+                .iter()
+                .filter(|&&i| v.bone_weights.get(i as usize).is_none_or(|w| w.count == 0))
+                .count();
+        }
         let mut next = 0;
         let mut contiguous = true;
         for s in &lod.sections {

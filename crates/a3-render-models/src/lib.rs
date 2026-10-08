@@ -20,6 +20,7 @@ pub mod prepare;
 mod renderer;
 pub mod rvmat;
 pub mod shader;
+pub mod skin;
 pub mod texture;
 
 pub use lod::{LodSelector, ObjectsQuality};
@@ -27,4 +28,5 @@ pub use material::{AlphaMode, MaterialDesc, Slot};
 pub use prepare::PreparedModel;
 pub use renderer::{ModelFeature, ModelId, ModelRenderer, ModelSettings, ModelStats, PlacedObject};
 pub use shader::{PixelShader, ShaderFamily};
+pub use skin::{SkinData, SkinVertex};
 pub use texture::TextureOptions;

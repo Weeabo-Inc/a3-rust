@@ -63,3 +63,63 @@ fn altis_models_prepare_and_their_textures_exist() {
     assert!(invisible < 20, "{invisible} models draw nothing");
     assert!(missing.len() < 10, "missing textures: {missing:?}");
 }
+
+/// B_Soldier_F's model (the class inherits the BLUFOR soldier).
+const SOLDIER: &str = r"a3\characters_f\blufor\b_soldier_01.p3d";
+
+/// Every vertex a soldier's visual LODs draw is weighted to its Skeleton, with the influence
+/// weights summing to 255 (the ODOL weight byte range). The soldier has no unweighted rigid
+/// parts, so a skinned draw never falls back to the rest pose for its visible geometry; other
+/// models do (a helicopter hull or a parachute canopy stays in the rest pose).
+#[test]
+fn drawn_vertices_of_a_soldier_are_all_weighted() {
+    let Some(root) = std::env::var_os("A3_ROOT") else {
+        eprintln!("skipping: A3_ROOT not set");
+        return;
+    };
+    let vfs = a3_vfs::Vfs::new();
+    vfs.mount_game(Path::new(&root), &[]);
+    let model = a3_p3d::Model::from_bytes(&vfs.open(SOLDIER).expect("the soldier model opens"))
+        .expect("the soldier model decodes");
+    assert!(model.skeleton.is_some(), "a soldier is skinned");
+
+    let mut skinned = 0;
+    for lod in &model.lods {
+        if !lod.resolution.is_visual() {
+            continue;
+        }
+        let weights = &lod.vertices.bone_weights;
+        if weights.is_empty() {
+            continue;
+        }
+        skinned += 1;
+        for section in &lod.sections {
+            // Proxy triangles are placeholders for the LOD's proxies, not geometry.
+            if section.is_proxy() {
+                continue;
+            }
+            for i in lod.section_triangles(section) {
+                let w = weights.get(i as usize).unwrap_or_else(|| {
+                    panic!(
+                        "lod {} draws vertex {i} without bone weights",
+                        lod.resolution.0
+                    )
+                });
+                assert!(
+                    w.count > 0,
+                    "lod {} draws the unweighted vertex {i}",
+                    lod.resolution.0
+                );
+                let sum: u32 = w.pairs[..w.count.min(4) as usize]
+                    .iter()
+                    .map(|&(_, weight)| u32::from(weight))
+                    .sum();
+                assert_eq!(sum, 255, "lod {} vertex {i} weighs {sum}", lod.resolution.0);
+            }
+        }
+    }
+    assert!(
+        skinned >= 4,
+        "the soldier's visual LODs are skinned: {skinned}"
+    );
+}

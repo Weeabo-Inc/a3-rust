@@ -36,6 +36,7 @@ fn cube(color: &str) -> PreparedModel {
             }],
             indices: mesh.indices,
             proxies: Vec::new(),
+            skin: None,
             radius: 3f32.sqrt(),
             faces,
         }],
