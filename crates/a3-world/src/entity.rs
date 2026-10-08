@@ -93,6 +93,17 @@ pub struct Entity {
     pub(crate) steps: u64,
     pub(crate) simulated_time: f64,
     pub(crate) class_state: ClassState,
+    // Object state scripts see.
+    pub(crate) damage: f32,
+    pub(crate) hidden: bool,
+    pub(crate) attachment: Option<Attachment>,
+}
+
+/// An `attachTo` link: the Entity follows `to` at `offset` in `to`'s model space.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Attachment {
+    pub to: EntityId,
+    pub offset: DVec3,
 }
 
 impl Entity {
@@ -129,6 +140,9 @@ impl Entity {
             steps: 0,
             simulated_time: 0.0,
             class_state,
+            damage: 0.0,
+            hidden: false,
+            attachment: None,
         }
     }
 
@@ -255,6 +269,46 @@ impl Entity {
     /// Total time covered by simulation steps so far, in seconds.
     pub fn simulated_time(&self) -> f64 {
         self.simulated_time
+    }
+
+    /// Total damage, 0 (intact) to 1 (destroyed). Hit points come with #128.
+    pub fn damage(&self) -> f32 {
+        self.damage
+    }
+
+    pub fn set_damage(&mut self, damage: f32) {
+        self.damage = damage.clamp(0.0, 1.0);
+    }
+
+    /// `alive`: not destroyed and not scheduled for deletion.
+    pub fn is_alive(&self) -> bool {
+        self.damage < 1.0 && !self.deleted
+    }
+
+    /// `isObjectHidden`.
+    pub fn is_hidden(&self) -> bool {
+        self.hidden
+    }
+
+    /// `hideObject`.
+    pub fn set_hidden(&mut self, hidden: bool) {
+        self.hidden = hidden;
+    }
+
+    /// `attachedTo`.
+    pub fn attachment(&self) -> Option<Attachment> {
+        self.attachment
+    }
+
+    /// Heading in degrees clockwise from north (`getDir`).
+    pub fn heading(&self) -> f64 {
+        let dir = self.orientation * DVec3::Z;
+        dir.x.atan2(dir.z).to_degrees().rem_euclid(360.0)
+    }
+
+    /// Sets the heading (`setDir`), keeping the Entity upright.
+    pub fn set_heading(&mut self, degrees: f64) {
+        self.orientation = DQuat::from_rotation_y(degrees.to_radians());
     }
 
     /// The class-specific state, owned by the family module that simulates it.

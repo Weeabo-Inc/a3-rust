@@ -195,6 +195,24 @@ impl TypeBank {
         &self.config
     }
 
+    /// Whether config class `name` is `base` or inherits from it (`isKindOf`), searching the
+    /// same roots as [`get`](Self::get). Case-insensitive; unknown names are not kinds of anything.
+    pub fn is_kind_of(&self, name: &str, base: &str) -> bool {
+        let root = self.config.root();
+        let Some(cfg) = TypeSource::ALL
+            .iter()
+            .map(|s| root.get(s.root_name()).get(name))
+            .find(|c| c.is_class())
+        else {
+            return false;
+        };
+        cfg.name().eq_ignore_ascii_case(base)
+            || cfg
+                .bases()
+                .iter()
+                .any(|b| b.name().eq_ignore_ascii_case(base))
+    }
+
     /// The type of config class `name` (case-insensitive), looked up in CfgVehicles, then
     /// CfgAmmo, then CfgNonAIVehicles.
     pub fn get(&mut self, name: &str) -> Result<Arc<EntityType>, Error> {

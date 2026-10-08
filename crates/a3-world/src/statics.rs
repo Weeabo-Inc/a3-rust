@@ -221,4 +221,32 @@ impl StaticObjects {
         }
         None
     }
+
+    /// Static objects (not removed) within `radius` of `center` (3D distance).
+    pub(crate) fn near(&self, center: DVec3, radius: f64) -> Vec<&StaticObject> {
+        if self.objects.is_empty() || radius < 0.0 {
+            return Vec::new();
+        }
+        let cell =
+            |v: f64, n: u32| ((v / self.cell_size).floor() as i64).clamp(0, i64::from(n) - 1);
+        let (x0, x1) = (
+            cell(center.x - radius, self.width),
+            cell(center.x + radius, self.width),
+        );
+        let (z0, z1) = (
+            cell(center.z - radius, self.height),
+            cell(center.z + radius, self.height),
+        );
+        let mut out = Vec::new();
+        for z in z0..=z1 {
+            for x in x0..=x1 {
+                out.extend(
+                    self.cell(x as u32, z as u32)
+                        .iter()
+                        .filter(|o| o.position.distance(center) <= radius && self.contains(o.key)),
+                );
+            }
+        }
+        out
+    }
 }

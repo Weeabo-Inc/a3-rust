@@ -64,31 +64,33 @@
 //! - Test through `World::simulate` (see `tests/simulate.rs`): create the Entity, simulate
 //!   frames, assert on the Entity.
 //!
-//! ## Add an SQF world command (#121)
+//! ## Add an SQF world command
 //!
-//! SQF commands that touch the World are registered by `a3-world` itself (ADR 0005), in a
-//! `register_world_commands<H: WorldHost>(registry: &mut a3_sqf::Registry<H>)` function, where
-//! `trait WorldHost: a3_sqf::Host { fn world(&self) -> &World; fn world_mut(&mut self) -> &mut
-//! World; }`. Follow `a3-gamedata`'s `register_config_commands` for the pattern:
+//! World commands live in [`script`] (ADR 0005), one file per area (`create.rs`, `state.rs`,
+//! `transform.rs`, `query.rs`; add a file for a new area and call it from
+//! [`script::register_world_commands`]). They are generic over [`script::WorldHost`], which gives
+//! `world()`, `world_mut()` and `types()`; [`script::ScriptWorld`] is a ready host for tests and
+//! tools. Follow the existing commands:
 //!
-//! - Object arguments arrive as `Value::Handle(Handle { kind: Object, id })`. Decode with
-//!   [`ObjectRef::from_handle_id`] and resolve through the World. A handle that no longer
-//!   resolves (deleted Entity, removed Static object) behaves as `objNull`. Return Objects with
-//!   [`ObjectRef::to_handle_id`].
-//! - Positions cross the script boundary with Y and Z swapped (ADR 0003): script `[x, y, z]` is
-//!   world `(x, z, y)`.
-//! - Respect the command's locality: "local argument" commands act only if the Entity
-//!   [`Entity::is_local`] (else they do nothing, as the original does); "global effect" commands
-//!   will also queue a network message once #131 exists. Keep a comment with the original's
-//!   locality (from `docs/re/sqf-commands.tsv` and the wiki) on each command.
+//! - Decode Object arguments with [`script::object_arg`] (it resolves promoted Static objects and
+//!   treats deleted ones as `objNull`); return Objects with [`script::object_value`], which keeps
+//!   a promoted Static object's handle stable.
+//! - Positions cross the script boundary with Y and Z swapped (ADR 0003); use the helpers in
+//!   `script/mod.rs` (`script_position`, `position_value`, `position_or_object`).
+//! - Respect the command's locality and note it as `AG/AL EG/EL` on the command: "local
+//!   argument" commands do nothing for a remote Entity, server-only commands do nothing on
+//!   clients; global effects will also queue a network message once #131 exists.
+//! - Changing a Static object promotes it (`promote_static_with_model_type`).
 //! - Creation goes through [`World::create`]; deletion through [`World::delete`] (deferred);
 //!   ownership changes through [`World::set_locality`].
-//! - Test with SQF snippets run against a synthetic World built in the test.
+//! - Test with SQF snippets against a synthetic World (`tests/script.rs`).
 
 mod class;
 mod entity;
 mod id;
 mod object_ref;
+mod query;
+pub mod script;
 mod sim;
 mod statics;
 mod terrain;
@@ -96,9 +98,10 @@ mod types;
 mod world;
 
 pub use class::{EntityClass, SimulationClass};
-pub use entity::{Entity, ListKind, Locality, VisualState};
+pub use entity::{Attachment, Entity, ListKind, Locality, VisualState};
 pub use id::{ClientId, EntityId, NetworkId, ParseNetworkIdError};
 pub use object_ref::ObjectRef;
+pub use query::Near;
 pub use sim::{AirState, ClassState, GroundState, ManState, ProjectileState, SUB_STEP};
 pub use statics::{StaticKey, StaticObject};
 pub use types::{DEFAULT_SIMULATION_STEP, EntityType, Scope, TypeBank, TypeSource};
