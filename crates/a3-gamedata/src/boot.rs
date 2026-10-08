@@ -23,8 +23,8 @@ use a3_sqf::{
 use a3_vfs::Vfs;
 
 use crate::GameData;
-use crate::sqf_config::{ConfigHost, ConfigRoot, register_config_commands};
 use crate::scripts::{VfsHost, VfsResolver, read_text};
+use crate::sqf_config::{ConfigHost, ConfigRoot, register_config_commands};
 
 /// The command table game scripts compile against: a3-sqf's builtin table, which holds the
 /// engine's full command list (#82), so every shipped command parses even before it has an
