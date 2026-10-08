@@ -32,6 +32,10 @@ pub enum Error {
         message: String,
     },
 
+    /// An `.rvmat` file is not a valid config.
+    #[error("invalid rvmat: {0}")]
+    Rvmat(String),
+
     /// A compressed array could not be decompressed.
     #[error("cannot decompress array at byte {offset:#x}: {source}")]
     Decompress {

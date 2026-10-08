@@ -15,10 +15,12 @@ mod model;
 mod odol;
 mod reader;
 mod resolution;
+mod rvmat;
 
 pub use error::{Error, Result};
 pub use model::*;
 pub use resolution::{LodKind, LodResolution};
+pub use rvmat::{RvMat, RvMatStage};
 
 impl Model {
     /// Decodes a P3D file (MLOD or ODOL) from its bytes.

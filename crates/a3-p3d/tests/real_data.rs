@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::time::Instant;
 
-use a3_p3d::{Encoding, LodKind, Model};
+use a3_p3d::{Encoding, LodKind, Model, RvMat};
 use a3_vfs::{Vfs, optional_mod_dirs};
 
 #[test]
@@ -230,4 +230,34 @@ fn geometry_stats(model: &Model, stats: &mut BTreeMap<&'static str, usize>) {
             *stats.entry(key).or_default() += 1;
         }
     }
+}
+
+#[test]
+fn reads_every_rvmat_in_the_install() {
+    let Some(root) = std::env::var_os("A3_ROOT") else {
+        eprintln!("skipping: A3_ROOT not set");
+        return;
+    };
+    let root = Path::new(&root);
+    let vfs = Vfs::new();
+    vfs.mount_game(root, &optional_mod_dirs(root));
+    let paths = vfs.glob(r"**\*.rvmat");
+    let mut failures = Vec::new();
+    let mut with_stages = 0;
+    for path in &paths {
+        let data = vfs.open(path.as_str()).unwrap();
+        match RvMat::from_bytes(&data) {
+            Ok(mat) => with_stages += usize::from(!mat.stages.is_empty()),
+            Err(e) => failures.push(format!("{path}: {e}")),
+        }
+    }
+    eprintln!(
+        "{} rvmat files, {} failed, {with_stages} with stages",
+        paths.len(),
+        failures.len()
+    );
+    for f in failures.iter().take(10) {
+        eprintln!("    {f}");
+    }
+    assert!(failures.is_empty());
 }

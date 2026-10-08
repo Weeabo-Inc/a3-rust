@@ -222,6 +222,12 @@ u32 unknown                                    // 0 except in one section of a 1
 if unknown != 0: f32 unknown_floats[11]
 ```
 
+Section `face_flags` bit `0x10000000` marks the sections of proxy triangles: in a third of the
+`Addons` models, all 1,929 sections that some proxy references have the bit and no other section
+has it. Those triangles keep Object Builder's proxy triangle shape (legs of 1 m and 2 m) and are
+not drawn. Other common flag values: `0x0002c100`, `0x0000c000`, `0x00282100`, `0x0002c000`, `0`
+_(meanings unknown)_.
+
 ### NamedSelection (_verified_)
 
 ```
@@ -307,6 +313,22 @@ The real-data test (`crates/a3-p3d/tests/real_data.rs`) decodes all 68,522 LODs 
 normal has length 1 ± 0.01 or is zero (381 k zero normals, all in degenerate geometry);
 sections are contiguous and cover every face; proxies as described above; bone weights as
 above. Release build: ~15 s including reading 3 GB from the PBOs.
+
+## rvmat files
+
+`a3_p3d::RvMat` reads `.rvmat` configs through `a3-config`. All 38,073 `.rvmat` files in the
+install are rapified and read; 37,621 have `StageN` classes. Keys: `PixelShaderID`,
+`VertexShaderID`, `ambient[]`, `diffuse[]`, `forcedDiffuse[]`, `emmisive[]` (sic), `specular[]`,
+`specularPower`, `surfaceInfo`, `class StageN { texture; uvSource; class uvTransform { aside[];
+up[]; dir[]; pos[]; } }`, `class StageTI { texture; }`. The ODOL embedded material is the
+binarised form of the same data (shader names become IDs).
+
+## Visual check
+
+`a3-tools p3d export` converts a LOD to glTF/OBJ (z negated, triangles reversed, proxy sections
+left out). Rendered exports of the MX rifle, the `b_soldier_01` soldier and
+`i_house_small_01_v1_f` show correct shapes with front faces outward; every LOD vertex lies in the
+ModelInfo bounding box.
 
 ## LOD resolutions
 

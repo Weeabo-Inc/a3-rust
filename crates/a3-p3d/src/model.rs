@@ -480,6 +480,17 @@ pub struct Section {
     pub odol: Option<OdolSection>,
 }
 
+impl Section {
+    /// Face flag bit set on the sections holding proxy triangles.
+    pub const PROXY_FLAG: u32 = 0x1000_0000;
+
+    /// `true` for a section of proxy triangles: placeholders the renderer does not draw. In the
+    /// shipped models this bit is set exactly on the sections that proxies reference.
+    pub fn is_proxy(&self) -> bool {
+        self.flags & Self::PROXY_FLAG != 0
+    }
+}
+
 /// A material: an embedded copy of an rvmat (ODOL) or just its path (MLOD).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Material {

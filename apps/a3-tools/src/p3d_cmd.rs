@@ -26,6 +26,16 @@ enum P3dCommand {
         #[arg(long, value_name = "N")]
         lod: Option<usize>,
     },
+    /// Export one LOD to Wavefront OBJ or glTF 2.0 (`.obj`, `.gltf` + `.bin`, `.glb`).
+    Export {
+        /// A `.p3d` file on disk, or a VFS path.
+        model: String,
+        /// Output file; the extension picks the format.
+        out: PathBuf,
+        /// Index of the LOD to export (see `p3d info`).
+        #[arg(long, default_value_t = 0)]
+        lod: usize,
+    },
 }
 
 pub fn run(args: P3dArgs) -> anyhow::Result<()> {
@@ -42,8 +52,71 @@ pub fn run(args: P3dArgs) -> anyhow::Result<()> {
                 print!("{}", lod_details(i, l));
             }
         }
+        P3dCommand::Export { model, out, lod } => {
+            let bytes = load(&model, args.game_dir.as_deref())?;
+            let model =
+                Model::from_bytes(&bytes).with_context(|| format!("decoding model {model}"))?;
+            let Some(l) = model.lods.get(lod) else {
+                bail!("model has {} LODs, no LOD {lod}", model.lods.len());
+            };
+            let mesh = crate::p3d_export::Mesh::from_lod(l);
+            if mesh.primitives.is_empty() {
+                bail!("LOD {lod} ({}) has no faces to export", l.resolution);
+            }
+            crate::p3d_export::write(&mesh, &out)?;
+            eprint!("{}", export_report(&model, l, &mesh));
+        }
     }
     Ok(())
+}
+
+/// Sanity figures for an exported LOD, in engine space.
+fn export_report(model: &Model, lod: &Lod, mesh: &crate::p3d_export::Mesh) -> String {
+    let mut s = String::new();
+    let v = &lod.vertices;
+    let tris: usize = mesh.primitives.iter().map(|(_, t)| t.len() / 3).sum();
+    let _ = writeln!(
+        s,
+        "exported LOD {}: {} vertices, {tris} triangles, {} primitives",
+        lod.resolution,
+        v.len(),
+        mesh.primitives.len()
+    );
+    if let Some((lo, hi)) = v
+        .positions
+        .iter()
+        .copied()
+        .map(|p| (p, p))
+        .reduce(|(a, b), (c, d)| (a.min(c), b.max(d)))
+    {
+        let i = &model.info;
+        let inside = lo.cmpge(i.bbox_min - 1e-3).all() && hi.cmple(i.bbox_max + 1e-3).all();
+        let _ = writeln!(
+            s,
+            "bounds {} .. {} (model bbox {} .. {}: {})",
+            vec3(lo),
+            vec3(hi),
+            vec3(i.bbox_min),
+            vec3(i.bbox_max),
+            if inside { "inside" } else { "OUTSIDE" }
+        );
+    }
+    if let Some(uv) = v.uv_sets.first().filter(|uv| !uv.is_empty()) {
+        let (lo, hi) = uv
+            .iter()
+            .fold((uv[0], uv[0]), |(lo, hi), t| (lo.min(*t), hi.max(*t)));
+        let _ = writeln!(
+            s,
+            "uv0 range [{:.3}, {:.3}] .. [{:.3}, {:.3}]",
+            lo.x, lo.y, hi.x, hi.y
+        );
+    }
+    if !v.normals.is_empty() {
+        let lens: Vec<f32> = v.normals.iter().map(|n| n.length()).collect();
+        let unit = lens.iter().filter(|l| (**l - 1.0).abs() < 0.01).count();
+        let _ = writeln!(s, "normals: {unit} of {} unit length", lens.len());
+    }
+    s
 }
 
 /// Reads `model` from disk if such a file exists, else from the VFS of the game in `game_dir`.
@@ -146,6 +219,23 @@ pub fn lod_details(index: usize, lod: &Lod) -> String {
     for m in &lod.materials {
         let _ = writeln!(s, "    {}", m.name);
     }
+    let _ = writeln!(s, "sections ({})", lod.sections.len());
+    for (n, sec) in lod.sections.iter().enumerate() {
+        let name = |list: &[String], i: Option<u32>| {
+            i.and_then(|i| list.get(i as usize).cloned())
+                .unwrap_or_else(|| "-".into())
+        };
+        let materials: Vec<String> = lod.materials.iter().map(|m| m.name.clone()).collect();
+        let _ = writeln!(
+            s,
+            "    {n:>3}  faces {:>6}..{:<6} flags {:#010x}  {}  {}",
+            sec.faces.start,
+            sec.faces.end,
+            sec.flags,
+            name(&lod.textures, sec.texture),
+            name(&materials, sec.material)
+        );
+    }
     let _ = writeln!(s, "named selections ({})", lod.named_selections.len());
     for sel in &lod.named_selections {
         let _ = writeln!(
@@ -162,7 +252,14 @@ pub fn lod_details(index: usize, lod: &Lod) -> String {
     }
     let _ = writeln!(s, "proxies ({})", lod.proxies.len());
     for p in &lod.proxies {
-        let _ = writeln!(s, "    {} at {}", p.model, vec3(p.position));
+        let _ = writeln!(
+            s,
+            "    {} at {} (selection {}, section {})",
+            p.model,
+            vec3(p.position),
+            p.named_selection,
+            p.section
+        );
     }
     s
 }
