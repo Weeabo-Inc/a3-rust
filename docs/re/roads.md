@@ -40,8 +40,58 @@ these files. Confidence: **verified** (all six readable worlds), **high** (execu
   road`, `road`, `track`, `trail`, ...), `AIpathOffset`, `pedestriansOnly`, `color[]` (AI cost
   map colour). Missing class: `road_ca.paa`, `road_end_ca.paa`, `road.rvmat` from
   `a3\roads_f\roads\data\`, map `main road`.
-- Segment ends closer than 0.1 m (`0.01` squared) are joined with neighbouring polylines when
-  their directions agree _(medium; not implemented in `a3-landscape`)_.
+- `ROADMASK` and `ORDER` select a material variant: `0x14164e660` registers one variant per
+  key `mask + (order + typeField * 10) * 10` (stored as a `short` with the order and mask
+  bytes next to it) and returns its index, which each segment keeps. What the three mask bits
+  change in the material is not known _(low)_; only Tanoa uses `ROADMASK`.
+
+## Joining and curves (`0x14162c920`, high)
+
+For every polyline A the loader scans every polyline B (A included) and compares ends:
+
+| A end | B end | Direction test | Point used beyond A's end |
+|---|---|---|---|
+| start | start | `dot(intoA, intoB)` | `B[1]` |
+| start | end | `dot(intoA, intoB)` | `B[n-2]` |
+| end | start | `dot(intoA, intoB)` | `B[1]` |
+| end | end | `dot(intoA, intoB)` | `B[n-2]` |
+
+`into` is the unit direction from the end point into its polyline (2D). Ends match when their
+squared distance is below `0.01` (0.1 m). The match with the smallest dot wins, and is used
+only if that dot is below `0.5` (`0x141a790f4`); otherwise the end is **open** (the point
+beyond is the end point itself).
+
+Each polyline segment `p1 -> p2` (neighbours `p0`, `p3`, from the polyline or the matched
+roads) becomes a cubic Bezier `p1, c1, c2, p2` with centripetal Catmull-Rom controls
+(`d1 = |p1 - p0|`, `d2 = |p2 - p1|`, `d3 = |p3 - p2|`):
+
+```
+c1 = (d1*p2 - d2*p0 + (2*d1 + 3*sqrt(d1*d2) + d2)*p1) / (3*d1 + 3*sqrt(d1*d2))   (p1 when d1 = 0)
+c2 = (d3*p1 - d2*p3 + (2*d3 + 3*sqrt(d2*d3) + d2)*p2) / (3*d3 + 3*sqrt(d2*d3))   (p2 when d3 = 0)
+```
+
+`0x141629350` builds a road segment from each Bezier: it samples the curve in steps, adds up
+arc length divided by the material's texture length (UV `v`), and at open ends marks the first
+/ last texture length of the curve for the end texture (`mainTerTex`).
+
+## Road graph (`a3-landscape::RoadGraph`)
+
+Shipped road networks mostly do not share end points: on Altis only 857 of 2,828 road ends
+continue into another road by the engine's rule (9 nodes with 3+ ends). Most junctions are T
+junctions where a road ends on another road's side: 936 Altis ends lie within 0.1 m of another
+centre line (855 on one of its vertices), and about 1,450 more within 1-5 m (inside the other
+road's half width). `RoadGraph` models both:
+
+- nodes: ends within 0.1 m, continuations by the engine rule;
+- attachments: an end within (half width + 0.1 m) of another road's centre line (Altis 1,963,
+  Tanoa 925, Livonia 665, Malden 223, Stratis 79);
+- queries: `connected_to` (`roadsConnectedTo`: node neighbours and attachments both ways),
+  `nearest`, `road_at` / `is_on_road` (within half the RoadsLib width of the polyline),
+  `roads_near` (`nearRoads`), `curve` (the engine's Beziers).
+
+How the engine's own `roadsConnectedTo` (`0x14049e7e0`) and `isOnRoad` (`0x140546300`) treat
+shapefile roads is not yet reverse engineered; they go through the landscape's road segment
+objects _(open)_.
 
 ## Survey (build 2.22.0.154103)
 
