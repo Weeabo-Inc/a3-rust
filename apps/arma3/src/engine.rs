@@ -27,9 +27,6 @@ pub struct EngineContext {
 }
 
 impl EngineContext {
-    /// Apply command-line overrides of the render settings.
-    pub fn configure(&self, _renderer: &mut a3_render::Renderer) {}
-
     /// Mount the game data for the model viewer, if a model is requested.
     pub fn load_model_vfs(&self) -> anyhow::Result<Option<(a3_vfs::Vfs, ModelSpec)>> {
         let Some(spec) = &self.model else {

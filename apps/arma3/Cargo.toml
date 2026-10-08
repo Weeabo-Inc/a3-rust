@@ -20,7 +20,6 @@ a3-landscape-render.workspace = true
 a3-paa.workspace = true
 a3-wrp.workspace = true
 a3-input.workspace = true
-a3-paa.workspace = true
 a3-vfs.workspace = true
 a3-platform.workspace = true
 a3-render.workspace = true

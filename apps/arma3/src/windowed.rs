@@ -83,7 +83,6 @@ impl App for GameApp {
             self.engine.game_dir
         );
         let mut renderer = Renderer::new(&gpu, surface.format());
-        self.engine.configure(&mut renderer);
         self.scene.load(&gpu, &mut renderer);
         if !self.engine.keys.is_empty() {
             self.keys_loading = Some(keys::load_in_background(self.engine.keys.clone()));

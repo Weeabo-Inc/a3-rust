@@ -104,11 +104,10 @@ pub fn load(
         parsed - mounted,
         start.elapsed() - parsed
     );
-    let world_class = data.config.root().get("CfgWorlds").get(&config.class);
-    let environment = a3_environment::WorldEnvironment::from_config(&world_class);
-    let noise_path = world_class.get("SimulWeather").get("noiseTexture");
+    let environment = a3_environment::WorldEnvironment::from_config(&class);
+    let noise_path = class.get("SimulWeather").get("noiseTexture");
     let sky_noise = if noise_path.is_text() {
-        load_rgba8(&data.vfs, &noise_path.text())
+        decode_paa_rgba8(&data.vfs, &noise_path.text())
     } else {
         None
     };
@@ -126,7 +125,7 @@ pub fn load(
 }
 
 /// Decodes a PAA with all its mipmaps to RGBA8.
-fn load_rgba8(vfs: &a3_vfs::Vfs, path: &str) -> Option<a3_render::TextureData> {
+fn decode_paa_rgba8(vfs: &a3_vfs::Vfs, path: &str) -> Option<a3_render::TextureData> {
     let bytes = vfs.open(path).ok()?;
     let texture = a3_paa::Texture::read(&bytes)
         .map_err(|e| log::warn!("cannot read {path}: {e}"))

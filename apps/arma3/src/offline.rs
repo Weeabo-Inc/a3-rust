@@ -67,7 +67,6 @@ pub fn screenshot(
     log::info!("offscreen renderer: {adapter}");
     let mut renderer = Renderer::new(&gpu, a3_render::wgpu::TextureFormat::Rgba8UnormSrgb);
     let mut scene = DebugScene::new();
-    engine.configure(&mut renderer);
     scene.load(&gpu, &mut renderer);
     if let Some(world) = engine.load_world()? {
         scene.load_world(
