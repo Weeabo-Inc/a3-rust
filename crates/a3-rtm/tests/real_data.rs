@@ -21,7 +21,7 @@ fn every_rtm_in_the_install_decodes() {
     let mut failures = Vec::new();
     let mut non_unit_files = BTreeSet::new();
     let (mut transforms, mut non_unit) = (0usize, 0usize);
-    let (mut frames, mut events) = (0usize, 0usize);
+    let (mut frames, mut keystones) = (0usize, 0usize);
     for path in &paths {
         let data = vfs.open(path.as_str()).unwrap();
         match Animation::read(&data) {
@@ -32,7 +32,7 @@ fn every_rtm_in_the_install_decodes() {
                 };
                 *encodings.entry(key).or_insert(0) += 1;
                 frames += anim.frames.len();
-                events += anim.events.len();
+                keystones += anim.keystones.len();
                 for frame in &anim.frames {
                     assert_eq!(frame.transforms.len(), anim.bones.len(), "{path}");
                     for t in &frame.transforms {
@@ -51,7 +51,7 @@ fn every_rtm_in_the_install_decodes() {
     }
 
     eprintln!(
-        "{} RTM files: {encodings:?}; {frames} frames, {events} events",
+        "{} RTM files: {encodings:?}; {frames} frames, {keystones} keystones",
         paths.len()
     );
     eprintln!(
@@ -69,7 +69,7 @@ fn every_rtm_in_the_install_decodes() {
         "more than 0.01% non-unit rotations"
     );
 
-    // A known character move: the standard rifle walk cycle with footstep events.
+    // A known character move: the standard rifle walk cycle with footstep keystones.
     let walk = vfs
         .open(r"a3\anims_f\data\anim\sdr\mov\erc\wlk\ras\rfl\amovpercmwlksraswrfldf.rtm")
         .unwrap();
@@ -78,5 +78,5 @@ fn every_rtm_in_the_install_decodes() {
     assert!(walk.bone_index("RightHand").is_some());
     // Forward moves store a negative Z step (about -1.62 m per cycle for this walk).
     assert!(walk.step.z < -1.0, "{:?}", walk.step);
-    assert!(walk.events.iter().any(|e| e.name == "StepSound"));
+    assert!(walk.keystones.iter().any(|e| e.name == "StepSound"));
 }

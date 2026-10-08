@@ -1,16 +1,16 @@
-//! Plain `RTM_0101` animations, optionally preceded by an `RTM_MDAT` event section.
+//! Plain `RTM_0101` animations, optionally preceded by an `RTM_MDAT` keystone section.
 
 use glam::{Mat3, Vec3};
 
 use crate::cursor::Cursor;
-use crate::{Animation, BoneTransform, Encoding, Error, Event, Frame, Result};
+use crate::{Animation, BoneTransform, Encoding, Error, Frame, Keystone, Result};
 
 const NAME_SIZE: usize = 32;
 const MATRIX_SIZE: usize = 12 * 4;
 
 pub fn read(data: &[u8]) -> Result<Animation> {
     let mut c = Cursor::new(data);
-    let mut events = Vec::new();
+    let mut keystones = Vec::new();
     if c.array::<8>()? == *b"RTM_MDAT" {
         c.skip(4)?; // always 0 _(uncertain)_
         let count = c.count(12)?;
@@ -18,7 +18,12 @@ pub fn read(data: &[u8]) -> Result<Animation> {
             let phase = c.f32()?;
             let name = c.sized_str()?;
             let value = c.sized_str()?;
-            events.push(Event { phase, name, value });
+            keystones.push(Keystone {
+                kind: -1,
+                phase,
+                name,
+                value,
+            });
         }
         let sig = c.array::<8>()?;
         if sig != *b"RTM_0101" {
@@ -63,6 +68,7 @@ pub fn read(data: &[u8]) -> Result<Animation> {
         step,
         bones,
         frames,
-        events,
+        keystones,
+        extra_names: Vec::new(),
     })
 }

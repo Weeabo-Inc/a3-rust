@@ -63,6 +63,10 @@ impl<'a> Cursor<'a> {
         Ok(n)
     }
 
+    pub fn i32(&mut self) -> Result<i32> {
+        self.array().map(i32::from_le_bytes)
+    }
+
     pub fn f32(&mut self) -> Result<f32> {
         self.array().map(f32::from_le_bytes)
     }

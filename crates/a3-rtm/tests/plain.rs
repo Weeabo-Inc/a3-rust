@@ -76,7 +76,7 @@ fn rejects_unknown_signatures() {
 }
 
 #[test]
-fn reads_mdat_events_before_the_plain_data() {
+fn reads_mdat_keystones_before_the_plain_data() {
     let mut out = b"RTM_MDAT".to_vec();
     out.extend_from_slice(&0u32.to_le_bytes());
     out.extend_from_slice(&1u32.to_le_bytes());
@@ -88,9 +88,10 @@ fn reads_mdat_events_before_the_plain_data() {
     out.extend_from_slice(&two_frame_rtm());
 
     let anim = Animation::read(&out).unwrap();
-    assert_eq!(anim.events.len(), 1);
-    assert_eq!(anim.events[0].phase, 0.25);
-    assert_eq!(anim.events[0].name, "StepSound");
-    assert_eq!(anim.events[0].value, "left");
+    assert_eq!(anim.keystones.len(), 1);
+    assert_eq!(anim.keystones[0].phase, 0.25);
+    assert_eq!(anim.keystones[0].name, "StepSound");
+    assert_eq!(anim.keystones[0].value, "left");
+    assert_eq!(anim.keystones[0].kind, -1, "looked up by name");
     assert_eq!(anim.frames.len(), 2);
 }

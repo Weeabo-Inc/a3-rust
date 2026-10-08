@@ -4,7 +4,7 @@ use glam::{Quat, Vec3};
 
 use crate::cursor::Cursor;
 use crate::half::f16_to_f32;
-use crate::{Animation, BoneTransform, Encoding, Error, Event, Frame, Result};
+use crate::{Animation, BoneTransform, Encoding, Error, Frame, Keystone, Result};
 
 /// The only version found in the install (build 2.22).
 const VERSION: u32 = 5;
@@ -28,33 +28,32 @@ pub fn read(data: &[u8]) -> Result<Animation> {
     c.u8()?; // 1 in every shipped file _(meaning unknown)_
     let step = c.vec3()?;
     let phase_count = c.count(5)?;
-    c.u32()?; // 0 or 1 _(meaning unknown)_
+    // 0 or 1; the engine keeps it as a flag _(meaning unknown)_.
+    c.u32()?;
+    // Bone count of the first phase (written by the binarizer, ignored by the engine's reader).
+    c.u32()?;
     let bone_count = c.count(1)?;
-    let name_count = c.count(1)?;
-    if name_count != bone_count {
-        return Err(Error::Malformed(format!(
-            "{name_count} bone names for {bone_count} bones"
-        )));
-    }
     let bones = (0..bone_count)
         .map(|_| c.cstr())
         .collect::<Result<Vec<_>>>()?;
 
-    let offset = c.pos();
-    let unknown = c.u32()?;
-    if unknown != 0 {
-        return Err(Error::Malformed(format!(
-            "unknown list at byte {offset} has {unknown} items (0 in every shipped file)"
-        )));
-    }
-    let event_count = c.count(10)?;
-    let events = (0..event_count)
+    let extra_names_count = c.count(1)?;
+    let extra_names = (0..extra_names_count)
+        .map(|_| c.cstr())
+        .collect::<Result<Vec<_>>>()?;
+    let keystone_count = c.count(10)?;
+    let keystones = (0..keystone_count)
         .map(|_| {
-            c.u32()?; // 0 in every shipped file _(meaning unknown)_
+            let kind = c.i32()?;
             let name = c.cstr()?;
             let phase = c.f32()?;
             let value = c.cstr()?;
-            Ok(Event { phase, name, value })
+            Ok(Keystone {
+                kind,
+                phase,
+                name,
+                value,
+            })
         })
         .collect::<Result<Vec<_>>>()?;
 
@@ -79,7 +78,8 @@ pub fn read(data: &[u8]) -> Result<Animation> {
         step,
         bones,
         frames,
-        events,
+        keystones,
+        extra_names,
     })
 }
 

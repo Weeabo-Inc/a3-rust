@@ -177,6 +177,15 @@ CfgSkeletons.
 An animation file holding per-frame bone transforms for a Skeleton, used mainly for character
 moves.
 
+**Animation phase**:
+A position in an RTM's cycle, from 0 (start) to 1 (end). Keyframes and keystones sit at phases.
+_Avoid_: time, frame (a keyframe is the pose stored at one phase)
+
+**Animation keystone**:
+A named marker at a phase of an RTM, such as `StepSound` (a footstep), that the engine fires
+while the animation plays.
+_Avoid_: event (alone), animation event
+
 **Model animation**:
 A config-defined transform (rotation, translation, hide) of a named selection, driven by an
 Animation source such as a door state, wheel rotation or gun elevation.

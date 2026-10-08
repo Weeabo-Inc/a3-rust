@@ -1,16 +1,17 @@
 # RTM animation format
 
 Implemented in `crates/a3-rtm`. Findings come from parsing every `.rtm` in the install (build
-2.22.0.154103), not from the executable. Confidence is given per item: **high** = holds for every
-shipped file and the meaning is clear; **medium** = holds for every file, meaning inferred;
-**low** = not present in the install, from community notes.
+2.22.0.154103) and from the BMTR serializer of `arma3_x64.exe` (`0x1412557a0`, a read/write
+function; addresses are VAs in the Ghidra project). Confidence is given per item: **high** = holds
+for every shipped file and the meaning is clear (or read from the executable); **medium** = holds
+for every file, meaning inferred; **low** = not present in the install, from community notes.
 
 ## Survey
 
 5,870 `.rtm` files in the VFS: 5,831 binarized `BMTR` version 5 and 39 plain `RTM_0101` (fish,
 turtles, butterflies, two parachute poses). No `RTM_MDAT` section and no other BMTR version.
-Every file decodes with no trailing bytes: 739,588 keyframes, 75.7 M bone transforms, 878 events
-(all `StepSound` with an empty value). Most character moves have 103 bones.
+Every file decodes with no trailing bytes: 739,588 keyframes, 75.7 M bone transforms, 878
+keystones (all `StepSound`, type 0, with an empty value). Most character moves have 103 bones.
 
 All integers and floats are little-endian. `asciiz` = NUL-terminated string.
 
@@ -43,30 +44,37 @@ u32      count
 { f32 phase; u32 len; char name[len]; u32 len; char value[len] } [count]
 ```
 
-followed by the plain `RTM_0101` data. `a3-rtm` reads these as events.
+followed by the plain `RTM_0101` data. `a3-rtm` reads these as keystones of type -1.
 
 ## Binarized `BMTR` version 5
 
 ```
 char[4]  "BMTR"
-u32      version          5                                          high
-u8       ?                1 in every file                            unknown
-f32[3]   step             move vector                                high
-u32      phase_count                                                 high
-u32      ?                0 (5,053 files) or 1 (778 files)           unknown
-u32      bone_count                                                  high
-u32      bone_name_count  == bone_count in every file                high
-asciiz   bone_names[bone_name_count]   lower case                    high
-u32      ?                0 in every file (a list that is always empty; a3-rtm rejects non-zero)
-u32      event_count                                                 high
-event[event_count]:
-  u32    ?                0 in every file                            unknown
-  asciiz name             "StepSound"                                high
-  f32    phase                                                       high
-  asciiz value            "" in every file                           medium
-array<f32>        phase_times    count == phase_count                high
-array<transform>  transforms[phase_count]   count == bone_count each high
+u32      version          5 (the engine accepts 2..=5; layouts of 2..4 unknown)      high
+u8       ?                1 in every file; stored at anim+0x10c                      unknown
+f32[3]   step             move vector                                                high
+u32      phase_count                                                                 high
+u32      ?                0 (5,053 files) or 1 (778 files); engine keeps (v > 0) as a flag
+u32      first-phase bone count   written by the binarizer, skipped by the reader    high
+u32      bone_count                                                                  high
+asciiz   bone_names[bone_count]   lower case                                         high
+-- version >= 4:
+u32      name_count       0 in every file
+asciiz   names[name_count]          purpose unknown                                  medium
+u32      keystone_count                                                              high
+keystone[keystone_count]:
+  i32    type             keystone type number; -1 = resolve from name           high
+  asciiz name             "StepSound" (type 0) in every file                     high
+  f32    phase                                                                   high
+  asciiz value            "" in every file                                       high
+--
+array<f32>        phase_times    count == phase_count                                high
+array<transform>  transforms[phase_count]   count == bone_count each                 high
 ```
+
+The engine calls the phase events "animation keystones"; a name it cannot resolve logs
+`Invalid animation keystone name: "%s"`. It loads the first phase's transforms at once and keeps
+the file open to stream the others.
 
 `array<T>`: `u32 count`, `u8 flag`, then the `count * sizeof(T)` element bytes, stored as-is when
 `flag = 0` or as one LZO1X block when `flag = 2` (decompressed size known from the count; the
@@ -105,7 +113,8 @@ interpolation normalises its result.
 
 ## Open questions
 
-- Meaning of the unknown header byte and `u32`, the always-empty list and the per-event `u32`.
+- Meaning of the header byte, the 0/1 flag and the always-empty name list; the keystone type
+  numbering (the name-to-type table).
 - Whether transforms are relative to the skeleton's bind pose or absolute in model space, and the
   bone order mapping onto a CfgSkeletons skeleton. Needed for Phase 4 animation.
 - How the engine samples between keyframes (linear vs. slerp, looping past the last phase).

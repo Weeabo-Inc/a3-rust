@@ -9,7 +9,7 @@ use crate::input::InputArgs;
 
 #[derive(Subcommand)]
 pub enum RtmCommand {
-    /// Print the encoding, move vector, bones, keyframe phases and events of an RTM.
+    /// Print the encoding, move vector, bones, keyframe phases and keystones of an RTM.
     Info(InputArgs),
     /// Print every bone's transform (quaternion x y z w, translation x y z) at each keyframe,
     /// or at one interpolated phase.
@@ -48,9 +48,13 @@ fn info(anim: &Animation) -> String {
     for (i, bone) in anim.bones.iter().enumerate() {
         let _ = writeln!(out, "  {i:>3} {bone}");
     }
-    let _ = writeln!(out, "events   {}", anim.events.len());
-    for event in &anim.events {
-        let _ = writeln!(out, "  {:.4} {} {:?}", event.phase, event.name, event.value);
+    let _ = writeln!(out, "keystones {}", anim.keystones.len());
+    for keystone in &anim.keystones {
+        let _ = writeln!(
+            out,
+            "  {:.4} {} {:?}",
+            keystone.phase, keystone.name, keystone.value
+        );
     }
     out
 }
@@ -82,7 +86,7 @@ fn dump(anim: &Animation, phase: Option<f32>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use a3_rtm::{BoneTransform, Event, Frame};
+    use a3_rtm::{BoneTransform, Frame, Keystone};
     use glam::{Quat, Vec3};
 
     fn sample() -> Animation {
@@ -104,7 +108,9 @@ mod tests {
                     transforms: vec![raised],
                 },
             ],
-            events: vec![Event {
+            extra_names: vec![],
+            keystones: vec![Keystone {
+                kind: 0,
                 phase: 0.5,
                 name: "StepSound".into(),
                 value: String::new(),
@@ -113,7 +119,7 @@ mod tests {
     }
 
     #[test]
-    fn info_lists_bones_phases_and_events() {
+    fn info_lists_bones_phases_and_keystones() {
         let text = info(&sample());
         assert!(text.contains("BMTR version 5"), "{text}");
         assert!(text.contains("phases   0 1"), "{text}");

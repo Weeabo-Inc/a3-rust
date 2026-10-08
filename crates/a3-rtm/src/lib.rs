@@ -3,7 +3,7 @@
 //! An RTM holds, for a list of bones, one transform per bone at each of a series of keyframes.
 //! Each keyframe sits at a phase in `0..=1` of the animation cycle. Two encodings ship:
 //!
-//! - Plain `RTM_0101` (optionally preceded by an `RTM_MDAT` event section): fixed 32-byte bone
+//! - Plain `RTM_0101` (optionally preceded by an `RTM_MDAT` keystone section): fixed 32-byte bone
 //!   names and a 4x3 matrix per bone per frame.
 //! - Binarized `BMTR` version 5: quaternion (i16) plus half-float translation per bone per
 //!   frame, with large arrays LZO-compressed.
@@ -89,14 +89,18 @@ pub struct Frame {
     pub transforms: Vec<BoneTransform>,
 }
 
-/// A named marker at a phase of the animation, such as a `StepSound` footstep.
+/// A named marker at a phase of the animation, such as a `StepSound` footstep (the engine's
+/// "animation keystone").
 #[derive(Debug, Clone, PartialEq)]
-pub struct Event {
-    /// Phase at which the event fires.
+pub struct Keystone {
+    /// The engine's keystone type number, or -1 for "look it up by name" (0 for every shipped
+    /// `StepSound`; plain RTMs always give -1).
+    pub kind: i32,
+    /// Phase at which the keystone fires.
     pub phase: f32,
-    /// Event name, such as `StepSound`.
+    /// Keystone name, such as `StepSound`.
     pub name: String,
-    /// Event argument; empty in every shipped file.
+    /// Keystone argument; empty in every shipped file.
     pub value: String,
 }
 
@@ -111,8 +115,11 @@ pub struct Animation {
     pub bones: Vec<String>,
     /// Keyframes in file order (ascending phase in every shipped file).
     pub frames: Vec<Frame>,
-    /// Phase events.
-    pub events: Vec<Event>,
+    /// Phase keystones.
+    pub keystones: Vec<Keystone>,
+    /// A list of names stored before the keystones in binarized files; empty in every shipped
+    /// file _(meaning unknown)_.
+    pub extra_names: Vec<String>,
 }
 
 impl Animation {

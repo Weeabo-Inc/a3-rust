@@ -3,7 +3,6 @@
 use a3_rtm::{Animation, BoneTransform, Encoding, Error};
 use glam::{Quat, Vec3};
 
-const RAW: u8 = 0;
 const LZO: u8 = 2;
 
 /// One bone transform as stored: quaternion x, y, z, w as i16 / 16384, translation as f16.
@@ -32,8 +31,11 @@ fn array(out: &mut Vec<u8>, count: u32, flag: u8, bytes: &[u8]) {
     }
 }
 
+#[derive(Default)]
 struct Builder {
-    events: Vec<(&'static str, f32)>,
+    extra_names: Vec<&'static str>,
+    keystones: Vec<(i32, &'static str, f32)>,
+    /// Compression flag of every array: 0 raw (the default), 2 LZO.
     flag: u8,
 }
 
@@ -47,13 +49,17 @@ impl Builder {
         }
         out.extend_from_slice(&2u32.to_le_bytes()); // phases
         out.extend_from_slice(&0u32.to_le_bytes());
-        out.extend_from_slice(&2u32.to_le_bytes()); // bones
-        out.extend_from_slice(&2u32.to_le_bytes()); // names
+        out.extend_from_slice(&2u32.to_le_bytes()); // bones of the first phase
+        out.extend_from_slice(&2u32.to_le_bytes()); // bone names
         out.extend_from_slice(b"pelvis\0spine\0");
-        out.extend_from_slice(&0u32.to_le_bytes());
-        out.extend_from_slice(&(self.events.len() as u32).to_le_bytes());
-        for (name, phase) in &self.events {
-            out.extend_from_slice(&0u32.to_le_bytes());
+        out.extend_from_slice(&(self.extra_names.len() as u32).to_le_bytes());
+        for name in &self.extra_names {
+            out.extend_from_slice(name.as_bytes());
+            out.push(0);
+        }
+        out.extend_from_slice(&(self.keystones.len() as u32).to_le_bytes());
+        for (kind, name, phase) in &self.keystones {
+            out.extend_from_slice(&kind.to_le_bytes());
             out.extend_from_slice(name.as_bytes());
             out.push(0);
             out.extend_from_slice(&phase.to_le_bytes());
@@ -76,10 +82,7 @@ impl Builder {
 }
 
 fn plain() -> Builder {
-    Builder {
-        events: vec![],
-        flag: RAW,
-    }
+    Builder::default()
 }
 
 #[test]
@@ -105,8 +108,8 @@ fn decodes_quantized_quaternions_and_half_float_translations() {
 #[test]
 fn reads_lzo_compressed_arrays() {
     let compressed = Builder {
-        events: vec![],
         flag: LZO,
+        ..Builder::default()
     };
     assert_eq!(
         Animation::read(&compressed.build()).unwrap(),
@@ -115,19 +118,31 @@ fn reads_lzo_compressed_arrays() {
 }
 
 #[test]
-fn reads_step_sound_events() {
+fn reads_step_sound_keystones() {
     let builder = Builder {
-        events: vec![("StepSound", 0.25), ("StepSound", 0.75)],
-        flag: RAW,
+        keystones: vec![(0, "StepSound", 0.25), (-1, "StepSound", 0.75)],
+        ..Builder::default()
     };
     let anim = Animation::read(&builder.build()).unwrap();
-    let events: Vec<(&str, f32)> = anim
-        .events
+    let keystones: Vec<(i32, &str, f32)> = anim
+        .keystones
         .iter()
-        .map(|e| (e.name.as_str(), e.phase))
+        .map(|k| (k.kind, k.name.as_str(), k.phase))
         .collect();
-    assert_eq!(events, [("StepSound", 0.25), ("StepSound", 0.75)]);
+    assert_eq!(keystones, [(0, "StepSound", 0.25), (-1, "StepSound", 0.75)]);
     assert_eq!(anim.frames.len(), 2);
+}
+
+#[test]
+fn reads_the_name_list_before_the_keystones() {
+    let builder = Builder {
+        extra_names: vec!["first", "second"],
+        keystones: vec![(0, "StepSound", 0.5)],
+        ..Builder::default()
+    };
+    let anim = Animation::read(&builder.build()).unwrap();
+    assert_eq!(anim.extra_names, ["first", "second"]);
+    assert_eq!(anim.keystones.len(), 1);
 }
 
 #[test]
@@ -143,8 +158,8 @@ fn rejects_other_versions() {
 #[test]
 fn rejects_unknown_compression_flags() {
     let bytes = Builder {
-        events: vec![],
         flag: 7,
+        ..Builder::default()
     }
     .build();
     assert!(matches!(Animation::read(&bytes), Err(Error::Malformed(_))));
