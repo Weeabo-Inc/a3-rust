@@ -16,6 +16,7 @@ a3-vfs = { path = "crates/a3-vfs" }
 a3-sqf = { path = "crates/a3-sqf" }
 a3-config = { path = "crates/a3-config" }
 a3-gamedata = { path = "crates/a3-gamedata" }
+a3-preproc = { path = "crates/a3-preproc" }
 
 # Errors
 thiserror = "2"
@@ -36,6 +37,9 @@ tempfile = "3"
 log = "0.4"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Time
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 
 # CLI
 clap = { version = "4", features = ["derive", "env"] }
