@@ -322,6 +322,22 @@ The server sending the mission PBO to a joining client that does not already hav
 mission.
 _Avoid_: mission download
 
+## Input
+
+**User action**:
+A named thing the player can do (`moveForward`, `defaultAction`, `cameraMoveUp`), queried by
+the engine and by the `inputAction` script command. Names compare case-insensitively.
+_Avoid_: command, input event
+
+**Keybinding**:
+One way to trigger a User action: an input (key, mouse button or axis, gamepad input), an
+optional modifier (`LCtrl+X`) and a trigger (press, double tap, hold). Stored as integer key
+codes in `CfgDefaultKeysPresets` and the Profile.
+_Avoid_: shortcut, hotkey
+
+**DIK code**:
+A DirectInput keyboard scancode (`DIK_W` = 0x11); RV's identity for keyboard keys.
+
 ## UI
 
 **Display**:
