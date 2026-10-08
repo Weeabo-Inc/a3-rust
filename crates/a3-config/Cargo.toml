@@ -1,0 +1,18 @@
+[package]
+name = "a3-config"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+description = "Real Virtuality config system: rapified config.bin, config.cpp text, merged config tree"
+
+[dependencies]
+thiserror.workspace = true
+
+[dev-dependencies]
+a3-pbo.workspace = true
+a3-vfs.workspace = true
+proptest.workspace = true
+
+[lints]
+workspace = true

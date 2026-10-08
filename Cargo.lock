@@ -3,6 +3,16 @@
 version = 4
 
 [[package]]
+name = "a3-config"
+version = "0.1.0"
+dependencies = [
+ "a3-pbo",
+ "a3-vfs",
+ "proptest",
+ "thiserror",
+]
+
+[[package]]
 name = "a3-core"
 version = "0.1.0"
 
@@ -31,6 +41,7 @@ dependencies = [
 name = "a3-tools"
 version = "0.1.0"
 dependencies = [
+ "a3-config",
  "a3-core",
  "a3-pbo",
  "a3-vfs",
