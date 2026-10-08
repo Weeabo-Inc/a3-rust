@@ -46,7 +46,7 @@ pub(crate) fn model_info(
             t_body: r.f32()?,
         },
         force_not_alpha: r.bool()?,
-        shadow_source: r.i32()?,
+        shadow_source: r.i32()?.into(),
         prefer_shadow_volume: r.bool()?,
         shadow_offset: r.f32()?,
         animated: r.bool()?,
@@ -85,7 +85,8 @@ pub(crate) fn model_info(
     m.class = r.asciiz()?;
     m.damage = r.asciiz()?;
     m.frequent = r.bool()?;
-    m.unknown = r.u32()?;
+    let n = r.count(1)?;
+    m.obsolete_names = (0..n).map(|_| r.asciiz()).collect::<Result<_>>()?;
     let mut per_lod = || (0..lod_count).map(|_| r.i32()).collect::<Result<Vec<_>>>();
     m.preferred_shadow_volume_lod = per_lod()?;
     m.preferred_shadow_buffer_lod = per_lod()?;

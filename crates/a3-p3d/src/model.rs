@@ -101,8 +101,8 @@ pub struct ModelInfo {
     pub thermal: ThermalParams,
     /// Model property `forcenotalpha`.
     pub force_not_alpha: bool,
-    /// Shadow source selection _(uncertain meaning)_.
-    pub shadow_source: i32,
+    /// Where shadows come from (model property `sbsource`).
+    pub shadow_source: ShadowSource,
     /// Model property `prefershadowvolume`.
     pub prefer_shadow_volume: bool,
     /// Shadow offset (`f32::MAX` when unset).
@@ -125,7 +125,8 @@ pub struct ModelInfo {
     pub explosion_shielding: f32,
     /// Indices of the special LODs.
     pub special_lods: SpecialLods,
-    /// Unknown; equals the LOD count in most models _(uncertain)_.
+    /// Index of the first LOD that casts shadows from visual geometry; the LOD count when no
+    /// LOD does. The engine moves it to the first LOD with under 1000 faces.
     pub min_shadow: u32,
     /// Model property `canblend`.
     pub can_blend: bool,
@@ -135,14 +136,46 @@ pub struct ModelInfo {
     pub damage: String,
     /// Model property `frequent`.
     pub frequent: bool,
-    /// Unknown; 0 in shipped models.
-    pub unknown: u32,
-    /// Per LOD: index of the preferred shadow-volume LOD, or -1.
+    /// An obsolete list of names the engine reads and discards (empty in shipped models).
+    pub obsolete_names: Vec<String>,
+    /// Per LOD: its `shadowVolumeLOD` (or `shadowLOD`) property, the shadow-volume level to use
+    /// with it, or -1.
     pub preferred_shadow_volume_lod: Vec<i32>,
-    /// Per LOD: index of the preferred shadow-buffer LOD, or -1.
+    /// Per LOD: its `shadowBufferLOD` property, or -1.
     pub preferred_shadow_buffer_lod: Vec<i32>,
-    /// Per LOD: index of the preferred visible shadow-buffer LOD, or -1.
+    /// Per LOD: its `shadowBufferLODVis` property, or -1.
     pub preferred_shadow_buffer_lod_visible: Vec<i32>,
+}
+
+/// The model property `sbsource`: where the shadow-buffer shadow comes from.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ShadowSource {
+    /// `visual`: the visual LODs.
+    #[default]
+    Visual,
+    /// `shadowvolume`: shadow-buffer LODs generated from the shadow-volume LODs.
+    ShadowVolume,
+    /// `explicit`: the model's own shadow-buffer LODs.
+    Explicit,
+    /// `none`: no shadow.
+    None,
+    /// `visualex`.
+    VisualEx,
+    /// A value this crate does not know.
+    Other(i32),
+}
+
+impl From<i32> for ShadowSource {
+    fn from(v: i32) -> Self {
+        match v {
+            0 => Self::Visual,
+            1 => Self::ShadowVolume,
+            2 => Self::Explicit,
+            3 => Self::None,
+            4 => Self::VisualEx,
+            v => Self::Other(v),
+        }
+    }
 }
 
 /// Thermal imaging parameters of a model _(names from community notes; meaning uncertain)_.
@@ -636,10 +669,27 @@ pub struct OdolLod {
     pub vertex_bone_ref_is_simple: bool,
     /// Per vertex: the two neighbour vertices and their bone weights (empty for most LODs).
     pub neighbor_bones: Vec<NeighborBones>,
-    /// Unknown `u32` at the end of the vertex block; 0 in shipped models.
-    pub unknown_u32: u32,
-    /// Unknown trailing byte; 1 in nearly all shipped LODs.
+    /// The LOD's collimator (reflector-sight reticle) data, when stored (none shipped).
+    pub collimator: Option<Collimator>,
+    /// Unknown trailing byte (engine field `+0x271` of the LOD); 1 in nearly all shipped LODs.
     pub unknown_u8: u8,
+}
+
+/// The engine's `CollimatorInfo`: geometry of a collimator (reflex or holographic sight)
+/// reticle. Stored as `vec3, vec3, f32, vec3, f32`; the field names are guesses from the one
+/// shipped instance (a holosight: a point, a forward axis, a size, an up axis, a size).
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct Collimator {
+    /// A point on the reticle plane _(uncertain)_.
+    pub origin: Vec3,
+    /// First axis (forward in the shipped instance) _(uncertain)_.
+    pub axis_a: Vec3,
+    /// First size _(uncertain)_.
+    pub size_a: f32,
+    /// Second axis (down in the shipped instance) _(uncertain)_.
+    pub axis_b: Vec3,
+    /// Second size _(uncertain)_.
+    pub size_b: f32,
 }
 
 /// The neighbour-vertex record of a skinned vertex _(meaning uncertain)_.
@@ -685,6 +735,6 @@ pub struct OdolSection {
     pub material_name: String,
     /// Area over texture, per stage _(uncertain)_.
     pub area_over_tex: Vec<f32>,
-    /// Eleven unknown floats present in a few sections.
-    pub unknown: Option<[f32; 11]>,
+    /// Collimator (reflector-sight reticle) data of the section, when present.
+    pub collimator: Option<Collimator>,
 }
