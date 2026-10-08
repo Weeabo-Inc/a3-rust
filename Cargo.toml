@@ -42,6 +42,12 @@ clap = { version = "4", features = ["derive", "env"] }
 # Collections
 indexmap = "2"
 
+# Engine core: window, input, rendering
+a3-input = { path = "crates/a3-input" }
+a3-platform = { path = "crates/a3-platform" }
+winit = "0.30"
+gilrs = "0.11"
+
 # Testing
 proptest = "1"
 insta = "1"
