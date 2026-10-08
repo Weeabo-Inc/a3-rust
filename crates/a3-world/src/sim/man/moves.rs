@@ -63,9 +63,11 @@ impl MoveState {
         let Some(moves) = moves else {
             return;
         };
-        // His first step: he starts in the idle move of his stance, with nothing to blend from.
+        // His first step: he starts in the idle move of the moves type's default stance, with
+        // nothing to blend from. The stance he asks for is a request like any other, so it walks
+        // the graph from there.
         if self.current.is_none() {
-            self.current = idle_move(moves, self.wanted_stance(moves, input));
+            self.current = idle_move(moves, Stance::Stand);
             self.weight = 1.0;
             self.accumulator = 1.0;
         }
@@ -249,19 +251,6 @@ impl MoveState {
             Vec3::ZERO
         }
     }
-
-    /// The stance he asks to be in: the input's stance, or the stance of the move he plays (he
-    /// keeps it), or standing when he has no move yet.
-    fn wanted_stance(&self, moves: &Moves, input: &ManInput) -> Stance {
-        if input.stance != Stance::Undefined {
-            return input.stance;
-        }
-        self.current
-            .and_then(|current| moves.get(current).actions)
-            .map(|map| moves.action_map(map).stance)
-            .filter(|stance| *stance != Stance::Undefined)
-            .unwrap_or(Stance::Stand)
-    }
 }
 
 /// What a move moves him by per second (model space): its RTM step per cycle times its phase
@@ -277,9 +266,16 @@ fn step_in_world(step: Vec3, orientation: DQuat) -> DVec3 {
     orientation * DVec3::new(-f64::from(step.x), f64::from(step.y), -f64::from(step.z))
 }
 
-/// The move his input asks for while he is in `current`: the action of the current move's map
+/// The move his input asks for while he is in `current`: the idle move of the stance he asks
+/// for when that is not the stance he is in, otherwise the action of the current move's map
 /// whose key matches his axes, sprinting picking `RunF` over `WalkF`.
 fn requested_move(moves: &Moves, current: MoveId, input: &ManInput) -> Option<MoveId> {
+    // A stance change is a move like any other: the machine walks the graph from where he is to
+    // the idle of the stance he asks for, playing the transition moves between them
+    // (`Down`/`StandDown`, and their like, in `docs/re/sim-man-movement.md` §1).
+    if input.stance != Stance::Undefined && input.stance != stance_of(moves, current) {
+        return idle_move(moves, input.stance);
+    }
     let action = if input.forward > 0.0 {
         if input.sprint { "RunF" } else { "WalkF" }
     } else if input.forward < 0.0 {
@@ -292,6 +288,16 @@ fn requested_move(moves: &Moves, current: MoveId, input: &ManInput) -> Option<Mo
         "Stop"
     };
     moves.action_move(current, action)
+}
+
+/// The stance the move he plays belongs to, [`Stance::Undefined`] when it belongs to none (a
+/// transition move).
+fn stance_of(moves: &Moves, id: MoveId) -> Stance {
+    moves
+        .get(id)
+        .actions
+        .map(|map| moves.action_map(map).stance)
+        .unwrap_or(Stance::Undefined)
 }
 
 /// The idle move of a stance: the `Stop` action of the stance's primary action map. Without a map

@@ -5,6 +5,7 @@
 
 mod common;
 
+use a3_moves::Stance;
 use a3_world::{EntityId, ManInput, World};
 use glam::DVec3;
 
@@ -250,4 +251,58 @@ fn starting_to_walk_blends_in() {
         "the blend must build up: {first} then {later}"
     );
     assert!((later - walk).abs() < 1e-3, "{later}");
+}
+
+/// Lying down: he plays the stand-down move into the prone idle. `Stand` has no direct edge to
+/// `Prone`, so the route is `Stand → StandDown → Prone`, and the hop into `Prone` is a
+/// `connectTo`: it may only start once the stand-down has played out
+/// (`docs/re/sim-man-anim-state.md` §5).
+#[test]
+fn lying_down_plays_the_stand_down_move_first() {
+    let mut world = world();
+    let man = create_man(&mut world, DVec3::new(10.0, 100.0, 20.0));
+    world.set_man_input(
+        man,
+        ManInput {
+            stance: Stance::Prone,
+            ..ManInput::default()
+        },
+    );
+
+    run(&mut world, 5);
+    assert_eq!(world.animation_state(man), "standdown");
+    // The stand-down carries him forward onto the ground: 0.5 m per cycle × 1 cycle/s.
+    assert!((world.entity(man).unwrap().velocity().z - 0.5).abs() < 1e-3);
+
+    // Its cycle lasts a second; only then does he lie down, and lying still he is.
+    run(&mut world, 15);
+    assert_eq!(world.animation_state(man), "prone");
+    assert!(world.entity(man).unwrap().velocity().length() < 1e-3);
+}
+
+/// He keeps the stance he is in while his axes drive him: on the ground, forward is the crawl.
+#[test]
+fn lying_down_and_pushing_forward_crawls() {
+    let mut world = world();
+    let man = create_man(&mut world, DVec3::new(10.0, 100.0, 20.0));
+    let prone = ManInput {
+        stance: Stance::Prone,
+        ..ManInput::default()
+    };
+    world.set_man_input(man, prone);
+    run(&mut world, 20);
+    assert_eq!(world.animation_state(man), "prone");
+
+    world.set_man_input(
+        man,
+        ManInput {
+            forward: 1.0,
+            ..prone
+        },
+    );
+    run(&mut world, 15);
+
+    assert_eq!(world.animation_state(man), "crawl");
+    // The crawl step is 0.5 m per cycle at 0.5 cycles/s.
+    assert!((world.entity(man).unwrap().velocity().z - 0.25).abs() < 1e-3);
 }
