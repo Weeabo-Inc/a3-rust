@@ -1,6 +1,7 @@
 //! Behaviour of the PBO reader and writer, on synthetic archives built by the writer.
 
-use a3_pbo::{Error, PackingMethod, Pbo, PboWriter};
+use a3_compress::lzss::ChecksumKind;
+use a3_pbo::{Error, METHOD_COMPRESSED, PackingMethod, Pbo, PboWriter};
 
 fn sample() -> Vec<u8> {
     PboWriter::new()
@@ -153,27 +154,96 @@ fn set_method(bytes: &mut [u8], name: &str, method: u32) {
     bytes[pos..pos + 4].copy_from_slice(&method.to_le_bytes());
 }
 
+/// A PBO with one entry `a` written by hand: no properties, no trailer.
+fn single_raw_entry(method: u32, original_size: u32, data: &[u8]) -> Vec<u8> {
+    let mut b = b"a\0".to_vec();
+    for field in [method, original_size, 0, 0, data.len() as u32] {
+        b.extend_from_slice(&field.to_le_bytes());
+    }
+    b.extend_from_slice(&[0; 21]);
+    b.extend_from_slice(data);
+    b
+}
+
+/// LZSS of `"\xF0\x01ABCDEF"`: one flag byte (8 literals) and the 8 bytes, then `checksum`.
+fn lzss_literals(checksum: u32) -> Vec<u8> {
+    let mut b = vec![0xFF, 0xF0, 0x01, b'A', b'B', b'C', b'D', b'E', b'F'];
+    b.extend_from_slice(&checksum.to_le_bytes());
+    b
+}
+
+const LITERALS: &[u8] = b"\xF0\x01ABCDEF";
+/// Byte sum of `LITERALS` with 0xF0 read as -16.
+const SIGNED_SUM: u32 = 0x186;
+/// Byte sum of `LITERALS` with 0xF0 read as 240.
+const UNSIGNED_SUM: u32 = 0x286;
+
 #[test]
-fn compressed_entries_are_reported_unsupported() {
-    let mut bytes = sample();
-    set_method(&mut bytes, "config.bin", u32::from_le_bytes(*b"srpC"));
+fn a_hand_built_cprs_entry_is_decompressed() {
+    let bytes = single_raw_entry(METHOD_COMPRESSED, 8, &lzss_literals(SIGNED_SUM));
     let pbo = Pbo::from_bytes(bytes).unwrap();
 
-    assert_eq!(
-        pbo.entry("config.bin").unwrap().method(),
-        PackingMethod::Compressed
-    );
-    assert!(matches!(
-        pbo.read("config.bin"),
-        Err(Error::Unsupported {
-            method: PackingMethod::Compressed,
-            ..
-        })
-    ));
-    assert_eq!(
-        &pbo.raw(pbo.entry("config.bin").unwrap())[..],
-        b"raP-config"
-    );
+    let entry = pbo.entry("a").unwrap();
+    assert_eq!(entry.method(), PackingMethod::Compressed);
+    assert_eq!(entry.size(), 8);
+    assert_eq!(&pbo.read("a").unwrap()[..], LITERALS);
+    assert_eq!(pbo.raw(entry).len(), 13);
+}
+
+#[test]
+fn a_cprs_entry_with_an_unsigned_checksum_is_accepted() {
+    let bytes = single_raw_entry(METHOD_COMPRESSED, 8, &lzss_literals(UNSIGNED_SUM));
+    let pbo = Pbo::from_bytes(bytes).unwrap();
+
+    assert_eq!(&pbo.read("a").unwrap()[..], LITERALS);
+}
+
+#[test]
+fn a_cprs_entry_with_a_wrong_checksum_is_an_error() {
+    let bytes = single_raw_entry(METHOD_COMPRESSED, 8, &lzss_literals(SIGNED_SUM + 1));
+    let pbo = Pbo::from_bytes(bytes).unwrap();
+
+    assert!(matches!(pbo.read("a"), Err(Error::Decompress { .. })));
+}
+
+#[test]
+fn a_truncated_cprs_entry_is_an_error() {
+    let data = lzss_literals(SIGNED_SUM);
+    let bytes = single_raw_entry(METHOD_COMPRESSED, 8, &data[..data.len() - 2]);
+    let pbo = Pbo::from_bytes(bytes).unwrap();
+
+    assert!(matches!(pbo.read("a"), Err(Error::Decompress { .. })));
+}
+
+#[test]
+fn compressed_files_written_by_the_writer_read_back() {
+    let text = b"class CfgPatches { class A { units[] = {}; }; };\n".repeat(40);
+    let bytes = PboWriter::new()
+        .property("prefix", "p")
+        .compressed_file("config.cpp", text.clone())
+        .file("stored.txt", b"plain".to_vec())
+        .to_bytes();
+    let pbo = Pbo::from_bytes(bytes).unwrap();
+
+    let entry = pbo.entry("config.cpp").unwrap();
+    assert_eq!(entry.method(), PackingMethod::Compressed);
+    assert_eq!(entry.original_size() as usize, text.len());
+    assert!((entry.data_size() as usize) < text.len() / 4);
+    assert_eq!(&pbo.read("config.cpp").unwrap()[..], &text[..]);
+    assert_eq!(&pbo.read("stored.txt").unwrap()[..], b"plain");
+    pbo.verify().unwrap();
+}
+
+#[test]
+fn the_writer_uses_the_assumed_checksum_kind() {
+    let bytes = PboWriter::new()
+        .compressed_file("a", LITERALS.to_vec())
+        .to_bytes();
+    let pbo = Pbo::from_bytes(bytes).unwrap();
+
+    let raw = pbo.raw(pbo.entry("a").unwrap());
+    assert_eq!(a3_pbo::CPRS_CHECKSUM, ChecksumKind::Signed);
+    assert_eq!(raw[raw.len() - 4..], SIGNED_SUM.to_le_bytes());
 }
 
 #[test]
@@ -251,18 +321,22 @@ proptest::proptest! {
     #[test]
     fn writer_and_reader_round_trip(
         files in proptest::collection::btree_map("[a-z]{1,8}(\\\\[a-z0-9_]{1,8}){0,3}\\.[a-z]{1,3}",
-            proptest::collection::vec(proptest::prelude::any::<u8>(), 0..300), 0..12),
+            (proptest::collection::vec(proptest::prelude::any::<u8>(), 0..300), proptest::prelude::any::<bool>()), 0..12),
         prefix in "[a-z]{1,6}(\\\\[a-z_]{1,6}){0,2}",
     ) {
         let mut writer = PboWriter::new().property("prefix", prefix.clone());
-        for (name, data) in &files {
-            writer = writer.file(name.clone(), data.clone());
+        for (name, (data, compress)) in &files {
+            writer = if *compress {
+                writer.compressed_file(name.clone(), data.clone())
+            } else {
+                writer.file(name.clone(), data.clone())
+            };
         }
         let pbo = Pbo::from_bytes(writer.to_bytes()).unwrap();
 
         proptest::prop_assert_eq!(pbo.prefix().unwrap().into_string(), prefix);
         proptest::prop_assert_eq!(pbo.entries().len(), files.len());
-        for (name, data) in &files {
+        for (name, (data, _)) in &files {
             proptest::prop_assert_eq!(&pbo.read(name).unwrap()[..], &data[..]);
         }
         proptest::prop_assert!(pbo.verify().is_ok());

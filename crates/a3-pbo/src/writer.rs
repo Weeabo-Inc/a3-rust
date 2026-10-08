@@ -1,11 +1,14 @@
+use std::borrow::Cow;
 use std::io::{self, Write};
 
 use sha1::{Digest, Sha1};
 
 use crate::Properties;
-use crate::entry::{METHOD_PROPERTIES, METHOD_STORED};
+use crate::cprs;
+use crate::entry::{METHOD_COMPRESSED, METHOD_PROPERTIES, METHOD_STORED};
 
-/// Builds a PBO from files and properties. Every file is stored uncompressed.
+/// Builds a PBO from files and properties. Files are stored as is, or LZSS-compressed (`Cprs`)
+/// when added with [`PboWriter::compressed_file`].
 ///
 /// ```
 /// let bytes = a3_pbo::PboWriter::new()
@@ -26,6 +29,7 @@ struct File {
     name: String,
     data: Vec<u8>,
     timestamp: u32,
+    compress: bool,
 }
 
 impl PboWriter {
@@ -56,6 +60,20 @@ impl PboWriter {
             name: name.into(),
             data: data.into(),
             timestamp,
+            compress: false,
+        });
+        self
+    }
+
+    /// Adds a file with timestamp 0, stored LZSS-compressed (`Cprs`) with a
+    /// [`CPRS_CHECKSUM`](crate::CPRS_CHECKSUM) checksum. It is compressed even when that does
+    /// not make it smaller.
+    pub fn compressed_file(mut self, name: impl Into<String>, data: impl Into<Vec<u8>>) -> Self {
+        self.files.push(File {
+            name: name.into(),
+            data: data.into(),
+            timestamp: 0,
+            compress: true,
         });
         self
     }
@@ -78,13 +96,36 @@ impl PboWriter {
             }
             write_cstr(&mut out, "")?;
         }
-        for file in &self.files {
-            let size = file.data.len() as u32;
-            write_record(&mut out, &file.name, METHOD_STORED, 0, file.timestamp, size)?;
+        let payloads: Vec<Cow<'_, [u8]>> = self
+            .files
+            .iter()
+            .map(|file| {
+                if file.compress {
+                    Cow::Owned(cprs::pack(&file.data))
+                } else {
+                    Cow::Borrowed(&file.data[..])
+                }
+            })
+            .collect();
+        for (file, payload) in self.files.iter().zip(&payloads) {
+            let size = u32::try_from(payload.len()).map_err(|_| too_large(&file.name))?;
+            let (method, original_size) = if file.compress {
+                (METHOD_COMPRESSED, file.data.len() as u32)
+            } else {
+                (METHOD_STORED, 0)
+            };
+            write_record(
+                &mut out,
+                &file.name,
+                method,
+                original_size,
+                file.timestamp,
+                size,
+            )?;
         }
         write_record(&mut out, "", 0, 0, 0, 0)?;
-        for file in &self.files {
-            out.write_all(&file.data)?;
+        for payload in &payloads {
+            out.write_all(payload)?;
         }
         let digest = out.hasher.finalize();
         let mut inner = out.inner;
@@ -116,11 +157,18 @@ impl PboWriter {
                 return invalid(format!("invalid PBO entry name {:?}", file.name));
             }
             if u32::try_from(file.data.len()).is_err() {
-                return invalid(format!("PBO entry {:?} is 4 GiB or larger", file.name));
+                return Err(too_large(&file.name));
             }
         }
         Ok(())
     }
+}
+
+fn too_large(name: &str) -> io::Error {
+    io::Error::new(
+        io::ErrorKind::InvalidInput,
+        format!("PBO entry {name:?} is 4 GiB or larger"),
+    )
 }
 
 fn write_cstr(out: &mut impl Write, text: &str) -> io::Result<()> {

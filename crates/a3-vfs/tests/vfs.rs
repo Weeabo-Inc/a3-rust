@@ -52,6 +52,23 @@ fn opens_files_of_a_mounted_pbo_under_its_prefix() {
 }
 
 #[test]
+fn opens_compressed_pbo_entries_unpacked() {
+    let config = "class CfgPatches { class A {}; };\n".repeat(30);
+    let bytes = PboWriter::new()
+        .property("prefix", r"x\packed")
+        .compressed_file("config.cpp", config.as_bytes().to_vec())
+        .to_bytes();
+    let vfs = Vfs::new();
+    vfs.mount_pbo(Pbo::from_bytes(bytes).unwrap(), None);
+
+    assert_eq!(text(&vfs, r"x\packed\config.cpp"), config);
+    assert_eq!(
+        vfs.stat(r"x\packed\config.cpp").unwrap().size,
+        config.len() as u64
+    );
+}
+
+#[test]
 fn later_mounts_override_earlier_ones_per_file() {
     let vfs = Vfs::new();
     vfs.mount_pbo(pbo("a3\\x", &[("a.txt", "old"), ("b.txt", "kept")]), None);

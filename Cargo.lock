@@ -73,6 +73,7 @@ dependencies = [
 name = "a3-pbo"
 version = "0.1.0"
 dependencies = [
+ "a3-compress",
  "a3-core",
  "bytes",
  "memmap2",

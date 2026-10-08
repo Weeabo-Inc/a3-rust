@@ -114,10 +114,18 @@ impl Pbo {
         self.data.slice(start..start + entry.data_size as usize)
     }
 
-    /// The unpacked content of `entry`.
+    /// The unpacked content of `entry`: zero-copy for stored entries, decompressed for `Cprs`.
     pub fn read_entry(&self, entry: &Entry) -> Result<Bytes> {
         match entry.method {
             PackingMethod::Stored => Ok(self.raw(entry)),
+            PackingMethod::Compressed => {
+                crate::cprs::unpack(&self.raw(entry), entry.original_size as usize)
+                    .map(Bytes::from)
+                    .map_err(|source| Error::Decompress {
+                        name: entry.name.clone(),
+                        source,
+                    })
+            }
             PackingMethod::Encrypted => Err(Error::Encrypted),
             method => Err(Error::Unsupported {
                 name: entry.name.clone(),
