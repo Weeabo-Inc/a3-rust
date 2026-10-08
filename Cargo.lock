@@ -105,6 +105,7 @@ dependencies = [
 name = "a3-sqf"
 version = "0.1.0"
 dependencies = [
+ "a3-preproc",
  "indexmap",
  "thiserror 2.0.21",
 ]

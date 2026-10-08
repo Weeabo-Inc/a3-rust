@@ -63,11 +63,12 @@ pub trait Host: 'static {
     }
 
     /// Reads and preprocesses a script file (`preprocessFile`,
-    /// `preprocessFileLineNumbers`, `execVM`). With `line_numbers`, the
-    /// output carries `#line` directives. The default loads the file
-    /// without preprocessing.
-    fn preprocess_file(&mut self, path: &str, _line_numbers: bool) -> Result<String, String> {
-        self.load_file(path)
+    /// `preprocessFileLineNumbers`, `execVM`, `compileScript`). With
+    /// `line_numbers`, the output carries `#line` directives. The default
+    /// runs the RV preprocessor ([`crate::preprocess::preprocess_with_host`]),
+    /// reading the file and its includes with [`Host::load_file`].
+    fn preprocess_file(&mut self, path: &str, line_numbers: bool) -> Result<String, String> {
+        crate::preprocess::preprocess_with_host(self, path, line_numbers)
     }
 
     /// The text `str` gives for a host handle.

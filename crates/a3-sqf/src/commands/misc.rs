@@ -31,6 +31,40 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
     r.unary("compileFinal", CODE, CODE, |_, a| {
         Ok(Value::Code(expect_code(&a)?.to_final()))
     });
+    // compileScript [path, final, prefixHeader]: compile(Final) (prefixHeader +
+    // preprocessFileLineNumbers path).
+    r.unary("compileScript", ARR, CODE, |ctx, a| {
+        let Value::Array(args) = &a else {
+            unreachable!()
+        };
+        let args = args.borrow();
+        let path = expect_str(args.first().unwrap_or(&Value::Nil))?.to_owned();
+        let final_ = match args.get(1) {
+            Some(Value::Bool(b)) => *b,
+            _ => false,
+        };
+        let header = match args.get(2) {
+            Some(Value::String(s)) => s.to_string(),
+            _ => String::new(),
+        };
+        drop(args);
+        let text = ctx
+            .host
+            .preprocess_file(&path, true)
+            .map_err(SqfError::Generic)?;
+        // The header goes in front of the file's first line, after the leading
+        // `#line` directive, so it does not shift line numbers.
+        let text = match text.split_once('\n') {
+            Some((first, rest)) if first.starts_with("#line") => {
+                format!("{first}\n{header}{rest}")
+            }
+            _ => format!("{header}{text}"),
+        };
+        let code = ctx
+            .compile(&path, &text)
+            .map_err(|e| SqfError::Generic(e.message))?;
+        Ok(Value::Code(if final_ { code.to_final() } else { code }))
+    });
     r.unary("isFinal", CODE, BOOL, |_, a| {
         Ok(Value::Bool(expect_code(&a)?.is_final()))
     });

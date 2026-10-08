@@ -86,6 +86,7 @@ civilian	nular			SIDE
 compile	unary		STRING	CODE
 compileFinal	unary		CODE	CODE
 compileFinal	unary		STRING	CODE
+compileScript	unary		ARRAY	CODE
 configNull	nular			CONFIG
 continue	nular			NOTHING
 continueWith	unary		ANY	NOTHING
