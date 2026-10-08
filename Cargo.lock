@@ -46,6 +46,16 @@ name = "a3-core"
 version = "0.1.0"
 
 [[package]]
+name = "a3-environment"
+version = "0.1.0"
+dependencies = [
+ "a3-config",
+ "a3-gamedata",
+ "glam",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "a3-fonts"
 version = "0.1.0"
 dependencies = [
