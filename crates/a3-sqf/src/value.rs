@@ -50,6 +50,8 @@ pub enum Value {
     Script(ScriptHandle),
     /// An engine object owned by the host (object, group, control, ...).
     Handle(Handle),
+    /// Structured text (`parseText`, `composeText`, ...).
+    Text(StructuredText),
     /// `if cond`: the evaluated condition.
     If(bool),
     /// `while {cond}`: the condition code.
@@ -61,8 +63,9 @@ pub enum Value {
     Switch(Rc<SwitchState>),
     /// `with namespace`.
     With(Namespace),
-    /// `try {code}`: the code to run under `catch`.
-    Exception(Code),
+    /// `try {code}` / `args try {code}`: the code to run under `catch` and
+    /// its `_this` (`None` keeps the caller's).
+    Exception(Code, Option<Rc<Value>>),
 }
 
 impl Value {
@@ -81,12 +84,13 @@ impl Value {
             Value::Side(_) => Type::Side,
             Value::Script(_) => Type::Script,
             Value::Handle(h) => h.kind.ty(),
+            Value::Text(_) => Type::Text,
             Value::If(_) => Type::If,
             Value::While(_) => Type::While,
             Value::For(_) => Type::For,
             Value::Switch(_) => Type::Switch,
             Value::With(_) => Type::With,
-            Value::Exception(_) => Type::Exception,
+            Value::Exception(..) => Type::Exception,
         }
     }
 
@@ -177,6 +181,7 @@ impl Value {
             (Value::Side(a), Value::Side(b)) => a == b,
             (Value::Script(a), Value::Script(b)) => a == b,
             (Value::Handle(a), Value::Handle(b)) => a == b,
+            (Value::Text(a), Value::Text(b)) => a.markup() == b.markup(),
             (Value::If(a), Value::If(b)) => a == b,
             (Value::With(a), Value::With(b)) => a == b,
             _ => false,
@@ -191,9 +196,26 @@ impl Value {
     /// Like [`to_sqf_string`](Self::to_sqf_string), formatting host handles
     /// with `handle`.
     pub fn to_sqf_string_with(&self, handle: &dyn Fn(Handle) -> String) -> String {
+        self.to_sqf_string_fmt(&Format {
+            handle,
+            fixed: None,
+        })
+    }
+
+    /// Formats the value as `str` does with explicit [`Format`] options.
+    pub fn to_sqf_string_fmt(&self, fmt: &Format<'_>) -> String {
         let mut out = String::new();
-        self.write_sqf(&mut out, true, handle);
+        self.write_sqf(&mut out, true, fmt);
         out
+    }
+
+    /// Formats the value as `format "%1"` does with explicit [`Format`]
+    /// options.
+    pub fn to_display_string_fmt(&self, fmt: &Format<'_>) -> String {
+        match self {
+            Value::String(s) => s.to_string(),
+            _ => self.to_sqf_string_fmt(fmt),
+        }
     }
 
     /// Formats the value as `format "%1"` does: like `str` but a top-level
@@ -214,12 +236,15 @@ impl Value {
         }
     }
 
-    fn write_sqf(&self, out: &mut String, quote: bool, handle: &dyn Fn(Handle) -> String) {
+    fn write_sqf(&self, out: &mut String, quote: bool, fmt: &Format<'_>) {
         match self {
             Value::Nil => out.push_str("any"),
             Value::Nothing => out.push_str("nothing"),
             Value::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
-            Value::Number(n) => out.push_str(&format_number(*n)),
+            Value::Number(n) => match fmt.fixed {
+                Some(digits) => out.push_str(&format!("{:.*}", usize::from(digits), f64::from(*n))),
+                None => out.push_str(&format_number(*n)),
+            },
             Value::String(s) => {
                 if quote {
                     out.push('"');
@@ -243,7 +268,7 @@ impl Value {
                             if i > 0 {
                                 out.push(',');
                             }
-                            v.write_sqf(out, true, handle);
+                            v.write_sqf(out, true, fmt);
                         }
                     }
                     Err(_) => out.push_str("..."),
@@ -259,9 +284,9 @@ impl Value {
                                 out.push(',');
                             }
                             out.push('[');
-                            k.to_value().write_sqf(out, true, handle);
+                            k.to_value().write_sqf(out, true, fmt);
                             out.push(',');
-                            v.write_sqf(out, true, handle);
+                            v.write_sqf(out, true, fmt);
                             out.push(']');
                         }
                     }
@@ -283,13 +308,14 @@ impl Value {
                     out.push_str(&format!("<script {}>", h.0));
                 }
             }
-            Value::Handle(h) => out.push_str(&handle(*h)),
+            Value::Handle(h) => out.push_str(&(fmt.handle)(*h)),
+            Value::Text(t) => out.push_str(&t.plain()),
             Value::If(_) => out.push_str("if"),
             Value::While(_) => out.push_str("while"),
             Value::For(_) => out.push_str("for"),
             Value::Switch(_) => out.push_str("switch"),
             Value::With(_) => out.push_str("with"),
-            Value::Exception(_) => out.push_str("try"),
+            Value::Exception(..) => out.push_str("try"),
         }
     }
 }
@@ -342,6 +368,81 @@ impl From<Vec<Value>> for Value {
     fn from(v: Vec<Value>) -> Self {
         Value::Array(Array::from_vec(v))
     }
+}
+
+/// Options for formatting values as text.
+pub struct Format<'a> {
+    /// Formats host handles.
+    pub handle: &'a dyn Fn(Handle) -> String,
+    /// Fixed-point digits for numbers (`toFixed n`), or `%g` when `None`.
+    pub fixed: Option<u8>,
+}
+
+/// Structured text: markup in the engine's XML-like syntax (`<t>`, `<br/>`,
+/// `<img image='...'/>`). Plain strings put into it are XML-escaped.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct StructuredText(Rc<str>);
+
+impl StructuredText {
+    /// Text from markup as written (`parseText`).
+    pub fn from_markup(markup: &str) -> StructuredText {
+        StructuredText(markup.into())
+    }
+
+    /// Text from a plain string (`text`): special characters are escaped.
+    pub fn from_plain(plain: &str) -> StructuredText {
+        StructuredText(escape_xml(plain).into())
+    }
+
+    pub fn markup(&self) -> &str {
+        &self.0
+    }
+
+    /// The text without markup (what `str` shows): tags dropped, `<br/>` as a
+    /// line break, entities decoded. _(uncertain: the engine's exact
+    /// conversion.)_
+    pub fn plain(&self) -> String {
+        let mut out = String::new();
+        let mut rest: &str = &self.0;
+        while let Some(i) = rest.find('<') {
+            out.push_str(&unescape_xml(&rest[..i]));
+            let Some(j) = rest[i..].find('>') else {
+                out.push_str(&unescape_xml(&rest[i..]));
+                return out;
+            };
+            let tag = rest[i + 1..i + j].trim().to_ascii_lowercase();
+            if tag.starts_with("br") {
+                out.push('\n');
+            }
+            rest = &rest[i + j + 1..];
+        }
+        out.push_str(&unescape_xml(rest));
+        out
+    }
+}
+
+/// Escapes `&`, `<`, `>`, `"` and `'` for structured text.
+pub fn escape_xml(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&apos;"),
+            c => out.push(c),
+        }
+    }
+    out
+}
+
+fn unescape_xml(s: &str) -> String {
+    s.replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        .replace("&amp;", "&")
 }
 
 /// Formats a number as the engine does: C `printf("%g")` of the float
@@ -465,6 +566,27 @@ pub struct HashMap(Rc<HashMapInner>);
 struct HashMapInner {
     map: RefCell<IndexMap<HashKey, Value>>,
     read_only: Cell<bool>,
+    object: RefCell<Option<Rc<ObjectInfo>>>,
+}
+
+/// What makes a hash map an object (`createHashMapObject`): its merged
+/// special methods and flags.
+#[derive(Debug, Default, Clone)]
+pub struct ObjectInfo {
+    /// `#create` methods, base classes first.
+    pub create: Vec<Code>,
+    /// `#clone` methods, base classes first.
+    pub clone: Vec<Code>,
+    /// `#delete` methods, base classes first.
+    pub delete: Vec<Code>,
+    /// `#str`.
+    pub str_code: Option<Code>,
+    /// `#flags` "sealed": no keys may be added or removed.
+    pub sealed: bool,
+    /// `#flags` "noCopy": `+` fails.
+    pub no_copy: bool,
+    /// `#flags` "unscheduled": methods always run unscheduled.
+    pub unscheduled: bool,
 }
 
 impl HashMap {
@@ -476,7 +598,23 @@ impl HashMap {
         HashMap(Rc::new(HashMapInner {
             map: RefCell::new(map),
             read_only: Cell::new(false),
+            object: RefCell::new(None),
         }))
+    }
+
+    /// The object information, if this map was made by
+    /// `createHashMapObject`.
+    pub fn object(&self) -> Option<Rc<ObjectInfo>> {
+        self.0.object.borrow().clone()
+    }
+
+    pub fn set_object(&self, info: Rc<ObjectInfo>) {
+        *self.0.object.borrow_mut() = Some(info);
+    }
+
+    /// Whether keys may not be added or removed (`#flags` "sealed").
+    pub fn is_sealed(&self) -> bool {
+        self.0.object.borrow().as_ref().is_some_and(|o| o.sealed)
     }
 
     pub fn borrow(&self) -> Ref<'_, IndexMap<HashKey, Value>> {

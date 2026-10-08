@@ -1392,6 +1392,7 @@ hideObjectGlobal	unary		OBJECT	NOTHING
 hideSelection	binary	OBJECT	ARRAY	NOTHING	4
 hint	unary		STRING	NOTHING
 hint	unary		STRING,TEXT	NOTHING
+hint	unary		TEXT	NOTHING
 hintC	binary	STRING	ARRAY	NOTHING	4
 hintC	binary	STRING	STRING	NOTHING	4
 hintC	binary	STRING	TEXT	NOTHING	4
@@ -1399,6 +1400,7 @@ hintC	unary		STRING	NOTHING
 hintCadet	unary		STRING,TEXT	NOTHING
 hintSilent	unary		STRING	NOTHING
 hintSilent	unary		STRING,TEXT	NOTHING
+hintSilent	unary		TEXT	NOTHING
 hmd	unary		OBJECT	STRING
 hostMission	unary		ARRAY	NOTHING
 htmlLoad	binary	CONTROL	STRING	NOTHING	4

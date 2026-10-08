@@ -10,7 +10,21 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         Ok(Value::from(a.ty().type_name()))
     });
     r.unary("str", ANY, STR, |ctx, a| {
+        if let Some(s) = super::object::object_str(ctx, &a) {
+            return Ok(Value::from(s?));
+        }
         Ok(Value::from(ctx.to_sqf_string(&a)))
+    });
+    // `toFixed n`: fixed-point numbers in str/format until the scope ends;
+    // -1 resets.
+    r.unary("toFixed", NUM, NOTHING, |ctx, a| {
+        let n = num(&a);
+        ctx.set_fixed_digits(if n < 0.0 {
+            None
+        } else {
+            Some(n.min(20.0) as u8)
+        });
+        Ok(Value::Nothing)
     });
     r.unary("format", ARR, STR, |ctx, a| {
         Ok(Value::from(format(ctx, &a)?))

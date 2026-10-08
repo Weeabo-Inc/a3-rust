@@ -8,13 +8,17 @@ mod array;
 mod compare;
 mod control;
 mod diag;
+mod env;
 mod extra;
 mod hashmap;
+mod json;
 mod logic;
 mod math;
 mod misc;
+mod object;
 mod regex;
 mod string;
+mod text;
 mod vars;
 
 use crate::code::Code;
@@ -40,6 +44,10 @@ pub fn register_core<H: Host>(r: &mut Registry<H>) {
     regex::register(r);
     extra::register(r);
     diag::register(r);
+    text::register(r);
+    json::register(r);
+    object::register(r);
+    env::register(r);
 }
 
 pub(crate) const NUM: TypeSet = TypeSet::NUMBER;

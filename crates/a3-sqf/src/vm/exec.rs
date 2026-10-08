@@ -37,6 +37,12 @@ pub(crate) struct CodeFrame {
     pub nil_ok: bool,
     /// `privateAll`: locals of enclosing scopes are invisible from here.
     pub private_all: bool,
+    /// `toFixed n`: numbers print with `n` decimals in this scope and the
+    /// scopes it starts.
+    pub fixed: Option<u8>,
+    /// First scope of a new evaluation context (`isNil {...}`), where
+    /// `diag_scope` counts from.
+    pub context_root: bool,
 }
 
 pub(crate) enum Frame<H: Host> {
@@ -133,6 +139,7 @@ impl<H: Host> ScriptState<H> {
             locals.push((Sym::THIS, this));
         }
         let nil_ok = inv.nil_ok || self.top_code().is_some_and(|cf| cf.nil_ok);
+        let fixed = self.top_code().and_then(|cf| cf.fixed);
         self.frames.push(Frame::Code(CodeFrame {
             code: inv.code,
             ip: 0,
@@ -144,6 +151,8 @@ impl<H: Host> ScriptState<H> {
             capture: inv.capture,
             nil_ok,
             private_all: false,
+            fixed,
+            context_root: inv.nil_ok,
         }));
     }
 

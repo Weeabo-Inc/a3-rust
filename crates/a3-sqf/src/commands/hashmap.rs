@@ -40,6 +40,15 @@ fn writable(m: &HashMap) -> Result<(), SqfError> {
     }
 }
 
+/// Refuses adding `k` to a sealed hash map object.
+fn may_add(m: &HashMap, entries: &IndexMap<HashKey, Value>, k: &HashKey) -> Result<(), SqfError> {
+    if m.is_sealed() && !entries.contains_key(k) {
+        Err(SqfError::generic("Tried to add key to sealed HashMap"))
+    } else {
+        Ok(())
+    }
+}
+
 /// `getOrDefaultCall`: stores the computed default when asked to.
 struct StoreDefault {
     map: HashMap,
@@ -51,9 +60,9 @@ impl<H: Host> Continuation<H> for StoreDefault {
     fn resume(&mut self, _: &mut Ctx<'_, H>, result: Value) -> Result<Flow<H>, SqfError> {
         if self.store && !result.is_nil() {
             writable(&self.map)?;
-            self.map
-                .borrow_mut()
-                .insert(self.key.clone(), result.clone());
+            let mut entries = self.map.borrow_mut();
+            may_add(&self.map, &entries, &self.key)?;
+            entries.insert(self.key.clone(), result.clone());
         }
         Ok(Flow::Value(result))
     }
@@ -95,6 +104,7 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         let mut entries = m.borrow_mut();
         let existed = entries.contains_key(&k);
         if !(insert_only && existed) {
+            may_add(&m, &entries, &k)?;
             entries.insert(k, v);
         }
         Ok(Value::Bool(existed))
@@ -114,7 +124,9 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         let default = args.get(1).cloned().unwrap_or(Value::Nil);
         if args.get(2).is_some_and(boolean) && !default.is_nil() {
             writable(&m)?;
-            m.borrow_mut().insert(k, default.clone());
+            let mut entries = m.borrow_mut();
+            may_add(&m, &entries, &k)?;
+            entries.insert(k, default.clone());
         }
         Ok(default)
     });
@@ -141,6 +153,9 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         let m = map(&a);
         writable(&m)?;
         let k = key(&b)?;
+        if m.is_sealed() && m.borrow().contains_key(&k) {
+            return Err(SqfError::generic("Tried to remove key from sealed HashMap"));
+        }
         Ok(m.borrow_mut().shift_remove(&k).unwrap_or(Value::Nil))
     });
     r.binary("in", ANY, HASH, BOOL, |_, a, b| {
@@ -166,6 +181,27 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
             Value::array(m.values().cloned()),
         ]))
     });
+    r.binary("toArray", HASH, BOOL, ARR, |_, a, b| {
+        let m = map(&a);
+        let m = m.borrow();
+        Ok(if boolean(&b) {
+            Value::array([
+                Value::array(m.keys().map(HashKey::to_value)),
+                Value::array(m.values().cloned()),
+            ])
+        } else {
+            Value::array(
+                m.iter()
+                    .map(|(k, v)| Value::array([k.to_value(), v.clone()])),
+            )
+        })
+    });
+    r.binary("isNil", HASH, STR, BOOL, |_, a, b| {
+        let k = HashKey::String(string(&b).into());
+        Ok(Value::Bool(
+            map(&a).borrow().get(&k).is_none_or(Value::is_nil),
+        ))
+    });
     r.binary("merge", HASH, HASH, NOTHING, |_, a, b| {
         merge(&map(&a), &map(&b), false)?;
         Ok(Value::Nothing)
@@ -187,21 +223,48 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         writable(&m)?;
         let args = array(&b);
         let args = args.borrow();
-        let (insert_only, pairs) = match args.first() {
-            Some(Value::Bool(flag)) => (*flag, args.get(1).cloned().unwrap_or(Value::Nil)),
-            _ => (false, Value::Array(Array::from_vec(args.clone()))),
+        // `insert [[k, v], ...]`, or `insert [split, data]` where `split`
+        // true means `data` is `[[keys], [values]]` and false a pair list.
+        let pairs: Vec<(Value, Value)> = match args.first() {
+            Some(Value::Bool(true)) => {
+                let data = array(args.get(1).unwrap_or(&Value::Nil));
+                let data = data.borrow();
+                let (ks, vs) = (
+                    array(data.first().unwrap_or(&Value::Nil)),
+                    array(data.get(1).unwrap_or(&Value::Nil)),
+                );
+                let (ks, vs) = (ks.borrow(), vs.borrow());
+                ks.iter()
+                    .enumerate()
+                    .map(|(i, k)| (k.clone(), vs.get(i).cloned().unwrap_or(Value::Nil)))
+                    .collect()
+            }
+            first => {
+                let list = match first {
+                    Some(Value::Bool(false)) => {
+                        array(args.get(1).unwrap_or(&Value::Nil)).borrow().clone()
+                    }
+                    _ => args.clone(),
+                };
+                let mut out = Vec::new();
+                for pair in &list {
+                    let Value::Array(pair) = pair else {
+                        return Err(SqfError::type_error(pair, ARR));
+                    };
+                    let pair = pair.borrow();
+                    out.push((
+                        pair.first().cloned().unwrap_or(Value::Nil),
+                        pair.get(1).cloned().unwrap_or(Value::Nil),
+                    ));
+                }
+                out
+            }
         };
         let mut entries = m.borrow_mut();
-        for pair in array(&pairs).borrow().iter() {
-            let Value::Array(pair) = pair else {
-                return Err(SqfError::type_error(pair, ARR));
-            };
-            let pair = pair.borrow();
-            let k = key(pair.first().unwrap_or(&Value::Nil))?;
-            if insert_only && entries.contains_key(&k) {
-                continue;
-            }
-            entries.insert(k, pair.get(1).cloned().unwrap_or(Value::Nil));
+        for (k, v) in pairs {
+            let k = key(&k)?;
+            may_add(&m, &entries, &k)?;
+            entries.insert(k, v);
         }
         Ok(Value::Bool(true))
     });
@@ -225,6 +288,7 @@ fn merge(target: &HashMap, other: &HashMap, overwrite: bool) -> Result<(), SqfEr
     let mut dst = target.borrow_mut();
     for (k, v) in src.iter() {
         if overwrite || !dst.contains_key(k) {
+            may_add(target, &dst, k)?;
             dst.insert(k.clone(), v.clone());
         }
     }

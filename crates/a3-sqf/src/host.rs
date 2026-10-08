@@ -52,6 +52,39 @@ pub trait Host: 'static {
     /// `copyToClipboard`.
     fn copy_to_clipboard(&mut self, _text: &str) {}
 
+    /// `copyFromClipboard`.
+    fn clipboard(&mut self) -> String {
+        String::new()
+    }
+
+    /// `diag_fps` (frames per second, averaged by the engine).
+    fn fps(&self) -> f32 {
+        0.0
+    }
+
+    /// `diag_fpsmin`.
+    fn fps_min(&self) -> f32 {
+        self.fps()
+    }
+
+    /// `diag_deltaTime`: real time of the last frame in seconds.
+    fn delta_time(&self) -> f32 {
+        0.0
+    }
+
+    /// `fileExists`: whether a script-visible file exists.
+    fn file_exists(&mut self, path: &str) -> bool {
+        self.load_file(path).is_ok()
+    }
+
+    /// `saveProfileNamespace`: persist `profileNamespace`.
+    fn save_profile_namespace(&mut self, _vars: &crate::vm::Variables) {}
+
+    /// `saveMissionProfileNamespace`; returns whether it was saved.
+    fn save_mission_profile_namespace(&mut self, _vars: &crate::vm::Variables) -> bool {
+        false
+    }
+
     /// The error sink: a script error, already formatted engine-style in
     /// [`ScriptError::report`].
     fn report_error(&mut self, _error: &ScriptError) {}
