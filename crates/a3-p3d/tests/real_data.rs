@@ -90,6 +90,34 @@ fn parses_every_model_in_the_install() {
     assert_eq!(failed, 0);
 }
 
+/// The decoded normal sign: on a closed convex model every normal points away from the center,
+/// and every face's right-handed cross product agrees with its normals (clockwise winding seen
+/// from outside in the engine's left-handed space).
+#[test]
+fn normals_point_out_of_a_convex_model() {
+    let Some(root) = std::env::var_os("A3_ROOT") else {
+        eprintln!("skipping: A3_ROOT not set");
+        return;
+    };
+    let vfs = Vfs::new();
+    vfs.mount_archives(&Path::new(&root).join("Addons"));
+    let data = vfs
+        .open(r"a3\structures_f\items\food\bottleplastic_v1_f.p3d")
+        .unwrap();
+    let model = Model::from_bytes(&data).unwrap();
+    let lod = &model.lods[0];
+    let v = &lod.vertices;
+    let center = lod.odol.as_ref().unwrap().bbox_center;
+    for (p, n) in v.positions.iter().zip(&v.normals) {
+        assert!(n.dot(*p - center) > 0.0, "normal {n} at {p} points inward");
+    }
+    for [a, b, c] in lod.faces.iter().flat_map(|f| f.triangles()) {
+        let [pa, pb, pc] = [a, b, c].map(|i| v.positions[i as usize]);
+        let n = v.normals[a as usize] + v.normals[b as usize] + v.normals[c as usize];
+        assert!((pb - pa).cross(pc - pa).dot(n) > 0.0);
+    }
+}
+
 /// Every special LOD index in ModelInfo must point at a LOD of the matching kind. Fire geometry
 /// falls back to the View Geometry and then the Geometry; View Geometry to the Geometry.
 fn special_lod_mismatches(model: &Model) -> Vec<String> {
