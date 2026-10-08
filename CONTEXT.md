@@ -136,6 +136,11 @@ A named set of vertices/faces in a LOD, used to animate, hide or retexture parts
 map hit points.
 _Avoid_: group, vertex group
 
+**Section**:
+A run of consecutive faces in a LOD that share one texture, material and face flags; the unit
+the renderer draws with one material.
+_Avoid_: submesh, primitive, batch
+
 **Proxy**:
 A placeholder in a LOD that references another P3D, placed at a position and orientation;
 used for crew seats, weapons on a vehicle, and attached decorations.

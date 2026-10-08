@@ -36,6 +36,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-p3d"
+version = "0.1.0"
+dependencies = [
+ "a3-vfs",
+ "glam",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "a3-pbo"
 version = "0.1.0"
 dependencies = [
@@ -85,10 +94,12 @@ dependencies = [
  "a3-config",
  "a3-core",
  "a3-gamedata",
+ "a3-p3d",
  "a3-pbo",
  "a3-vfs",
  "anyhow",
  "clap",
+ "glam",
  "tempfile",
 ]
 
@@ -710,6 +721,12 @@ dependencies = [
  "web-sys",
  "windows",
 ]
+
+[[package]]
+name = "glam"
+version = "0.34.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc148d4ddd3930c52f9e5ae79b89805c6f07e9ff417e7b083e0348cea60a5aba"
 
 [[package]]
 name = "hashbrown"

@@ -1,6 +1,7 @@
 //! Command-line tools for Arma 3 data formats (PBO, config, PAA, ...).
 
 mod config_cmd;
+mod p3d_cmd;
 mod pbo_cmd;
 mod vfs_cmd;
 
@@ -27,6 +28,8 @@ enum Command {
     /// Rapify and derap config files (config.cpp <-> config.bin).
     #[command(subcommand)]
     Config(config_cmd::ConfigCommand),
+    /// Inspect P3D models (MLOD and ODOL).
+    P3d(p3d_cmd::P3dArgs),
 }
 
 #[derive(Subcommand)]
@@ -123,6 +126,7 @@ fn main() -> anyhow::Result<()> {
             }
         }
         Command::Config(cmd) => config_cmd::run(cmd)?,
+        Command::P3d(args) => p3d_cmd::run(args)?,
     }
     Ok(())
 }
