@@ -7,17 +7,20 @@
 //! - One record per file: NUL-terminated name, then five little-endian `u32`s: packing method,
 //!   original size, reserved, timestamp, data size.
 //! - A terminating record with an empty name.
-//! - The data of every entry, in header order.
+//! - The data of every entry, in header order. A `Cprs` entry holds LZSS data and a checksum;
+//!   [`Pbo::read_entry`] unpacks it (see [`CPRS_CHECKSUM`]).
 //! - A zero byte and the SHA-1 digest of everything before that zero byte.
 //!
 //! See `docs/re/pbo.md` for the format notes and a survey of the shipped archives.
 
+mod cprs;
 mod entry;
 mod error;
 mod properties;
 mod reader;
 mod writer;
 
+pub use cprs::CPRS_CHECKSUM;
 pub use entry::{
     Entry, METHOD_COMPRESSED, METHOD_ENCRYPTED, METHOD_PROPERTIES, METHOD_STORED, PackingMethod,
 };

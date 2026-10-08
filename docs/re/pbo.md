@@ -22,6 +22,10 @@ Record: `name\0`, then `method`, `original_size`, `reserved`, `timestamp`, `data
   Followed by `key\0value\0` pairs up to an empty key (`\0`). _Verified._
 - **method**: `0` stored; `0x43707273` (bytes `srpC`, "Cprs") LZSS-compressed, `original_size` is
   the unpacked size; `0x456e636f` (bytes `ocnE`, "Enco") encrypted.
+- **Cprs data**: BI LZSS stream followed by a `u32` LE additive checksum of the unpacked bytes
+  (format in `docs/re/compression.md`). Whether the bytes are summed signed or unsigned is
+  _unverified_: no shipped PBO has a `Cprs` entry. `a3-pbo` writes the signed sum, as PAA uses,
+  and accepts either when reading (issue #59).
 - **reserved**: 0 in every shipped entry. _Verified._
 - **timestamp**: seconds since the Unix epoch.
 - **Data offset** of an entry = header length + sum of `data_size` of all earlier entries. The header

@@ -31,6 +31,16 @@ pub enum Error {
         method: PackingMethod,
     },
 
+    /// A `Cprs` entry could not be decompressed (corrupt data or checksum mismatch).
+    #[error("cannot decompress entry {name:?}: {source}")]
+    Decompress {
+        /// Entry name as stored in the header.
+        name: String,
+        /// What the LZSS decoder reported.
+        #[source]
+        source: a3_compress::Error,
+    },
+
     /// No entry has the requested path.
     #[error("no entry {0:?} in PBO")]
     NotFound(String),
