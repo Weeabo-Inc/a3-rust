@@ -13,6 +13,9 @@ use crate::font;
 use crate::gpu::{Gpu, RenderError};
 use crate::mesh::{Mesh, MeshData, Vertex};
 use crate::post::{HdrSettings, PostChain};
+use crate::shadow::{
+    self, MAX_CASCADES, SHADOW_FORMAT, ShadowMaps, ShadowSettings, ShadowUniforms,
+};
 use crate::texture::{ColorSpace, GpuTexture, TextureData, TextureError};
 
 /// Eye adaptation state read back from the GPU.
@@ -42,6 +45,8 @@ pub struct RenderSettings {
     pub fog_density: f32,
     /// Eye adaptation, tonemapping and anti-aliasing.
     pub hdr: HdrSettings,
+    /// Cascaded sun shadows.
+    pub shadows: ShadowSettings,
 }
 
 impl Default for RenderSettings {
@@ -54,6 +59,7 @@ impl Default for RenderSettings {
             sky_horizon: Vec3::new(0.62, 0.72, 0.85),
             fog_density: 0.000_08,
             hdr: HdrSettings::default(),
+            shadows: ShadowSettings::default(),
         }
     }
 }
@@ -159,6 +165,11 @@ pub struct Renderer {
     frame_layout: wgpu::BindGroupLayout,
     frame_buffer: wgpu::Buffer,
     frame_bind_group: wgpu::BindGroup,
+    shadow_maps: ShadowMaps,
+    cascade_buffers: Vec<wgpu::Buffer>,
+    cascade_groups: Vec<wgpu::BindGroup>,
+    active_cascades: u32,
+    mesh_shadow: wgpu::RenderPipeline,
 
     texture_layout: wgpu::BindGroupLayout,
     sampler: wgpu::Sampler,
@@ -198,16 +209,24 @@ impl Renderer {
         let device = &gpu.device;
         let frame_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("frame layout"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
+            entries: &{
+                let [map, sampler, cascades] = shadow::frame_layout_entries();
+                [
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    map,
+                    sampler,
+                    cascades,
+                ]
+            },
         });
         let frame_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("frame uniforms"),
@@ -215,14 +234,36 @@ impl Renderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let frame_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("frame"),
-            layout: &frame_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: frame_buffer.as_entire_binding(),
-            }],
-        });
+        let shadow_maps = ShadowMaps::new(device, 1, 16);
+        let frame_bind_group = frame_group(
+            device,
+            &frame_layout,
+            &frame_buffer,
+            &shadow_maps,
+            &shadow_maps.array_view,
+        );
+        let cascade_buffers: Vec<wgpu::Buffer> = (0..MAX_CASCADES)
+            .map(|_| {
+                device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("cascade frame uniforms"),
+                    size: std::mem::size_of::<FrameUniforms>() as u64,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                })
+            })
+            .collect();
+        let cascade_groups = cascade_buffers
+            .iter()
+            .map(|b| {
+                frame_group(
+                    device,
+                    &frame_layout,
+                    b,
+                    &shadow_maps,
+                    &shadow_maps.dummy_view,
+                )
+            })
+            .collect();
 
         let texture_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("material texture layout"),
@@ -297,6 +338,43 @@ impl Renderer {
                 cache: None,
             })
         };
+        let mesh_shadow = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("mesh shadow"),
+            layout: Some(&mesh_layout),
+            vertex: wgpu::VertexState {
+                module: &mesh_shader,
+                entry_point: Some("vs_shadow"),
+                compilation_options: Default::default(),
+                buffers: &[
+                    Some(Vertex::layout()),
+                    Some(wgpu::VertexBufferLayout {
+                        array_stride: std::mem::size_of::<InstanceRaw>() as u64,
+                        step_mode: wgpu::VertexStepMode::Instance,
+                        attributes: &InstanceRaw::ATTRIBUTES,
+                    }),
+                ],
+            },
+            primitive: wgpu::PrimitiveState {
+                front_face: wgpu::FrontFace::Cw,
+                cull_mode: Some(wgpu::Face::Back),
+                ..Default::default()
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: SHADOW_FORMAT,
+                depth_write_enabled: Some(true),
+                depth_compare: Some(wgpu::CompareFunction::Less),
+                stencil: Default::default(),
+                bias: wgpu::DepthBiasState {
+                    constant: 2,
+                    slope_scale: 2.0,
+                    clamp: 0.0,
+                },
+            }),
+            multisample: Default::default(),
+            fragment: None,
+            multiview_mask: None,
+            cache: None,
+        });
         let mesh_opaque = mesh_pipeline(false);
         let mesh_alpha = mesh_pipeline(true);
 
@@ -386,6 +464,11 @@ impl Renderer {
             frame_layout,
             frame_buffer,
             frame_bind_group,
+            shadow_maps,
+            cascade_buffers,
+            cascade_groups,
+            active_cascades: 0,
+            mesh_shadow,
             texture_layout,
             sampler,
             meshes: Vec::new(),
@@ -487,7 +570,8 @@ impl Renderer {
         self.ensure_targets(gpu, size);
         let aspect = size.0 as f32 / size.1 as f32;
         let view_projection = camera.view_projection(aspect);
-        self.write_frame_uniforms(gpu, camera, view_projection, size);
+        let frame = self.write_frame_uniforms(gpu, camera, view_projection, size);
+        self.prepare_shadows(gpu, camera, aspect, &frame);
         self.prepare_meshes(gpu, camera.position, draws);
         self.prepare_lines(gpu, camera.position, draws);
         self.prepare_text(gpu, draws);
@@ -509,9 +593,7 @@ impl Renderer {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("frame"),
             });
-        for feature in &mut self.features {
-            feature.encode_shadows(&mut encoder, &cx);
-        }
+        self.encode_shadows(&mut encoder);
         let targets = self.targets.as_ref().expect("ensured above");
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -687,7 +769,7 @@ impl Renderer {
         camera: &Camera,
         view_projection: glam::Mat4,
         size: (u32, u32),
-    ) {
+    ) -> FrameUniforms {
         let s = &self.settings;
         let (w, h) = (size.0 as f32, size.1 as f32);
         let uniforms = FrameUniforms {
@@ -702,6 +784,90 @@ impl Renderer {
         };
         gpu.queue
             .write_buffer(&self.frame_buffer, 0, bytemuck::bytes_of(&uniforms));
+        uniforms
+    }
+
+    /// Fit the cascades to the camera, (re)create the maps if their shape changed, and upload
+    /// the cascade matrices.
+    fn prepare_shadows(&mut self, gpu: &Gpu, camera: &Camera, aspect: f32, frame: &FrameUniforms) {
+        let settings = self.settings.shadows;
+        let wanted = (
+            settings.cascades.clamp(1, MAX_CASCADES as u32),
+            settings.map_size,
+        );
+        if settings.enabled && self.shadow_maps.shape != wanted {
+            self.shadow_maps = ShadowMaps::new(&gpu.device, wanted.0, wanted.1);
+            self.frame_bind_group = frame_group(
+                &gpu.device,
+                &self.frame_layout,
+                &self.frame_buffer,
+                &self.shadow_maps,
+                &self.shadow_maps.array_view,
+            );
+            self.cascade_groups = self
+                .cascade_buffers
+                .iter()
+                .map(|b| {
+                    frame_group(
+                        &gpu.device,
+                        &self.frame_layout,
+                        b,
+                        &self.shadow_maps,
+                        &self.shadow_maps.dummy_view,
+                    )
+                })
+                .collect();
+        }
+        let cascades = if settings.enabled {
+            shadow::compute_cascades(camera, aspect, self.settings.sun_direction, &settings)
+        } else {
+            Vec::new()
+        };
+        self.active_cascades = cascades.len() as u32;
+        let uniforms = ShadowUniforms::new(&cascades, camera, &settings);
+        gpu.queue
+            .write_buffer(&self.shadow_maps.uniforms, 0, bytemuck::bytes_of(&uniforms));
+        for (cascade, buffer) in cascades.iter().zip(&self.cascade_buffers) {
+            let light = FrameUniforms {
+                view_proj: cascade.view_projection.to_cols_array_2d(),
+                ..*frame
+            };
+            gpu.queue
+                .write_buffer(buffer, 0, bytemuck::bytes_of(&light));
+        }
+    }
+
+    /// One depth pass per cascade: opaque meshes, then features in [`Phase::Shadow`].
+    fn encode_shadows(&self, encoder: &mut wgpu::CommandEncoder) {
+        for cascade in 0..self.active_cascades {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("shadow cascade"),
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.shadow_maps.layer_views[cascade as usize],
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                ..Default::default()
+            });
+            let group = &self.cascade_groups[cascade as usize];
+            pass.set_bind_group(0, group, &[]);
+            pass.set_pipeline(&self.mesh_shadow);
+            pass.set_vertex_buffer(1, self.instances.buffer.slice(..));
+            for batch in self.batches.iter().filter(|b| !b.transparent) {
+                let mesh = &self.meshes[batch.mesh.0 as usize];
+                pass.set_bind_group(1, &self.textures[batch.texture.0 as usize].1, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, batch.instances.clone());
+            }
+            for feature in &self.features {
+                pass.set_bind_group(0, group, &[]);
+                feature.draw(Phase::Shadow { cascade }, &mut pass);
+            }
+        }
     }
 
     fn prepare_meshes(&mut self, gpu: &Gpu, camera: DVec3, draws: &DrawList) {
@@ -827,6 +993,39 @@ impl Renderer {
         pass.set_vertex_buffer(0, self.lines.buffer.slice(..));
         pass.draw(0..self.line_vertex_count, 0..1);
     }
+}
+
+/// The frame bind group: uniforms in `uniforms`, shadow maps from `maps` (or a dummy while
+/// the maps are being rendered).
+fn frame_group(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    uniforms: &wgpu::Buffer,
+    maps: &ShadowMaps,
+    shadow_view: &wgpu::TextureView,
+) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("frame"),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniforms.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(shadow_view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(&maps.sampler),
+            },
+            wgpu::BindGroupEntry {
+                binding: 3,
+                resource: maps.uniforms.as_entire_binding(),
+            },
+        ],
+    })
 }
 
 pub(crate) fn shader(device: &wgpu::Device, label: &str, source: &str) -> wgpu::ShaderModule {

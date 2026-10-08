@@ -1,4 +1,4 @@
-// Lit, textured mesh instances. Positions are camera-relative (see ADR 0003).
+// Lit, textured mesh instances with sun shadows. Positions are camera-relative (see ADR 0003).
 
 struct Frame {
     view_proj: mat4x4<f32>,
@@ -16,7 +16,21 @@ struct Frame {
     params: vec4<f32>,
 }
 
+// Must match shadow.rs (ShadowUniforms).
+struct Shadows {
+    cascades: array<mat4x4<f32>, 4>,
+    splits: vec4<f32>,
+    // xyz: camera forward, w: cascade count (0 = off).
+    view_forward: vec4<f32>,
+    texel_sizes: vec4<f32>,
+    // normal bias in texels, map size, 1 / map size, fade start.
+    params: vec4<f32>,
+}
+
 @group(0) @binding(0) var<uniform> frame: Frame;
+@group(0) @binding(1) var shadow_maps: texture_depth_2d_array;
+@group(0) @binding(2) var shadow_sampler: sampler_comparison;
+@group(0) @binding(3) var<uniform> shadows: Shadows;
 @group(1) @binding(0) var base_texture: texture_2d<f32>;
 @group(1) @binding(1) var base_sampler: sampler;
 
@@ -41,14 +55,20 @@ struct VertexOut {
     @location(1) uv: vec2<f32>,
     @location(2) color: vec4<f32>,
     @location(3) tangent: vec4<f32>,
+    @location(4) relative: vec3<f32>,
+}
+
+fn model_of(i: InstanceIn) -> mat4x4<f32> {
+    return mat4x4<f32>(i.model_0, i.model_1, i.model_2, i.model_3);
 }
 
 @vertex
 fn vs_main(v: VertexIn, i: InstanceIn) -> VertexOut {
-    let model = mat4x4<f32>(i.model_0, i.model_1, i.model_2, i.model_3);
+    let model = model_of(i);
     let relative = model * vec4<f32>(v.position, 1.0);
     var out: VertexOut;
     out.clip = frame.view_proj * relative;
+    out.relative = relative.xyz;
     out.normal = (model * vec4<f32>(v.normal, 0.0)).xyz;
     out.tangent = vec4<f32>((model * vec4<f32>(v.tangent.xyz, 0.0)).xyz, v.tangent.w);
     out.uv = v.uv;
@@ -56,11 +76,60 @@ fn vs_main(v: VertexIn, i: InstanceIn) -> VertexOut {
     return out;
 }
 
+// Depth-only pass into a shadow cascade; `frame.view_proj` is the cascade's light matrix.
+@vertex
+fn vs_shadow(v: VertexIn, i: InstanceIn) -> @builtin(position) vec4<f32> {
+    return frame.view_proj * (model_of(i) * vec4<f32>(v.position, 1.0));
+}
+
+// 1 = fully lit, 0 = in shadow.
+fn sun_visibility(relative: vec3<f32>, normal: vec3<f32>) -> f32 {
+    let count = u32(shadows.view_forward.w + 0.5);
+    if count == 0u {
+        return 1.0;
+    }
+    let depth = dot(relative, shadows.view_forward.xyz);
+    var cascade = count;
+    for (var c = 0u; c < count; c += 1u) {
+        if depth <= shadows.splits[c] {
+            cascade = c;
+            break;
+        }
+    }
+    if cascade >= count {
+        return 1.0;
+    }
+    // Push the receiver off its surface by a few texels against self-shadowing.
+    let offset = normal * shadows.texel_sizes[cascade] * shadows.params.x;
+    let clip = shadows.cascades[cascade] * vec4<f32>(relative + offset, 1.0);
+    let uv = vec2<f32>(clip.x * 0.5 + 0.5, 0.5 - clip.y * 0.5);
+    if any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0)) || clip.z > 1.0 {
+        return 1.0;
+    }
+    // 3x3 hardware-filtered PCF.
+    var lit = 0.0;
+    for (var y = -1; y <= 1; y += 1) {
+        for (var x = -1; x <= 1; x += 1) {
+            let shifted = uv + vec2<f32>(f32(x), f32(y)) * shadows.params.z;
+            lit += textureSampleCompareLevel(shadow_maps, shadow_sampler, shifted, i32(cascade), clip.z);
+        }
+    }
+    lit /= 9.0;
+    // Fade out towards the end of the shadow distance.
+    let last = shadows.splits[count - 1u];
+    let fade = clamp((depth - last * shadows.params.w) / (last * (1.0 - shadows.params.w)), 0.0, 1.0);
+    return mix(lit, 1.0, fade);
+}
+
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let base = textureSample(base_texture, base_sampler, in.uv) * in.color;
     let n = normalize(in.normal);
-    let diffuse = max(dot(n, frame.sun_dir.xyz), 0.0);
+    let n_dot_l = dot(n, frame.sun_dir.xyz);
+    var diffuse = max(n_dot_l, 0.0);
+    if diffuse > 0.0 {
+        diffuse *= sun_visibility(in.relative, n);
+    }
     let light = frame.sun_color.rgb * diffuse + vec3<f32>(frame.sun_color.w);
     return vec4<f32>(base.rgb * light, base.a);
 }

@@ -7,7 +7,7 @@ use crate::draw::DrawList;
 
 /// The phases of a frame, in order.
 ///
-/// 1. **Shadow**: features encode their own passes (shadow maps) into the frame's encoder.
+/// 1. **Shadow**: one depth pass per sun shadow cascade (opaque meshes and features).
 /// 2. **Opaque** and 3. **Alpha**: one render pass into the HDR scene colour
 ///    ([`Renderer::SCENE_COLOR_FORMAT`](crate::Renderer::SCENE_COLOR_FORMAT)) with the
 ///    reversed-Z depth buffer ([`Renderer::DEPTH_FORMAT`](crate::Renderer::DEPTH_FORMAT), clear
@@ -17,6 +17,12 @@ use crate::draw::DrawList;
 /// 5. **Ui**: one render pass into the output target (no depth), for overlays and text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Phase {
+    /// Depth-only pass into one sun shadow cascade. Group 0 holds a copy of the frame uniforms
+    /// whose `view_proj` is the cascade's light matrix; pipelines render depth only into
+    /// [`SHADOW_FORMAT`](crate::shadow::SHADOW_FORMAT) (compare `Less`, cleared to 1).
+    Shadow {
+        cascade: u32,
+    },
     Opaque,
     Alpha,
     Ui,
@@ -37,14 +43,13 @@ pub struct PrepareContext<'a> {
 /// A renderer extension that owns its GPU resources and draws in one or more phases.
 ///
 /// Pipelines must use [`Renderer::frame_layout`](crate::Renderer::frame_layout) as bind group
-/// 0; the renderer binds the frame uniforms there before calling [`draw`](Self::draw). All
+/// 0; the renderer binds the frame uniforms there before calling [`draw`](Self::draw). Group 0
+/// also carries the sun shadow maps (bindings 1-3, see `shaders/mesh.wgsl` for the
+/// `sun_visibility` lookup), so receivers such as terrain get shadows from the same data. All
 /// positions must be camera-relative (`world - camera.position`, computed in `f64`).
 pub trait RenderFeature {
     /// Upload this frame's data (instance buffers, uniforms). Called once per frame.
     fn prepare(&mut self, cx: &PrepareContext<'_>);
-
-    /// Encode passes that must run before the scene pass, such as shadow maps.
-    fn encode_shadows(&mut self, _encoder: &mut wgpu::CommandEncoder, _cx: &PrepareContext<'_>) {}
 
     /// Record draws for `phase` into `pass`. Group 0 is already bound.
     fn draw(&self, phase: Phase, pass: &mut wgpu::RenderPass<'_>);

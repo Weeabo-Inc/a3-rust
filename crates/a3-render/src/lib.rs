@@ -22,6 +22,7 @@ mod gpu;
 pub mod mesh;
 mod post;
 mod renderer;
+pub mod shadow;
 pub mod texture;
 
 pub use camera::{Camera, Fov, FreeFlyController, FreeFlyInput};
@@ -31,6 +32,7 @@ pub use gpu::{Gpu, RenderError, WindowSurface};
 pub use mesh::{Mesh, MeshData, Vertex};
 pub use post::{AntiAliasing, FilmicCurve, HdrSettings, Tonemap};
 pub use renderer::{ExposureReadout, RenderSettings, Renderer};
+pub use shadow::ShadowSettings;
 pub use texture::{ColorSpace, GpuTexture, TextureData, TextureError, TextureFormat};
 
 /// Re-export so users can name wgpu types without a direct dependency.
