@@ -1,5 +1,6 @@
 //! Command-line tools for Arma 3 data formats (PBO, config, PAA, ...).
 
+mod config_cmd;
 mod pbo_cmd;
 mod vfs_cmd;
 
@@ -23,6 +24,9 @@ enum Command {
     Pbo(PboCommand),
     /// Browse the virtual file system of a game install.
     Vfs(VfsArgs),
+    /// Rapify and derap config files (config.cpp <-> config.bin).
+    #[command(subcommand)]
+    Config(config_cmd::ConfigCommand),
 }
 
 #[derive(Subcommand)]
@@ -118,6 +122,7 @@ fn main() -> anyhow::Result<()> {
                 VfsCommand::Find { pattern } => vfs_cmd::find(&vfs, &pattern)?,
             }
         }
+        Command::Config(cmd) => config_cmd::run(cmd)?,
     }
     Ok(())
 }

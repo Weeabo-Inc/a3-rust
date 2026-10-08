@@ -63,6 +63,20 @@ _Avoid_: compile/decompile, binarize (that is the model pipeline)
 A named node in the Config holding entries (numbers, strings, arrays) and child classes. It may
 inherit from a base class, inheriting all entries it does not override.
 
+**External class declaration**:
+`class X;` inside a config class: a forward reference to a class that is inherited or defined by
+another addon. It defines nothing itself; lookups pass through it.
+_Avoid_: forward declaration (alone), stub
+
+**Config patching**:
+Merging a later addon's config into the Config: same-named classes merge entry by entry, values
+are overridden, `delete X;` removes classes and `x[] += {...}` extends arrays.
+_Avoid_: overriding (too narrow), mod merging
+
+**Load order**:
+The order in which addon configs are patched into the Config, derived from CfgPatches
+`requiredAddons` _(uncertain: exact tie-break rules)_.
+
 **CfgPatches**:
 The root config class in which each addon declares itself, its `requiredAddons` (which decides
 merge order) and the units/weapons it adds.
