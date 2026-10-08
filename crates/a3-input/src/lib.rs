@@ -8,11 +8,15 @@
 //! [`Trigger`] (press, double tap, hold).
 //!
 //! Bindings are plain data. [`Binding::from_rv_code`] decodes the integer key codes used by the
-//! game's config and profiles (see `docs/re/input-keys.md`).
+//! game's config and profiles (see `docs/re/input-keys.md`); [`ActionMap::load_preset`] reads a
+//! `CfgDefaultKeysPresets` preset from the merged config and [`ActionMap::apply_profile`] the
+//! player's `key<Action>[]` overrides.
 
 mod action;
 mod binding;
 mod code;
+mod expr;
+mod presets;
 mod rv_code;
 mod state;
 
@@ -21,5 +25,10 @@ pub mod actions;
 pub use action::{ActionMap, ActionName};
 pub use binding::{Binding, Modifier, Trigger};
 pub use code::{Dik, GamepadInput, InputCode, MouseAxis};
+pub use expr::{KeyExprError, eval_key_expression};
+pub use presets::{
+    KeyLoadIssue, KeyValueError, PRESETS_CLASS, PresetError, PresetInfo, binding_from_value,
+    default_preset, presets,
+};
 pub use rv_code::RvCodeError;
 pub use state::{InputState, InputTiming};

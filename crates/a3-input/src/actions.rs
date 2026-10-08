@@ -1,7 +1,12 @@
 //! Well-known user action names and built-in default bindings.
 //!
-//! Names are RV's own (`CfgDefaultKeysPresets` / `inputAction`). The defaults here stand in
-//! until the real presets are loaded from the game config and the player's profile.
+//! Names are RV's own (`CfgDefaultKeysPresets` / `inputAction`). The built-in defaults follow
+//! the shipped `Arma3Apex` preset for the actions listed here and add gamepad bindings; they
+//! apply when no game config is available and are overlaid by
+//! [`ActionMap::load_preset`](crate::ActionMap::load_preset) otherwise.
+//!
+//! Like RV's free camera, mouse look is not an action: the camera reads mouse motion directly,
+//! and the `cameraLook*` actions are for keys and sticks.
 
 use crate::action::ActionMap;
 use crate::binding::Binding;
@@ -81,24 +86,28 @@ pub fn default_map() -> ActionMap {
         ),
         (
             CAMERA_MOVE_TURBO1,
-            vec![key(Dik::LSHIFT), pad(GamepadInput::LeftThumb)],
+            vec![
+                key(Dik::LSHIFT),
+                key(Dik::RSHIFT),
+                pad(GamepadInput::LeftThumb),
+            ],
         ),
-        (CAMERA_MOVE_TURBO2, vec![key(Dik::LCONTROL)]),
+        (CAMERA_MOVE_TURBO2, vec![key(Dik::LMENU), key(Dik::RMENU)]),
         (
             CAMERA_LOOK_UP,
-            vec![mouse(MouseAxis::Up), pad(GamepadInput::RightStickUp)],
+            vec![key(Dik::NUMPAD8), pad(GamepadInput::RightStickUp)],
         ),
         (
             CAMERA_LOOK_DOWN,
-            vec![mouse(MouseAxis::Down), pad(GamepadInput::RightStickDown)],
+            vec![key(Dik::NUMPAD2), pad(GamepadInput::RightStickDown)],
         ),
         (
             CAMERA_LOOK_LEFT,
-            vec![mouse(MouseAxis::Left), pad(GamepadInput::RightStickLeft)],
+            vec![key(Dik::NUMPAD4), pad(GamepadInput::RightStickLeft)],
         ),
         (
             CAMERA_LOOK_RIGHT,
-            vec![mouse(MouseAxis::Right), pad(GamepadInput::RightStickRight)],
+            vec![key(Dik::NUMPAD6), pad(GamepadInput::RightStickRight)],
         ),
     ];
     for (name, bindings) in table {
@@ -117,9 +126,14 @@ mod tests {
         let map = default_map();
         let mut s = InputState::new();
         s.press(InputCode::Key(Dik::Q));
+        s.press(InputCode::Key(Dik::NUMPAD8));
         s.mouse_motion(0.0, -3.0);
         assert_eq!(map.value(&s, CAMERA_MOVE_UP), 1.0);
-        assert_eq!(map.value(&s, CAMERA_LOOK_UP), 3.0);
+        assert_eq!(
+            map.value(&s, CAMERA_LOOK_UP),
+            1.0,
+            "mouse motion is not an action"
+        );
         assert_eq!(map.value(&s, CAMERA_LOOK_DOWN), 0.0);
     }
 }

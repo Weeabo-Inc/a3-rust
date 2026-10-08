@@ -11,7 +11,9 @@ name = "arma3"
 path = "src/main.rs"
 
 [dependencies]
+a3-config.workspace = true
 a3-core.workspace = true
+a3-gamedata.workspace = true
 a3-input.workspace = true
 a3-platform.workspace = true
 a3-render.workspace = true
@@ -22,6 +24,9 @@ log.workspace = true
 png.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true
