@@ -8,6 +8,7 @@ rust-version.workspace = true
 
 [dependencies]
 a3-compress.workspace = true
+a3-config.workspace = true
 glam.workspace = true
 thiserror.workspace = true
 
