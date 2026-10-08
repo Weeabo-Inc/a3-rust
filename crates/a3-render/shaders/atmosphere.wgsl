@@ -10,6 +10,17 @@ struct Frame {
     sky_horizon: vec4<f32>,
     viewport: vec4<f32>,
     params: vec4<f32>,
+    // Hemisphere ambient: from above, from the horizon, from below.
+    ambient_sky: vec4<f32>,
+    ambient_mid: vec4<f32>,
+    ambient_ground: vec4<f32>,
+    // x: fog extinction at sea level, y: fog height decay, z: camera world height,
+    // w: 1 when the built-in sky is drawn.
+    fog: vec4<f32>,
+    // rgb: haze extinction per metre.
+    haze: vec4<f32>,
+    // x: linear fog end, y: 1 / (end - start); y = 0 disables.
+    linear_fog: vec4<f32>,
 }
 
 @group(0) @binding(0) var<uniform> frame: Frame;
@@ -38,19 +49,39 @@ fn sky(dir: vec3<f32>) -> vec3<f32> {
     return color;
 }
 
+// Optical depth of the height fog `beta0 * e^(-k * h)` along `distance` metres of the ray
+// `dir` from the camera.
+fn fog_optical_depth(dir: vec3<f32>, distance: f32) -> f32 {
+    let beta0 = frame.sky_horizon.w;
+    let k = frame.fog.y;
+    let at_camera = beta0 * exp(-k * frame.fog.z);
+    let rise = k * dir.y * distance;
+    if abs(rise) < 1e-4 {
+        return at_camera * distance;
+    }
+    return at_camera * distance * (1.0 - exp(-rise)) / rise;
+}
+
 @fragment
 fn fs_main(@builtin(position) position: vec4<f32>) -> @location(0) vec4<f32> {
     let texel = vec2<i32>(floor(position.xy));
     let depth = textureLoad(scene_depth, texel, 0);
     let dir = view_ray(position.xy);
-    if depth <= 0.0 {
-        return vec4<f32>(sky(dir), 1.0);
-    }
     let color = textureLoad(scene_color, texel, 0).rgb;
+    if depth <= 0.0 {
+        if frame.fog.w > 0.5 {
+            return vec4<f32>(sky(dir), 1.0);
+        }
+        // A render feature drew the sky.
+        return vec4<f32>(color, 1.0);
+    }
     // Reversed infinite projection: view-space z = near / depth.
     let view_z = frame.params.x / depth;
     let forward = normalize((frame.inv_view_proj * vec4<f32>(0.0, 0.0, 1.0, 1.0)).xyz);
     let distance = view_z / max(dot(dir, forward), 1e-4);
-    let fog = 1.0 - exp(-distance * frame.sky_horizon.w);
-    return vec4<f32>(mix(color, frame.sky_horizon.rgb, fog), 1.0);
+    var transmittance = exp(-(fog_optical_depth(dir, distance) + frame.haze.rgb * distance));
+    if frame.linear_fog.y > 0.0 {
+        transmittance *= saturate((frame.linear_fog.x - distance) * frame.linear_fog.y);
+    }
+    return vec4<f32>(mix(frame.sky_horizon.rgb, color, transmittance), 1.0);
 }

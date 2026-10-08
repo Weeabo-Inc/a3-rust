@@ -36,13 +36,31 @@ pub struct RenderSettings {
     pub sun_direction: Vec3,
     /// Linear sun colour and intensity.
     pub sun_color: Vec3,
-    /// Ambient light level.
+    /// Ambient light level (scalar, for shaders without hemisphere ambient).
     pub ambient: f32,
+    /// Hemisphere ambient: light from straight above (RV `AE`).
+    pub ambient_sky: Vec3,
+    /// Hemisphere ambient: light from the horizon (RV `AmbientMid`).
+    pub ambient_mid: Vec3,
+    /// Hemisphere ambient: light from below (RV `GE`, ground reflection).
+    pub ambient_ground: Vec3,
     pub sky_zenith: Vec3,
     /// Horizon and fog colour.
     pub sky_horizon: Vec3,
-    /// Exponential fog density per metre.
+    /// Fog extinction per metre at sea level (world height 0).
     pub fog_density: f32,
+    /// Height decay of the fog per metre: extinction at height `h` is
+    /// `fog_density * e^(-fog_decay * h)`; 0 for uniform fog.
+    pub fog_decay: f32,
+    /// Distance haze extinction per metre (RGB), on top of the fog.
+    pub haze: Vec3,
+    /// Classic linear fog on top (RV `fogStart`/`fogEnd`, tied to the view distance): full
+    /// fog from `fog_end` metres; infinite to disable.
+    pub fog_start: f32,
+    pub fog_end: f32,
+    /// Draw the built-in gradient sky where nothing was drawn. Turn off when a feature (such
+    /// as [`SkyFeature`](crate::sky::SkyFeature)) draws the sky.
+    pub procedural_sky: bool,
     /// Eye adaptation, tonemapping and anti-aliasing.
     pub hdr: HdrSettings,
     /// Cascaded sun shadows.
@@ -55,9 +73,17 @@ impl Default for RenderSettings {
             sun_direction: Vec3::new(0.45, 0.6, -0.65).normalize(),
             sun_color: Vec3::new(1.0, 0.95, 0.85),
             ambient: 0.3,
+            ambient_sky: Vec3::splat(0.3),
+            ambient_mid: Vec3::splat(0.3),
+            ambient_ground: Vec3::splat(0.3),
             sky_zenith: Vec3::new(0.12, 0.28, 0.65),
             sky_horizon: Vec3::new(0.62, 0.72, 0.85),
             fog_density: 0.000_08,
+            fog_decay: 0.0,
+            haze: Vec3::ZERO,
+            fog_start: f32::INFINITY,
+            fog_end: f32::INFINITY,
+            procedural_sky: true,
             hdr: HdrSettings::default(),
             shadows: ShadowSettings::default(),
         }
@@ -75,6 +101,16 @@ struct FrameUniforms {
     sky_horizon: [f32; 4],
     viewport: [f32; 4],
     params: [f32; 4],
+    // Appended fields: shaders that declare only the fields above keep working.
+    ambient_sky: [f32; 4],
+    ambient_mid: [f32; 4],
+    ambient_ground: [f32; 4],
+    // x: fog extinction at sea level, y: fog height decay, z: camera world height,
+    // w: 1 when the built-in sky is drawn.
+    fog: [f32; 4],
+    haze: [f32; 4],
+    // x: linear fog end, y: 1 / (end - start); y = 0 disables.
+    linear_fog: [f32; 4],
 }
 
 #[repr(C)]
@@ -781,6 +817,26 @@ impl Renderer {
             sky_horizon: s.sky_horizon.extend(s.fog_density).to_array(),
             viewport: [w, h, 1.0 / w, 1.0 / h],
             params: [camera.near, 0.0, 0.0, 0.0],
+            ambient_sky: s.ambient_sky.extend(1.0).to_array(),
+            ambient_mid: s.ambient_mid.extend(1.0).to_array(),
+            ambient_ground: s.ambient_ground.extend(1.0).to_array(),
+            fog: [
+                s.fog_density,
+                s.fog_decay,
+                camera.position.y as f32,
+                if s.procedural_sky { 1.0 } else { 0.0 },
+            ],
+            haze: s.haze.extend(0.0).to_array(),
+            linear_fog: if s.fog_end.is_finite() {
+                [
+                    s.fog_end,
+                    1.0 / (s.fog_end - s.fog_start).max(1e-3),
+                    0.0,
+                    0.0,
+                ]
+            } else {
+                [0.0; 4]
+            },
         };
         gpu.queue
             .write_buffer(&self.frame_buffer, 0, bytemuck::bytes_of(&uniforms));

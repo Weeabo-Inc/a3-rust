@@ -25,6 +25,7 @@ mod post;
 mod renderer;
 pub mod roads;
 pub mod shadow;
+pub mod sky;
 pub mod texture;
 
 pub use camera::{Camera, Fov, FreeFlyController, FreeFlyInput};

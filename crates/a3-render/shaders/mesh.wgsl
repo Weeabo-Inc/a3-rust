@@ -14,6 +14,17 @@ struct Frame {
     viewport: vec4<f32>,
     // near plane, time in seconds, unused, unused.
     params: vec4<f32>,
+    // Hemisphere ambient: from above, from the horizon, from below.
+    ambient_sky: vec4<f32>,
+    ambient_mid: vec4<f32>,
+    ambient_ground: vec4<f32>,
+    // x: fog extinction at sea level, y: fog height decay, z: camera world height,
+    // w: 1 when the built-in sky is drawn.
+    fog: vec4<f32>,
+    // rgb: haze extinction per metre.
+    haze: vec4<f32>,
+    // x: linear fog end, y: 1 / (end - start); y = 0 disables.
+    linear_fog: vec4<f32>,
 }
 
 // Must match shadow.rs (ShadowUniforms).
@@ -121,6 +132,15 @@ fn sun_visibility(relative: vec3<f32>, normal: vec3<f32>) -> f32 {
     return mix(lit, 1.0, fade);
 }
 
+// RV's hemisphere ambient (docs/re/render-materials.md): mid at the horizon, towards the
+// sky colour above and the ground colour below.
+fn hemisphere_ambient(n: vec3<f32>) -> vec3<f32> {
+    if n.y > 0.0 {
+        return mix(frame.ambient_mid.rgb, frame.ambient_sky.rgb, saturate(n.y));
+    }
+    return mix(frame.ambient_ground.rgb, frame.ambient_mid.rgb, saturate(1.0 + n.y));
+}
+
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let base = textureSample(base_texture, base_sampler, in.uv) * in.color;
@@ -130,6 +150,6 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     if diffuse > 0.0 {
         diffuse *= sun_visibility(in.relative, n);
     }
-    let light = frame.sun_color.rgb * diffuse + vec3<f32>(frame.sun_color.w);
+    let light = frame.sun_color.rgb * diffuse + hemisphere_ambient(n);
     return vec4<f32>(base.rgb * light, base.a);
 }
