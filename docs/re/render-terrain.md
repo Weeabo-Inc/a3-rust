@@ -33,6 +33,15 @@ The five suffixes name the global surface layers used in the tile. An `n` suffix
 `PixelShaderID = "TerrainSNX"`, `VertexShaderID = "Terrain"`. Seabed tiles use the same
 layout with a single layer (`gdt_seabed_*`). Placeholder tiles use `a3\map_data\tiled_{s,m}_co.paa`.
 
+Satellite images on Altis (**verified** with `a3-landscape-render`'s real-data test):
+- 4,096 tiles (64 x 64). 1,863 tiles name their own `s_XXX_YYY_lco.paa`, normally 512 x 512
+  DXT1 with 8 mips (512 down to 4). 57 of them, along the coast, have no 64 px mip. The one
+  checked (`00_01\s_003_038_lco.paa`) is a 4 x 4 single-mip placeholder.
+- The remaining 2,233 open-sea tiles all name `a3\map_data\tiled_s_co.paa` (32 x 32 DXT1,
+  average colour `#4c4946`) with the normal per-tile transform.
+- Tiles exist only where land cells reference them; their `s_` files are spread over
+  `map_altis_data_layers_{00,01}_{00,01}.pbo` by quadrant.
+
 ### Satellite/mask UV and tile overlap
 
 `TexGen3/4`: `uvSource = "worldPos"`, `aside = {1/512, 0, 0}`, `up = {0, 0, 1/512}`,
