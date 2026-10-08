@@ -186,8 +186,14 @@ impl Value {
 
     /// Formats the value as the `str` command does (strings quoted).
     pub fn to_sqf_string(&self) -> String {
+        self.to_sqf_string_with(&|h| h.to_string())
+    }
+
+    /// Like [`to_sqf_string`](Self::to_sqf_string), formatting host handles
+    /// with `handle`.
+    pub fn to_sqf_string_with(&self, handle: &dyn Fn(Handle) -> String) -> String {
         let mut out = String::new();
-        self.write_sqf(&mut out, true);
+        self.write_sqf(&mut out, true, handle);
         out
     }
 
@@ -200,7 +206,16 @@ impl Value {
         }
     }
 
-    fn write_sqf(&self, out: &mut String, quote: bool) {
+    /// Like [`to_display_string`](Self::to_display_string), formatting host
+    /// handles with `handle`.
+    pub fn to_display_string_with(&self, handle: &dyn Fn(Handle) -> String) -> String {
+        match self {
+            Value::String(s) => s.to_string(),
+            _ => self.to_sqf_string_with(handle),
+        }
+    }
+
+    fn write_sqf(&self, out: &mut String, quote: bool, handle: &dyn Fn(Handle) -> String) {
         match self {
             Value::Nil => out.push_str("any"),
             Value::Nothing => out.push_str("nothing"),
@@ -229,7 +244,7 @@ impl Value {
                             if i > 0 {
                                 out.push(',');
                             }
-                            v.write_sqf(out, true);
+                            v.write_sqf(out, true, handle);
                         }
                     }
                     Err(_) => out.push_str("..."),
@@ -245,9 +260,9 @@ impl Value {
                                 out.push(',');
                             }
                             out.push('[');
-                            k.to_value().write_sqf(out, true);
+                            k.to_value().write_sqf(out, true, handle);
                             out.push(',');
-                            v.write_sqf(out, true);
+                            v.write_sqf(out, true, handle);
                             out.push(']');
                         }
                     }
@@ -269,7 +284,7 @@ impl Value {
                     out.push_str(&format!("<script {}>", h.0));
                 }
             }
-            Value::Handle(h) => out.push_str(&h.to_string()),
+            Value::Handle(h) => out.push_str(&handle(*h)),
             Value::If(_) => out.push_str("if"),
             Value::While(_) => out.push_str("while"),
             Value::For(_) => out.push_str("for"),

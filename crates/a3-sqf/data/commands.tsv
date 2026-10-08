@@ -1,66 +1,265 @@
 # name	form	left	right	return
 !	unary		BOOL	BOOL
+!=	binary	CONFIG	CONFIG	BOOL
+!=	binary	CONTROL	CONTROL	BOOL
+!=	binary	DIARY_RECORD	DIARY_RECORD	BOOL
+!=	binary	DISPLAY	DISPLAY	BOOL
+!=	binary	GROUP	GROUP	BOOL
+!=	binary	LOCATION	LOCATION	BOOL
+!=	binary	NAMESPACE	NAMESPACE	BOOL
+!=	binary	OBJECT	OBJECT	BOOL
 !=	binary	SCALAR	SCALAR	BOOL
+!=	binary	SIDE	SIDE	BOOL
 !=	binary	STRING	STRING	BOOL
+!=	binary	TASK	TASK	BOOL
+!=	binary	TEAM_MEMBER	TEAM_MEMBER	BOOL
+!=	binary	TEXT	TEXT	BOOL
 #	binary	ARRAY	SCALAR	ANY
 %	binary	SCALAR	SCALAR	SCALAR
+&&	binary	BOOL	BOOL	BOOL
 &&	binary	BOOL	BOOL,CODE	BOOL
+&&	binary	BOOL	CODE	BOOL
 *	binary	SCALAR	SCALAR	SCALAR
++	binary	ARRAY	ARRAY	ARRAY
 +	binary	SCALAR	SCALAR	SCALAR
 +	binary	STRING	STRING	STRING
-+	binary	ARRAY	ARRAY	ARRAY
-+	unary		SCALAR	SCALAR
 +	unary		ARRAY	ARRAY
--	binary	SCALAR	SCALAR	SCALAR
++	unary		HASHMAP	HASHMAP
++	unary		SCALAR	SCALAR
 -	binary	ARRAY	ARRAY	ARRAY
+-	binary	SCALAR	SCALAR	SCALAR
 -	unary		SCALAR	SCALAR
 /	binary	SCALAR	SCALAR	SCALAR
 :	binary	SWITCH	CODE	NOTHING
 <	binary	SCALAR	SCALAR	BOOL
 <=	binary	SCALAR	SCALAR	BOOL
+==	binary	CONFIG	CONFIG	BOOL
+==	binary	CONTROL	CONTROL	BOOL
+==	binary	DIARY_RECORD	DIARY_RECORD	BOOL
+==	binary	DISPLAY	DISPLAY	BOOL
+==	binary	GROUP	GROUP	BOOL
+==	binary	LOCATION	LOCATION	BOOL
+==	binary	NAMESPACE	NAMESPACE	BOOL
+==	binary	OBJECT	OBJECT	BOOL
 ==	binary	SCALAR	SCALAR	BOOL
+==	binary	SIDE	SIDE	BOOL
 ==	binary	STRING	STRING	BOOL
+==	binary	TASK	TASK	BOOL
+==	binary	TEAM_MEMBER	TEAM_MEMBER	BOOL
+==	binary	TEXT	TEXT	BOOL
 >	binary	SCALAR	SCALAR	BOOL
 >=	binary	SCALAR	SCALAR	BOOL
 >>	binary	CONFIG	STRING	CONFIG
 ^	binary	SCALAR	SCALAR	SCALAR
-||	binary	BOOL	BOOL,CODE	BOOL
 abs	unary		SCALAR	SCALAR
+acos	unary		SCALAR	SCALAR
+allVariables	unary		NAMESPACE	ARRAY
+and	binary	BOOL	BOOL	BOOL
 and	binary	BOOL	BOOL,CODE	BOOL
-call	unary		CODE	ANY
+and	binary	BOOL	CODE	BOOL
+append	binary	ARRAY	ARRAY	NOTHING
+apply	binary	ARRAY	CODE	ARRAY
+apply	binary	HASHMAP	CODE	ARRAY
+arrayIntersect	binary	ARRAY	ARRAY	ARRAY
+asin	unary		SCALAR	SCALAR
+atan	unary		SCALAR	SCALAR
+atan2	binary	SCALAR	SCALAR	SCALAR
+atg	unary		SCALAR	SCALAR
+bitAnd	binary	SCALAR	SCALAR	SCALAR
+bitNot	unary		SCALAR	SCALAR
+bitOr	binary	SCALAR	SCALAR	SCALAR
+bitShiftLeft	binary	SCALAR	SCALAR	SCALAR
+bitShiftRight	binary	SCALAR	SCALAR	SCALAR
+bitXor	binary	SCALAR	SCALAR	SCALAR
+blufor	nular			SIDE
+break	nular			NOTHING
+breakOut	binary	ANY	STRING	NOTHING
+breakOut	unary		STRING	NOTHING
+breakTo	unary		STRING	NOTHING
 call	binary	ANY	CODE	ANY
+call	unary		CODE	ANY
+canSuspend	nular			BOOL
 case	unary		ANY	SWITCH
-count	unary		ARRAY,STRING	SCALAR
+catch	binary	EXCEPTION	CODE	ANY
+ceil	unary		SCALAR	SCALAR
+civilian	nular			SIDE
+compile	unary		STRING	CODE
+compileFinal	unary		CODE	CODE
+compileFinal	unary		STRING	CODE
+configNull	nular			CONFIG
+continue	nular			NOTHING
+continueWith	unary		ANY	NOTHING
+controlNull	nular			CONTROL
+copyToClipboard	unary		STRING	NOTHING
+cos	unary		SCALAR	SCALAR
 count	binary	CODE	ARRAY	SCALAR
+count	binary	CODE	HASHMAP	SCALAR
+count	unary		ARRAY	SCALAR
+count	unary		STRING	SCALAR
+count	unary		STRING,ARRAY	SCALAR
+currentNamespace	nular			NAMESPACE
 default	unary		CODE	NOTHING
-do	binary	WHILE	CODE	NOTHING
+deg	unary		SCALAR	SCALAR
+deleteAt	binary	ARRAY	SCALAR	ANY
+deleteRange	binary	ARRAY	ARRAY	NOTHING
+diag_frameNo	nular			SCALAR
+diag_log	unary		ANY	NOTHING
+diag_tickTime	nular			SCALAR
+diaryRecordNull	nular			DIARY_RECORD
+displayNull	nular			DISPLAY
 do	binary	FOR	CODE	ANY
 do	binary	SWITCH	CODE	ANY
+do	binary	WHILE	CODE	ANY
+do	binary	WHILE	CODE	NOTHING
 do	binary	WITH	CODE	ANY
+east	nular			SIDE
 else	binary	CODE	CODE	ARRAY
+execVM	binary	ANY	STRING	SCRIPT
+execVM	unary		STRING	SCRIPT
 exitWith	binary	IF	CODE	ANY
+exp	unary		SCALAR	SCALAR
 false	nular			BOOL
-for	unary		STRING	FOR
+find	binary	ARRAY	ANY	SCALAR
+find	binary	STRING	ARRAY	SCALAR
+find	binary	STRING	STRING	SCALAR
+findAny	binary	ARRAY	ARRAY	SCALAR
+findIf	binary	ARRAY	CODE	SCALAR
+finite	unary		SCALAR	BOOL
+flatten	unary		ARRAY	ARRAY
+floor	unary		SCALAR	SCALAR
 for	unary		ARRAY	FOR
+for	unary		STRING	FOR
+forEach	binary	CODE	ARRAY	ANY
 forEach	binary	CODE	ARRAY,HASHMAP	ANY
+forEach	binary	CODE	HASHMAP	ANY
+format	unary		ARRAY	STRING
 from	binary	FOR	SCALAR	FOR
+getVariable	binary	NAMESPACE	ARRAY	ANY
+getVariable	binary	NAMESPACE	STRING	ANY
+grpNull	nular			GROUP
 hint	unary		STRING	NOTHING
+hintSilent	unary		STRING	NOTHING
 if	unary		BOOL	IF
+in	binary	ANY	ARRAY	BOOL
+in	binary	STRING	STRING	BOOL
+independent	nular			SIDE
+insert	binary	ARRAY	ARRAY	SCALAR
+isEqualRef	binary	ANY	ANY	BOOL
+isEqualTo	binary	ANY	ANY	BOOL
+isEqualType	binary	ANY	ANY	BOOL
+isEqualTypeAll	binary	ARRAY	ANY	BOOL
+isEqualTypeAll	unary		ARRAY	BOOL
+isEqualTypeAny	binary	ANY	ARRAY	BOOL
+isEqualTypeArray	binary	ARRAY	ARRAY	BOOL
+isEqualTypeParams	binary	ANY	ARRAY	BOOL
+isFinal	unary		CODE	BOOL
+isFinal	unary		STRING	BOOL
+isNil	unary		CODE	BOOL
+isNil	unary		STRING	BOOL
+isNotEqualTo	binary	ANY	ANY	BOOL
+isNull	unary		CONFIG,OBJECT,GROUP,CONTROL,DISPLAY,LOCATION,TASK,TEAM_MEMBER,DIARY_RECORD,NetObject	BOOL
+isNull	unary		SCRIPT	BOOL
+joinString	binary	ARRAY	STRING	STRING
+linearConversion	unary		ARRAY	SCALAR
+ln	unary		SCALAR	SCALAR
+loadFile	unary		STRING	STRING
+localNamespace	nular			NAMESPACE
+locationNull	nular			LOCATION
+log	unary		SCALAR	SCALAR
 max	binary	SCALAR	SCALAR	SCALAR
 min	binary	SCALAR	SCALAR	SCALAR
+missionNamespace	nular			NAMESPACE
+missionProfileNamespace	nular			NAMESPACE
 mod	binary	SCALAR	SCALAR	SCALAR
 nil	nular			ANY
 not	unary		BOOL	BOOL
+objNull	nular			OBJECT
+opfor	nular			SIDE
+or	binary	BOOL	BOOL	BOOL
 or	binary	BOOL	BOOL,CODE	BOOL
+or	binary	BOOL	CODE	BOOL
+param	binary	ANY	ARRAY	ANY
+param	unary		ARRAY	ANY
+params	binary	ANY	ARRAY	BOOL
+params	unary		ARRAY	BOOL
+parseNumber	unary		BOOL	SCALAR
+parseNumber	unary		STRING	SCALAR
+parsingNamespace	nular			NAMESPACE
+pi	nular			SCALAR
+preprocessFile	unary		STRING	STRING
+preprocessFileLineNumbers	unary		STRING	STRING
+private	unary		ARRAY	NOTHING
+private	unary		STRING	NOTHING
 private	unary		STRING,ARRAY	NOTHING
+profileNamespace	nular			NAMESPACE
+pushBack	binary	ARRAY	ANY	SCALAR
+pushBackUnique	binary	ARRAY	ANY	SCALAR
+rad	unary		SCALAR	SCALAR
+random	unary		SCALAR	SCALAR
+resistance	nular			SIDE
+resize	binary	ARRAY	ARRAY	NOTHING
+resize	binary	ARRAY	SCALAR	NOTHING
+reverse	unary		ARRAY	NOTHING
+round	unary		SCALAR	SCALAR
+scopeName	unary		STRING	NOTHING
+scriptDone	unary		SCRIPT	BOOL
+scriptName	unary		STRING	NOTHING
+scriptNull	nular			SCRIPT
+select	binary	ARRAY	ARRAY	ARRAY
+select	binary	ARRAY	BOOL	ANY
+select	binary	ARRAY	CODE	ARRAY
 select	binary	ARRAY	SCALAR	ANY
+select	binary	STRING	ARRAY	STRING
+select	binary	STRING	SCALAR	STRING
+selectRandom	unary		ARRAY	ANY
+serverNamespace	nular			NAMESPACE
+serverTime	nular			SCALAR
+set	binary	ARRAY	ARRAY	NOTHING
+setVariable	binary	NAMESPACE	ARRAY	NOTHING
+sideAmbientLife	nular			SIDE
+sideEmpty	nular			SIDE
+sideEnemy	nular			SIDE
+sideFriendly	nular			SIDE
+sideLogic	nular			SIDE
+sideUnknown	nular			SIDE
+sin	unary		SCALAR	SCALAR
+sleep	unary		SCALAR	NOTHING
+sort	binary	ARRAY	BOOL	NOTHING
+spawn	binary	ANY	CODE	SCRIPT
+splitString	binary	STRING	STRING	ARRAY
+sqrt	unary		SCALAR	SCALAR
 step	binary	FOR	SCALAR	FOR
+str	unary		ANY	STRING
 switch	unary		ANY	SWITCH
-then	binary	IF	CODE,ARRAY	ANY
+systemChat	unary		STRING	NOTHING
+tan	unary		SCALAR	SCALAR
+taskNull	nular			TASK
+teamMemberNull	nular			TEAM_MEMBER
+terminate	unary		SCRIPT	NOTHING
+then	binary	IF	ARRAY	ANY
+then	binary	IF	ARRAY,CODE	ANY
+then	binary	IF	CODE	ANY
+throw	binary	IF	ANY	NOTHING
+throw	unary		ANY	NOTHING
 time	nular			SCALAR
 to	binary	FOR	SCALAR	FOR
+toArray	unary		STRING	ARRAY
+toFixed	binary	SCALAR	SCALAR	STRING
+toLower	unary		STRING	STRING
+toString	unary		ARRAY	STRING
+toString	unary		CODE	STRING
+toUpper	unary		STRING	STRING
+trim	binary	STRING	ARRAY	STRING
+trim	unary		STRING	STRING
 true	nular			BOOL
+try	unary		CODE	EXCEPTION
+typeName	unary		ANY	STRING
+uiNamespace	nular			NAMESPACE
+uiSleep	unary		SCALAR	NOTHING
+waitUntil	unary		CODE	NOTHING
+west	nular			SIDE
 while	unary		CODE	WHILE
 with	unary		NAMESPACE	WITH
-params	unary		ARRAY	BOOL
-params	binary	ANY	ARRAY	BOOL
+||	binary	BOOL	BOOL	BOOL
+||	binary	BOOL	BOOL,CODE	BOOL
+||	binary	BOOL	CODE	BOOL
