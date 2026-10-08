@@ -12,7 +12,7 @@
 
 use std::collections::VecDeque;
 
-use a3_moves::{EdgeKind, MoveId, Moves, Stance};
+use a3_moves::{EdgeKind, Move, MoveId, Moves, Stance};
 use glam::{DQuat, DVec3, Vec3};
 
 use super::ManInput;
@@ -34,6 +34,10 @@ pub struct MoveState {
     cycle_ended: bool,
     /// The move being blended out of; dropped once the blend into [`Self::current`] is done.
     previous: Option<MoveId>,
+    /// How far through the cycle of [`Self::previous`]'s own move that move has played, on its
+    /// own phase rate while it fades: a pose samples each move of a blend at its own phase
+    /// (`a3_pose::MoveBlend`). Meaningless while [`Self::previous`] is `None`.
+    previous_phase: f64,
     /// How much of him the current move is: `1.0` with no blend running, and the previous move
     /// holds `1.0 - weight`.
     weight: f64,
@@ -66,6 +70,26 @@ impl MoveState {
     /// How far through the current move's cycle he is, `0.0..=1.0`.
     pub fn phase(&self) -> f64 {
         self.phase
+    }
+
+    /// The move he is blending out of, `None` once the blend into [`Self::current`] is done.
+    ///
+    /// With [`Self::phase`], [`Self::weight`] and [`Self::previous_phase`] this is everything a
+    /// pose needs: the move being left and the one being entered, each at the phase of its own
+    /// cycle, and how far between them he is (`a3_pose::MoveBlend`).
+    pub fn previous(&self) -> Option<MoveId> {
+        self.previous
+    }
+
+    /// How far through the cycle of the move being left *that* move has played, `0.0..=1.0` —
+    /// each move of a blend advances in its own cycle. The current move's phase while there is
+    /// none being left, so a pose can name the move he is in twice without reading the phase
+    /// twice.
+    pub fn previous_phase(&self) -> f64 {
+        match self.previous {
+            Some(_) => self.previous_phase,
+            None => self.phase,
+        }
     }
 
     /// How much of him the current move is: `1.0` when no blend is running, lower while one
@@ -105,6 +129,7 @@ impl MoveState {
         self.current = Some(id);
         self.previous = None;
         self.phase = phase.clamp(0.0, 1.0);
+        self.previous_phase = self.phase;
         self.weight = weight.clamp(0.0, 1.0);
         self.accumulator = self.weight;
         self.cycle_ended = false;
@@ -257,6 +282,7 @@ impl MoveState {
         self.current = Some(next);
         self.previous = None;
         self.phase = 0.0;
+        self.previous_phase = 0.0;
         self.weight = 1.0;
         self.accumulator = 1.0;
         self.cycle_ended = false;
@@ -267,6 +293,7 @@ impl MoveState {
     fn interpolate(&mut self, moves: &Moves, next: MoveId) {
         let phase = self.phase;
         self.previous = self.current;
+        self.previous_phase = phase;
         self.current = Some(next);
         self.phase = match moves.get(next).interpolation_restart {
             1 => 0.0,
@@ -287,11 +314,13 @@ impl MoveState {
         let Some(current) = self.current else {
             return;
         };
-        let mv = moves.get(current);
-        self.phase += f64::from(mv.speed) * dt;
-        if self.phase >= 1.0 {
-            self.cycle_ended = true;
-            self.phase = if mv.looped { self.phase - 1.0 } else { 1.0 };
+        let (phase, ended) = advance_cycle(self.phase, moves.get(current), dt);
+        self.phase = phase;
+        self.cycle_ended = ended;
+        // The move being left plays on at its own phase rate while it fades, so a pose samples
+        // both moves of the blend at the phase each has reached of its own cycle.
+        if let Some(previous) = self.previous {
+            self.previous_phase = advance_cycle(self.previous_phase, moves.get(previous), dt).0;
         }
     }
 
@@ -359,6 +388,17 @@ fn equivalent(moves: &Moves, id: MoveId) -> MoveId {
 fn contribution(moves: &Moves, id: MoveId) -> Vec3 {
     let mv = moves.get(id);
     mv.step * mv.speed
+}
+
+/// One step of `phase` through `mv`'s cycle: a looped move wraps at the end, a one-shot move
+/// stops there. The flag says the cycle ended on this step.
+fn advance_cycle(phase: f64, mv: &Move, dt: f64) -> (f64, bool) {
+    let phase = phase + f64::from(mv.speed) * dt;
+    if phase >= 1.0 {
+        (if mv.looped { phase - 1.0 } else { 1.0 }, true)
+    } else {
+        (phase, false)
+    }
 }
 
 /// An RTM step in world space: a step is model space, whose forward is −Z (`docs/re/rtm.md`),

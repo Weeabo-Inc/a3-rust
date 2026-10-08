@@ -576,3 +576,52 @@ fn standing_up_blends_back_out_of_the_prone() {
     run(&mut world, 20);
     assert_eq!(world.animation_state(man), "walk");
 }
+
+/// The blend a pose is built from, at the public seam `a3_pose::MoveBlend` reads: while he fades
+/// out of the walk and into the stand, the state names both moves, each with the phase of its own
+/// cycle, and how far the blend has gone. The move being left keeps playing its own cycle while
+/// it fades, and once the blend is over there is none to name.
+#[test]
+fn a_blend_exposes_both_moves_and_the_phase_of_each() {
+    let mut world = world();
+    let man = create_man(&mut world, DVec3::new(10.0, 100.0, 20.0));
+    world.set_man_input(
+        man,
+        ManInput {
+            forward: 1.0,
+            ..ManInput::default()
+        },
+    );
+    run(&mut world, 20);
+    let walk = world.man(man).unwrap().moves.current().unwrap();
+    assert_eq!(world.animation_state(man), "walk");
+
+    // Standing asks for the stand, and the walk fades out under it: their edge interpolates.
+    world.set_man_input(man, ManInput::default());
+    run(&mut world, 1);
+    let after_one = {
+        let state = &world.man(man).unwrap().moves;
+        assert_eq!(state.previous(), Some(walk), "the move being left");
+        assert_eq!(
+            world.animation_state(man),
+            "stand",
+            "the move being entered"
+        );
+        let weight = state.weight();
+        assert!(weight > 0.0 && weight < 1.0, "mid-fade: {weight}");
+        state.previous_phase()
+    };
+
+    // It advances at its own phase rate while the blend runs (Walk: 0.85 cycles/s, 1/15 s a
+    // step), not at the rate of the move taking over (Stand: 1.0, which would be 0.0667).
+    run(&mut world, 1);
+    let advanced = (world.man(man).unwrap().moves.previous_phase() - after_one).rem_euclid(1.0);
+    assert!((advanced - 0.85 / 15.0).abs() < 1e-3, "{advanced}");
+
+    // The blend over, he is in one move: there is none being left, and the previous sample of a
+    // pose is the current move at its own phase.
+    run(&mut world, 3);
+    let state = &world.man(man).unwrap().moves;
+    assert_eq!(state.previous(), None);
+    assert_eq!(state.previous_phase(), state.phase());
+}
