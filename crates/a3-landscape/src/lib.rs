@@ -6,6 +6,8 @@
 //! - [`Surfaces::load`] reads every surface type and clutter character.
 //! - [`TerrainLayers::load`] reads the rvmat of every material of a [`Terrain`]; then
 //!   [`TerrainLayers::cell`] answers "what do I draw on land cell `(x, z)`".
+//! - [`RoadNetwork::load`] reads the road polylines (`roads.shp`, `roads.dbf`) and their types
+//!   (`RoadsLib.cfg`); [`shapefile`] holds the generic ESRI shapefile and dBase readers.
 //!
 //! See `docs/re/landscape.md`.
 
@@ -13,12 +15,15 @@ mod cfg;
 mod error;
 mod layers;
 mod material;
+mod roads;
+pub mod shapefile;
 mod surfaces;
 mod world;
 
 pub use error::Error;
 pub use layers::{CellSurface, TerrainLayers};
 pub use material::{LayerMaterial, SurfaceLayer, TextureStage, UvSource, UvTransform};
+pub use roads::{EASTING_OFFSET, Road, RoadNetwork, RoadType, RoadsError, RoadsLib, to_world};
 pub use surfaces::{Surface, SurfaceCharacter, Surfaces};
 pub use world::{
     AmbientRadius, AmbientSpecies, ClutterModel, EnvMap, GridZoom, Location, MapGrid, OutsideLayer,

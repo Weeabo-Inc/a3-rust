@@ -191,6 +191,7 @@ dependencies = [
  "a3-config",
  "a3-core",
  "a3-gamedata",
+ "a3-landscape",
  "a3-p3d",
  "a3-paa",
  "a3-pbo",

@@ -20,6 +20,7 @@ a3-gamedata.workspace = true
 a3-p3d.workspace = true
 a3-anim.workspace = true
 a3-wrp.workspace = true
+a3-landscape.workspace = true
 png.workspace = true
 tiff.workspace = true
 a3-signing.workspace = true
