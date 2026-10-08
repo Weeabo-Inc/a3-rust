@@ -2,12 +2,15 @@
 // the output target. If the output format is sRGB, values are decoded so the hardware's sRGB
 // encode restores them.
 
+// Must match post.rs (PostUniforms).
 struct Post {
     filmic_abcd: vec4<f32>,
     filmic_efw_bias: vec4<f32>,
     exposure: vec4<f32>,
     adaptation: vec4<f32>,
     misc: vec4<f32>,
+    bloom: vec4<f32>,
+    output: vec4<f32>,
 }
 
 @group(0) @binding(0) var<uniform> post: Post;

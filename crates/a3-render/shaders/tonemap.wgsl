@@ -1,12 +1,16 @@
-// Exposure and tonemapping: HDR -> display-referred, gamma-encoded LDR with luma in alpha
-// (the input the anti-aliasing pass expects). See docs/re/hdr.md.
+// RV's final HDR pass (docs/re/render-atmosphere.md §3.2): exposed scene plus bloom faded on bright
+// pixels, then the tone curve selected by tonemapMethod and a final gamma. Output: display-referred,
+// gamma-encoded LDR with luma in alpha (the input of the anti-aliasing pass).
 
+// Must match post.rs (PostUniforms).
 struct Post {
     filmic_abcd: vec4<f32>,
     filmic_efw_bias: vec4<f32>,
     exposure: vec4<f32>,
     adaptation: vec4<f32>,
     misc: vec4<f32>,
+    bloom: vec4<f32>,
+    output: vec4<f32>,
 }
 
 struct ExposureState {
@@ -19,6 +23,8 @@ struct ExposureState {
 @group(0) @binding(0) var<uniform> post: Post;
 @group(0) @binding(1) var hdr: texture_2d<f32>;
 @group(0) @binding(2) var<storage, read> state: ExposureState;
+@group(0) @binding(3) var bloom_texture: texture_2d<f32>;
+@group(0) @binding(4) var bloom_sampler: sampler;
 
 @vertex
 fn vs_main(@builtin(vertex_index) index: u32) -> @builtin(position) vec4<f32> {
@@ -26,6 +32,7 @@ fn vs_main(@builtin(vertex_index) index: u32) -> @builtin(position) vec4<f32> {
     return vec4<f32>(uv * 2.0 - 1.0, 0.0, 1.0);
 }
 
+// Hable's curve without the E/F offset: h(x) = (x(Ax + BC) + DE) / (x(Ax + B) + DF).
 fn hable(x: vec3<f32>) -> vec3<f32> {
     let a = post.filmic_abcd.x;
     let b = post.filmic_abcd.y;
@@ -33,22 +40,21 @@ fn hable(x: vec3<f32>) -> vec3<f32> {
     let d = post.filmic_abcd.w;
     let e = post.filmic_efw_bias.x;
     let f = post.filmic_efw_bias.y;
-    return (x * (a * x + c * b) + d * e) / (x * (a * x + b) + d * f) - e / f;
+    return (x * (a * x + b * c) + d * e) / (x * (a * x + b) + d * f);
 }
 
-fn filmic(x: vec3<f32>) -> vec3<f32> {
+fn filmic(color: vec3<f32>) -> vec3<f32> {
+    let offset = post.filmic_efw_bias.x / post.filmic_efw_bias.y;
     let white = post.filmic_efw_bias.z;
-    return hable(x) / hable(vec3<f32>(white));
+    let c = color * post.filmic_efw_bias.w;
+    return saturate((hable(c) - offset) / (hable(vec3<f32>(white)) - offset));
 }
 
-fn reinhard(x: vec3<f32>) -> vec3<f32> {
+// Extended Reinhard on Rec.709 luminance, preserving hue.
+fn reinhard(c: vec3<f32>) -> vec3<f32> {
     let w = post.misc.y;
-    return x * (1.0 + x / (w * w)) / (1.0 + x);
-}
-
-// Narkowicz's fit of the ACES reference rendering transform.
-fn aces(x: vec3<f32>) -> vec3<f32> {
-    return (x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14);
+    let l = dot(c, vec3<f32>(0.2126, 0.7152, 0.0722));
+    return saturate(c * (l * (1.0 + l / (w * w)) / (1.0 + l)) / (l + 0.0001));
 }
 
 fn linear_to_srgb(c: vec3<f32>) -> vec3<f32> {
@@ -59,18 +65,26 @@ fn linear_to_srgb(c: vec3<f32>) -> vec3<f32> {
 
 @fragment
 fn fs_main(@builtin(position) position: vec4<f32>) -> @location(0) vec4<f32> {
-    let hdr_color = textureLoad(hdr, vec2<i32>(floor(position.xy)), 0).rgb;
-    let x = max(hdr_color * state.exposure * post.filmic_efw_bias.w, vec3<f32>(0.0));
+    let scene = textureLoad(hdr, vec2<i32>(floor(position.xy)), 0).rgb * state.exposure
+        * post.bloom.z;
+    let uv = position.xy / vec2<f32>(textureDimensions(hdr));
+    let blurred = max(textureSampleLevel(bloom_texture, bloom_sampler, uv, 0.0).rgb, vec3<f32>(0.0));
+    let bloom = pow(blurred, vec3<f32>(post.bloom.w)) * post.output.y;
+    // Bloom fades out on bright pixels.
+    let k = (1.0 - saturate(2.0 * dot(scene, vec3<f32>(0.299, 0.587, 0.114)))) * post.bloom.y;
+    let c = max(scene * post.bloom.x + bloom * k, vec3<f32>(0.0));
+
     var mapped: vec3<f32>;
     let method = u32(post.misc.x + 0.5);
     if method == 0u {
-        mapped = reinhard(x);
+        mapped = c;
     } else if method == 2u {
-        mapped = aces(x);
+        mapped = reinhard(c);
     } else {
-        mapped = filmic(x);
+        mapped = filmic(c);
     }
-    let display = linear_to_srgb(clamp(mapped, vec3<f32>(0.0), vec3<f32>(1.0)));
+    let curved = pow(saturate(mapped), vec3<f32>(post.output.x));
+    let display = linear_to_srgb(curved);
     let luma = dot(display, vec3<f32>(0.299, 0.587, 0.114));
     return vec4<f32>(display, luma);
 }

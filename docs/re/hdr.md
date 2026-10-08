@@ -57,3 +57,22 @@ filter first.
 - How average luminance is measured (histogram vs. downsampled mean, which percentiles).
 - Meaning of `apertureRatioMin/Max`; interaction with `apertureStandard` of optics.
 - Units of scene luminance (RV's sun and sky intensities in config `CfgWorlds >> LightingNew`).
+
+## Our implementation (`a3-render::post`)
+
+Follows `render-atmosphere.md` §3:
+
+- **Meter**: log-average luminance, `ln(Rec.601 luma + 0.001)` over 2x2-tap samples, averaged in
+  two compute passes (no histogram).
+- **Adaptation**: exposure-like value `key / measured`, stepped from the previous frame's value
+  with the soft step near the target, a per-frame ratio clamp, and a clamp to
+  `key / maxAperture ..= key / minAperture`. _Our assumptions_: the ratio limits are
+  `2^(-eyeAdaptFactorLight·dt)` and `2^(eyeAdaptFactorDark·dt)` (stops per second), and `key`
+  (0.3) stands in for `PSC_AssumedLuminancePars1.z`. The CPU aperture interpolation from the
+  lighting table (`apertureMin/Std/Max`, `standardAvgLum`, `exposure = 1/ap²`) is not wired in.
+- **Bloom**: mixed before the curve as decoded, `k = (1 - saturate(2·luma601)) · bloomScale`. The
+  bloom image itself (quarter-resolution exposed scene, Gaussian blur) is our approximation; RV's
+  bloom generation passes (`bloomLuminance*` entries) are not decoded yet.
+- **Curves**: filmic with `bias` and the E/F-offset normalisation, Reinhard on Rec.709 luminance
+  with `tonemapLinearWhiteReinhard`, method 0 passes through; then `pow(·, RgbEyeCoef.w)` with
+  `final_gamma = 1` until its value is traced, then our sRGB encode for display.

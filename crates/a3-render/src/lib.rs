@@ -11,8 +11,8 @@
 //! - [`DrawList`]: this frame's meshes, [`DebugLines`] and debug text.
 //! - [`RenderFeature`]: how further renderers (terrain, sky, particles) plug into the frame's
 //!   phases (shadow, opaque, alpha, post, UI).
-//! - [`HdrSettings`]: the post chain after the scene pass: sky and fog into HDR, eye
-//!   adaptation from a luminance histogram, RV's filmic tonemapping (`HDRNewPars`), FXAA.
+//! - [`HdrSettings`]: the post chain after the scene pass, following RV's HDR chain: sky and
+//!   fog into HDR, log-average eye adaptation, bloom, `tonemapMethod` curves (`HDRNewPars`), FXAA.
 
 pub mod camera;
 mod draw;
@@ -30,7 +30,7 @@ pub use draw::{Color, DebugLines, DrawList, MeshDraw, MeshId, TextRun, TextureId
 pub use feature::{Phase, PrepareContext, RenderFeature};
 pub use gpu::{Gpu, RenderError, WindowSurface};
 pub use mesh::{Mesh, MeshData, Vertex};
-pub use post::{AntiAliasing, FilmicCurve, HdrSettings, Tonemap};
+pub use post::{AntiAliasing, BloomSettings, FilmicCurve, HdrSettings, Tonemap};
 pub use renderer::{ExposureReadout, RenderSettings, Renderer};
 pub use shadow::ShadowSettings;
 pub use texture::{ColorSpace, GpuTexture, TextureData, TextureError, TextureFormat};

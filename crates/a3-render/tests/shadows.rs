@@ -3,7 +3,8 @@
 mod common;
 
 use a3_render::{
-    Camera, DrawList, Gpu, HdrSettings, MeshData, MeshDraw, Renderer, wgpu::TextureFormat,
+    BloomSettings, Camera, DrawList, Gpu, HdrSettings, MeshData, MeshDraw, Renderer,
+    wgpu::TextureFormat,
 };
 use common::gpu;
 use glam::{DAffine3, DVec3, Vec3};
@@ -35,8 +36,13 @@ impl Shot {
 /// A 2 m cube floating 3 m above a ground plane, sun almost overhead, camera looking down.
 fn render(gpu: &Gpu, shadows: bool, sun: Vec3) -> Shot {
     let mut renderer = Renderer::new(gpu, TextureFormat::Rgba8UnormSrgb);
+    // Fixed exposure and no bloom: only the shadow term changes between renders.
     renderer.settings.hdr = HdrSettings {
         fixed_exposure: Some(0.5),
+        bloom: BloomSettings {
+            enabled: false,
+            ..BloomSettings::default()
+        },
         ..HdrSettings::default()
     };
     renderer.settings.shadows.enabled = shadows;
