@@ -87,6 +87,20 @@ impl MoveState {
         step_in_world(self.velocity, orientation)
     }
 
+    /// How fast a full turn swings his front in the move he plays: the `turnSpeed` of its action
+    /// map, the config's per-move turn limit (`docs/re/sim-man-locomotion.md` §2). `0.0` while he
+    /// has no move.
+    pub fn turn_speed(&self, moves: Option<&Moves>) -> f32 {
+        let (Some(moves), Some(current)) = (moves, self.current) else {
+            return 0.0;
+        };
+        moves
+            .get(current)
+            .actions
+            .map(|map| moves.action_map(map).turn_speed)
+            .unwrap_or(0.0)
+    }
+
     /// Routes to the move his input asks for, when he is not already walking a route. A move the
     /// graph cannot reach is planned again on the next step, as the engine's planner keeps the
     /// request standing.

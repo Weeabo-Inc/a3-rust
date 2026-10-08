@@ -4,6 +4,8 @@
 //! authoritative work (forces, damage, decisions) only when `entity.is_local()`; a remote
 //! Entity only advances from its last received state.
 
+use glam::DQuat;
+
 use crate::{ClassState, Entity};
 
 use super::StepContext;
@@ -11,10 +13,12 @@ use super::StepContext;
 mod ground;
 mod input;
 mod moves;
+mod turn;
 
 pub use ground::{GRAVITY, GroundContact, GroundQuery, MAX_STEP_DOWN, MAX_STEP_UP, Motion};
 pub use input::ManInput;
 pub use moves::MoveState;
+pub use turn::Turning;
 
 /// Class-specific state of this family (`ClassState`).
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -25,6 +29,8 @@ pub struct ManState {
     pub input: ManInput,
     /// Which move he plays and how it blends from the previous one.
     pub moves: MoveState,
+    /// Which way he is turning, following [`Self::input`].
+    pub turn: Turning,
 }
 
 pub(crate) fn simulate(entity: &mut Entity, ctx: &mut StepContext<'_>, dt: f64) {
@@ -32,26 +38,34 @@ pub(crate) fn simulate(entity: &mut Entity, ctx: &mut StepContext<'_>, dt: f64) 
         return;
     }
     let feet = entity.position;
-    let orientation = entity.orientation;
+    let orientation = entity.orientation();
     // Without a terrain there is no surface to stand on or land on; leave him where he is
     // (in the original a World always has one).
     let Some(terrain) = ctx.world().terrain().cloned() else {
         return;
     };
     let moves = ctx.world().moves().cloned();
-    let (next, velocity) = match entity.class_state_mut() {
+    let (next, velocity, orientation) = match entity.class_state_mut() {
         ClassState::Man(man) => {
             man.moves.advance(moves.as_deref(), &man.input, dt);
+            // He turns as fast as the move he plays lets him (`docs/re/sim-man-locomotion.md`
+            // §2), and his front is what the animation moves.
+            let yaw = man
+                .turn
+                .step(man.input.turn, man.moves.turn_speed(moves.as_deref()), dt);
+            let orientation = DQuat::from_rotation_y(yaw) * orientation;
             // The animation is the source of truth for his movement: the moves he plays carry
             // him, and the ground decides his height (`docs/re/sim-man-movement.md` §3).
             let velocity = man.moves.velocity(orientation);
             (
                 man.motion.step(feet, velocity, terrain.as_ref(), dt),
                 velocity,
+                orientation,
             )
         }
         _ => return,
     };
     entity.position = next;
     entity.velocity = velocity;
+    entity.orientation = orientation;
 }

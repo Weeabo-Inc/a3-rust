@@ -13,7 +13,8 @@ pub struct ManInput {
     pub forward: f32,
     /// Strafe right (`1.0`) and left (`-1.0`), `-1.0..=1.0`, in his own frame.
     pub strafe: f32,
-    /// Turn right (`1.0`) and left (`-1.0`), `-1.0..=1.0`, scaled by the move's `turnSpeed`.
+    /// Turn right (`1.0`) and left (`-1.0`), `-1.0..=1.0`: he follows it at a limited rate, and
+    /// the move he plays scales it by its `turnSpeed` ([`super::Turning`]).
     pub turn: f32,
     /// `true` while the sprint key is held: `RunF` instead of `WalkF` where the move graph links
     /// both. Sprinting uphill is limited (`CfgSlopeLimits`, `docs/re/sim-man-movement.md` §4).

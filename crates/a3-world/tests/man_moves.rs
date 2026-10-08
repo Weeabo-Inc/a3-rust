@@ -5,7 +5,7 @@
 
 mod common;
 
-use a3_world::{ManInput, World};
+use a3_world::{EntityId, ManInput, World};
 use glam::DVec3;
 
 use common::{create_man, world};
@@ -16,6 +16,11 @@ fn run(world: &mut World, frames: usize) {
     for _ in 0..frames {
         world.simulate(1.0 / 15.0);
     }
+}
+
+/// Where he faces: the World's front, his orientation times `Z`.
+fn front_of(world: &World, man: EntityId) -> DVec3 {
+    world.entity(man).unwrap().orientation() * DVec3::Z
 }
 
 /// A freshly created Man plays the idle move of his stance.
@@ -99,7 +104,10 @@ fn walking_backward_moves_him_backwards() {
     // first.
     run(&mut world, 20);
     assert_eq!(world.animation_state(man), "walkback");
-    assert!(world.entity(man).unwrap().position().z < start.z, "he went back");
+    assert!(
+        world.entity(man).unwrap().position().z < start.z,
+        "he went back"
+    );
 
     let before = world.entity(man).unwrap().position();
     run(&mut world, 15);
@@ -144,6 +152,74 @@ fn strafing_left_moves_him_left() {
     let moved = entity.position() - before;
     assert!((moved.x + speed).abs() < 1e-3, "{moved:?}");
     assert!(moved.z.abs() < 1e-9 && moved.y.abs() < 1e-9, "{moved:?}");
+}
+
+/// Turning right swings his front to the right, north towards east, without playing another
+/// move or moving him: `docs/re/sim-man-locomotion.md` §2.
+#[test]
+fn turning_right_moves_his_front_to_the_right() {
+    let mut world = world();
+    let start = DVec3::new(10.0, 100.0, 20.0);
+    let man = create_man(&mut world, start);
+    world.set_man_input(
+        man,
+        ManInput {
+            turn: 1.0,
+            ..ManInput::default()
+        },
+    );
+
+    run(&mut world, 1);
+
+    let front = front_of(&world, man);
+    assert!(front.x > 0.0 && front.z > 0.0, "{front:?}");
+    assert_eq!(world.animation_state(man), "stand");
+    let moved = world.entity(man).unwrap().position() - start;
+    assert_eq!(moved.x, 0.0);
+    assert_eq!(moved.z, 0.0);
+}
+
+/// Turning left takes him the other way, north towards west.
+#[test]
+fn turning_left_moves_his_front_to_the_left() {
+    let mut world = world();
+    let man = create_man(&mut world, DVec3::new(10.0, 100.0, 20.0));
+    world.set_man_input(
+        man,
+        ManInput {
+            turn: -1.0,
+            ..ManInput::default()
+        },
+    );
+
+    run(&mut world, 1);
+
+    let front = front_of(&world, man);
+    assert!(front.x < 0.0 && front.z > 0.0, "{front:?}");
+}
+
+/// A full turn is the move's `turnSpeed`: `StandActions` has 2, half a turn per second of
+/// holding it. The turn he applies follows what he asks for at up to 6 per second, so it ramps
+/// in first (`docs/re/sim-man-locomotion.md` §2).
+#[test]
+fn a_full_turn_is_the_moves_turn_speed() {
+    let mut world = world();
+    let man = create_man(&mut world, DVec3::new(10.0, 100.0, 20.0));
+    world.set_man_input(
+        man,
+        ManInput {
+            turn: 1.0,
+            ..ManInput::default()
+        },
+    );
+
+    run(&mut world, 15); // the ramp in
+    let before = front_of(&world, man);
+    run(&mut world, 15); // one second of full deflection
+    let after = front_of(&world, man);
+
+    let turned = before.angle_between(after);
+    assert!((turned - std::f64::consts::PI).abs() < 0.05, "{turned}");
 }
 
 /// He does not jump from standing to the walk's speed: the blend runs over the walk's
