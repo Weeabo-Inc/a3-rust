@@ -1,17 +1,109 @@
 //! String commands.
 //!
-//! The engine's `select` and `find` on strings work on bytes of the UTF-8
-//! text (unless `forceUnicode` is active); `count` counts characters
-//! _(uncertain)_. Results that would split a character are repaired with
-//! U+FFFD.
+//! Like the engine, `count`, `select`, `find`, `in`, `splitString` and `trim`
+//! work on the bytes of the UTF-8 text unless `forceUnicode` is active, in
+//! which case they work on characters (`count` then counts UTF-16 units, as
+//! the engine's `MultiByteToWideChar` does). A byte range that splits a
+//! character is repaired with U+FFFD. See `docs/re/sqf-semantics.md`.
 
 use super::*;
+use crate::vm::Ctx;
 
-fn byte_slice(s: &str, start: usize, len: usize) -> String {
-    let bytes = s.as_bytes();
-    let start = start.min(bytes.len());
-    let end = start.saturating_add(len).min(bytes.len());
-    String::from_utf8_lossy(&bytes[start..end]).into_owned()
+/// A string seen as bytes or as characters.
+enum Units<'a> {
+    Bytes(&'a [u8]),
+    Chars(Vec<char>),
+}
+
+impl<'a> Units<'a> {
+    fn new(s: &'a str, unicode: bool) -> Units<'a> {
+        if unicode {
+            Units::Chars(s.chars().collect())
+        } else {
+            Units::Bytes(s.as_bytes())
+        }
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            Units::Bytes(b) => b.len(),
+            Units::Chars(c) => c.len(),
+        }
+    }
+
+    fn slice(&self, start: usize, end: usize) -> String {
+        let start = start.min(self.len());
+        let end = end.clamp(start, self.len());
+        match self {
+            Units::Bytes(b) => String::from_utf8_lossy(&b[start..end]).into_owned(),
+            Units::Chars(c) => c[start..end].iter().collect(),
+        }
+    }
+
+    fn find(&self, needle: &Units<'_>, from: usize) -> Option<usize> {
+        if from > self.len() {
+            return None;
+        }
+        match (self, needle) {
+            (Units::Bytes(h), Units::Bytes(n)) => find_slice(&h[from..], n).map(|p| p + from),
+            (Units::Chars(h), Units::Chars(n)) => find_slice(&h[from..], n).map(|p| p + from),
+            _ => None,
+        }
+    }
+}
+
+fn find_slice<T: PartialEq>(hay: &[T], needle: &[T]) -> Option<usize> {
+    if needle.is_empty() {
+        return Some(0);
+    }
+    hay.windows(needle.len()).position(|w| w == needle)
+}
+
+fn unicode<H: Host>(ctx: &mut Ctx<'_, H>) -> bool {
+    ctx.take_unicode()
+}
+
+/// Splits `s` at any of the delimiter units, dropping empty parts.
+fn split(s: &str, delims: &str, unicode: bool) -> Vec<Value> {
+    if unicode || delims.is_ascii() {
+        let d: Vec<char> = delims.chars().collect();
+        if d.is_empty() {
+            return s.chars().map(|c| Value::from(c.to_string())).collect();
+        }
+        return s
+            .split(|c| d.contains(&c))
+            .filter(|p| !p.is_empty())
+            .map(Value::from)
+            .collect();
+    }
+    let d = delims.as_bytes();
+    s.as_bytes()
+        .split(|b| d.contains(b))
+        .filter(|p| !p.is_empty())
+        .map(|p| Value::from(String::from_utf8_lossy(p).into_owned()))
+        .collect()
+}
+
+/// Trims units in `set` from the start (`mode` 1), end (2) or both (0).
+fn trim_units(s: &str, set: &str, mode: i32, unicode: bool) -> String {
+    let u = Units::new(s, unicode);
+    let is_trim = |i: usize| match &u {
+        Units::Bytes(b) => set.as_bytes().contains(&b[i]),
+        Units::Chars(c) => set.contains(c[i]),
+    };
+    let mut start = 0;
+    let mut end = u.len();
+    if mode != 2 {
+        while start < end && is_trim(start) {
+            start += 1;
+        }
+    }
+    if mode != 1 {
+        while end > start && is_trim(end - 1) {
+            end -= 1;
+        }
+    }
+    u.slice(start, end)
 }
 
 /// C `strtod`-style prefix parse: leading whitespace, optional sign,
@@ -59,9 +151,21 @@ pub(crate) fn parse_number_prefix(s: &str) -> f32 {
     t[..i].parse::<f64>().map(|v| v as f32).unwrap_or(0.0)
 }
 
+const WHITESPACE: &str = " \t\r\n";
+
 pub(super) fn register<H: Host>(r: &mut Registry<H>) {
-    r.unary("count", STR, NUM, |_, a| {
-        Ok(Value::Number(string(&a).chars().count() as f32))
+    r.unary("count", STR, NUM, |ctx, a| {
+        let s = string(&a);
+        let n = if unicode(ctx) {
+            s.chars().map(char::len_utf16).sum()
+        } else {
+            s.len()
+        };
+        Ok(Value::Number(n as f32))
+    });
+    r.unary("forceUnicode", NUM, NOTHING, |ctx, a| {
+        ctx.set_unicode_mode(num(&a).round_ties_even().clamp(-1.0, 1.0) as i8);
+        Ok(Value::Nothing)
     });
     r.unary("toUpper", STR, STR, |_, a| {
         Ok(Value::from(string(&a).to_uppercase()))
@@ -69,78 +173,57 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
     r.unary("toLower", STR, STR, |_, a| {
         Ok(Value::from(string(&a).to_lowercase()))
     });
-    r.unary("trim", STR, STR, |_, a| Ok(Value::from(string(&a).trim())));
-    r.binary("trim", STR, ARR, STR, |_, a, b| {
+    r.unary("trim", STR, STR, |ctx, a| {
+        let u = unicode(ctx);
+        Ok(Value::from(trim_units(string(&a), WHITESPACE, 0, u)))
+    });
+    r.binary("trim", STR, ARR, STR, |ctx, a, b| {
         let args = array(&b);
         let args = args.borrow();
-        let chars: Vec<char> = match args.first() {
-            Some(Value::String(c)) => c.chars().collect(),
-            _ => vec![' ', '\t', '\r', '\n'],
+        let set = match args.first() {
+            Some(Value::String(c)) => c.to_string(),
+            _ => WHITESPACE.to_string(),
         };
         let mode = args.get(1).map(num).unwrap_or(0.0) as i32;
-        let s = string(&a);
-        let is = |c: char| chars.contains(&c);
-        let out = match mode {
-            1 => s.trim_start_matches(is),
-            2 => s.trim_end_matches(is),
-            _ => s.trim_matches(is),
-        };
-        Ok(Value::from(out))
+        let u = unicode(ctx);
+        Ok(Value::from(trim_units(string(&a), &set, mode, u)))
     });
-    r.binary("select", STR, NUM, STR, |_, a, b| {
-        let s = string(&a);
-        let i = index(num(&b));
-        if i < 0 || i as usize >= s.len() {
-            return Ok(Value::from(""));
-        }
-        Ok(Value::from(byte_slice(s, i as usize, 1)))
-    });
-    r.binary("select", STR, ARR, STR, |_, a, b| {
-        let s = string(&a);
+    r.binary("select", STR, ARR, STR, |ctx, a, b| {
         let args = array(&b);
         let args = args.borrow();
-        let start = args.first().map(num).unwrap_or(0.0).max(0.0) as usize;
+        let u = Units::new(string(&a), unicode(ctx));
+        let start = index(args.first().map(num).unwrap_or(0.0)).max(0) as usize;
         let len = args
             .get(1)
-            .map(|v| num(v).max(0.0) as usize)
+            .map(|v| index(num(v)).max(0) as usize)
             .unwrap_or(usize::MAX);
-        Ok(Value::from(byte_slice(s, start, len)))
+        Ok(Value::from(u.slice(start, start.saturating_add(len))))
     });
-    r.binary("find", STR, STR, NUM, |_, a, b| {
-        Ok(Value::Number(
-            string(&a).find(string(&b)).map_or(-1.0, |i| i as f32),
-        ))
+    r.binary("find", STR, STR, NUM, |ctx, a, b| {
+        let uni = unicode(ctx);
+        let (h, n) = (Units::new(string(&a), uni), Units::new(string(&b), uni));
+        Ok(Value::Number(h.find(&n, 0).map_or(-1.0, |i| i as f32)))
     });
-    r.binary("find", STR, ARR, NUM, |_, a, b| {
+    r.binary("find", STR, ARR, NUM, |ctx, a, b| {
         let args = array(&b);
         let args = args.borrow();
-        let needle = expect_str(args.first().unwrap_or(&Value::Nil))?;
-        let start = args.get(1).map(num).unwrap_or(0.0).max(0.0) as usize;
-        let s = string(&a);
-        if start > s.len() {
-            return Ok(Value::Number(-1.0));
-        }
-        let hay = &s.as_bytes()[start..];
-        let pos = hay
-            .windows(needle.len().max(1))
-            .position(|w| w == needle.as_bytes());
-        Ok(Value::Number(pos.map_or(-1.0, |p| (p + start) as f32)))
+        let needle = expect_str(args.first().unwrap_or(&Value::Nil))?.to_string();
+        let start = index(args.get(1).map(num).unwrap_or(0.0)).max(0) as usize;
+        let uni = unicode(ctx);
+        let (h, n) = (Units::new(string(&a), uni), Units::new(&needle, uni));
+        Ok(Value::Number(h.find(&n, start).map_or(-1.0, |i| i as f32)))
     });
-    r.binary("in", STR, STR, BOOL, |_, a, b| {
+    r.binary("in", STR, STR, BOOL, |ctx, a, b| {
+        unicode(ctx);
         Ok(Value::Bool(string(&b).contains(string(&a))))
     });
-    r.binary("splitString", STR, STR, ARR, |_, a, b| {
-        let delims: Vec<char> = string(&b).chars().collect();
-        let s = string(&a);
-        let parts: Vec<Value> = if delims.is_empty() {
-            s.chars().map(|c| Value::from(c.to_string())).collect()
-        } else {
-            s.split(|c| delims.contains(&c))
-                .filter(|p| !p.is_empty())
-                .map(Value::from)
-                .collect()
-        };
-        Ok(Value::Array(Array::from_vec(parts)))
+    r.binary("splitString", STR, STR, ARR, |ctx, a, b| {
+        let u = unicode(ctx);
+        Ok(Value::Array(Array::from_vec(split(
+            string(&a),
+            string(&b),
+            u,
+        ))))
     });
     r.binary("joinString", ARR, STR, STR, |ctx, a, b| {
         let sep = string(&b);

@@ -19,10 +19,11 @@ pub enum Type {
     /// The result of a command that returns nothing (e.g. `hint`).
     Nothing,
     Bool,
-    /// A finite (or infinite) number. NaN numbers report [`Type::NaN`].
+    /// A number. NaN and infinities are numbers too (`typeName` gives
+    /// `SCALAR`; the engine prints them `-1.#IND` / `1.#INF`).
     Number,
-    /// A number that is NaN. Stored like a number; reported separately by
-    /// `typeName`.
+    /// The engine's separate "Not a Number" type. It appears in command
+    /// signatures; the VM never produces a value of this type.
     NaN,
     String,
     Array,

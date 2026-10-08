@@ -14,7 +14,6 @@ use crate::error::{ScriptError, SqfError};
 use crate::host::Host;
 use crate::registry::{BinaryImpl, NularImpl, Registry, UnaryImpl};
 use crate::symbol::Sym;
-use crate::types::Type;
 use crate::value::{Array, Namespace, ScriptHandle, SwitchState, Value};
 use crate::vm::flow::{Continuation, ContinuationKind, Flow, Invoke, Suspend, Unwind};
 use crate::vm::{Ctx, VmState};
@@ -31,8 +30,11 @@ pub(crate) struct CodeFrame {
     pub namespace: Namespace,
     /// The `switch` this block is the body of.
     pub switch: Option<Rc<SwitchState>>,
-    /// New variables assigned here are created in the enclosing scope.
-    pub transparent: bool,
+    /// When the frame ends, its locals are kept in
+    /// [`ScriptState::captured`] (loop scopes of `for`).
+    pub capture: bool,
+    /// Reading a `nil` variable is not an error here (inside `isNil {...}`).
+    pub nil_ok: bool,
     /// `privateAll`: locals of enclosing scopes are invisible from here.
     pub private_all: bool,
 }
@@ -50,8 +52,11 @@ pub(crate) struct ScriptState<H: Host> {
     pub scheduled: bool,
     pub handle: ScriptHandle,
     pub name: Option<Rc<str>>,
-    /// The last variable read that was undefined, for error messages.
-    pub last_undefined: Option<Sym>,
+    /// Locals of the last ended frame that had `capture` set.
+    pub captured: Option<Vec<(Sym, Value)>>,
+    /// `forceUnicode` mode: -1 off, 0 on until the script ends, 1 on for
+    /// the next string command.
+    pub unicode_mode: i8,
     /// Value to hand to the top frame when the script next runs (after a
     /// suspension).
     pub resume_with: Option<Value>,
@@ -95,7 +100,8 @@ impl<H: Host> ScriptState<H> {
             scheduled,
             handle,
             name: None,
-            last_undefined: None,
+            captured: None,
+            unicode_mode: -1,
             resume_with: None,
             final_locals: Vec::new(),
         };
@@ -126,6 +132,7 @@ impl<H: Host> ScriptState<H> {
         if let Some(this) = inv.this {
             locals.push((Sym::THIS, this));
         }
+        let nil_ok = inv.nil_ok || self.top_code().is_some_and(|cf| cf.nil_ok);
         self.frames.push(Frame::Code(CodeFrame {
             code: inv.code,
             ip: 0,
@@ -134,7 +141,8 @@ impl<H: Host> ScriptState<H> {
             scope_name: None,
             namespace: inv.namespace.unwrap_or(namespace),
             switch: inv.switch,
-            transparent: inv.transparent,
+            capture: inv.capture,
+            nil_ok,
             private_all: false,
         }));
     }
@@ -149,6 +157,9 @@ impl<H: Host> ScriptState<H> {
         let f = self.frames.pop()?;
         if let Frame::Code(cf) = &f {
             self.stack.truncate(cf.base);
+            if cf.capture {
+                self.captured = Some(cf.locals.clone());
+            }
             if self.frames.is_empty() {
                 self.final_locals = cf.locals.clone();
             }
@@ -224,7 +235,7 @@ impl<H: Host> ScriptState<H> {
             }
         }
         let target = self.frames.iter_mut().rev().find_map(|f| match f {
-            Frame::Code(cf) if !cf.transparent => Some(cf),
+            Frame::Code(cf) => Some(cf),
             _ => None,
         });
         match target {
@@ -361,17 +372,6 @@ fn handle_flow<H: Host>(script: &mut ScriptState<H>, flow: Flow<H>) -> Next {
     }
 }
 
-/// Converts a type error on a `nil` argument read from an undefined
-/// variable into the engine's "undefined variable" error.
-fn refine_error<H: Host>(script: &ScriptState<H>, e: SqfError) -> SqfError {
-    match (&e, script.last_undefined) {
-        (SqfError::Type { got: Type::Any, .. }, Some(name)) => {
-            SqfError::UndefinedVariable(name.as_str().to_string())
-        }
-        _ => e,
-    }
-}
-
 fn exec_code<H: Host>(
     host: &mut H,
     reg: &Registry<H>,
@@ -419,8 +419,12 @@ fn exec_code<H: Host>(
             Instr::Push(v) => script.stack.push(v.clone()),
             Instr::GetVar(name) => {
                 let v = read_var(vm, script, *name);
-                if v.is_nil() {
-                    script.last_undefined = Some(*name);
+                if v.is_nil() && !matches!(&script.frames[fi], Frame::Code(cf) if cf.nil_ok) {
+                    save_ip!();
+                    return Next::Fail(
+                        SqfError::UndefinedVariable(name.as_str().to_string()),
+                        None,
+                    );
                 }
                 script.stack.push(v);
             }
@@ -429,10 +433,7 @@ fn exec_code<H: Host>(
                 let items = script.stack.split_off(at);
                 script.stack.push(Value::Array(Array::from_vec(items)));
             }
-            Instr::EndStatement => {
-                script.stack.truncate(base);
-                script.last_undefined = None;
-            }
+            Instr::EndStatement => script.stack.truncate(base),
             Instr::Assign(name) => {
                 let v = script.stack.pop().unwrap_or(Value::Nil);
                 save_ip!();
@@ -477,7 +478,8 @@ fn exec_code<H: Host>(
                 save_ip!();
                 let arg = script.stack.pop().unwrap_or(Value::Nil);
                 let flow = match reg.unary_impl(*id, &arg) {
-                    Ok(imp) => {
+                    Ok(None) => Ok(Flow::Value(Value::Nil)),
+                    Ok(Some(imp)) => {
                         let mut ctx = Ctx {
                             host,
                             reg,
@@ -489,7 +491,7 @@ fn exec_code<H: Host>(
                             UnaryImpl::Flow(f) => f(&mut ctx, arg),
                         }
                     }
-                    Err(e) => Err(refine_error(script, e)),
+                    Err(e) => Err(e),
                 };
                 match flow {
                     Ok(Flow::Value(v)) => script.stack.push(v),
@@ -502,7 +504,8 @@ fn exec_code<H: Host>(
                 let right = script.stack.pop().unwrap_or(Value::Nil);
                 let left = script.stack.pop().unwrap_or(Value::Nil);
                 let flow = match reg.binary_impl(*id, &left, &right) {
-                    Ok(imp) => {
+                    Ok(None) => Ok(Flow::Value(Value::Nil)),
+                    Ok(Some(imp)) => {
                         let mut ctx = Ctx {
                             host,
                             reg,
@@ -514,7 +517,7 @@ fn exec_code<H: Host>(
                             BinaryImpl::Flow(f) => f(&mut ctx, left, right),
                         }
                     }
-                    Err(e) => Err(refine_error(script, e)),
+                    Err(e) => Err(e),
                 };
                 match flow {
                     Ok(Flow::Value(v)) => script.stack.push(v),

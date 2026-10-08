@@ -51,10 +51,13 @@ pub struct Invoke {
     /// Namespace for global variables in the new scope (`with ... do`);
     /// `None` inherits the caller's.
     pub namespace: Option<Namespace>,
-    /// Whether variables first assigned in this scope are created in the
-    /// enclosing scope instead (the init/condition/step blocks of
-    /// `for [{...}, {...}, {...}]`).
-    pub transparent: bool,
+    /// Keep the scope's locals when it ends (read back with
+    /// [`Ctx::take_captured`]); `for` loops use this to carry their loop
+    /// scope from one block to the next.
+    pub capture: bool,
+    /// Reading a `nil` variable in this scope (and scopes it calls) is not
+    /// an error (`isNil {...}`).
+    pub nil_ok: bool,
     pub(crate) switch: Option<Rc<SwitchState>>,
 }
 
@@ -65,7 +68,8 @@ impl Invoke {
             this: None,
             locals: Vec::new(),
             namespace: None,
-            transparent: false,
+            capture: false,
+            nil_ok: false,
             switch: None,
         }
     }

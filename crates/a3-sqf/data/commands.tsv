@@ -22,7 +22,6 @@
 #	binary	ARRAY	SCALAR	ANY	10
 %	binary	SCALAR	SCALAR	SCALAR	7
 &&	binary	BOOL	BOOL	BOOL	2
-&&	binary	BOOL	BOOL,CODE	BOOL	2
 &&	binary	BOOL	CODE	BOOL	2
 *	binary	SCALAR	SCALAR	SCALAR	7
 +	binary	ARRAY	ARRAY	ARRAY	6
@@ -221,7 +220,6 @@ ambientTemperature	nular			ARRAY
 ammo	binary	OBJECT	STRING	SCALAR	4
 ammoOnPylon	binary	OBJECT	SCALAR,STRING	SCALAR	4
 and	binary	BOOL	BOOL	BOOL	2
-and	binary	BOOL	BOOL,CODE	BOOL	2
 and	binary	BOOL	CODE	BOOL	2
 angularVelocity	unary		OBJECT	ARRAY
 angularVelocityModelSpace	unary		OBJECT	ARRAY
@@ -311,6 +309,7 @@ breakOut	binary	ANY	STRING	NOTHING	4
 breakOut	unary		STRING	NOTHING
 breakTo	unary		STRING	NOTHING
 breakWith	unary		ANY	ANY
+breakWith	unary		ANY	NOTHING
 briefingName	nular			STRING
 buildingExit	binary	OBJECT	SCALAR	ARRAY	4
 buildingPos	binary	OBJECT	SCALAR	ARRAY	4
@@ -493,7 +492,6 @@ count	unary		ARRAY	SCALAR
 count	unary		CONFIG	SCALAR
 count	unary		HASHMAP	SCALAR
 count	unary		STRING	SCALAR
-count	unary		STRING,ARRAY	SCALAR
 countEnemy	binary	OBJECT	ARRAY	SCALAR	4
 countFriendly	binary	OBJECT	ARRAY	SCALAR	4
 countSide	binary	SIDE	ARRAY	SCALAR	4
@@ -1057,11 +1055,11 @@ forceWeaponFire	binary	OBJECT	ARRAY	NOTHING	4
 forceWeatherChange	nular			NOTHING
 forEach	binary	CODE	ARRAY	ANY	4
 forEach	binary	CODE	ARRAY	NOTHING	4
-forEach	binary	CODE	ARRAY,HASHMAP	ANY	4
 forEach	binary	CODE	HASHMAP	ANY	4
 forEachMember	binary	CODE	TEAM_MEMBER	NOTHING	4
 forEachMemberAgent	binary	CODE	TEAM_MEMBER	NOTHING	4
 forEachMemberTeam	binary	CODE	TEAM_MEMBER	NOTHING	4
+forEachReversed	binary	CODE	ARRAY	ANY	4
 forEachReversed	binary	CODE	ARRAY	NOTHING	4
 forgetTarget	binary	OBJECT,GROUP	OBJECT	NOTHING	4
 format	unary		ARRAY	STRING
@@ -1410,6 +1408,8 @@ if	unary		BOOL	IF
 ignore3DENHistory	unary		CODE	NOTHING
 ignoreTarget	binary	OBJECT,GROUP	ARRAY,OBJECT	NOTHING	4
 image	unary		STRING	TEXT
+import	unary		ARRAY	NOTHING
+import	unary		STRING	NOTHING
 import	unary		STRING,ARRAY	NOTHING
 importAllGroups	unary		CONTROL	NOTHING
 importance	unary		LOCATION	SCALAR
@@ -2036,7 +2036,6 @@ openSteamApp	unary		SCALAR	BOOL
 openYoutubeVideo	unary		STRING	BOOL
 opfor	nular			SIDE
 or	binary	BOOL	BOOL	BOOL	1
-or	binary	BOOL	BOOL,CODE	BOOL	1
 or	binary	BOOL	CODE	BOOL	1
 orderGetIn	binary	ARRAY	BOOL	NOTHING	4
 overcast	nular			SCALAR
@@ -2329,7 +2328,6 @@ select	binary	ARRAY	CODE	ARRAY	4
 select	binary	ARRAY	SCALAR	ANY	4
 select	binary	CONFIG	SCALAR	CONFIG	4
 select	binary	STRING	ARRAY	STRING	4
-select	binary	STRING	SCALAR	STRING	4
 selectBestPlaces	unary		ARRAY	ARRAY
 selectDiarySubject	binary	OBJECT	STRING	BOOL	4
 selectedEditorObjects	unary		CONTROL	NOTHING
@@ -2890,7 +2888,6 @@ textLog	unary		ANY	NOTHING
 textLogFormat	unary		ARRAY	NOTHING
 tg	unary		SCALAR	SCALAR
 then	binary	IF	ARRAY	ANY	4
-then	binary	IF	ARRAY,CODE	ANY	4
 then	binary	IF	CODE	ANY	4
 throw	binary	IF	ANY	NOTHING	4
 throw	unary		ANY	NOTHING
@@ -3162,5 +3159,4 @@ worldToModelVisual	binary	OBJECT	ARRAY	ARRAY	4
 worldToScreen	binary	OBJECT	ARRAY	ARRAY	4
 worldToScreen	unary		ARRAY	ARRAY
 ||	binary	BOOL	BOOL	BOOL	1
-||	binary	BOOL	BOOL,CODE	BOOL	1
 ||	binary	BOOL	CODE	BOOL	1

@@ -171,7 +171,6 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
     r.unary("parseSimpleArray", STR, ARR, |_, a| {
         Ok(parse_simple_array(string(&a)).unwrap_or_else(|| Value::array([])))
     });
-    r.unary("forceUnicode", NUM, NOTHING, |_, _| Ok(Value::Nothing));
 }
 
 fn select_extreme(a: &Value, better: fn(&f32, &f32) -> bool) -> Value {

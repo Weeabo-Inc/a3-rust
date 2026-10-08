@@ -8,8 +8,12 @@
 //!   loop and the loop's result is the `exitWith` value.
 //! - `while` stops silently after 10000 iterations in unscheduled code.
 //! - `for "_i" from a to b` runs while `_i <= b` (or `>= b` for a negative
-//!   step); the loop's counter is private and assignments to `_i` in the
-//!   body do not change it _(uncertain)_.
+//!   step); `_i` is private to the loop, and the loop continues from the
+//!   value the body left in `_i` (plus the step).
+//! - `for [{init}, {cond}, {step}]` blocks share one loop scope.
+//! - `switch` with no matching case and no `default` gives `true`.
+//!
+//! See `docs/re/sqf-semantics.md`.
 //! - Loops return the value of the last body evaluation.
 
 use std::rc::Rc;
@@ -216,13 +220,30 @@ impl ForRange {
         if !more {
             return Flow::Value(std::mem::replace(&mut self.last, Value::Nothing));
         }
-        Flow::Call(Invoke::new(self.body.clone()).local(self.var, Value::Number(self.i)))
+        Flow::Call(Invoke {
+            capture: true,
+            ..Invoke::new(self.body.clone()).local(self.var, Value::Number(self.i))
+        })
     }
 }
 
 impl<H: Host> Continuation<H> for ForRange {
-    fn resume(&mut self, _: &mut Ctx<'_, H>, result: Value) -> Result<Flow<H>, SqfError> {
+    fn resume(&mut self, ctx: &mut Ctx<'_, H>, result: Value) -> Result<Flow<H>, SqfError> {
         self.last = result;
+        // The engine reads the loop variable back after each pass, so the
+        // body can move the loop by assigning it; a non-number ends it.
+        if let Some(locals) = ctx.take_captured() {
+            match locals.iter().rev().find(|(s, _)| *s == self.var) {
+                Some((_, Value::Number(n))) => self.i = *n,
+                Some(_) => {
+                    return Ok(Flow::Value(std::mem::replace(
+                        &mut self.last,
+                        Value::Nothing,
+                    )));
+                }
+                None => {}
+            }
+        }
         self.i += self.step;
         Ok(self.next())
     }
@@ -240,41 +261,74 @@ enum ForPhase {
     Step,
 }
 
-/// `for [{init}, {cond}, {step}] do {body}`.
+/// `for [{init}, {cond}, {step}] do {body}`. The four blocks share one
+/// loop scope: `private _i = 0` in `init` lives for the whole loop and is
+/// visible to the others, while `_i = 0` without `private` assigns an
+/// existing outer `_i`.
 struct ForCode {
     cond: Code,
     step: Code,
     body: Code,
     phase: ForPhase,
     last: Value,
+    scope: Vec<(Sym, Value)>,
+}
+
+impl ForCode {
+    fn invoke(&self, code: &Code) -> Invoke {
+        let mut inv = Invoke::new(code.clone());
+        inv.locals = self.scope.clone();
+        inv.capture = true;
+        inv
+    }
+
+    /// Takes the loop-scope values back from the block that just ended:
+    /// every local of `init`/`cond`/`step`, only existing loop-scope names
+    /// from the body.
+    fn absorb(&mut self, captured: Option<Vec<(Sym, Value)>>, all: bool) {
+        let Some(locals) = captured else {
+            return;
+        };
+        if all {
+            self.scope = locals;
+            return;
+        }
+        for (name, value) in locals {
+            if let Some(slot) = self.scope.iter_mut().find(|(s, _)| *s == name) {
+                slot.1 = value;
+            }
+        }
+    }
 }
 
 impl<H: Host> Continuation<H> for ForCode {
-    fn resume(&mut self, _: &mut Ctx<'_, H>, result: Value) -> Result<Flow<H>, SqfError> {
-        let transparent = |code: &Code| Invoke {
-            transparent: true,
-            ..Invoke::new(code.clone())
-        };
+    fn resume(&mut self, ctx: &mut Ctx<'_, H>, result: Value) -> Result<Flow<H>, SqfError> {
+        let captured = ctx.take_captured();
         match self.phase {
             ForPhase::Init | ForPhase::Step => {
+                self.absorb(captured, true);
                 self.phase = ForPhase::Cond;
-                Ok(Flow::Call(transparent(&self.cond)))
+                Ok(Flow::Call(self.invoke(&self.cond)))
             }
-            ForPhase::Cond => match result {
-                Value::Bool(true) => {
-                    self.phase = ForPhase::Body;
-                    Ok(Flow::Call(Invoke::new(self.body.clone())))
+            ForPhase::Cond => {
+                self.absorb(captured, true);
+                match result {
+                    Value::Bool(true) => {
+                        self.phase = ForPhase::Body;
+                        Ok(Flow::Call(self.invoke(&self.body)))
+                    }
+                    Value::Bool(false) => Ok(Flow::Value(std::mem::replace(
+                        &mut self.last,
+                        Value::Nothing,
+                    ))),
+                    other => Err(SqfError::type_error(&other, BOOL)),
                 }
-                Value::Bool(false) => Ok(Flow::Value(std::mem::replace(
-                    &mut self.last,
-                    Value::Nothing,
-                ))),
-                other => Err(SqfError::type_error(&other, BOOL)),
-            },
+            }
             ForPhase::Body => {
+                self.absorb(captured, false);
                 self.last = result;
                 self.phase = ForPhase::Step;
-                Ok(Flow::Call(transparent(&self.step)))
+                Ok(Flow::Call(self.invoke(&self.step)))
             }
         }
     }
@@ -509,7 +563,7 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
             }
             ForSpec::Code { init, cond, step } => Ok(Flow::CallThen(
                 Invoke {
-                    transparent: true,
+                    capture: true,
                     ..Invoke::new(init)
                 },
                 Box::new(ForCode {
@@ -518,6 +572,7 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
                     body,
                     phase: ForPhase::Init,
                     last: Value::Nothing,
+                    scope: Vec::new(),
                 }),
             )),
         }
@@ -738,10 +793,13 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         Ok(Value::Bool(ctx.get_var(Sym::new(string(&a))).is_nil()))
     });
     r.unary_flow("isNil", CODE, BOOL, |_, a| {
-        Ok(Flow::CallThen(
-            Invoke::new(expect_code(&a)?),
-            Box::new(IsNilCode),
-        ))
+        // Inside `isNil {...}` reading an undefined variable is not an
+        // error: the code just yields nil.
+        let inv = Invoke {
+            nil_ok: true,
+            ..Invoke::new(expect_code(&a)?)
+        };
+        Ok(Flow::CallThen(inv, Box::new(IsNilCode)))
     });
 
     // with namespace do.

@@ -134,7 +134,10 @@ fn import_re_command_table() {
         let id = table.lookup(&name).unwrap();
         table.set_precedence(id, p);
     }
-    let reg = Registry::<NullHost>::with_core();
+    // Only the core registrations (not the shipped table they start from), so
+    // overloads that are no longer registered drop out.
+    let mut reg = Registry::<NullHost>::new(CommandTable::new());
+    a3_sqf::commands::register_core(&mut reg);
     for (_, info) in reg.table().iter() {
         if let Some(s) = info.nular {
             table.declare(&info.name, Form::Nular, s);
