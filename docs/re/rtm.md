@@ -90,7 +90,10 @@ f16[3]   translation x, y, z     IEEE binary16                       high
 
 _Medium_: the quaternion and the plain matrix describe the same rotation when the quaternion
 is read as (x, y, z, w) and turned into a matrix by the usual right-handed formula (`glam`).
-No animation ships in both encodings, so this is not cross-checked yet.
+No animation ships in both encodings, so this is not cross-checked yet. **High**: the engine's
+decoder (`0x1212520`) fills the columns of its matrix with the rows of that usual matrix, so the
+rotation it applies is the quaternion's **conjugate**. It also rewrites each translation on load
+using the skeleton pivots; see `model-animations.md` ("RTM skeletal poses").
 
 ### Non-unit quaternions
 

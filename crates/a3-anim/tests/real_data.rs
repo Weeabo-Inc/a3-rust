@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use a3_anim::{Sources, hidden_sections, pose, skin};
+use a3_anim::{RtmBinding, SkeletonPivots, Sources, hidden_sections, pose, skin};
 use a3_p3d::Model;
 use a3_vfs::Vfs;
 use glam::Vec3;
@@ -103,6 +103,67 @@ fn hunter_wheel_hides_when_destroyed() {
         hidden(&broken) > hidden(&intact),
         "the tyre sections disappear"
     );
+}
+
+/// A soldier and its idle rifle stance: every skeleton bone binds, and the engine's bone frames
+/// keep the bone lengths of the spine, neck, legs and shoulders (the posed pivot is the frame's
+/// translation). The arm chains do not yet (see `docs/re/model-animations.md`).
+#[test]
+fn soldier_rtm_frames_keep_trunk_and_leg_bone_lengths() {
+    let Some(model) = load(r"a3\characters_f\blufor\b_soldier_01.p3d") else {
+        return;
+    };
+    let root = std::env::var_os("A3_ROOT").unwrap();
+    let vfs = Vfs::new();
+    vfs.mount_archives(&Path::new(&root).join("Addons"));
+    let rtm = a3_rtm::Animation::read(
+        &vfs.open(r"a3\anims_f\data\anim\sdr\mov\erc\stp\ras\rfl\amovpercmstpsraswrfldnon.rtm")
+            .unwrap(),
+    )
+    .unwrap();
+    let pivots_model = Model::from_bytes(
+        &vfs.open(r"a3\anims_f\data\skeleton\skeletonpivots.p3d")
+            .unwrap(),
+    )
+    .unwrap();
+    let skeleton = model.skeleton.as_ref().unwrap();
+    let pivots = SkeletonPivots::from_model(skeleton, &pivots_model, "");
+    let binding = RtmBinding::new(skeleton, &rtm);
+    assert_eq!(binding.bound(), skeleton.bones.len());
+
+    let frames = binding.frames(&rtm, 0.0, &pivots);
+    let bone = |name: &str| skeleton.bones.iter().position(|b| b.name == name).unwrap();
+    let mut report = Vec::new();
+    for name in [
+        "spine1",
+        "spine2",
+        "spine3",
+        "neck",
+        "neck1",
+        "head",
+        "leftleg",
+        "leftfoot",
+        "rightleg",
+        "rightfoot",
+        "leftshoulder",
+        "rightshoulder",
+        "leftarm",
+        "leftforearm",
+        "lefthand",
+    ] {
+        let b = bone(name);
+        let parent = skeleton.bones[b].parent.unwrap();
+        let rest = pivots.positions[b].distance(pivots.positions[parent]);
+        let posed = Vec3::from(frames[b].translation).distance(frames[parent].translation.into());
+        report.push((name, rest, posed));
+    }
+    for (name, rest, posed) in &report {
+        eprintln!("{name:14} rest {rest:.3} posed {posed:.3}");
+    }
+    for (name, rest, posed) in &report[..12] {
+        // Within 7 cm (legs shorten by up to 6.5 cm in this pose); the arms are off by up to 1.2 m.
+        assert!((rest - posed).abs() < 0.07, "{name}: {rest} vs {posed}");
+    }
 }
 
 #[test]
