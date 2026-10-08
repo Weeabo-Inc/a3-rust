@@ -28,7 +28,8 @@ exactly. Architecture decisions: `docs/adr/`. Phases and scope: `docs/ROADMAP.md
 5. Open the PR with `gh pr create`. The body contains `Closes #N` and ends with
    `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
 6. Done when CI is green on both ubuntu and windows jobs and the PR is squash-merged
-   (`gh pr merge --squash`).
+   (`gh pr merge --squash`). Merge when CI is green and the PR is mergeable; rebase only on
+   conflicts; fix semantic breakage on main forward.
 
 Every commit message ends with the trailer:
 
