@@ -107,6 +107,8 @@ pub enum Unwind {
     Throw(Value),
     /// Leave the innermost loop (`break`).
     Break,
+    /// Leave the innermost loop, which returns the value (`breakWith`).
+    BreakWith(Value),
     /// Skip to the innermost loop's next iteration with a value for the
     /// current one (`continue`, `continueWith`).
     Continue(Value),

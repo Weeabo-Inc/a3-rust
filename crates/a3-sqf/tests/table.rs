@@ -169,4 +169,19 @@ fn coverage_is_reported() {
         n.0, n.1, u.0, u.1, b.0, b.1
     );
     assert!(n.0 > 0 && u.0 > 0 && b.0 > 0);
+    if std::env::var_os("SQF_LIST_UNIMPLEMENTED").is_some() {
+        for (name, form) in reg.unimplemented() {
+            let info = reg.table().get(reg.table().lookup(&name).unwrap());
+            let sigs: Vec<String> = match form {
+                Form::Nular => info.nular.iter().map(|s| s.ret.to_tokens()).collect(),
+                Form::Unary => info.unary.iter().map(|s| s.right.to_tokens()).collect(),
+                Form::Binary => info
+                    .binary
+                    .iter()
+                    .map(|s| format!("{}|{}", s.left.to_tokens(), s.right.to_tokens()))
+                    .collect(),
+            };
+            println!("UNIMPL\t{name}\t{}\t{}", form.as_str(), sigs.join(";"));
+        }
+    }
 }

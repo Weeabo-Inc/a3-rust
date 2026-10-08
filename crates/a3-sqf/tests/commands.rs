@@ -192,6 +192,72 @@ fn compile_script_uses_the_host_loader() {
 }
 
 #[test]
+fn support_info_lists_the_command_table() {
+    assert_eq!(s("count supportInfo \"n:pixelGrid\""), "1");
+    assert_eq!(s("count supportInfo \"n:noSuchCommand\""), "0");
+    assert_eq!(
+        s("\"b:ARRAY select SCALAR\" in supportInfo \"b:select\""),
+        "true"
+    );
+    assert_eq!(s("\"t:HASHMAP\" in supportInfo \"t:*\""), "true");
+}
+
+#[test]
+fn break_with_and_for_each_reversed() {
+    assert_eq!(
+        s("{ if (_x > 1) then { breakWith (_x * 10) } } forEach [1, 2, 3]"),
+        "20"
+    );
+    assert_eq!(
+        s("_r = []; { _r pushBack [_x, _forEachIndex] } forEachReversed [7, 8]; _r"),
+        "[[8,1],[7,0]]"
+    );
+}
+
+#[test]
+fn private_all_hides_parent_locals_until_imported() {
+    assert_eq!(s("_a = 1; call { privateAll; isNil \"_a\" }"), "true");
+    assert_eq!(s("_a = 1; call { privateAll; import \"_a\"; _a + 1 }"), "2");
+    assert_eq!(s("_a = 1; call { privateAll; _a = 5 }; _a"), "1");
+}
+
+#[test]
+fn diag_code_performance_runs_the_code_n_times() {
+    assert_eq!(
+        s("n1 = 0; diag_codePerformance [{ n1 = n1 + 1 }, [], 7]; n1"),
+        "7"
+    );
+    assert_eq!(s("(diag_codePerformance [{ 1 }, [], 3]) select 1"), "3");
+}
+
+#[test]
+fn dates_and_matrices() {
+    assert_eq!(s("dateToNumber [2035, 1, 1, 0, 0]"), "0");
+    assert_eq!(
+        s("numberToDate [2035, dateToNumber [2035, 7, 4, 12, 30]]"),
+        "[2035,7,4,12,30]"
+    );
+    assert_eq!(
+        s("[[1, 2], [3, 4]] matrixMultiply [[5, 6], [7, 8]]"),
+        "[[19,22],[43,50]]"
+    );
+    assert_eq!(s("matrixTranspose [[1, 2, 3]]"), "[[1],[2],[3]]");
+    assert_eq!(s("[0, 0, 0] vectorFromTo [0, 0, 5]"), "[0,0,1]");
+    assert_eq!(s("0.5 bezierInterpolation [[0, 0], [10, 20]]"), "[5,10]");
+}
+
+#[test]
+fn misc_helpers() {
+    assert_eq!(s("toUpperANSI \"abc\""), "\"ABC\"");
+    assert_eq!(s("(productVersion select 2)"), "222");
+    assert_eq!(s("count systemTimeUTC"), "7");
+    assert_eq!(s("[] isNotEqualRef []"), "true");
+    let mut vm = vm();
+    assert_eq!(vm.eval("assert (1 > 2)").unwrap().to_sqf_string(), "false");
+    assert_eq!(vm.host.errors.len(), 1);
+}
+
+#[test]
 fn sample_script_runs() {
     let src = include_str!("fixtures/sample.sqf");
     let mut vm = vm();

@@ -123,6 +123,16 @@ impl<H: Host> Scheduler<H> {
         self.len() == 0
     }
 
+    /// Handles and names of the live scripts (not counting the running
+    /// one).
+    pub fn scripts_info(&self) -> Vec<(ScriptHandle, Option<Rc<str>>)> {
+        self.scripts
+            .iter()
+            .chain(self.spawned.iter())
+            .map(|s| (s.state.handle, s.state.name.clone()))
+            .collect()
+    }
+
     /// The handle of the script running now, if any.
     pub fn running(&self) -> Option<ScriptHandle> {
         self.running

@@ -33,6 +33,8 @@ pub(crate) struct CodeFrame {
     pub switch: Option<Rc<SwitchState>>,
     /// New variables assigned here are created in the enclosing scope.
     pub transparent: bool,
+    /// `privateAll`: locals of enclosing scopes are invisible from here.
+    pub private_all: bool,
 }
 
 pub(crate) enum Frame<H: Host> {
@@ -133,6 +135,7 @@ impl<H: Host> ScriptState<H> {
             namespace: inv.namespace.unwrap_or(namespace),
             switch: inv.switch,
             transparent: inv.transparent,
+            private_all: false,
         }));
     }
 
@@ -180,6 +183,27 @@ impl<H: Host> ScriptState<H> {
                 if let Some((_, v)) = cf.locals.iter().rev().find(|(s, _)| *s == name) {
                     return Some(v);
                 }
+                if cf.private_all {
+                    break;
+                }
+            }
+        }
+        None
+    }
+
+    /// Looks a local variable up through all scopes, ignoring `privateAll`
+    /// barriers (`import`). The current scope is skipped.
+    pub fn get_local_through_barrier(&self, name: Sym) -> Option<&Value> {
+        let mut seen_current = false;
+        for f in self.frames.iter().rev() {
+            if let Frame::Code(cf) = f {
+                if !seen_current {
+                    seen_current = true;
+                    continue;
+                }
+                if let Some((_, v)) = cf.locals.iter().rev().find(|(s, _)| *s == name) {
+                    return Some(v);
+                }
             }
         }
         None
@@ -193,6 +217,9 @@ impl<H: Host> ScriptState<H> {
                 if let Some(slot) = cf.locals.iter_mut().rev().find(|(s, _)| *s == name) {
                     slot.1 = value;
                     return;
+                }
+                if cf.private_all {
+                    break;
                 }
             }
         }
@@ -628,15 +655,19 @@ fn unwind<H: Host>(
                 None,
             )
         }
-        Unwind::Break => {
+        Unwind::Break | Unwind::BreakWith(_) => {
+            let value = match u {
+                Unwind::BreakWith(v) => v,
+                _ => Value::Nothing,
+            };
             while let Some(f) = script.pop_frame() {
                 if let Frame::Native(cont) = &f {
                     if cont.kind() == ContinuationKind::Loop {
-                        return Next::Deliver(Value::Nothing, false);
+                        return Next::Deliver(value, false);
                     }
                 }
             }
-            Next::Finish(Value::Nothing)
+            Next::Finish(value)
         }
         Unwind::Continue(v) => loop {
             match script.frames.last() {
