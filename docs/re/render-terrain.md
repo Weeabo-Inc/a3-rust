@@ -90,7 +90,7 @@ Constants (`PSCB_Terrain`, cb8, set by `0x1715e30`):
 | Constant | Value |
 |---|---|
 | `PSC_Layers[0..5]` | `(f,f,f,f)` with `f = 1` if layer k is present (bit k of the tile's layer mask), else 0. Slot 5 is the satellite-normal flag (`enableSatNormalOnDetail` global) in the SN path. |
-| `PSC_NoTexSizeLog2[0..1]` | log2 of each layer's `_nopx` texture size (`ln(size)·0.7213475`), for parallax mip selection |
+| `PSC_NoTexSizeLog2[0..1]` | log2 of each layer's `_nopx` texture size, for parallax mip selection. The CPU computes `ln(x)·0.7213475` = `0.5·log2(x)`, and x is most likely `width·height` (the decompiler loses the argument), which gives `log2(size)` for square textures. |
 | `PSC_TerrainBlend` | `(10.0, terrainBlendMaxDarkenCoef, terrainBlendMaxBrightenCoef, 0)`. Altis: `(10, 0.85, 0.15, 0)`; without a landscape `(10, 0, 1, 0)`. |
 | `PSC_TerrainDarkening` | shore darkening (`shoreDarkening*` config) |
 | `PSC_TerrainSatNormDist` (cb0[0]) | `(satelliteNormalBlendStart, end - start, satelliteNormalOnDetail ? 1 : 0, 0)`. Altis: `(10, 90, 1, 0)` |
