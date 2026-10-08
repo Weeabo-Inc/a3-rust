@@ -1,267 +1,3166 @@
-# name	form	left	right	return
+# Script command signatures of arma3_x64.exe 2.22.0.154103, imported from
+# docs/re/sqf-commands.tsv (simple-expression commands left out) and merged
+# with the a3-sqf core registrations. Regenerate: see tests/table.rs.
+# name	form	left	right	return	precedence
 !	unary		BOOL	BOOL
-!=	binary	CONFIG	CONFIG	BOOL
-!=	binary	CONTROL	CONTROL	BOOL
-!=	binary	DIARY_RECORD	DIARY_RECORD	BOOL
-!=	binary	DISPLAY	DISPLAY	BOOL
-!=	binary	GROUP	GROUP	BOOL
-!=	binary	LOCATION	LOCATION	BOOL
-!=	binary	NAMESPACE	NAMESPACE	BOOL
-!=	binary	OBJECT	OBJECT	BOOL
-!=	binary	SCALAR	SCALAR	BOOL
-!=	binary	SIDE	SIDE	BOOL
-!=	binary	STRING	STRING	BOOL
-!=	binary	TASK	TASK	BOOL
-!=	binary	TEAM_MEMBER	TEAM_MEMBER	BOOL
-!=	binary	TEXT	TEXT	BOOL
-#	binary	ARRAY	SCALAR	ANY
-%	binary	SCALAR	SCALAR	SCALAR
-&&	binary	BOOL	BOOL	BOOL
-&&	binary	BOOL	BOOL,CODE	BOOL
-&&	binary	BOOL	CODE	BOOL
-*	binary	SCALAR	SCALAR	SCALAR
-+	binary	ARRAY	ARRAY	ARRAY
-+	binary	SCALAR	SCALAR	SCALAR
-+	binary	STRING	STRING	STRING
+!=	binary	BOOL	BOOL	BOOL	3
+!=	binary	CONFIG	CONFIG	BOOL	3
+!=	binary	CONTROL	CONTROL	BOOL	3
+!=	binary	DIARY_RECORD	DIARY_RECORD	BOOL	3
+!=	binary	DISPLAY	DISPLAY	BOOL	3
+!=	binary	GROUP	GROUP	BOOL	3
+!=	binary	LOCATION	LOCATION	BOOL	3
+!=	binary	NAMESPACE	NAMESPACE	BOOL	3
+!=	binary	NetObject	NetObject	BOOL	3
+!=	binary	OBJECT	OBJECT	BOOL	3
+!=	binary	SCALAR	SCALAR	BOOL	3
+!=	binary	SIDE	SIDE	BOOL	3
+!=	binary	STRING	STRING	BOOL	3
+!=	binary	TASK	TASK	BOOL	3
+!=	binary	TEAM_MEMBER	TEAM_MEMBER	BOOL	3
+!=	binary	TEXT	TEXT	BOOL	3
+#	binary	ARRAY	SCALAR	ANY	10
+%	binary	SCALAR	SCALAR	SCALAR	7
+&&	binary	BOOL	BOOL	BOOL	2
+&&	binary	BOOL	BOOL,CODE	BOOL	2
+&&	binary	BOOL	CODE	BOOL	2
+*	binary	SCALAR	SCALAR	SCALAR	7
++	binary	ARRAY	ARRAY	ARRAY	6
++	binary	SCALAR	SCALAR	SCALAR	6
++	binary	STRING	STRING	STRING	6
 +	unary		ARRAY	ARRAY
 +	unary		HASHMAP	HASHMAP
 +	unary		SCALAR	SCALAR
--	binary	ARRAY	ARRAY	ARRAY
--	binary	SCALAR	SCALAR	SCALAR
+-	binary	ARRAY	ARRAY	ARRAY	6
+-	binary	SCALAR	SCALAR	SCALAR	6
 -	unary		SCALAR	SCALAR
-/	binary	SCALAR	SCALAR	SCALAR
-:	binary	SWITCH	CODE	NOTHING
-<	binary	SCALAR	SCALAR	BOOL
-<=	binary	SCALAR	SCALAR	BOOL
-==	binary	CONFIG	CONFIG	BOOL
-==	binary	CONTROL	CONTROL	BOOL
-==	binary	DIARY_RECORD	DIARY_RECORD	BOOL
-==	binary	DISPLAY	DISPLAY	BOOL
-==	binary	GROUP	GROUP	BOOL
-==	binary	LOCATION	LOCATION	BOOL
-==	binary	NAMESPACE	NAMESPACE	BOOL
-==	binary	OBJECT	OBJECT	BOOL
-==	binary	SCALAR	SCALAR	BOOL
-==	binary	SIDE	SIDE	BOOL
-==	binary	STRING	STRING	BOOL
-==	binary	TASK	TASK	BOOL
-==	binary	TEAM_MEMBER	TEAM_MEMBER	BOOL
-==	binary	TEXT	TEXT	BOOL
->	binary	SCALAR	SCALAR	BOOL
->=	binary	SCALAR	SCALAR	BOOL
->>	binary	CONFIG	STRING	CONFIG
-^	binary	SCALAR	SCALAR	SCALAR
+/	binary	CONFIG	STRING	CONFIG	7
+/	binary	SCALAR	SCALAR	SCALAR	7
+:	binary	SWITCH	CODE	NOTHING	4
+<	binary	SCALAR	SCALAR	BOOL	3
+<=	binary	SCALAR	SCALAR	BOOL	3
+==	binary	BOOL	BOOL	BOOL	3
+==	binary	CONFIG	CONFIG	BOOL	3
+==	binary	CONTROL	CONTROL	BOOL	3
+==	binary	DIARY_RECORD	DIARY_RECORD	BOOL	3
+==	binary	DISPLAY	DISPLAY	BOOL	3
+==	binary	GROUP	GROUP	BOOL	3
+==	binary	LOCATION	LOCATION	BOOL	3
+==	binary	NAMESPACE	NAMESPACE	BOOL	3
+==	binary	NetObject	NetObject	BOOL	3
+==	binary	OBJECT	OBJECT	BOOL	3
+==	binary	SCALAR	SCALAR	BOOL	3
+==	binary	SIDE	SIDE	BOOL	3
+==	binary	STRING	STRING	BOOL	3
+==	binary	TASK	TASK	BOOL	3
+==	binary	TEAM_MEMBER	TEAM_MEMBER	BOOL	3
+==	binary	TEXT	TEXT	BOOL	3
+>	binary	SCALAR	SCALAR	BOOL	3
+>=	binary	SCALAR	SCALAR	BOOL	3
+>>	binary	CONFIG	STRING	CONFIG	3
+^	binary	SCALAR	SCALAR	SCALAR	9
 abs	unary		SCALAR	SCALAR
+accTime	nular			SCALAR
 acos	unary		SCALAR	SCALAR
+action	binary	OBJECT	ARRAY	NOTHING	4
+action	unary		ARRAY	NOTHING
+actionIDs	unary		OBJECT	ARRAY
+actionKeys	unary		ARRAY	ARRAY
+actionKeys	unary		STRING	ARRAY
+actionKeysEx	unary		STRING	ARRAY
+actionKeysImages	unary		STRING,ARRAY	TEXT
+actionKeysNames	unary		STRING,ARRAY	STRING
+actionKeysNamesArray	unary		STRING,ARRAY	ARRAY
+actionName	unary		STRING	STRING
+actionNow	binary	OBJECT	ARRAY	NOTHING	4
+actionParams	binary	OBJECT	SCALAR	ARRAY	4
+activateAddons	unary		ARRAY	NOTHING
+activatedAddons	nular			ARRAY
+activateKey	unary		STRING	NOTHING
+activeTitleEffectParams	unary		SCALAR	ARRAY
+add3DENConnection	unary		ARRAY	NOTHING
+add3DENEventHandler	unary		ARRAY	SCALAR
+add3DENLayer	binary	SCALAR	STRING	SCALAR	4
+addAction	binary	OBJECT	ARRAY	NOTHING,SCALAR	4
+addBackpack	binary	OBJECT	STRING	NOTHING	4
+addBackpackCargo	binary	OBJECT	ARRAY	NOTHING	4
+addBackpackCargoGlobal	binary	OBJECT	ARRAY	NOTHING	4
+addBackpackGlobal	binary	OBJECT	STRING	NOTHING	4
+addBinocularItem	binary	OBJECT	STRING	NOTHING	4
+addCamShake	unary		ARRAY	NOTHING
+addCuratorAddons	binary	OBJECT	ARRAY	NOTHING	4
+addCuratorCameraArea	binary	OBJECT	ARRAY	NOTHING	4
+addCuratorEditableObjects	binary	OBJECT	ARRAY	NOTHING	4
+addCuratorEditingArea	binary	OBJECT	ARRAY	NOTHING	4
+addCuratorPoints	binary	OBJECT	SCALAR	NOTHING	4
+addCuratorSelected	unary		ARRAY	NOTHING
+addEditorObject	binary	CONTROL	ARRAY	STRING	4
+addEventHandler	binary	GROUP	ARRAY	NOTHING,SCALAR	4
+addEventHandler	binary	OBJECT	ARRAY	NOTHING,SCALAR	4
+addForce	binary	OBJECT	ARRAY	NOTHING	4
+addForceGeneratorRTD	unary		ARRAY	SCALAR
+addGoggles	binary	OBJECT	STRING	NOTHING	4
+addGroupIcon	binary	GROUP	ARRAY	SCALAR	4
+addHandgunItem	binary	OBJECT	STRING	NOTHING	4
+addHeadgear	binary	OBJECT	STRING	NOTHING	4
+addItem	binary	OBJECT	STRING	NOTHING	4
+addItemCargo	binary	OBJECT	ARRAY	NOTHING	4
+addItemCargoGlobal	binary	OBJECT	ARRAY	NOTHING	4
+addItemPool	unary		ARRAY	NOTHING
+addItemToBackpack	binary	OBJECT	STRING	NOTHING	4
+addItemToUniform	binary	OBJECT	STRING	NOTHING	4
+addItemToVest	binary	OBJECT	STRING	NOTHING	4
+addLiveStats	binary	OBJECT	SCALAR	NOTHING	4
+addMagazine	binary	OBJECT	ARRAY	NOTHING	4
+addMagazine	binary	OBJECT	STRING	NOTHING	4
+addMagazineAmmoCargo	binary	OBJECT	ARRAY	NOTHING	4
+addMagazineCargo	binary	OBJECT	ARRAY	NOTHING	4
+addMagazineCargoGlobal	binary	OBJECT	ARRAY	NOTHING	4
+addMagazineGlobal	binary	OBJECT	STRING	NOTHING	4
+addMagazinePool	unary		ARRAY	NOTHING
+addMagazines	binary	OBJECT	ARRAY	NOTHING	4
+addMagazinesTurret	binary	OBJECT	ARRAY	NOTHING	4
+addMagazineTurret	binary	OBJECT	ARRAY	NOTHING	4
+addMenu	binary	CONTROL	ARRAY	SCALAR	4
+addMenuItem	binary	CONTROL	ARRAY	SCALAR	4
+addMissionEventHandler	unary		ARRAY	SCALAR
+addMPEventHandler	binary	OBJECT	ARRAY	NOTHING,SCALAR	4
+addMusicEventHandler	unary		ARRAY	SCALAR
+addonFiles	unary		ARRAY	ARRAY
+addOwnedMine	binary	OBJECT	OBJECT	NOTHING	4
+addPlayerScores	binary	OBJECT	ARRAY	NOTHING	4
+addPrimaryWeaponItem	binary	OBJECT	STRING	NOTHING	4
+addPublicVariableEventHandler	binary	STRING	ARRAY	NOTHING	4
+addPublicVariableEventHandler	binary	STRING	CODE	NOTHING	4
+addRating	binary	OBJECT	SCALAR	NOTHING	4
+addResources	binary	TEAM_MEMBER	ARRAY	NOTHING	4
+addScore	binary	OBJECT	SCALAR	NOTHING	4
+addScoreSide	binary	SIDE	SCALAR	NOTHING	4
+addSecondaryWeaponItem	binary	OBJECT	STRING	NOTHING	4
+addSwitchableUnit	unary		OBJECT	NOTHING
+addTeamMember	binary	TEAM_MEMBER	TEAM_MEMBER	NOTHING	4
+addToRemainsCollector	unary		ARRAY	NOTHING
+addTorque	binary	OBJECT	ARRAY	NOTHING	4
+addUniform	binary	OBJECT	STRING	NOTHING	4
+addUserActionEventHandler	unary		ARRAY	SCALAR
+addVehicle	binary	GROUP	OBJECT	NOTHING	4
+addVest	binary	OBJECT	STRING	NOTHING	4
+addWaypoint	binary	GROUP	ARRAY	ARRAY	4
+addWeapon	binary	OBJECT	STRING,ARRAY	NOTHING	4
+addWeaponCargo	binary	OBJECT	ARRAY	NOTHING	4
+addWeaponCargoGlobal	binary	OBJECT	ARRAY	NOTHING	4
+addWeaponGlobal	binary	OBJECT	STRING,ARRAY	NOTHING	4
+addWeaponItem	binary	OBJECT	ARRAY	NOTHING	4
+addWeaponPool	unary		ARRAY	NOTHING
+addWeaponTurret	binary	OBJECT	ARRAY	NOTHING	4
+addWeaponWithAttachmentsCargo	binary	OBJECT	ARRAY	NOTHING	4
+addWeaponWithAttachmentsCargoGlobal	binary	OBJECT	ARRAY	NOTHING	4
+admin	unary		SCALAR	SCALAR
+agent	unary		TEAM_MEMBER	OBJECT
+agents	nular			ARRAY
+AGLToASL	unary		ARRAY	ARRAY
+aimedAtTarget	binary	OBJECT	ARRAY	SCALAR	4
+aimPos	unary		OBJECT	ARRAY
+airDensityCurveRTD	nular			ARRAY
+airDensityRTD	unary		SCALAR	SCALAR
+airplaneThrottle	unary		OBJECT	SCALAR
+airportSide	unary		SCALAR,OBJECT	SIDE
+AISFinishHeal	unary		ARRAY	NOTHING
+alive	unary		OBJECT	BOOL
+all3DENEntities	nular			ARRAY
+allActiveTitleEffects	nular			ARRAY
+allAddonsInfo	nular			ARRAY
+allAirports	nular			ARRAY
+allCameras	nular			ARRAY
+allControls	unary		CONTROL	ARRAY
+allControls	unary		DISPLAY	ARRAY
+allCurators	nular			ARRAY
+allCutLayers	nular			ARRAY
+allDead	nular			ARRAY
+allDeadMen	nular			ARRAY
+allDiaryRecords	binary	OBJECT	STRING	ARRAY	4
+allDiarySubjects	unary		OBJECT	ARRAY
+allDisplays	nular			ARRAY
+allEnv3DSoundSources	nular			ARRAY
+allExtensions	nular			ARRAY
+allGroups	nular			ARRAY
+allLODs	unary		STRING,OBJECT	ARRAY
+allMapMarkers	nular			ARRAY
+allMines	nular			ARRAY
+allMissionObjects	unary		STRING	ARRAY
+allObjects	binary	SCALAR	SCALAR	ARRAY	4
+allObjects	binary	STRING	SCALAR	ARRAY	4
+allow3DMode	binary	CONTROL	BOOL	NOTHING	4
+allowCrewInImmobile	binary	OBJECT	BOOL,ARRAY	NOTHING	4
+allowCuratorLogicIgnoreAreas	binary	OBJECT	BOOL	NOTHING	4
+allowDamage	binary	OBJECT	BOOL	NOTHING	4
+allowDammage	binary	OBJECT	BOOL	NOTHING	4
+allowedService	unary		OBJECT	SCALAR
+allowFileOperations	binary	CONTROL	BOOL	NOTHING	4
+allowFleeing	binary	OBJECT,GROUP	SCALAR	NOTHING	4
+allowGetIn	binary	ARRAY	BOOL	NOTHING	4
+allowService	binary	OBJECT	SCALAR	NOTHING	4
+allowSprint	binary	OBJECT	BOOL	NOTHING	4
+allPlayers	nular			ARRAY
+allSimpleObjects	unary		ARRAY	ARRAY
+allSites	nular			ARRAY
+allTurrets	unary		ARRAY	ARRAY
+allTurrets	unary		OBJECT	ARRAY
+allUnits	nular			ARRAY
+allUnitsUAV	nular			ARRAY
+allUsers	nular			ARRAY
+allVariables	unary		CONTROL	ARRAY
+allVariables	unary		DISPLAY	ARRAY
+allVariables	unary		GROUP	ARRAY
+allVariables	unary		LOCATION	ARRAY
 allVariables	unary		NAMESPACE	ARRAY
-and	binary	BOOL	BOOL	BOOL
-and	binary	BOOL	BOOL,CODE	BOOL
-and	binary	BOOL	CODE	BOOL
-append	binary	ARRAY	ARRAY	NOTHING
-apply	binary	ARRAY	CODE	ARRAY
-apply	binary	HASHMAP	CODE	ARRAY
-arrayIntersect	binary	ARRAY	ARRAY	ARRAY
+allVariables	unary		OBJECT	ARRAY
+allVariables	unary		TASK	ARRAY
+allVariables	unary		TEAM_MEMBER	ARRAY
+ambientTemperature	nular			ARRAY
+ammo	binary	OBJECT	STRING	SCALAR	4
+ammoOnPylon	binary	OBJECT	SCALAR,STRING	SCALAR	4
+and	binary	BOOL	BOOL	BOOL	2
+and	binary	BOOL	BOOL,CODE	BOOL	2
+and	binary	BOOL	CODE	BOOL	2
+angularVelocity	unary		OBJECT	ARRAY
+angularVelocityModelSpace	unary		OBJECT	ARRAY
+animate	binary	OBJECT	ARRAY	NOTHING	4
+animateBay	binary	OBJECT	ARRAY	NOTHING	4
+animateDoor	binary	OBJECT	ARRAY	NOTHING	4
+animatePylon	binary	OBJECT	ARRAY	NOTHING	4
+animateSource	binary	OBJECT	ARRAY	NOTHING	4
+animationNames	unary		OBJECT	ARRAY
+animationPhase	binary	OBJECT	STRING	SCALAR	4
+animationSourcePhase	binary	OBJECT	STRING	SCALAR	4
+animationState	unary		OBJECT	STRING
+apertureParams	nular			ARRAY
+append	binary	ARRAY	ARRAY	NOTHING	4
+apply	binary	ARRAY	CODE	ARRAY	4
+apply	binary	HASHMAP	CODE	ARRAY	4
+armoryPoints	nular			SCALAR
+arrayIntersect	binary	ARRAY	ARRAY	ARRAY	4
 asin	unary		SCALAR	SCALAR
+ASLToAGL	unary		ARRAY	ARRAY
+ASLToATL	unary		ARRAY	ARRAY
+assert	unary		BOOL	BOOL
+assignAsCargo	binary	OBJECT	OBJECT	NOTHING	4
+assignAsCargoIndex	binary	OBJECT	ARRAY	NOTHING	4
+assignAsCommander	binary	OBJECT	OBJECT	NOTHING	4
+assignAsDriver	binary	OBJECT	OBJECT	NOTHING	4
+assignAsGunner	binary	OBJECT	OBJECT	NOTHING	4
+assignAsTurret	binary	OBJECT	ARRAY	NOTHING	4
+assignCurator	binary	OBJECT	OBJECT	NOTHING	4
+assignedCargo	unary		OBJECT	ARRAY
+assignedCommander	unary		OBJECT	OBJECT
+assignedDriver	unary		OBJECT	OBJECT
+assignedGroup	unary		OBJECT	GROUP
+assignedGunner	unary		OBJECT	OBJECT
+assignedItems	unary		ARRAY,OBJECT	ARRAY
+assignedTarget	unary		OBJECT	OBJECT
+assignedTeam	unary		OBJECT	STRING
+assignedVehicle	unary		OBJECT	OBJECT
+assignedVehicleRole	unary		OBJECT	ARRAY
+assignedVehicles	unary		GROUP	ARRAY
+assignItem	binary	OBJECT	STRING	NOTHING	4
+assignTeam	binary	OBJECT	STRING	NOTHING	4
+assignToAirport	binary	OBJECT	SCALAR,OBJECT	NOTHING	4
 atan	unary		SCALAR	SCALAR
-atan2	binary	SCALAR	SCALAR	SCALAR
+atan2	binary	SCALAR	SCALAR	SCALAR	7
 atg	unary		SCALAR	SCALAR
-bitAnd	binary	SCALAR	SCALAR	SCALAR
+ATLToASL	unary		ARRAY	ARRAY
+attachChild	binary	ARRAY	ARRAY	NOTHING	4
+attachedObject	unary		LOCATION	OBJECT
+attachedObjects	unary		OBJECT	ARRAY
+attachedTo	unary		OBJECT	OBJECT
+attachObject	binary	LOCATION	OBJECT	NOTHING	4
+attachTo	binary	OBJECT	ARRAY	NOTHING	4
+attackEnabled	unary		OBJECT,GROUP	BOOL
+awake	binary	OBJECT	BOOL	NOTHING	4
+backpack	unary		OBJECT	STRING
+backpackCargo	unary		OBJECT	ARRAY
+backpackContainer	unary		OBJECT	OBJECT
+backpackItems	unary		OBJECT	ARRAY
+backpackMagazines	unary		OBJECT	ARRAY
+backpacks	unary		OBJECT	ARRAY
+backpackSpaceFor	binary	OBJECT	STRING	ARRAY	4
+ban	unary		SCALAR,STRING	NOTHING
+behaviour	unary		OBJECT	STRING
+benchmark	nular			SCALAR
+bezierInterpolation	binary	SCALAR	ARRAY	ARRAY	4
+binocular	unary		OBJECT	STRING
+binocularItems	unary		OBJECT	ARRAY
+binocularMagazine	unary		OBJECT	STRING
+bitAnd	binary	SCALAR	SCALAR	SCALAR	4
 bitNot	unary		SCALAR	SCALAR
-bitOr	binary	SCALAR	SCALAR	SCALAR
-bitShiftLeft	binary	SCALAR	SCALAR	SCALAR
-bitShiftRight	binary	SCALAR	SCALAR	SCALAR
-bitXor	binary	SCALAR	SCALAR	SCALAR
+bitOr	binary	SCALAR	SCALAR	SCALAR	4
+bitShiftLeft	binary	SCALAR	SCALAR	SCALAR	4
+bitShiftRight	binary	SCALAR	SCALAR	SCALAR	4
+bitXor	binary	SCALAR	SCALAR	SCALAR	4
 blufor	nular			SIDE
+boundingBox	binary	SCALAR	OBJECT	ARRAY	4
+boundingBox	unary		OBJECT	ARRAY
+boundingBoxReal	binary	SCALAR	OBJECT	ARRAY	4
+boundingBoxReal	unary		ARRAY	ARRAY
+boundingBoxReal	unary		OBJECT	ARRAY
+boundingCenter	unary		OBJECT	ARRAY
+brakesDisabled	unary		OBJECT	BOOL
 break	nular			NOTHING
-breakOut	binary	ANY	STRING	NOTHING
+breakOut	binary	ANY	STRING	ANY	4
+breakOut	binary	ANY	STRING	NOTHING	4
 breakOut	unary		STRING	NOTHING
 breakTo	unary		STRING	NOTHING
-call	binary	ANY	CODE	ANY
+breakWith	unary		ANY	ANY
+briefingName	nular			STRING
+buildingExit	binary	OBJECT	SCALAR	ARRAY	4
+buildingPos	binary	OBJECT	SCALAR	ARRAY	4
+buldozer_EnableRoadDiag	unary		BOOL	NOTHING
+buldozer_IsEnabledRoadDiag	nular			BOOL
+buldozer_LoadNewRoads	unary		STRING	BOOL
+buldozer_reloadOperMap	nular			NOTHING
+buttonAction	unary		CONTROL	STRING
+buttonAction	unary		SCALAR	STRING
+buttonSetAction	binary	CONTROL	STRING	NOTHING	4
+buttonSetAction	unary		ARRAY	NOTHING
+cadetMode	nular			BOOL
+calculatePath	unary		ARRAY	OBJECT
+calculatePlayerVisibilityByFriendly	unary		BOOL	NOTHING
+call	binary	ANY	CODE	ANY	4
+call	binary	HASHMAP	ARRAY	ANY	4
 call	unary		CODE	ANY
+callExtension	binary	STRING	ARRAY	ARRAY	4
+callExtension	binary	STRING	STRING	STRING	4
+camCommand	binary	OBJECT	STRING	NOTHING	4
+camCommit	binary	OBJECT	SCALAR	NOTHING	4
+camCommitPrepared	binary	OBJECT	SCALAR	NOTHING	4
+camCommitted	unary		OBJECT	BOOL
+camConstuctionSetParams	binary	OBJECT	ARRAY	NOTHING	4
+camCreate	binary	STRING	ARRAY	OBJECT	4
+camDestroy	unary		OBJECT	NOTHING
+cameraEffect	binary	OBJECT	ARRAY	NOTHING	4
+cameraEffectEnableHUD	unary		BOOL	NOTHING
+cameraInterest	unary		OBJECT	SCALAR
+cameraOn	nular			OBJECT
+cameraView	nular			STRING
+campaignConfigFile	nular			CONFIG
+camPreload	binary	OBJECT	SCALAR	NOTHING	4
+camPreloaded	unary		OBJECT	BOOL
+camPrepareBank	binary	OBJECT	SCALAR	NOTHING	4
+camPrepareDir	binary	OBJECT	SCALAR	NOTHING	4
+camPrepareDive	binary	OBJECT	SCALAR	NOTHING	4
+camPrepareFocus	binary	OBJECT	ARRAY	NOTHING	4
+camPrepareFov	binary	OBJECT	SCALAR	NOTHING	4
+camPrepareFovRange	binary	OBJECT	ARRAY	NOTHING	4
+camPreparePos	binary	OBJECT	ARRAY	NOTHING	4
+camPrepareRelPos	binary	OBJECT	ARRAY	NOTHING	4
+camPrepareTarget	binary	OBJECT	ARRAY	NOTHING	4
+camPrepareTarget	binary	OBJECT	OBJECT	NOTHING	4
+camSetBank	binary	OBJECT	SCALAR	NOTHING	4
+camSetDir	binary	OBJECT	ARRAY	NOTHING	4
+camSetDive	binary	OBJECT	SCALAR	NOTHING	4
+camSetFocus	binary	OBJECT	ARRAY	NOTHING	4
+camSetFov	binary	OBJECT	SCALAR	NOTHING	4
+camSetFovRange	binary	OBJECT	ARRAY	NOTHING	4
+camSetPos	binary	OBJECT	ARRAY	NOTHING	4
+camSetRelPos	binary	OBJECT	ARRAY	NOTHING	4
+camSetTarget	binary	OBJECT	ARRAY	NOTHING	4
+camSetTarget	binary	OBJECT	OBJECT	NOTHING	4
+camTarget	unary		OBJECT	OBJECT
+camUseNVG	unary		BOOL	NOTHING
+canAdd	binary	OBJECT	STRING,ARRAY	BOOL	4
+canAdd	binary	STRING	STRING,ARRAY	BOOL	4
+canAddItemToBackpack	binary	OBJECT	STRING,ARRAY	BOOL	4
+canAddItemToUniform	binary	OBJECT	STRING,ARRAY	BOOL	4
+canAddItemToVest	binary	OBJECT	STRING,ARRAY	BOOL	4
+cancelSimpleTaskDestination	unary		TASK	NOTHING
+canDeployWeapon	unary		OBJECT	BOOL
+canFire	unary		OBJECT	BOOL
+canMove	unary		OBJECT	BOOL
+canSlingLoad	binary	OBJECT	OBJECT	BOOL	4
+canSlingLoad	binary	STRING	STRING	BOOL	4
+canStand	unary		OBJECT	BOOL
 canSuspend	nular			BOOL
+canTriggerDynamicSimulation	unary		OBJECT	BOOL
+canUnloadInCombat	unary		OBJECT	BOOL
+canVehicleCargo	binary	OBJECT	OBJECT	ARRAY	4
+captive	unary		OBJECT	BOOL
+captiveNum	unary		OBJECT	SCALAR
 case	unary		ANY	SWITCH
-catch	binary	EXCEPTION	CODE	ANY
+catch	binary	EXCEPTION	CODE	ANY	4
+cbChecked	unary		CONTROL	BOOL
+cbSetChecked	binary	CONTROL	BOOL	NOTHING	4
 ceil	unary		SCALAR	SCALAR
+channelEnabled	unary		SCALAR	ARRAY
+cheatsEnabled	nular			BOOL
+checkAIFeature	binary	OBJECT	STRING	BOOL	4
+checkAIFeature	unary		STRING	BOOL
+checkExe	binary	SCALAR	SCALAR	NOTHING	4
+checkFile	binary	SCALAR	ARRAY	NOTHING	4
+checkVisibility	binary	ARRAY	ARRAY	SCALAR	4
+childAttached	unary		OBJECT	OBJECT
 civilian	nular			SIDE
+className	unary		LOCATION	STRING
+clear3DENAttribute	binary	ANY	STRING	BOOL	4
+clear3DENInventory	unary		ARRAY	NOTHING
+clearAllItemsFromBackpack	unary		OBJECT	NOTHING
+clearBackpackCargo	unary		OBJECT	NOTHING
+clearBackpackCargoGlobal	unary		OBJECT	NOTHING
+clearbans	nular			NOTHING
+clearForcesRTD	nular			NOTHING
+clearGroupIcons	unary		GROUP	NOTHING
+clearItemCargo	unary		OBJECT	NOTHING
+clearItemCargoGlobal	unary		OBJECT	NOTHING
+clearItemPool	nular			NOTHING
+clearkicks	nular			NOTHING
+clearMagazineCargo	unary		OBJECT	NOTHING
+clearMagazineCargoGlobal	unary		OBJECT	NOTHING
+clearMagazinePool	nular			NOTHING
+clearOverlay	unary		CONTROL	NOTHING
+clearRadio	nular			NOTHING
+clearWeaponCargo	unary		OBJECT	NOTHING
+clearWeaponCargoGlobal	unary		OBJECT	NOTHING
+clearWeaponPool	nular			NOTHING
+clientOwner	nular			SCALAR
+closeDialog	unary		SCALAR	NOTHING
+closeDisplay	binary	DISPLAY	SCALAR	NOTHING	4
+closeOverlay	unary		CONTROL	NOTHING
+collapseObjectTree	unary		CONTROL	NOTHING
+collect3DENHistory	binary	ARRAY	CODE	NOTHING	4
+collect3DENHistory	unary		CODE	NOTHING
+collectiveRTD	unary		OBJECT	SCALAR
+collisionDisabledWith	unary		OBJECT	ARRAY
+combatBehaviour	unary		GROUP	STRING
+combatBehaviour	unary		OBJECT	STRING
+combatMode	unary		OBJECT,GROUP	STRING
+combatPace	binary	OBJECT	ARRAY	STRING	4
+commandArtilleryFire	binary	ARRAY,OBJECT	ARRAY	NOTHING	4
+commandChat	binary	ARRAY,OBJECT	STRING	NOTHING	4
+commander	unary		OBJECT	OBJECT
+commandFire	binary	ARRAY,OBJECT	OBJECT	NOTHING	4
+commandFollow	binary	ARRAY,OBJECT	OBJECT	NOTHING	4
+commandFSM	binary	ARRAY,OBJECT	ARRAY	NOTHING	4
+commandGetOut	unary		ARRAY,OBJECT	NOTHING
+commandingMenu	nular			STRING
+commandMove	binary	ARRAY,OBJECT	ARRAY	NOTHING	4
+commandRadio	binary	ARRAY,OBJECT	STRING	NOTHING	4
+commandStop	unary		ARRAY,OBJECT	NOTHING
+commandSuppressiveFire	binary	ARRAY,OBJECT	ARRAY,OBJECT	NOTHING	4
+commandTarget	binary	ARRAY,OBJECT	OBJECT	NOTHING	4
+commandWatch	binary	ARRAY,OBJECT	ARRAY	NOTHING	4
+commandWatch	binary	ARRAY,OBJECT	OBJECT	NOTHING	4
+comment	unary		STRING	NOTHING
+commitOverlay	unary		CONTROL	NOTHING
+compatibleItems	unary		STRING,ARRAY	ARRAY
+compatibleMagazines	unary		STRING,ARRAY	ARRAY
+compatibleWeapons	unary		STRING	ARRAY
 compile	unary		STRING	CODE
 compileFinal	unary		CODE	CODE
+compileFinal	unary		HASHMAP	HASHMAP
 compileFinal	unary		STRING	CODE
+compileFinal	unary		STRING,CODE	CODE
 compileScript	unary		ARRAY	CODE
+completedFSM	unary		SCALAR	BOOL
+composeText	unary		ARRAY	TEXT
+configClasses	binary	STRING	CONFIG	ARRAY	4
+configClasses	unary		ARRAY	ARRAY
+configFile	nular			CONFIG
+configHierarchy	unary		ARRAY	ARRAY
+configHierarchy	unary		CONFIG	ARRAY
+configName	unary		CONFIG	STRING
 configNull	nular			CONFIG
+configOf	unary		OBJECT	CONFIG
+configProperties	unary		ARRAY	ARRAY
+configSourceAddonList	unary		CONFIG	ARRAY
+configSourceMod	unary		CONFIG	STRING
+configSourceModList	unary		CONFIG	ARRAY
+confirmSensorTarget	binary	OBJECT	ARRAY	NOTHING	4
+connectTerminalToUAV	binary	OBJECT	OBJECT	BOOL	4
+connectToServer	unary		ARRAY	NOTHING
 continue	nular			NOTHING
+continueWith	binary	SCRIPT	ARRAY,CODE	NOTHING	4
+continueWith	unary		ANY	ANY
 continueWith	unary		ANY	NOTHING
 controlNull	nular			CONTROL
+controlsGroupCtrl	binary	CONTROL	SCALAR	CONTROL	4
+conversationDisabled	unary		OBJECT	BOOL
+copyFromClipboard	nular			STRING
 copyToClipboard	unary		STRING	NOTHING
+copyWaypoints	binary	GROUP	GROUP	NOTHING	4
 cos	unary		SCALAR	SCALAR
-count	binary	CODE	ARRAY	SCALAR
-count	binary	CODE	HASHMAP	SCALAR
+count	binary	CODE	ARRAY	SCALAR	4
+count	binary	CODE	HASHMAP	SCALAR	4
 count	unary		ARRAY	SCALAR
+count	unary		CONFIG	SCALAR
+count	unary		HASHMAP	SCALAR
 count	unary		STRING	SCALAR
 count	unary		STRING,ARRAY	SCALAR
+countEnemy	binary	OBJECT	ARRAY	SCALAR	4
+countFriendly	binary	OBJECT	ARRAY	SCALAR	4
+countSide	binary	SIDE	ARRAY	SCALAR	4
+countType	binary	STRING	ARRAY	SCALAR	4
+countUnknown	binary	OBJECT	ARRAY	SCALAR	4
+create3DENComposition	unary		ARRAY	ARRAY
+create3DENEntity	binary	GROUP	ARRAY	ANY	4
+create3DENEntity	unary		ARRAY	ANY
+createAgent	unary		ARRAY	OBJECT
+createCenter	unary		SIDE	SIDE
+createDialog	unary		ARRAY	DISPLAY
+createDialog	unary		STRING	BOOL
+createDiaryLink	unary		ARRAY	STRING
+createDiaryRecord	binary	OBJECT	ARRAY	DIARY_RECORD	4
+createDiarySubject	binary	OBJECT	ARRAY	SCALAR	4
+createDisplay	binary	DISPLAY	STRING	DISPLAY	4
+createGearDialog	unary		ARRAY	NOTHING
+createGroup	unary		ARRAY,SIDE	GROUP
+createGuardedPoint	unary		ARRAY	NOTHING
+createHashMap	nular			HASHMAP
+createHashMapFromArray	binary	ARRAY	ARRAY	HASHMAP	4
+createHashMapFromArray	unary		ARRAY	HASHMAP
+createHashMapObject	unary		ARRAY	HASHMAP
+createLocation	unary		ARRAY	LOCATION
+createMarker	unary		ARRAY	STRING
+createMarkerLocal	unary		ARRAY	STRING
+createMenu	binary	CONTROL	SCALAR	NOTHING	4
+createMine	unary		ARRAY	OBJECT
+createMissionDisplay	binary	DISPLAY	ARRAY	DISPLAY	4
+createMissionDisplay	binary	DISPLAY	STRING	DISPLAY	4
+createMPCampaignDisplay	binary	DISPLAY	STRING	NOTHING	4
+createSimpleObject	unary		ARRAY	OBJECT
+createSimpleTask	binary	OBJECT	ARRAY	TASK	4
+createSite	binary	STRING	ARRAY	OBJECT	4
+createSoundSource	unary		ARRAY	OBJECT
+createSoundSourceLocal	unary		ARRAY	OBJECT
+createTask	binary	TEAM_MEMBER	ARRAY	TASK	4
+createTeam	unary		ARRAY	TEAM_MEMBER
+createTrigger	unary		ARRAY	OBJECT
+createUnit	binary	GROUP	ARRAY	OBJECT	4
+createUnit	binary	STRING	ARRAY	NOTHING	4
+createVehicle	binary	STRING	ARRAY	OBJECT	4
+createVehicle	unary		ARRAY	OBJECT
+createVehicleCrew	binary	GROUP	OBJECT	GROUP	4
+createVehicleCrew	binary	SIDE	OBJECT	GROUP	4
+createVehicleCrew	unary		OBJECT	GROUP
+createVehicleLocal	binary	STRING	ARRAY	OBJECT	4
+createVehicleLocal	unary		ARRAY	OBJECT
+crew	unary		OBJECT	ARRAY
+ctAddHeader	unary		CONTROL	ARRAY
+ctAddRow	unary		CONTROL	ARRAY
+ctClear	unary		CONTROL	NOTHING
+ctCurSel	unary		CONTROL	SCALAR
+ctData	binary	CONTROL	SCALAR	STRING	4
+ctFindHeaderRows	binary	CONTROL	SCALAR	ARRAY	4
+ctFindRowHeader	binary	CONTROL	SCALAR	SCALAR	4
+ctHeaderControls	binary	CONTROL	SCALAR	ARRAY	4
+ctHeaderCount	unary		CONTROL	SCALAR
+ctRemoveHeaders	binary	CONTROL	ARRAY	NOTHING	4
+ctRemoveRows	binary	CONTROL	ARRAY	NOTHING	4
+ctrlActivate	binary	CONTROL	BOOL	NOTHING	4
+ctrlActivate	unary		CONTROL	NOTHING
+ctrlAddEventHandler	binary	CONTROL	ARRAY	SCALAR	4
+ctrlAngle	unary		CONTROL	ARRAY
+ctrlAnimateModel	binary	CONTROL	ARRAY	NOTHING	4
+ctrlAnimationPhaseModel	binary	CONTROL	STRING	SCALAR	4
+ctrlAt	binary	DISPLAY	ARRAY	CONTROL	4
+ctrlAutoScrollDelay	unary		CONTROL	SCALAR
+ctrlAutoScrollRewind	unary		CONTROL	BOOL
+ctrlAutoScrollSpeed	unary		CONTROL	SCALAR
+ctrlBackgroundColor	unary		CONTROL	ARRAY
+ctrlChecked	binary	CONTROL	SCALAR	BOOL	4
+ctrlChecked	unary		CONTROL	BOOL
+ctrlClassName	unary		CONTROL	STRING
+ctrlCommit	binary	CONTROL	SCALAR	NOTHING	4
+ctrlCommitted	unary		CONTROL	BOOL
+ctrlCreate	binary	DISPLAY	ARRAY	CONTROL	4
+ctrlDelete	unary		CONTROL	BOOL
+ctrlEnable	binary	CONTROL	BOOL	NOTHING	4
+ctrlEnable	unary		ARRAY	NOTHING
+ctrlEnabled	unary		CONTROL	BOOL
+ctrlEnabled	unary		SCALAR	BOOL
+ctrlFade	unary		CONTROL	SCALAR
+ctrlFontHeight	unary		CONTROL	SCALAR
+ctrlForegroundColor	unary		CONTROL	ARRAY
+ctrlHTMLLoaded	unary		CONTROL	BOOL
+ctrlIDC	unary		CONTROL	SCALAR
+ctrlIDD	unary		DISPLAY	SCALAR
+ctrlMapAnimAdd	binary	CONTROL	ARRAY	NOTHING	4
+ctrlMapAnimClear	unary		CONTROL	NOTHING
+ctrlMapAnimCommit	unary		CONTROL	NOTHING
+ctrlMapAnimDone	unary		CONTROL	BOOL
+ctrlMapCursor	binary	CONTROL	ARRAY	NOTHING	4
+ctrlMapDir	unary		CONTROL	SCALAR
+ctrlMapMouseOver	unary		CONTROL	ARRAY
+ctrlMapPosition	unary		CONTROL	ARRAY
+ctrlMapScale	unary		CONTROL	SCALAR
+ctrlMapScreenToWorld	binary	CONTROL	ARRAY	ARRAY	4
+ctrlMapSetPosition	binary	CONTROL	ARRAY	NOTHING	4
+ctrlMapWorldToScreen	binary	CONTROL	ARRAY	ARRAY	4
+ctrlModel	unary		CONTROL	STRING
+ctrlModelDirAndUp	unary		CONTROL	ARRAY
+ctrlModelScale	unary		CONTROL	SCALAR
+ctrlModelVectorSide	unary		CONTROL	ARRAY
+ctrlMousePosition	unary		CONTROL	ARRAY
+ctrlParent	unary		CONTROL	DISPLAY
+ctrlParentControlsGroup	unary		CONTROL	CONTROL
+ctrlPosition	unary		CONTROL	ARRAY
+ctrlRelToScreen	binary	CONTROL	ARRAY	ARRAY	4
+ctrlRemoveAllEventHandlers	binary	CONTROL	STRING	NOTHING	4
+ctrlRemoveEventHandler	binary	CONTROL	ARRAY	NOTHING	4
+ctrlScale	unary		CONTROL	SCALAR
+ctrlScreenToRel	binary	CONTROL	ARRAY	ARRAY	4
+ctrlScrollValues	unary		CONTROL	ARRAY
+ctrlSetActiveColor	binary	CONTROL	ARRAY	NOTHING	4
+ctrlSetAngle	binary	CONTROL	ARRAY	NOTHING	4
+ctrlSetAutoScrollDelay	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetAutoScrollRewind	binary	CONTROL	BOOL	NOTHING	4
+ctrlSetAutoScrollSpeed	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetBackgroundColor	binary	CONTROL	ARRAY	NOTHING	4
+ctrlSetChecked	binary	CONTROL	ARRAY	NOTHING	4
+ctrlSetChecked	binary	CONTROL	BOOL	NOTHING	4
+ctrlSetDisabledColor	binary	CONTROL	ARRAY	NOTHING	4
+ctrlSetEventHandler	binary	CONTROL	ARRAY	NOTHING	4
+ctrlSetFade	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetFocus	unary		CONTROL	NOTHING
+ctrlSetFont	binary	CONTROL	STRING	NOTHING	4
+ctrlSetFontH1	binary	CONTROL	STRING	NOTHING	4
+ctrlSetFontH1B	binary	CONTROL	STRING	NOTHING	4
+ctrlSetFontH2	binary	CONTROL	STRING	NOTHING	4
+ctrlSetFontH2B	binary	CONTROL	STRING	NOTHING	4
+ctrlSetFontH3	binary	CONTROL	STRING	NOTHING	4
+ctrlSetFontH3B	binary	CONTROL	STRING	NOTHING	4
+ctrlSetFontH4	binary	CONTROL	STRING	NOTHING	4
+ctrlSetFontH4B	binary	CONTROL	STRING	NOTHING	4
+ctrlSetFontH5	binary	CONTROL	STRING	NOTHING	4
+ctrlSetFontH5B	binary	CONTROL	STRING	NOTHING	4
+ctrlSetFontH6	binary	CONTROL	STRING	NOTHING	4
+ctrlSetFontH6B	binary	CONTROL	STRING	NOTHING	4
+ctrlSetFontHeight	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetFontHeightH1	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetFontHeightH2	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetFontHeightH3	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetFontHeightH4	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetFontHeightH5	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetFontHeightH6	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetFontHeightSecondary	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetFontP	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetFontP	binary	CONTROL	STRING	NOTHING	4
+ctrlSetFontPB	binary	CONTROL	STRING	NOTHING	4
+ctrlSetFontSecondary	binary	CONTROL	STRING	NOTHING	4
+ctrlSetForegroundColor	binary	CONTROL	ARRAY	NOTHING	4
+ctrlSetModel	binary	CONTROL	STRING	NOTHING	4
+ctrlSetModelDirAndUp	binary	CONTROL	ARRAY	NOTHING	4
+ctrlSetModelScale	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetMousePosition	binary	CONTROL	ARRAY	NOTHING	4
+ctrlSetPixelPrecision	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetPixelPrecision	binary	CONTROL	STRING	NOTHING	4
+ctrlSetPosition	binary	CONTROL	ARRAY	NOTHING	4
+ctrlSetPositionH	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetPositionW	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetPositionX	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetPositionY	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetScale	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetScrollValues	binary	CONTROL	ARRAY	NOTHING	4
+ctrlSetShadow	binary	CONTROL	SCALAR	NOTHING	4
+ctrlSetStructuredText	binary	CONTROL	TEXT	NOTHING	4
+ctrlSetText	binary	CONTROL	STRING	NOTHING	4
+ctrlSetText	unary		ARRAY	NOTHING
+ctrlSetTextColor	binary	CONTROL	ARRAY	NOTHING	4
+ctrlSetTextColorSecondary	binary	CONTROL	ARRAY	NOTHING	4
+ctrlSetTextSecondary	binary	CONTROL	STRING	NOTHING	4
+ctrlSetTextSelection	binary	CONTROL	ARRAY	NOTHING	4
+ctrlSetTooltip	binary	CONTROL	STRING	NOTHING	4
+ctrlSetTooltipColorBox	binary	CONTROL	ARRAY	NOTHING	4
+ctrlSetTooltipColorShade	binary	CONTROL	ARRAY	NOTHING	4
+ctrlSetTooltipColorText	binary	CONTROL	ARRAY	NOTHING	4
+ctrlSetTooltipMaxWidth	binary	CONTROL	SCALAR	SCALAR	4
+ctrlSetURL	binary	CONTROL	STRING	NOTHING	4
+ctrlSetURLOverlayMode	binary	CONTROL	SCALAR	NOTHING	4
+ctrlShadow	unary		CONTROL	SCALAR
+ctrlShow	binary	CONTROL	BOOL	NOTHING	4
+ctrlShow	unary		ARRAY	NOTHING
+ctrlShown	unary		CONTROL	BOOL
+ctrlStyle	unary		CONTROL	SCALAR
+ctrlText	unary		CONTROL	STRING
+ctrlText	unary		SCALAR	STRING
+ctrlTextColor	unary		CONTROL	ARRAY
+ctrlTextHeight	unary		CONTROL	SCALAR
+ctrlTextSecondary	unary		CONTROL	STRING
+ctrlTextSelection	unary		CONTROL	ARRAY
+ctrlTextWidth	unary		CONTROL	SCALAR
+ctrlTooltip	unary		CONTROL	STRING
+ctrlType	unary		CONTROL	SCALAR
+ctrlURL	unary		CONTROL	STRING
+ctrlURLOverlayMode	unary		CONTROL	SCALAR
+ctrlVisible	unary		SCALAR	BOOL
+ctrlWebBrowserAction	binary	CONTROL	ARRAY	NOTHING	4
+ctRowControls	binary	CONTROL	SCALAR	ARRAY	4
+ctRowCount	unary		CONTROL	SCALAR
+ctSetCurSel	binary	CONTROL	SCALAR	NOTHING	4
+ctSetData	binary	CONTROL	ARRAY	NOTHING	4
+ctSetHeaderTemplate	binary	CONTROL	CONFIG	NOTHING	4
+ctSetRowTemplate	binary	CONTROL	CONFIG	NOTHING	4
+ctSetValue	binary	CONTROL	ARRAY	NOTHING	4
+ctValue	binary	CONTROL	SCALAR	SCALAR	4
+curatorAddons	unary		OBJECT	ARRAY
+curatorCamera	nular			OBJECT
+curatorCameraArea	unary		OBJECT	ARRAY
+curatorCameraAreaCeiling	unary		OBJECT	SCALAR
+curatorCoef	binary	OBJECT	STRING	SCALAR	4
+curatorEditableObjects	unary		OBJECT	ARRAY
+curatorEditingArea	unary		OBJECT	ARRAY
+curatorEditingAreaType	unary		OBJECT	BOOL
+curatorMouseOver	nular			OBJECT
+curatorPoints	unary		OBJECT	SCALAR
+curatorRegisteredObjects	unary		OBJECT	ARRAY
+curatorSelected	nular			ARRAY
+curatorSelectionPreset	unary		SCALAR	ARRAY
+curatorWaypointCost	unary		OBJECT	SCALAR
+current3DENOperation	nular			STRING
+currentChannel	nular			SCALAR
+currentCommand	unary		OBJECT	STRING
+currentMagazine	unary		OBJECT	STRING
+currentMagazineDetail	unary		OBJECT	ARRAY
+currentMagazineDetailTurret	binary	OBJECT	ARRAY	STRING	4
+currentMagazineTurret	binary	OBJECT	ARRAY	STRING	4
+currentMuzzle	unary		OBJECT	STRING
 currentNamespace	nular			NAMESPACE
+currentPilot	unary		OBJECT	OBJECT
+currentTask	unary		OBJECT	TASK
+currentTasks	unary		TEAM_MEMBER	ARRAY
+currentThrowable	unary		OBJECT	ARRAY
+currentVisionMode	binary	OBJECT	ARRAY	ARRAY	4
+currentVisionMode	binary	OBJECT	STRING	ARRAY	4
+currentVisionMode	unary		ARRAY	ARRAY
+currentVisionMode	unary		OBJECT	SCALAR
+currentWaypoint	unary		GROUP	SCALAR
+currentWeapon	unary		OBJECT	STRING
+currentWeaponMode	unary		OBJECT	STRING
+currentWeaponTurret	binary	OBJECT	ARRAY	STRING	4
+currentZeroing	binary	OBJECT	ARRAY	ARRAY	4
+currentZeroing	unary		OBJECT	SCALAR
+cursorObject	nular			OBJECT
+cursorTarget	nular			OBJECT
+customChat	binary	OBJECT	ARRAY	NOTHING	4
+customRadio	binary	OBJECT	ARRAY	NOTHING	4
+customWaypointPosition	nular			ARRAY
+cutFadeOut	binary	SCALAR	SCALAR	NOTHING	4
+cutFadeOut	binary	STRING	SCALAR	SCALAR	4
+cutObj	binary	SCALAR	ARRAY	NOTHING	4
+cutObj	binary	STRING	ARRAY	SCALAR	4
+cutObj	unary		ARRAY	NOTHING
+cutRsc	binary	SCALAR	ARRAY	NOTHING	4
+cutRsc	binary	STRING	ARRAY	SCALAR	4
+cutRsc	unary		ARRAY	NOTHING
+cutText	binary	SCALAR	ARRAY	NOTHING	4
+cutText	binary	STRING	ARRAY	SCALAR	4
+cutText	unary		ARRAY	NOTHING
+damage	unary		OBJECT	SCALAR
+date	nular			ARRAY
+dateToNumber	unary		ARRAY	SCALAR
+dayTime	nular			SCALAR
+deActivateKey	unary		STRING	NOTHING
+debriefingText	unary		STRING	SCALAR
+debugFSM	binary	SCALAR	BOOL	NOTHING	4
+debugLog	unary		ANY	NOTHING
+decayGraphValues	unary		ARRAY	ARRAY
 default	unary		CODE	NOTHING
 deg	unary		SCALAR	SCALAR
-deleteAt	binary	ARRAY	SCALAR	ANY
-deleteRange	binary	ARRAY	ARRAY	NOTHING
-diag_frameNo	nular			SCALAR
+delete3DENEntities	unary		ARRAY	NOTHING
+deleteAt	binary	ARRAY	ARRAY	ARRAY	4
+deleteAt	binary	ARRAY	SCALAR	ANY	4
+deleteAt	binary	HASHMAP	ANY	ANY	4
+deleteCenter	unary		SIDE	NOTHING
+deleteCollection	unary		OBJECT	NOTHING
+deleteEditorObject	binary	CONTROL	STRING	ANY	4
+deleteGroup	unary		GROUP	NOTHING
+deleteGroupWhenEmpty	binary	GROUP	BOOL	NOTHING	4
+deleteIdentity	unary		STRING	BOOL
+deleteLocation	unary		LOCATION	NOTHING
+deleteMarker	unary		STRING	NOTHING
+deleteMarkerLocal	unary		STRING	NOTHING
+deleteRange	binary	ARRAY	ARRAY	NOTHING	4
+deleteResources	binary	TEAM_MEMBER	ARRAY	NOTHING	4
+deleteSite	unary		OBJECT	NOTHING
+deleteStatus	unary		STRING	BOOL
+deleteTeam	unary		TEAM_MEMBER	NOTHING
+deleteVehicle	unary		ARRAY	NOTHING
+deleteVehicle	unary		OBJECT	NOTHING
+deleteVehicleCrew	binary	OBJECT	OBJECT	NOTHING	4
+deleteVehicleCrew	unary		OBJECT	NOTHING
+deleteWaypoint	unary		ARRAY	NOTHING
+detach	unary		OBJECT	NOTHING
+detachChild	unary		OBJECT	NOTHING
+detectedMines	unary		SIDE	ARRAY
+diag_activeMissionFSMs	nular			ARRAY
+diag_activeScripts	nular			ARRAY
+diag_activeSQFScripts	nular			ARRAY
+diag_activeSQSScripts	nular			ARRAY
+diag_allMissionEventHandlers	nular			ARRAY
+diag_codePerformance	unary		ARRAY	ARRAY
+diag_deltaTime	nular			SCALAR
+diag_dynamicSimulationEnd	unary		STRING	NOTHING
+diag_fps	nular			SCALAR
+diag_fpsmin	nular			SCALAR
+diag_frameno	nular			SCALAR
+diag_lightNewLoad	unary		STRING	NOTHING
+diag_localized	unary		STRING	ARRAY
 diag_log	unary		ANY	NOTHING
+diag_remainsCollector	unary		SCALAR	ARRAY
+diag_scope	nular			SCALAR
+diag_setLightNew	unary		STRING	NOTHING
+diag_stacktrace	nular			ARRAY
+diag_testScriptSimpleVM	unary		CODE	STRING
 diag_tickTime	nular			SCALAR
-diaryRecordNull	nular			DIARY_RECORD
+dialog	nular			BOOL
+diaryRecordNull	nular			TASK
+diarySubjectExists	binary	OBJECT	STRING	BOOL	4
+didJIP	nular			BOOL
+didJIPOwner	unary		OBJECT	BOOL
+difficulty	nular			SCALAR
+difficultyEnabled	unary		STRING	BOOL
+difficultyEnabledRTD	nular			BOOL
+difficultyOption	unary		ARRAY	ARRAY
+difficultyOption	unary		STRING	SCALAR
+direction	unary		LOCATION	SCALAR
+direction	unary		OBJECT	SCALAR
+directionStabilizationEnabled	binary	OBJECT	ARRAY	BOOL	4
+directSay	binary	OBJECT	STRING	NOTHING	4
+disableAI	binary	OBJECT	STRING	NOTHING	4
+disableBrakes	binary	OBJECT	BOOL	NOTHING	4
+disableCollisionWith	binary	OBJECT	OBJECT	NOTHING	4
+disableConversation	binary	OBJECT	BOOL	NOTHING	4
+disableDebriefingStats	nular			NOTHING
+disableMapIndicators	unary		ARRAY	NOTHING
+disableNVGEquipment	binary	OBJECT	BOOL	NOTHING	4
+disableRemoteSensors	unary		BOOL	NOTHING
+disableSerialization	nular			NOTHING
+disableTIEquipment	binary	OBJECT	BOOL	NOTHING	4
+disableUAVConnectability	binary	OBJECT	ARRAY	NOTHING	4
+disableUserInput	unary		BOOL	NOTHING
+displayAddEventHandler	binary	DISPLAY	ARRAY	SCALAR	4
+displayChild	unary		DISPLAY	DISPLAY
+displayCtrl	binary	DISPLAY	SCALAR	CONTROL	4
+displayCtrl	unary		SCALAR	CONTROL
 displayNull	nular			DISPLAY
-do	binary	FOR	CODE	ANY
-do	binary	SWITCH	CODE	ANY
-do	binary	WHILE	CODE	ANY
-do	binary	WHILE	CODE	NOTHING
-do	binary	WITH	CODE	ANY
+displayParent	unary		DISPLAY	DISPLAY
+displayRemoveAllEventHandlers	binary	DISPLAY	STRING	NOTHING	4
+displayRemoveEventHandler	binary	DISPLAY	ARRAY	NOTHING	4
+displaySetEventHandler	binary	DISPLAY	ARRAY	NOTHING	4
+displayUniqueName	unary		DISPLAY	STRING
+displayUpdate	unary		DISPLAY	NOTHING
+dissolveTeam	unary		STRING	NOTHING
+distance	binary	ARRAY	LOCATION	SCALAR	4
+distance	binary	ARRAY,OBJECT	ARRAY,OBJECT	SCALAR	4
+distance	binary	LOCATION	ARRAY	SCALAR	4
+distance	binary	LOCATION	LOCATION	SCALAR	4
+distance	binary	SCALAR	SCALAR	SCALAR	4
+distance2D	binary	ARRAY,OBJECT	ARRAY,OBJECT	SCALAR	4
+distanceSqr	binary	ARRAY	LOCATION	SCALAR	4
+distanceSqr	binary	ARRAY,OBJECT	ARRAY,OBJECT	SCALAR	4
+distanceSqr	binary	LOCATION	ARRAY	SCALAR	4
+distanceSqr	binary	LOCATION	LOCATION	SCALAR	4
+distanceSqr	binary	SCALAR	SCALAR	SCALAR	4
+distributionRegion	nular			SCALAR
+do	binary	FOR	CODE	ANY	4
+do	binary	SWITCH	CODE	ANY	4
+do	binary	WHILE	CODE	ANY	4
+do	binary	WHILE	CODE	NOTHING	4
+do	binary	WITH	CODE	ANY	4
+do	binary	WITH	CODE	NOTHING	4
+do3DENAction	unary		STRING,ARRAY	NOTHING
+doArtilleryFire	binary	ARRAY,OBJECT	ARRAY	NOTHING	4
+doFire	binary	ARRAY,OBJECT	OBJECT	NOTHING	4
+doFollow	binary	ARRAY,OBJECT	OBJECT	NOTHING	4
+doFSM	binary	ARRAY,OBJECT	ARRAY	NOTHING	4
+doGetOut	unary		ARRAY,OBJECT	NOTHING
+doMove	binary	ARRAY,OBJECT	ARRAY	NOTHING	4
+doorPhase	binary	OBJECT	STRING	SCALAR	4
+doStop	unary		ARRAY,OBJECT	NOTHING
+doSuppressiveFire	binary	ARRAY,OBJECT	ARRAY,OBJECT	NOTHING	4
+doTarget	binary	ARRAY,OBJECT	OBJECT	NOTHING	4
+doWatch	binary	ARRAY,OBJECT	ARRAY	NOTHING	4
+doWatch	binary	ARRAY,OBJECT	OBJECT	NOTHING	4
+drawArrow	binary	CONTROL	ARRAY	NOTHING	4
+drawEllipse	binary	CONTROL	ARRAY	NOTHING	4
+drawIcon	binary	CONTROL	ARRAY	NOTHING	4
+drawIcon3D	unary		ARRAY	NOTHING
+drawIcon3D	unary		HASHMAP	NOTHING
+drawLaser	unary		ARRAY	NOTHING
+drawLine	binary	CONTROL	ARRAY	NOTHING	4
+drawLine3D	unary		ARRAY	NOTHING
+drawLink	binary	CONTROL	ARRAY	NOTHING	4
+drawLocation	binary	CONTROL	LOCATION	NOTHING	4
+drawPolygon	binary	CONTROL	ARRAY	NOTHING	4
+drawRectangle	binary	CONTROL	ARRAY	NOTHING	4
+drawTriangle	binary	CONTROL	ARRAY	NOTHING	4
+drawXPolygon	binary	CONTROL	ARRAY	NOTHING	4
+driver	unary		OBJECT	OBJECT
+drop	unary		ARRAY	OBJECT
+dynamicSimulationDistance	unary		STRING	SCALAR
+dynamicSimulationDistanceCoef	unary		STRING	SCALAR
+dynamicSimulationEnabled	unary		GROUP	BOOL
+dynamicSimulationEnabled	unary		OBJECT	BOOL
+dynamicSimulationSystemEnabled	nular			BOOL
 east	nular			SIDE
-else	binary	CODE	CODE	ARRAY
-execVM	binary	ANY	STRING	SCRIPT
+echo	unary		STRING	NOTHING
+edit3DENMissionAttributes	unary		STRING	NOTHING
+editObject	binary	CONTROL	STRING	ANY	4
+editorSetEventHandler	binary	CONTROL	ARRAY	NOTHING	4
+effectiveCommander	unary		OBJECT	OBJECT
+elevatePeriscope	binary	OBJECT	ARRAY	NOTHING	4
+else	binary	CODE	CODE	ARRAY	5
+emptyPositions	binary	OBJECT	STRING,ARRAY	SCALAR	4
+enableAI	binary	OBJECT	STRING	NOTHING	4
+enableAIFeature	binary	OBJECT	ARRAY	NOTHING	4
+enableAIFeature	binary	STRING	BOOL	NOTHING	4
+enableAimPrecision	binary	OBJECT	BOOL	NOTHING	4
+enableAttack	binary	OBJECT,GROUP	BOOL	NOTHING	4
+enableAudioFeature	binary	OBJECT	ARRAY	BOOL	4
+enableAudioFeature	unary		ARRAY	BOOL
+enableAutoStartUpRTD	binary	OBJECT	BOOL	NOTHING	4
+enableAutoTrimRTD	binary	OBJECT	BOOL	BOOL	4
+enableCamShake	unary		BOOL	NOTHING
+enableCaustics	unary		BOOL	NOTHING
+enableChannel	binary	SCALAR	ARRAY	NOTHING	4
+enableChannel	binary	SCALAR	BOOL	NOTHING	4
+enableCollisionWith	binary	OBJECT	OBJECT	NOTHING	4
+enableCopilot	binary	OBJECT	BOOL	NOTHING	4
+enableDebriefingStats	unary		ARRAY	NOTHING
+enableDiagLegend	unary		BOOL	NOTHING
+enableDirectionStabilization	binary	OBJECT	ARRAY	NOTHING	4
+enableDynamicSimulation	binary	GROUP	BOOL	NOTHING	4
+enableDynamicSimulation	binary	OBJECT	BOOL	NOTHING	4
+enableDynamicSimulationSystem	unary		BOOL	NOTHING
+enableEndDialog	nular			NOTHING
+enableEngineArtillery	unary		BOOL	NOTHING
+enableEnvironment	unary		BOOL,ARRAY	NOTHING
+enableFatigue	binary	OBJECT	BOOL	NOTHING	4
+enableFreeLook	unary		BOOL	BOOL
+enableGunLights	binary	OBJECT,GROUP	STRING	NOTHING	4
+enableGunStabilization	binary	OBJECT	ARRAY	SCALAR	4
+enableInfoPanelComponent	binary	ARRAY,OBJECT	ARRAY	BOOL	4
+enableIRLasers	binary	OBJECT,GROUP	BOOL	NOTHING	4
+enableMimics	binary	OBJECT	BOOL	NOTHING	4
+enablePersonTurret	binary	OBJECT	ARRAY	NOTHING	4
+enableRadio	unary		BOOL	NOTHING
+enableReload	binary	OBJECT	BOOL	NOTHING	4
+enableRopeAttach	binary	OBJECT	BOOL	NOTHING	4
+enableSatNormalOnDetail	unary		BOOL	NOTHING
+enableSaving	unary		BOOL,ARRAY	NOTHING
+enableSentences	unary		BOOL	NOTHING
+enableSimulation	binary	OBJECT	BOOL	NOTHING	4
+enableSimulationGlobal	binary	OBJECT	BOOL	NOTHING	4
+enableStamina	binary	OBJECT	BOOL	NOTHING	4
+enableStressDamage	unary		BOOL	NOTHING
+enableTeamSwitch	unary		BOOL	NOTHING
+enableTraffic	unary		BOOL	NOTHING
+enableUAVConnectability	binary	OBJECT	ARRAY	NOTHING	4
+enableUAVWaypoints	binary	OBJECT	BOOL	NOTHING	4
+enableVehicleCargo	binary	OBJECT	BOOL	NOTHING	4
+enableVehicleSensor	binary	OBJECT	ARRAY	NOTHING	4
+enableWeaponDisassembly	binary	OBJECT	BOOL	NOTHING	4
+enableWeaponDisassembly	unary		BOOL	NOTHING
+endl	nular			STRING
+endLoadingScreen	nular			NOTHING
+endMission	unary		STRING	NOTHING
+engineOn	binary	OBJECT	BOOL	NOTHING	4
+enginesIsOnRTD	unary		OBJECT	ARRAY
+enginesPowerRTD	unary		OBJECT	ARRAY
+enginesRpmRTD	unary		OBJECT	ARRAY
+enginesTorqueRTD	unary		OBJECT	ARRAY
+entities	unary		ARRAY	ARRAY
+entities	unary		STRING	ARRAY
+environmentEnabled	nular			ARRAY
+environmentVolume	nular			SCALAR
+equipmentDisabled	unary		OBJECT	ARRAY
+estimatedEndServerTime	nular			SCALAR
+estimatedTimeLeft	unary		SCALAR	NOTHING
+evalObjectArgument	binary	CONTROL	ARRAY	ANY	4
+everyBackpack	unary		OBJECT	ARRAY
+everyContainer	unary		OBJECT	ARRAY
+exec	binary	ANY	STRING	NOTHING	4
+execEditorScript	binary	CONTROL	ARRAY	ANY	4
+execFSM	binary	ANY	ARRAY	SCALAR	4
+execFSM	binary	ANY	STRING	SCALAR	4
+execFSM	unary		ARRAY	SCALAR
+execFSM	unary		STRING	SCALAR
+execVM	binary	ANY	STRING	SCRIPT	4
 execVM	unary		STRING	SCRIPT
-exitWith	binary	IF	CODE	ANY
+exit	nular			NOTHING
+exitWith	binary	IF	CODE	ANY	4
 exp	unary		SCALAR	SCALAR
+expectedDestination	unary		OBJECT	ARRAY
+exportJIPMessages	unary		STRING	NOTHING
+eyeDirection	unary		OBJECT	ARRAY
+eyePos	unary		OBJECT	ARRAY
+face	unary		OBJECT	STRING
+faction	unary		OBJECT	STRING
+fadeEnvironment	binary	SCALAR	SCALAR	NOTHING	4
+fadeMusic	binary	SCALAR	SCALAR	NOTHING	4
+fadeRadio	binary	SCALAR	SCALAR	NOTHING	4
+fadeSound	binary	SCALAR	SCALAR	NOTHING	4
+fadeSpeech	binary	SCALAR	SCALAR	NOTHING	4
+failMission	unary		STRING	NOTHING
 false	nular			BOOL
-find	binary	ARRAY	ANY	SCALAR
-find	binary	STRING	ARRAY	SCALAR
-find	binary	STRING	STRING	SCALAR
-findAny	binary	ARRAY	ARRAY	SCALAR
-findIf	binary	ARRAY	CODE	SCALAR
+fileExists	unary		STRING	BOOL
+fillWeaponsFromPool	unary		OBJECT	NOTHING
+find	binary	ARRAY	ANY	SCALAR	4
+find	binary	STRING	ARRAY	SCALAR	4
+find	binary	STRING	STRING	SCALAR	4
+findAny	binary	ARRAY	ARRAY	SCALAR	4
+findCover	binary	OBJECT	ARRAY	OBJECT	4
+findDisplay	unary		SCALAR	DISPLAY
+findDisplay	unary		STRING	DISPLAY
+findEditorObject	binary	CONTROL	ANY	STRING	4
+findEditorObject	binary	CONTROL	ARRAY	STRING	4
+findEmptyPosition	binary	ARRAY	ARRAY	ARRAY	4
+findEmptyPositionReady	binary	ARRAY	ARRAY	BOOL	4
+findIf	binary	ARRAY	CODE	SCALAR	4
+findNearestEnemy	binary	OBJECT	ARRAY,OBJECT	OBJECT	4
+finishMissionInit	nular			NOTHING
 finite	unary		SCALAR	BOOL
+fire	binary	OBJECT	ARRAY	NOTHING	4
+fire	binary	OBJECT	STRING	NOTHING	4
+fireAtTarget	binary	OBJECT	ARRAY	BOOL	4
+firstBackpack	unary		OBJECT	OBJECT
+flag	unary		OBJECT	OBJECT
+flagAnimationPhase	unary		OBJECT	SCALAR
+flagOwner	unary		OBJECT	OBJECT
+flagSide	unary		OBJECT	SIDE
+flagTexture	unary		OBJECT	STRING
 flatten	unary		ARRAY	ARRAY
+fleeing	unary		OBJECT	BOOL
 floor	unary		SCALAR	SCALAR
+flyInHeight	binary	OBJECT	SCALAR,ARRAY	NOTHING	4
+flyInHeightASL	binary	OBJECT	ARRAY	NOTHING	4
+focusedCtrl	unary		DISPLAY	CONTROL
+focusOn	nular			OBJECT
+fog	nular			SCALAR
+fogForecast	nular			SCALAR
+fogParams	nular			ARRAY
 for	unary		ARRAY	FOR
 for	unary		STRING	FOR
-forEach	binary	CODE	ARRAY	ANY
-forEach	binary	CODE	ARRAY,HASHMAP	ANY
-forEach	binary	CODE	HASHMAP	ANY
+forceAddUniform	binary	OBJECT	STRING	NOTHING	4
+forceAtPositionRTD	unary		ARRAY	ARRAY
+forceCadetDifficulty	unary		ARRAY	ARRAY
+forcedMap	nular			ARRAY
+forceEnd	nular			NOTHING
+forceFlagTexture	binary	OBJECT	STRING	NOTHING	4
+forceFollowRoad	binary	OBJECT	BOOL	NOTHING	4
+forceGeneratorRTD	unary		SCALAR	ARRAY
+forceHitPointsDamageSync	unary		OBJECT	BOOL
+forceMap	unary		BOOL	NOTHING
+forceRespawn	unary		OBJECT	NOTHING
+forceSpeed	binary	OBJECT	SCALAR	NOTHING	4
+forceUnicode	unary		SCALAR	NOTHING
+forceWalk	binary	OBJECT	BOOL	NOTHING	4
+forceWeaponFire	binary	OBJECT	ARRAY	NOTHING	4
+forceWeatherChange	nular			NOTHING
+forEach	binary	CODE	ARRAY	ANY	4
+forEach	binary	CODE	ARRAY	NOTHING	4
+forEach	binary	CODE	ARRAY,HASHMAP	ANY	4
+forEach	binary	CODE	HASHMAP	ANY	4
+forEachMember	binary	CODE	TEAM_MEMBER	NOTHING	4
+forEachMemberAgent	binary	CODE	TEAM_MEMBER	NOTHING	4
+forEachMemberTeam	binary	CODE	TEAM_MEMBER	NOTHING	4
+forEachReversed	binary	CODE	ARRAY	NOTHING	4
+forgetTarget	binary	OBJECT,GROUP	OBJECT	NOTHING	4
 format	unary		ARRAY	STRING
-from	binary	FOR	SCALAR	FOR
-getVariable	binary	NAMESPACE	ARRAY	ANY
-getVariable	binary	NAMESPACE	STRING	ANY
+formation	unary		OBJECT,GROUP	STRING
+formation	unary		TEAM_MEMBER	STRING
+formationDirection	unary		OBJECT	SCALAR
+formationLeader	unary		OBJECT	OBJECT
+formationMembers	unary		OBJECT	ARRAY
+formationPosition	unary		OBJECT	ARRAY
+formationTask	unary		OBJECT	STRING
+formatText	unary		ARRAY	TEXT
+formLeader	unary		OBJECT	OBJECT
+freeExtension	unary		STRING	NOTHING,BOOL
+freeLook	nular			BOOL
+from	binary	FOR	SCALAR	FOR	4
+fromEditor	unary		TEAM_MEMBER	BOOL
+fromJSON	unary		STRING	ANY
+fuel	unary		OBJECT	SCALAR
+fullCrew	unary		ARRAY	ARRAY
+fullCrew	unary		OBJECT	ARRAY
+gearIDCAmmoCount	unary		SCALAR	SCALAR
+gearSlotAmmoCount	unary		CONTROL	SCALAR
+gearSlotData	unary		CONTROL	STRING
+gestureState	unary		OBJECT	STRING
+get	binary	HASHMAP	ANY	ANY	4
+get3DENActionState	unary		STRING	SCALAR
+get3DENAttribute	binary	ARRAY	STRING	ARRAY	4
+get3DENAttribute	binary	GROUP	STRING	ARRAY	4
+get3DENAttribute	binary	OBJECT	STRING	ARRAY	4
+get3DENAttribute	binary	SCALAR	STRING	ARRAY	4
+get3DENAttribute	binary	STRING	STRING	ARRAY	4
+get3DENAttributes	binary	ANY	STRING	ARRAY	4
+get3DENCamera	nular			OBJECT
+get3DENConnections	unary		ANY	ARRAY
+get3DENEntity	unary		SCALAR	ANY
+get3DENEntityID	unary		ANY	SCALAR
+get3DENGrid	unary		STRING	SCALAR
+get3DENIconsVisible	nular			ARRAY
+get3DENLayer	unary		ANY	SCALAR
+get3DENLayerEntities	unary		SCALAR	ARRAY
+get3DENLinesVisible	nular			ARRAY
+get3DENMissionAttribute	binary	STRING	STRING	ANY	4
+get3DENMissionAttributes	binary	STRING	STRING	ARRAY	4
+get3DENMouseOver	nular			ARRAY
+get3DENParent	unary		ANY	ANY
+get3DENSelected	unary		STRING	ARRAY
+getAimDirectionAndUp	unary		ARRAY	ARRAY
+getAimingCoef	unary		OBJECT	SCALAR
+getAllEnv3DSoundControllers	unary		OBJECT	ARRAY
+getAllEnvSoundControllers	unary		ARRAY	ARRAY
+getAllHitPointsDamage	unary		OBJECT	ARRAY
+getAllOwnedMines	unary		OBJECT	ARRAY
+getAllPylonsInfo	unary		OBJECT	ARRAY
+getAllSoundControllers	unary		OBJECT	ARRAY
+getAllUnitTraits	unary		STRING,OBJECT	ARRAY
+getAmmoCargo	unary		OBJECT	SCALAR
+getAnimAimPrecision	unary		OBJECT	SCALAR
+getAnimationsQueue	unary		OBJECT	ARRAY
+getAnimSpeedCoef	unary		OBJECT	SCALAR
+getArray	unary		CONFIG	ARRAY
+getArtilleryAmmo	unary		ARRAY	ARRAY
+getArtilleryComputerSettings	nular			ARRAY
+getArtilleryETA	binary	OBJECT	ARRAY	SCALAR	4
+getAssetDLCInfo	unary		ARRAY	ARRAY
+getAssetDLCInfo	unary		STRING,OBJECT	ARRAY
+getAssignedCuratorLogic	unary		OBJECT	OBJECT
+getAssignedCuratorUnit	unary		OBJECT	OBJECT
+getAttackTarget	unary		OBJECT	OBJECT
+getAudioOptionVolumes	nular			ARRAY
+getBackpackCargo	unary		OBJECT	ARRAY
+getBleedingRemaining	unary		OBJECT	SCALAR
+getBoneNames	unary		OBJECT	ARRAY
+getBurningValue	unary		OBJECT	SCALAR
+getCalculatePlayerVisibilityByFriendly	nular			BOOL
+getCameraViewDirection	unary		OBJECT	ARRAY
+getCargoIndex	binary	OBJECT	OBJECT	SCALAR	4
+getCenterOfMass	unary		OBJECT	ARRAY
+getClientState	nular			STRING
+getClientStateNumber	nular			STRING
+getCompatiblePylonMagazines	binary	OBJECT	SCALAR,STRING	ARRAY	4
+getCompatiblePylonMagazines	binary	STRING	SCALAR,STRING	ARRAY	4
+getConnectedUAV	unary		OBJECT	OBJECT
+getConnectedUAVUnit	unary		OBJECT	OBJECT
+getContainerMaxLoad	unary		STRING	SCALAR
+getCorpse	unary		OBJECT	OBJECT
+getCorpseWeaponholders	unary		OBJECT	ARRAY
+getCruiseControl	unary		OBJECT	ARRAY
+getCursorObjectParams	nular			ARRAY
+getCustomAimCoef	unary		OBJECT	SCALAR
+getCustomSoundController	unary		ARRAY	SCALAR
+getCustomSoundControllerCount	unary		OBJECT	SCALAR
+getDammage	unary		OBJECT	SCALAR
+getDebriefingText	unary		STRING	ARRAY
+getDescription	unary		OBJECT	ARRAY
+getDir	binary	ARRAY,OBJECT	ARRAY,OBJECT	SCALAR	4
+getDir	unary		OBJECT	SCALAR
+getDirVisual	binary	ARRAY,OBJECT	ARRAY,OBJECT	SCALAR	4
+getDirVisual	unary		OBJECT	SCALAR
+getDiverState	unary		OBJECT	BOOL
+getDLCAssetsUsage	nular			ARRAY
+getDLCAssetsUsageByName	unary		STRING	ARRAY
+getDLCs	unary		SCALAR	ARRAY
+getDLCUsageTime	unary		SCALAR	SCALAR
+getEditorCamera	unary		CONTROL	OBJECT
+getEditorMode	unary		CONTROL	STRING
+getEditorObjectScope	binary	CONTROL	STRING	STRING	4
+getElevationOffset	nular			SCALAR
+getEngineTargetRPMRTD	unary		OBJECT	ARRAY
+getEntityInfo	binary	OBJECT	SCALAR	ANY	4
+getEntityInfo	unary		OBJECT	ARRAY
+getEnv3DSoundController	binary	OBJECT	STRING	SCALAR	4
+getEnvSoundController	binary	ARRAY	STRING	SCALAR	4
+getEventHandlerInfo	binary	ANY	ARRAY	ARRAY	4
+getEventHandlerInfo	unary		ARRAY	ARRAY
+getFatigue	unary		OBJECT	SCALAR
+getFieldManualStartPage	unary		DISPLAY	ARRAY
+getForcedFlagTexture	unary		OBJECT	STRING
+getForcedSpeed	unary		OBJECT	SCALAR
+getFriend	binary	SIDE	SIDE	SCALAR	4
+getFSMVariable	binary	SCALAR	STRING,ARRAY	ANY	4
+getFuelCargo	unary		OBJECT	SCALAR
+getFuelConsumptionCoef	unary		OBJECT	SCALAR
+getGraphValues	unary		ARRAY	ARRAY
+getGroupIcon	binary	GROUP	SCALAR	ARRAY	4
+getGroupIconParams	unary		GROUP	ARRAY
+getGroupIcons	unary		GROUP	ARRAY
+getHideFrom	binary	OBJECT	OBJECT	ARRAY	4
+getHit	binary	OBJECT	STRING	SCALAR	4
+getHitIndex	binary	OBJECT	SCALAR	SCALAR	4
+getHitPointDamage	binary	OBJECT	STRING	SCALAR	4
+getItemCargo	unary		OBJECT	ARRAY
+getLeaning	unary		OBJECT	SCALAR
+getLightInfo	binary	OBJECT	SCALAR	ANY	4
+getLightInfo	unary		OBJECT	ARRAY
+getLighting	nular			ARRAY
+getLightingAt	unary		OBJECT	ARRAY
+getLoadedModsInfo	nular			ARRAY
+getMagazineCargo	unary		OBJECT	ARRAY
+getMarkerColor	unary		STRING	STRING
+getMarkerPos	unary		ARRAY	ARRAY
+getMarkerPos	unary		STRING	ARRAY
+getMarkerSize	unary		STRING	ARRAY
+getMarkerType	unary		STRING	STRING
+getMass	unary		OBJECT	SCALAR
+getMissionConfig	unary		STRING	CONFIG
+getMissionConfigValue	unary		STRING,ARRAY	ANY
+getMissionDLCs	nular			ARRAY
+getMissionLayerEntities	unary		SCALAR,STRING	ARRAY
+getMissionLayers	nular			ARRAY
+getMissionOptions	nular			HASHMAP
+getMissionPath	unary		STRING	STRING
+getModelInfo	unary		OBJECT	ARRAY
+getMousePosition	nular			ARRAY
+getMusicPlayedTime	nular			SCALAR
+getNumber	unary		CONFIG	SCALAR
+getObjectArgument	binary	CONTROL	ARRAY	STRING	4
+getObjectChildren	binary	CONTROL	STRING	ARRAY	4
+getObjectDLC	unary		OBJECT	SCALAR
+getObjectFOV	unary		OBJECT	SCALAR
+getObjectID	unary		OBJECT	STRING
+getObjectMaterials	binary	OBJECT	ARRAY	ARRAY	4
+getObjectMaterials	unary		OBJECT	ARRAY
+getObjectProxy	binary	CONTROL	STRING	OBJECT	4
+getObjectScale	unary		OBJECT	SCALAR
+getObjectTextures	binary	OBJECT	ARRAY	ARRAY	4
+getObjectTextures	unary		OBJECT	ARRAY
+getObjectType	unary		OBJECT	SCALAR
+getObjectViewDistance	nular			ARRAY
+getOpticsMode	binary	OBJECT	SCALAR	STRING	4
+getOrDefault	binary	HASHMAP	ARRAY	ANY	4
+getOrDefaultCall	binary	HASHMAP	ARRAY	ANY	4
+getOxygenRemaining	unary		OBJECT	SCALAR
+getPersonUsedDLCs	unary		OBJECT	ARRAY
+getPhysicsCollisionFlag	unary		OBJECT	ARRAY
+getPilotCameraDirection	unary		OBJECT	ARRAY
+getPilotCameraOpticsMode	unary		OBJECT	SCALAR
+getPilotCameraPosition	unary		OBJECT	ARRAY
+getPilotCameraRotation	unary		OBJECT	ARRAY
+getPilotCameraTarget	unary		OBJECT	ARRAY
+getPiPViewDistance	nular			SCALAR
+getPlateNumber	unary		OBJECT	STRING
+getPlayerChannel	unary		OBJECT	SCALAR
+getPlayerID	unary		OBJECT	STRING
+getPlayerScores	unary		OBJECT	ARRAY
+getPlayerUID	unary		OBJECT	STRING
+getPlayerVoNVolume	unary		OBJECT	SCALAR
+getPos	binary	ARRAY,OBJECT	ARRAY	ARRAY	4
+getPos	unary		LOCATION	ARRAY
+getPos	unary		OBJECT	ARRAY
+getPosASL	unary		OBJECT	ARRAY
+getPosASLVisual	unary		OBJECT	ARRAY
+getPosASLW	unary		OBJECT	ARRAY
+getPosATL	unary		OBJECT	ARRAY
+getPosATLVisual	unary		OBJECT	ARRAY
+getPosVisual	unary		OBJECT	ARRAY
+getPosWorld	unary		OBJECT	ARRAY
+getPosWorldVisual	unary		OBJECT	ARRAY
+getPylonMagazines	unary		OBJECT	ARRAY
+getRelDir	binary	OBJECT	ARRAY,OBJECT	SCALAR	4
+getRelPos	binary	OBJECT	ARRAY	ARRAY	4
+getRelPos	binary	OBJECT	OBJECT	ARRAY	4
+getRemoteSensorsDisabled	nular			BOOL
+getRepairCargo	unary		OBJECT	SCALAR
+getResolution	nular			ARRAY
+getRespawnVehicleInfo	binary	OBJECT	SCALAR	ANY	4
+getRespawnVehicleInfo	unary		OBJECT	ARRAY
+getRoadInfo	unary		OBJECT	ARRAY
+getRoles	nular			ARRAY
+getRotorBrakeRTD	unary		OBJECT	SCALAR
+getSelectionBones	binary	OBJECT	ARRAY	ARRAY	4
+getSensorTargets	unary		OBJECT	ARRAY
+getSensorThreats	unary		OBJECT	ARRAY
+getServerInfo	nular			HASHMAP
+getShadowDistance	nular			SCALAR
+getShotInfo	binary	OBJECT	SCALAR	ANY	4
+getShotInfo	unary		OBJECT	ARRAY
+getShotParents	unary		OBJECT	ARRAY
+getSlingLoad	unary		OBJECT	OBJECT
+getSlotItemName	binary	OBJECT	SCALAR	STRING	4
+getSoundController	binary	OBJECT	STRING	SCALAR	4
+getSoundControllerResult	binary	OBJECT	CONFIG	SCALAR	4
+getSpeed	binary	OBJECT	STRING	SCALAR	4
+getStamina	unary		OBJECT	SCALAR
+getStatValue	unary		STRING	SCALAR
+getSteamFriendsServers	nular			ARRAY
+getSubtitleOptions	nular			ARRAY
+getSuppression	unary		OBJECT	SCALAR
+getTerrainGrid	nular			SCALAR
+getTerrainHeight	unary		ARRAY	SCALAR
+getTerrainHeightASL	unary		ARRAY	SCALAR
+getTerrainInfo	nular			ARRAY
+getText	unary		CONFIG	STRING
+getTextRaw	unary		CONFIG	STRING
+getTextureInfo	unary		ARRAY	ARRAY
+getTextureInfo	unary		STRING	ARRAY
+getTextWidth	binary	STRING	ARRAY	SCALAR	4
+getTIParameters	nular			HASHMAP
+getTotalDLCUsageTime	nular			SCALAR
+getTowParent	unary		OBJECT	OBJECT
+getTrimOffsetRTD	unary		OBJECT	ARRAY
+getTurretLimits	binary	OBJECT	ARRAY	ARRAY	4
+getTurretOpticsMode	binary	OBJECT	ARRAY	NOTHING	4
+getTurretOpticsMode	unary		OBJECT	ARRAY
+getUnitFreefallInfo	unary		OBJECT	ARRAY
+getUnitLoadout	unary		ARRAY,OBJECT	ARRAY
+getUnitLoadout	unary		CONFIG	ARRAY
+getUnitLoadout	unary		STRING	ARRAY
+getUnitMovesInfo	binary	OBJECT	SCALAR	ANY	4
+getUnitMovesInfo	unary		OBJECT	ARRAY
+getUnitState	unary		OBJECT	STRING
+getUnitTrait	binary	OBJECT	STRING	ANY	4
+getUnloadInCombat	unary		OBJECT	ARRAY
+getUserInfo	binary	STRING	SCALAR	ANY	4
+getUserInfo	unary		STRING	ARRAY
+getUserMFDText	unary		OBJECT	ARRAY
+getUserMFDValue	unary		OBJECT	ARRAY
+getVariable	binary	CONTROL	STRING,ARRAY	ANY	4
+getVariable	binary	DISPLAY	STRING,ARRAY	ANY	4
+getVariable	binary	GROUP	ARRAY	ANY	4
+getVariable	binary	GROUP	STRING	ANY	4
+getVariable	binary	LOCATION	ARRAY	ANY	4
+getVariable	binary	LOCATION	STRING	ANY	4
+getVariable	binary	NAMESPACE	ARRAY	ANY	4
+getVariable	binary	NAMESPACE	STRING	ANY	4
+getVariable	binary	OBJECT	ARRAY	ANY	4
+getVariable	binary	OBJECT	STRING	ANY	4
+getVariable	binary	TASK	ARRAY	ANY	4
+getVariable	binary	TASK	STRING	ANY	4
+getVariable	binary	TEAM_MEMBER	ARRAY	ANY	4
+getVariable	binary	TEAM_MEMBER	STRING	ANY	4
+getVehicleCargo	unary		OBJECT	ARRAY
+getVehicleTIPars	unary		OBJECT	ARRAY
+getVideoOptions	nular			HASHMAP
+getWaterFillPercentage	unary		OBJECT	SCALAR
+getWaterLeakiness	unary		OBJECT	SCALAR
+getWeaponCargo	unary		OBJECT	ARRAY
+getWeaponSway	unary		OBJECT	SCALAR
+getWindletParams	unary		OBJECT	ARRAY
+getWingsOrientationRTD	unary		OBJECT	SCALAR
+getWingsPositionRTD	unary		OBJECT	SCALAR
+getWPPos	unary		ARRAY	ARRAY
+glanceAt	binary	ARRAY,OBJECT	ARRAY,OBJECT	NOTHING	4
+globalChat	binary	OBJECT	STRING	NOTHING	4
+globalRadio	binary	OBJECT	STRING	NOTHING	4
+goggles	unary		OBJECT	STRING
+goto	unary		STRING	NOTHING
+group	unary		OBJECT	GROUP
+groupChat	binary	OBJECT	STRING	NOTHING	4
+groupFromNetId	unary		STRING	GROUP
+groupIconSelectable	nular			BOOL
+groupIconsVisible	nular			ARRAY
+groupID	unary		GROUP	STRING
+groupID	unary		OBJECT	SCALAR
+groupOwner	unary		GROUP	SCALAR
+groupRadio	binary	OBJECT	STRING	NOTHING	4
+groups	unary		SIDE	ARRAY
+groupSelectedUnits	unary		OBJECT	ARRAY
+groupSelectUnit	binary	OBJECT	ARRAY	NOTHING	4
 grpNull	nular			GROUP
+gunner	unary		OBJECT	OBJECT
+gusts	nular			SCALAR
+halt	nular			NOTHING
+handgunItems	unary		OBJECT	ARRAY
+handgunMagazine	unary		OBJECT	ARRAY
+handgunWeapon	unary		OBJECT	STRING
+handsHit	unary		OBJECT	SCALAR
+hasCustomFace	unary		OBJECT	BOOL
+hashValue	unary		ANY	STRING
+hasInterface	nular			BOOL
+hasPilotCamera	unary		OBJECT	BOOL
+hasWeapon	binary	OBJECT	STRING	BOOL	4
+hcAllGroups	unary		OBJECT	ARRAY
+hcGroupParams	binary	OBJECT	GROUP	ARRAY	4
+hcLeader	unary		GROUP	OBJECT
+hcRemoveAllGroups	unary		OBJECT	NOTHING
+hcRemoveGroup	binary	OBJECT	GROUP	NOTHING	4
+hcSelected	unary		OBJECT	ARRAY
+hcSelectGroup	binary	OBJECT	ARRAY	NOTHING	4
+hcSetGroup	binary	OBJECT	ARRAY	NOTHING	4
+hcShowBar	unary		BOOL	NOTHING
+hcShownBar	nular			BOOL
+headgear	unary		OBJECT	STRING
+hiddenActions	unary		ARRAY	ARRAY
+hideActions	unary		ARRAY	NOTHING
+hideBody	unary		OBJECT	NOTHING
+hideObject	binary	OBJECT	BOOL	NOTHING	4
+hideObject	unary		OBJECT	NOTHING
+hideObjectGlobal	binary	OBJECT	BOOL	NOTHING	4
+hideObjectGlobal	unary		OBJECT	NOTHING
+hideSelection	binary	OBJECT	ARRAY	NOTHING	4
 hint	unary		STRING	NOTHING
+hint	unary		STRING,TEXT	NOTHING
+hintC	binary	STRING	ARRAY	NOTHING	4
+hintC	binary	STRING	STRING	NOTHING	4
+hintC	binary	STRING	TEXT	NOTHING	4
+hintC	unary		STRING	NOTHING
+hintCadet	unary		STRING,TEXT	NOTHING
 hintSilent	unary		STRING	NOTHING
+hintSilent	unary		STRING,TEXT	NOTHING
+hmd	unary		OBJECT	STRING
+hostMission	unary		ARRAY	NOTHING
+htmlLoad	binary	CONTROL	STRING	NOTHING	4
+HUDMovementLevels	nular			ARRAY
+humidity	nular			SCALAR
 if	unary		BOOL	IF
-in	binary	ANY	ARRAY	BOOL
-in	binary	STRING	STRING	BOOL
+ignore3DENHistory	unary		CODE	NOTHING
+ignoreTarget	binary	OBJECT,GROUP	ARRAY,OBJECT	NOTHING	4
+image	unary		STRING	TEXT
+import	unary		STRING,ARRAY	NOTHING
+importAllGroups	unary		CONTROL	NOTHING
+importance	unary		LOCATION	SCALAR
+in	binary	ANY	ARRAY	BOOL	4
+in	binary	ANY	HASHMAP	BOOL	4
+in	binary	ARRAY	LOCATION	BOOL	4
+in	binary	OBJECT	OBJECT	BOOL	4
+in	binary	STRING	STRING	BOOL	4
+inArea	binary	ARRAY	LOCATION	BOOL	4
+inArea	binary	ARRAY,OBJECT	ARRAY	BOOL	4
+inArea	binary	ARRAY,OBJECT	OBJECT	BOOL	4
+inArea	binary	ARRAY,OBJECT	STRING	BOOL	4
+inArea	binary	OBJECT	LOCATION	BOOL	4
+inAreaArray	binary	ARRAY	ARRAY	ARRAY	4
+inAreaArray	binary	ARRAY	LOCATION	ARRAY	4
+inAreaArray	binary	ARRAY	OBJECT	ARRAY	4
+inAreaArray	binary	ARRAY	STRING	ARRAY	4
+inAreaArrayIndexes	binary	ARRAY	ARRAY	ARRAY	4
+inAreaArrayIndexes	binary	ARRAY	LOCATION	ARRAY	4
+inAreaArrayIndexes	binary	ARRAY	OBJECT	ARRAY	4
+inAreaArrayIndexes	binary	ARRAY	STRING	ARRAY	4
+incapacitatedState	unary		OBJECT	STRING
 independent	nular			SIDE
-insert	binary	ARRAY	ARRAY	SCALAR
-isEqualRef	binary	ANY	ANY	BOOL
-isEqualTo	binary	ANY	ANY	BOOL
-isEqualType	binary	ANY	ANY	BOOL
-isEqualTypeAll	binary	ARRAY	ANY	BOOL
+inflame	binary	OBJECT	BOOL	NOTHING	4
+inflamed	unary		OBJECT	BOOL
+infoPanel	unary		STRING	ARRAY
+infoPanelComponentEnabled	binary	ARRAY,OBJECT	ARRAY	BOOL	4
+infoPanelComponents	binary	ARRAY,OBJECT	STRING	ARRAY	4
+infoPanels	unary		ARRAY,OBJECT	ARRAY
+inGameUISetEventHandler	unary		ARRAY	NOTHING
+inheritsFrom	unary		CONFIG	CONFIG
+initAmbientLife	nular			NOTHING
+inPolygon	binary	ARRAY,OBJECT	ARRAY	BOOL	4
+inputAction	unary		STRING	SCALAR
+inputController	unary		SCALAR	SCALAR
+inputMouse	unary		SCALAR	SCALAR
+inputMouse	unary		STRING	BOOL
+inRangeOfArtillery	binary	ARRAY	ARRAY	BOOL	4
+insert	binary	ARRAY	ARRAY	NOTHING	4
+insert	binary	ARRAY	ARRAY	SCALAR	4
+insert	binary	HASHMAP	ARRAY	BOOL	4
+insert	binary	HASHMAP	ARRAY	NOTHING	4
+insert	binary	STRING	ARRAY	STRING	4
+insertEditorObject	binary	CONTROL	ARRAY	STRING	4
+insideBuilding	unary		OBJECT	SCALAR
+intersect	binary	ARRAY	ARRAY	ARRAY	4
+is3DEN	nular			BOOL
+is3DENMultiplayer	nular			BOOL
+is3DENPreview	nular			BOOL
+isAbleToBreathe	unary		OBJECT	BOOL
+isActionMenuVisible	nular			BOOL
+isAgent	unary		TEAM_MEMBER	BOOL
+isAimPrecisionEnabled	unary		OBJECT	BOOL
+isAISteeringComponentEnabled	unary		OBJECT	BOOL
+isAllowedCrewInImmobile	unary		OBJECT	BOOL
+isArray	unary		CONFIG	BOOL
+isAutoHoverOn	unary		OBJECT	BOOL
+isAutonomous	unary		OBJECT	BOOL
+isAutoStartUpEnabledRTD	unary		OBJECT	ARRAY
+isAutotest	nular			BOOL
+isAutoTrimOnRTD	unary		OBJECT	BOOL
+isAwake	unary		OBJECT	BOOL
+isBleeding	unary		OBJECT	BOOL
+isBurning	unary		OBJECT	BOOL
+isClass	unary		CONFIG	BOOL
+isCollisionLightOn	unary		OBJECT	BOOL
+isCopilotEnabled	unary		OBJECT	BOOL
+isDamageAllowed	unary		OBJECT	BOOL
+isDedicated	nular			BOOL
+isDLCAvailable	unary		SCALAR	BOOL
+isEngineOn	unary		OBJECT	BOOL
+isEqualRef	binary	ANY	ANY	BOOL	4
+isEqualTo	binary	ANY	ANY	BOOL	4
+isEqualType	binary	ANY	ANY	BOOL	4
+isEqualTypeAll	binary	ANY	ANY	BOOL	4
+isEqualTypeAll	binary	ARRAY	ANY	BOOL	4
 isEqualTypeAll	unary		ARRAY	BOOL
-isEqualTypeAny	binary	ANY	ARRAY	BOOL
-isEqualTypeArray	binary	ARRAY	ARRAY	BOOL
-isEqualTypeParams	binary	ANY	ARRAY	BOOL
+isEqualTypeAny	binary	ANY	ARRAY	BOOL	4
+isEqualTypeArray	binary	ANY	ARRAY	BOOL	4
+isEqualTypeArray	binary	ARRAY	ARRAY	BOOL	4
+isEqualTypeParams	binary	ANY	ARRAY	BOOL	4
+isFilePatchingEnabled	nular			BOOL
+isFinal	unary		ANY	BOOL
 isFinal	unary		CODE	BOOL
+isFinal	unary		HASHMAP	BOOL
 isFinal	unary		STRING	BOOL
+isFlashlightOn	binary	OBJECT	STRING	BOOL	4
+isFlatEmpty	binary	ARRAY	ARRAY	ARRAY	4
+isForcedWalk	unary		OBJECT	BOOL
+isFormationLeader	unary		OBJECT	BOOL
+isGameFocused	nular			BOOL
+isGamePaused	nular			BOOL
+isGroupDeletedWhenEmpty	unary		GROUP	BOOL
+isHidden	unary		OBJECT	BOOL
+isInRemainsCollector	unary		OBJECT	BOOL
+isInstructorFigureEnabled	nular			BOOL
+isIRLaserOn	binary	OBJECT	STRING	BOOL	4
+isKeyActive	unary		STRING	BOOL
+isKindOf	binary	OBJECT	STRING	BOOL	4
+isKindOf	binary	STRING	ARRAY	BOOL	4
+isKindOf	binary	STRING	STRING	BOOL	4
+isLaserOn	binary	OBJECT	ARRAY	BOOL	4
+isLaserOn	unary		OBJECT	BOOL
+isLightOn	unary		ARRAY,OBJECT	BOOL
+isLocalized	unary		STRING	BOOL
+isManualFire	unary		OBJECT	BOOL
+isMarkedForCollection	unary		OBJECT	BOOL
+isMissionProfileNamespaceLoaded	nular			BOOL
+isMultiplayer	nular			BOOL
+isMultiplayerSolo	nular			BOOL
+isNil	binary	ANY	STRING	BOOL	4
+isNil	binary	HASHMAP	STRING	BOOL	4
+isNil	binary	NAMESPACE	STRING	BOOL	4
 isNil	unary		CODE	BOOL
 isNil	unary		STRING	BOOL
-isNotEqualTo	binary	ANY	ANY	BOOL
+isNil	unary		STRING,CODE	BOOL
+isNotEqualRef	binary	ANY	ANY	BOOL	4
+isNotEqualTo	binary	ANY	ANY	BOOL	4
+isNull	unary		CONFIG	BOOL
 isNull	unary		CONFIG,OBJECT,GROUP,CONTROL,DISPLAY,LOCATION,TASK,TEAM_MEMBER,DIARY_RECORD,NetObject	BOOL
+isNull	unary		CONTROL	BOOL
+isNull	unary		DIARY_RECORD	BOOL
+isNull	unary		DISPLAY	BOOL
+isNull	unary		GROUP	BOOL
+isNull	unary		LOCATION	BOOL
+isNull	unary		NetObject	BOOL
+isNull	unary		OBJECT	BOOL
 isNull	unary		SCRIPT	BOOL
-joinString	binary	ARRAY	STRING	STRING
+isNull	unary		TASK	BOOL
+isNull	unary		TEAM_MEMBER	BOOL
+isNumber	unary		CONFIG	BOOL
+isObjectHidden	unary		OBJECT	BOOL
+isObjectRTD	unary		OBJECT	BOOL
+isOnRoad	unary		ARRAY,OBJECT	BOOL
+isPiPEnabled	nular			BOOL
+isPlayer	unary		ARRAY	BOOL
+isPlayer	unary		OBJECT	BOOL
+isRealTime	unary		CONTROL	BOOL
+isRemoteControlling	unary		OBJECT	BOOL
+isRemoteExecuted	nular			BOOL
+isRemoteExecutedJIP	nular			BOOL
+isSaving	nular			BOOL
+isSensorTargetConfirmed	binary	OBJECT	SIDE	BOOL	4
+isServer	nular			BOOL
+isShowing3DIcons	unary		CONTROL	BOOL
+isSimpleObject	unary		OBJECT	BOOL
+isSprintAllowed	unary		OBJECT	BOOL
+isStaminaEnabled	unary		OBJECT	BOOL
+isSteamMission	nular			BOOL
+isSteamOverlayEnabled	nular			BOOL
+isStreamFriendlyUIEnabled	nular			BOOL
+isStressDamageEnabled	nular			BOOL
+isSwitchingWeapon	unary		OBJECT	STRING
+isText	unary		CONFIG	BOOL
+isThrowable	unary		STRING	BOOL
+isTouchingGround	unary		OBJECT	BOOL
+isTurnedOut	unary		OBJECT	BOOL
+isTutHintsEnabled	nular			BOOL
+isUAVConnectable	binary	OBJECT	ARRAY	BOOL	4
+isUAVConnected	unary		OBJECT	BOOL
+isUIContext	nular			BOOL
+isUniformAllowed	binary	OBJECT	STRING	BOOL	4
+isUsingAISteeringComponent	nular			BOOL
+isVehicleCargo	unary		OBJECT	OBJECT
+isVehicleRadarOn	unary		OBJECT	BOOL
+isVehicleSensorEnabled	binary	OBJECT	STRING	ARRAY	4
+isWalking	unary		OBJECT	BOOL
+isWeaponDeployed	unary		ARRAY	BOOL
+isWeaponDeployed	unary		OBJECT	BOOL
+isWeaponRested	unary		OBJECT	BOOL
+itemCargo	unary		OBJECT	ARRAY
+items	unary		OBJECT	ARRAY
+itemsWithMagazines	unary		OBJECT	ARRAY
+join	binary	ARRAY	OBJECT,GROUP	NOTHING	4
+joinAs	binary	OBJECT	ARRAY	NOTHING	4
+joinAsSilent	binary	OBJECT	ARRAY	NOTHING	4
+joinSilent	binary	ARRAY	OBJECT,GROUP	NOTHING	4
+joinString	binary	ARRAY	STRING	STRING	4
+kbAddDatabase	binary	OBJECT	STRING	BOOL	4
+kbAddDatabaseTargets	binary	OBJECT	STRING	BOOL	4
+kbAddTopic	binary	OBJECT	ARRAY	NOTHING	4
+kbHasTopic	binary	OBJECT	STRING	BOOL	4
+kbReact	binary	OBJECT	ARRAY	NOTHING	4
+kbRemoveTopic	binary	OBJECT	STRING	NOTHING	4
+kbTell	binary	OBJECT	ARRAY	NOTHING	4
+kbWasSaid	binary	OBJECT	ARRAY	BOOL	4
+keyImage	unary		SCALAR,STRING	TEXT
+keyName	unary		SCALAR,STRING	STRING
+keys	unary		HASHMAP	ARRAY
+kick	unary		SCALAR,STRING	NOTHING
+knowsAbout	binary	OBJECT,GROUP	OBJECT	SCALAR	4
+knowsAbout	binary	SIDE	OBJECT	SCALAR	4
+land	binary	OBJECT	STRING	NOTHING	4
+landAt	binary	OBJECT	ARRAY	BOOL	4
+landAt	binary	OBJECT	SCALAR,OBJECT	NOTHING	4
+landAt	unary		OBJECT	ARRAY
+landResult	unary		OBJECT	STRING
+language	nular			STRING
+laserTarget	binary	OBJECT	ARRAY	OBJECT	4
+laserTarget	unary		OBJECT	OBJECT
+lbAdd	binary	CONTROL	STRING	SCALAR	4
+lbAdd	unary		ARRAY	SCALAR
+lbClear	unary		CONTROL	NOTHING
+lbClear	unary		SCALAR	NOTHING
+lbColor	binary	CONTROL	SCALAR	ARRAY	4
+lbColor	unary		ARRAY	ARRAY
+lbColorRight	binary	CONTROL	SCALAR	ARRAY	4
+lbColorRight	unary		ARRAY	ARRAY
+lbCurSel	unary		CONTROL	SCALAR
+lbCurSel	unary		SCALAR	SCALAR
+lbData	binary	CONTROL	SCALAR	STRING	4
+lbData	unary		ARRAY	STRING
+lbDelete	binary	CONTROL	SCALAR	NOTHING	4
+lbDelete	unary		ARRAY	NOTHING
+lbIsSelected	binary	CONTROL	SCALAR	BOOL	4
+lbPicture	binary	CONTROL	SCALAR	STRING	4
+lbPicture	unary		ARRAY	STRING
+lbPictureRight	binary	CONTROL	SCALAR	STRING	4
+lbPictureRight	unary		ARRAY	STRING
+lbSelection	unary		CONTROL	ARRAY
+lbSetColor	binary	CONTROL	ARRAY	NOTHING	4
+lbSetColor	unary		ARRAY	NOTHING
+lbSetColorRight	binary	CONTROL	ARRAY	NOTHING	4
+lbSetColorRight	unary		ARRAY	NOTHING
+lbSetCurSel	binary	CONTROL	SCALAR	NOTHING	4
+lbSetCurSel	unary		ARRAY	NOTHING
+lbSetData	binary	CONTROL	ARRAY	NOTHING	4
+lbSetData	unary		ARRAY	NOTHING
+lbSetPicture	binary	CONTROL	ARRAY	NOTHING	4
+lbSetPicture	unary		ARRAY	NOTHING
+lbSetPictureColor	binary	CONTROL	ARRAY	NOTHING	4
+lbSetPictureColor	unary		ARRAY	NOTHING
+lbSetPictureColorDisabled	binary	CONTROL	ARRAY	NOTHING	4
+lbSetPictureColorDisabled	unary		ARRAY	NOTHING
+lbSetPictureColorSelected	binary	CONTROL	ARRAY	NOTHING	4
+lbSetPictureColorSelected	unary		ARRAY	NOTHING
+lbSetPictureRight	binary	CONTROL	ARRAY	NOTHING	4
+lbSetPictureRight	unary		ARRAY	NOTHING
+lbSetPictureRightColor	binary	CONTROL	ARRAY	NOTHING	4
+lbSetPictureRightColorDisabled	binary	CONTROL	ARRAY	NOTHING	4
+lbSetPictureRightColorSelected	binary	CONTROL	ARRAY	NOTHING	4
+lbSetSelectColor	binary	CONTROL	ARRAY	NOTHING	4
+lbSetSelectColor	unary		ARRAY	NOTHING
+lbSetSelectColorRight	binary	CONTROL	ARRAY	NOTHING	4
+lbSetSelectColorRight	unary		ARRAY	NOTHING
+lbSetSelected	binary	CONTROL	ARRAY	NOTHING	4
+lbSetText	binary	CONTROL	ARRAY	NOTHING	4
+lbSetText	unary		ARRAY	STRING
+lbSetTextRight	binary	CONTROL	ARRAY	NOTHING	4
+lbSetTooltip	binary	CONTROL	ARRAY	NOTHING	4
+lbSetTooltip	unary		ARRAY	NOTHING
+lbSetValue	binary	CONTROL	ARRAY	NOTHING	4
+lbSetValue	unary		ARRAY	NOTHING
+lbSize	unary		CONTROL	SCALAR
+lbSize	unary		SCALAR	SCALAR
+lbSort	unary		ARRAY	NOTHING
+lbSort	unary		CONTROL	NOTHING
+lbSort	unary		SCALAR	NOTHING
+lbSortBy	binary	SCALAR,CONTROL	ARRAY	NOTHING	4
+lbSortByValue	unary		CONTROL	NOTHING
+lbSortByValue	unary		SCALAR	NOTHING
+lbText	binary	CONTROL	SCALAR	STRING	4
+lbText	unary		ARRAY	STRING
+lbTextRight	binary	CONTROL	SCALAR	STRING	4
+lbTextRight	unary		ARRAY	STRING
+lbTooltip	binary	CONTROL	SCALAR	STRING	4
+lbTooltip	unary		ARRAY	STRING
+lbValue	binary	CONTROL	SCALAR	SCALAR	4
+lbValue	unary		ARRAY	SCALAR
+leader	unary		GROUP	OBJECT
+leader	unary		OBJECT	OBJECT
+leader	unary		TEAM_MEMBER	TEAM_MEMBER
+leaderboardDeInit	unary		STRING	BOOL
+leaderboardGetRows	unary		STRING	ARRAY
+leaderboardInit	unary		STRING	BOOL
+leaderboardRequestRowsFriends	unary		STRING	BOOL
+leaderboardRequestRowsGlobal	unary		ARRAY	BOOL
+leaderboardRequestRowsGlobalAroundUser	unary		ARRAY	BOOL
+leaderboardsRequestUploadScore	unary		ARRAY	BOOL
+leaderboardsRequestUploadScoreKeepBest	unary		ARRAY	BOOL
+leaderboardState	unary		STRING	SCALAR
+leaveVehicle	binary	GROUP	OBJECT	NOTHING	4
+leaveVehicle	binary	OBJECT	OBJECT	NOTHING	4
+libraryCredits	nular			ARRAY
+libraryDisclaimers	nular			ARRAY
+lifeState	unary		OBJECT	STRING
+lightAttachObject	binary	OBJECT	ARRAY	NOTHING	4
+lightDetachObject	unary		OBJECT	NOTHING
+lightIsOn	unary		OBJECT	STRING
+lightnings	nular			SCALAR
+limitSpeed	binary	OBJECT	BOOL,SCALAR	NOTHING	4
 linearConversion	unary		ARRAY	SCALAR
+lineBreak	nular			TEXT
+lineIntersects	unary		ARRAY	BOOL
+lineIntersectsObjs	unary		ARRAY	ARRAY
+lineIntersectsSurfaces	unary		ARRAY	ARRAY
+lineIntersectsWith	unary		ARRAY	ARRAY
+linkItem	binary	OBJECT	STRING	NOTHING	4
+list	unary		OBJECT	ARRAY
+listObjects	binary	CONTROL	STRING	ARRAY	4
+listRemoteTargets	unary		SIDE	ARRAY
+listVehicleSensors	unary		OBJECT	ARRAY
 ln	unary		SCALAR	SCALAR
+lnbAddArray	unary		ARRAY	SCALAR
+lnbAddColumn	binary	CONTROL	SCALAR	SCALAR	4
+lnbAddColumn	unary		ARRAY	SCALAR
+lnbAddRow	binary	CONTROL	ARRAY	SCALAR	4
+lnbAddRow	unary		ARRAY	SCALAR
+lnbClear	unary		CONTROL	NOTHING
+lnbClear	unary		SCALAR	NOTHING
+lnbColor	binary	CONTROL	ARRAY	ARRAY	4
+lnbColor	unary		ARRAY	ARRAY
+lnbColorRight	binary	CONTROL	ARRAY	ARRAY	4
+lnbColorRight	unary		ARRAY	ARRAY
+lnbCurSelRow	unary		CONTROL	SCALAR
+lnbCurSelRow	unary		SCALAR	SCALAR
+lnbData	binary	CONTROL	ARRAY	STRING	4
+lnbData	unary		ARRAY	STRING
+lnbDeleteColumn	binary	CONTROL	SCALAR	NOTHING	4
+lnbDeleteColumn	unary		ARRAY	NOTHING
+lnbDeleteRow	binary	CONTROL	SCALAR	NOTHING	4
+lnbDeleteRow	unary		ARRAY	NOTHING
+lnbGetColumnsPosition	unary		CONTROL	ARRAY
+lnbGetColumnsPosition	unary		SCALAR	ARRAY
+lnbPicture	binary	CONTROL	ARRAY	STRING	4
+lnbPicture	unary		ARRAY	STRING
+lnbPictureRight	binary	CONTROL	ARRAY	STRING	4
+lnbPictureRight	unary		ARRAY	STRING
+lnbSetColor	binary	CONTROL	ARRAY	NOTHING	4
+lnbSetColor	unary		ARRAY	NOTHING
+lnbSetColorRight	binary	CONTROL	ARRAY	NOTHING	4
+lnbSetColorRight	unary		ARRAY	NOTHING
+lnbSetColumnsPos	binary	CONTROL	ARRAY	NOTHING	4
+lnbSetColumnsPos	unary		ARRAY	NOTHING
+lnbSetCurSelRow	binary	CONTROL	SCALAR	NOTHING	4
+lnbSetCurSelRow	unary		ARRAY	NOTHING
+lnbSetData	binary	CONTROL	ARRAY	NOTHING	4
+lnbSetData	unary		ARRAY	NOTHING
+lnbSetPicture	binary	CONTROL	ARRAY	NOTHING	4
+lnbSetPicture	unary		ARRAY	NOTHING
+lnbSetPictureColor	binary	CONTROL	ARRAY	NOTHING	4
+lnbSetPictureColor	unary		ARRAY	NOTHING
+lnbSetPictureColorRight	binary	CONTROL	ARRAY	NOTHING	4
+lnbSetPictureColorRight	unary		ARRAY	NOTHING
+lnbSetPictureColorSelected	binary	CONTROL	ARRAY	NOTHING	4
+lnbSetPictureColorSelected	unary		ARRAY	NOTHING
+lnbSetPictureColorSelectedRight	binary	CONTROL	ARRAY	NOTHING	4
+lnbSetPictureColorSelectedRight	unary		ARRAY	NOTHING
+lnbSetPictureRight	binary	CONTROL	ARRAY	NOTHING	4
+lnbSetPictureRight	unary		ARRAY	NOTHING
+lnbSetText	binary	CONTROL	ARRAY	NOTHING	4
+lnbSetText	unary		ARRAY	NOTHING
+lnbSetTextRight	binary	CONTROL	ARRAY	NOTHING	4
+lnbSetTextRight	unary		ARRAY	NOTHING
+lnbSetTooltip	binary	CONTROL	ARRAY	NOTHING	4
+lnbSetTooltip	unary		ARRAY	NOTHING
+lnbSetValue	binary	CONTROL	ARRAY	NOTHING	4
+lnbSetValue	unary		ARRAY	NOTHING
+lnbSize	unary		CONTROL	ARRAY
+lnbSize	unary		SCALAR	ARRAY
+lnbSort	binary	CONTROL	ARRAY	NOTHING	4
+lnbSort	unary		ARRAY	NOTHING
+lnbSortBy	binary	ARRAY	ARRAY	NOTHING	4
+lnbSortByValue	binary	CONTROL	ARRAY	NOTHING	4
+lnbSortByValue	unary		ARRAY	NOTHING
+lnbText	binary	CONTROL	ARRAY	STRING	4
+lnbText	unary		ARRAY	STRING
+lnbTextRight	binary	CONTROL	ARRAY	STRING	4
+lnbTextRight	unary		ARRAY	STRING
+lnbValue	binary	CONTROL	ARRAY	SCALAR	4
+lnbValue	unary		ARRAY	SCALAR
+load	unary		OBJECT	SCALAR
+load3DENScenario	unary		STRING	BOOL
+loadAbs	unary		OBJECT	SCALAR
+loadBackpack	unary		OBJECT	SCALAR
+loadConfig	unary		STRING	CONFIG
+loadCuratorSelectionPreset	unary		SCALAR	NOTHING
 loadFile	unary		STRING	STRING
+loadGame	nular			NOTHING
+loadIdentity	binary	OBJECT	STRING	BOOL	4
+loadMagazine	binary	OBJECT	ARRAY	NOTHING	4
+loadOverlay	binary	CONTROL	CONFIG	NOTHING	4
+loadStatus	binary	OBJECT	STRING	BOOL	4
+loadUniform	unary		OBJECT	SCALAR
+loadVest	unary		OBJECT	SCALAR
+local	unary		GROUP	BOOL
+local	unary		OBJECT	BOOL
 localize	unary		STRING	STRING
 localNamespace	nular			NAMESPACE
 locationNull	nular			LOCATION
+locationPosition	unary		LOCATION	ARRAY
+lock	binary	OBJECT	BOOL	NOTHING	4
+lock	binary	OBJECT	SCALAR	NOTHING	4
+lock	unary		BOOL	NOTHING
+lockCameraTo	binary	OBJECT	ARRAY	NOTHING	4
+lockCargo	binary	OBJECT	ARRAY	NOTHING	4
+lockCargo	binary	OBJECT	BOOL	NOTHING	4
+lockDriver	binary	OBJECT	BOOL	NOTHING	4
+locked	unary		OBJECT	SCALAR
+lockedCameraTo	binary	OBJECT	ARRAY	ANY	4
+lockedCargo	binary	OBJECT	SCALAR	BOOL	4
+lockedDriver	unary		OBJECT	BOOL
+lockedInventory	unary		OBJECT	BOOL
+lockedTurret	binary	OBJECT	ARRAY	BOOL	4
+lockIdentity	unary		OBJECT	BOOL
+lockInventory	binary	OBJECT	BOOL	NOTHING	4
+lockTurret	binary	OBJECT	ARRAY	NOTHING	4
+lockWp	binary	OBJECT,GROUP	BOOL	NOTHING	4
 log	unary		SCALAR	SCALAR
-max	binary	SCALAR	SCALAR	SCALAR
-min	binary	SCALAR	SCALAR	SCALAR
+logEntities	nular			NOTHING
+logNetwork	unary		ARRAY	SCALAR
+logNetworkTerminate	unary		SCALAR	NOTHING
+lookAt	binary	ARRAY,OBJECT	ARRAY,OBJECT	NOTHING	4
+lookAtPos	binary	CONTROL	ARRAY	NOTHING	4
+magazineCargo	unary		OBJECT	ARRAY
+magazines	unary		ARRAY,OBJECT	ARRAY
+magazinesAllTurrets	unary		ARRAY,OBJECT	ARRAY
+magazinesAmmo	unary		ARRAY,OBJECT	ARRAY
+magazinesAmmoCargo	unary		OBJECT	ARRAY
+magazinesAmmoFull	unary		ARRAY,OBJECT	ARRAY
+magazinesDetail	unary		ARRAY,OBJECT	ARRAY
+magazinesDetailBackpack	unary		ARRAY,OBJECT	ARRAY
+magazinesDetailUniform	unary		ARRAY,OBJECT	ARRAY
+magazinesDetailVest	unary		ARRAY,OBJECT	ARRAY
+magazinesTurret	binary	OBJECT	ARRAY	ARRAY	4
+magazineTurretAmmo	binary	OBJECT	ARRAY	SCALAR	4
+mapAnimAdd	unary		ARRAY	NOTHING
+mapAnimClear	nular			NOTHING
+mapAnimCommit	nular			NOTHING
+mapAnimDone	nular			BOOL
+mapCenterOnCamera	binary	CONTROL	BOOL	ARRAY	4
+mapCenterOnCamera	unary		CONTROL	ARRAY
+mapGridPosition	unary		ARRAY,OBJECT	STRING
+markAsFinishedOnSteam	nular			BOOL
+markerAlpha	unary		STRING	SCALAR
+markerBrush	unary		STRING	STRING
+markerChannel	unary		STRING	STRING
+markerColor	unary		STRING	STRING
+markerDir	unary		STRING	SCALAR
+markerDrawPriority	unary		STRING	SCALAR
+markerPolyline	unary		STRING	ARRAY
+markerPos	unary		ARRAY	ARRAY
+markerPos	unary		STRING	ARRAY
+markerShadow	unary		STRING	BOOL
+markerShape	unary		STRING	STRING
+markerSize	unary		STRING	ARRAY
+markerText	unary		STRING	STRING
+markerType	unary		STRING	STRING
+matrixMultiply	binary	ARRAY	ARRAY	ARRAY	4
+matrixTranspose	unary		ARRAY	ARRAY
+max	binary	SCALAR	SCALAR	SCALAR	6
+maxLoad	unary		OBJECT	SCALAR
+members	unary		TEAM_MEMBER	ARRAY
+menuAction	binary	CONTROL	ARRAY	STRING	4
+menuAction	unary		ARRAY	STRING
+menuAdd	binary	CONTROL	ARRAY	SCALAR	4
+menuAdd	unary		ARRAY	SCALAR
+menuChecked	binary	CONTROL	ARRAY	BOOL	4
+menuChecked	unary		ARRAY	BOOL
+menuClear	unary		CONTROL	NOTHING
+menuClear	unary		SCALAR	NOTHING
+menuCollapse	binary	CONTROL	ARRAY	NOTHING	4
+menuCollapse	unary		ARRAY	NOTHING
+menuData	binary	CONTROL	ARRAY	STRING	4
+menuData	unary		ARRAY	STRING
+menuDelete	binary	CONTROL	ARRAY	NOTHING	4
+menuDelete	unary		ARRAY	NOTHING
+menuEnable	binary	CONTROL	ARRAY	NOTHING	4
+menuEnable	unary		ARRAY	NOTHING
+menuEnabled	binary	CONTROL	ARRAY	BOOL	4
+menuEnabled	unary		ARRAY	BOOL
+menuExpand	binary	CONTROL	ARRAY	NOTHING	4
+menuExpand	unary		ARRAY	NOTHING
+menuHover	unary		CONTROL	ARRAY
+menuHover	unary		SCALAR	ARRAY
+menuPicture	binary	CONTROL	ARRAY	STRING	4
+menuPicture	unary		ARRAY	STRING
+menuSetAction	binary	CONTROL	ARRAY	NOTHING	4
+menuSetAction	unary		ARRAY	NOTHING
+menuSetCheck	binary	CONTROL	ARRAY	NOTHING	4
+menuSetCheck	unary		ARRAY	NOTHING
+menuSetData	binary	CONTROL	ARRAY	NOTHING	4
+menuSetData	unary		ARRAY	NOTHING
+menuSetPicture	binary	CONTROL	ARRAY	NOTHING	4
+menuSetPicture	unary		ARRAY	NOTHING
+menuSetShortcut	binary	CONTROL	ARRAY	NOTHING	4
+menuSetShortcut	unary		ARRAY	NOTHING
+menuSetText	binary	CONTROL	ARRAY	NOTHING	4
+menuSetText	unary		ARRAY	NOTHING
+menuSetURL	binary	CONTROL	ARRAY	NOTHING	4
+menuSetURL	unary		ARRAY	NOTHING
+menuSetValue	binary	CONTROL	ARRAY	NOTHING	4
+menuSetValue	unary		ARRAY	NOTHING
+menuShortcut	binary	CONTROL	ARRAY	SCALAR	4
+menuShortcut	unary		ARRAY	SCALAR
+menuShortcutText	binary	CONTROL	ARRAY	STRING	4
+menuShortcutText	unary		ARRAY	STRING
+menuSize	binary	CONTROL	ARRAY	SCALAR	4
+menuSize	unary		ARRAY	SCALAR
+menuSort	binary	CONTROL	ARRAY	NOTHING	4
+menuSort	unary		ARRAY	NOTHING
+menuText	binary	CONTROL	ARRAY	STRING	4
+menuText	unary		ARRAY	STRING
+menuURL	binary	CONTROL	ARRAY	STRING	4
+menuURL	unary		ARRAY	STRING
+menuValue	binary	CONTROL	ARRAY	SCALAR	4
+menuValue	unary		ARRAY	SCALAR
+merge	binary	HASHMAP	ANY	NOTHING	4
+merge	binary	HASHMAP	ARRAY	NOTHING	4
+merge	binary	HASHMAP	HASHMAP	NOTHING	4
+min	binary	SCALAR	SCALAR	SCALAR	6
+mineActive	unary		OBJECT	BOOL
+mineDetectedBy	binary	OBJECT	SIDE	BOOL	4
+missileState	unary		OBJECT	ARRAY
+missileTarget	unary		OBJECT	OBJECT
+missileTargetPos	unary		OBJECT	ARRAY
+missionConfigFile	nular			CONFIG
+missionDifficulty	nular			SCALAR
+missionEnd	nular			ARRAY
+missionName	nular			STRING
+missionNameSource	nular			STRING
 missionNamespace	nular			NAMESPACE
 missionProfileNamespace	nular			NAMESPACE
-mod	binary	SCALAR	SCALAR	SCALAR
+missionStart	nular			ARRAY
+missionVersion	nular			SCALAR
+mod	binary	SCALAR	SCALAR	SCALAR	7
+modelToWorld	binary	OBJECT	ARRAY	ARRAY	4
+modelToWorldVisual	binary	OBJECT	ARRAY	ARRAY	4
+modelToWorldVisualWorld	binary	OBJECT	ARRAY	ARRAY	4
+modelToWorldWorld	binary	OBJECT	ARRAY	ARRAY	4
+modParams	unary		ARRAY	ARRAY
+moonIntensity	nular			SCALAR
+moonPhase	unary		ARRAY	SCALAR
+morale	unary		OBJECT	SCALAR
+move	binary	OBJECT,GROUP	ARRAY	NOTHING	4
+move3DENCamera	unary		ARRAY	NOTHING
+moveInAny	binary	OBJECT	ARRAY,OBJECT	BOOL	4
+moveInCargo	binary	OBJECT	ARRAY	NOTHING	4
+moveInCargo	binary	OBJECT	OBJECT	NOTHING	4
+moveInCommander	binary	OBJECT	OBJECT	NOTHING	4
+moveInDriver	binary	OBJECT	OBJECT	NOTHING	4
+moveInGunner	binary	OBJECT	OBJECT	NOTHING	4
+moveInTurret	binary	OBJECT	ARRAY	NOTHING	4
+moveObjectToEnd	binary	CONTROL	STRING	NOTHING	4
+moveOut	binary	OBJECT	OBJECT	NOTHING	4
+moveOut	unary		OBJECT	NOTHING
+moveTime	unary		OBJECT	SCALAR
+moveTo	binary	OBJECT	ARRAY	NOTHING	4
+moveToCompleted	unary		OBJECT	BOOL
+moveToFailed	unary		OBJECT	BOOL
+musicVolume	nular			SCALAR
+name	unary		LOCATION	STRING
+name	unary		NAMESPACE	STRING
+name	unary		OBJECT	STRING
+name	unary		SCRIPT	STRING
+namedProperties	binary	OBJECT	ARRAY	HASHMAP	4
+namedProperties	unary		OBJECT	ARRAY
+nameSound	unary		OBJECT	STRING
+nearEntities	binary	ARRAY	ARRAY	ARRAY	4
+nearEntities	binary	ARRAY,OBJECT	SCALAR	ARRAY	4
+nearEntities	binary	OBJECT	ARRAY	ARRAY	4
+nearEntities	binary	STRING	ARRAY	ARRAY	4
+nearestBuilding	unary		ARRAY	OBJECT
+nearestBuilding	unary		OBJECT	OBJECT
+nearestLocation	unary		ARRAY	LOCATION
+nearestLocations	unary		ARRAY	ARRAY
+nearestLocationWithDubbing	unary		ARRAY	LOCATION
+nearestMines	unary		ARRAY	ARRAY
+nearestObject	binary	ARRAY	SCALAR	OBJECT	4
+nearestObject	binary	ARRAY	STRING	OBJECT	4
+nearestObject	unary		ARRAY	OBJECT
+nearestObjects	unary		ARRAY	ARRAY
+nearestTerrainObjects	unary		ARRAY	ARRAY
+nearObjects	binary	ARRAY,OBJECT	SCALAR,ARRAY	ARRAY	4
+nearObjectsReady	binary	ARRAY,OBJECT	SCALAR	BOOL	4
+nearRoads	binary	ARRAY,OBJECT	SCALAR	ARRAY	4
+nearSupplies	binary	ARRAY,OBJECT	SCALAR,ARRAY	ARRAY	4
+nearTargets	binary	OBJECT	SCALAR	ARRAY	4
+needReload	binary	OBJECT	STRING	SCALAR	4
+needReload	unary		OBJECT	SCALAR
+needService	unary		OBJECT	ARRAY
+netId	unary		GROUP	STRING
+netId	unary		OBJECT	STRING
+netObjNull	nular			NetObject
+newOverlay	binary	CONTROL	CONFIG	NOTHING	4
+nextMenuItemIndex	unary		CONTROL	SCALAR
+nextWeatherChange	nular			SCALAR
 nil	nular			ANY
+nMenuItems	binary	CONTROL	SCALAR,STRING	SCALAR	4
 not	unary		BOOL	BOOL
+numberOfEnginesRTD	unary		OBJECT	SCALAR
+numberOfFiles	unary		SCALAR	SCALAR
+numberToDate	unary		ARRAY	ARRAY
+objectCurators	unary		OBJECT	ARRAY
+objectFromNetId	unary		STRING	OBJECT
+objectParent	unary		OBJECT	OBJECT
 objNull	nular			OBJECT
+objStatus	binary	STRING	STRING	NOTHING	4
+onBriefingGroup	unary		STRING	NOTHING
+onBriefingNotes	unary		STRING	NOTHING
+onBriefingPlan	unary		STRING	NOTHING
+onBriefingTeamSwitch	unary		STRING	NOTHING
+onCommandModeChanged	unary		STRING,CODE	NOTHING
+onDoubleClick	binary	CONTROL	STRING	ANY	4
+onEachFrame	unary		STRING,CODE	NOTHING
+onGroupIconClick	unary		STRING,CODE	NOTHING
+onGroupIconOverEnter	unary		STRING,CODE	NOTHING
+onGroupIconOverLeave	unary		STRING,CODE	NOTHING
+onHCGroupSelectionChanged	unary		STRING,CODE	NOTHING
+onMapSingleClick	binary	ANY	STRING,CODE	NOTHING	4
+onMapSingleClick	unary		STRING,CODE	NOTHING
+onPlayerConnected	unary		STRING,CODE	NOTHING
+onPlayerDisconnected	unary		STRING,CODE	NOTHING
+onPreloadFinished	unary		STRING,CODE	NOTHING
+onPreloadStarted	unary		STRING,CODE	NOTHING
+onShowNewObject	binary	CONTROL	STRING	ANY	4
+onTeamSwitch	unary		STRING,CODE	NOTHING
+openCuratorInterface	nular			NOTHING
+openDLCPage	unary		SCALAR	BOOL
+openGPS	unary		BOOL	BOOL
+openMap	unary		ARRAY	BOOL
+openMap	unary		BOOL	BOOL
+openSteamApp	unary		SCALAR	BOOL
+openYoutubeVideo	unary		STRING	BOOL
 opfor	nular			SIDE
-or	binary	BOOL	BOOL	BOOL
-or	binary	BOOL	BOOL,CODE	BOOL
-or	binary	BOOL	CODE	BOOL
-param	binary	ANY	ARRAY	ANY
+or	binary	BOOL	BOOL	BOOL	1
+or	binary	BOOL	BOOL,CODE	BOOL	1
+or	binary	BOOL	CODE	BOOL	1
+orderGetIn	binary	ARRAY	BOOL	NOTHING	4
+overcast	nular			SCALAR
+overcastForecast	nular			SCALAR
+owner	unary		OBJECT	SCALAR
+param	binary	ANY	ARRAY	ANY	4
 param	unary		ARRAY	ANY
-params	binary	ANY	ARRAY	BOOL
+params	binary	ANY	ARRAY	BOOL	4
 params	unary		ARRAY	BOOL
+parentAttached	unary		OBJECT	OBJECT
 parseNumber	unary		BOOL	SCALAR
 parseNumber	unary		STRING	SCALAR
+parseSimpleArray	unary		STRING	ARRAY
+parseText	unary		STRING	TEXT
 parsingNamespace	nular			NAMESPACE
+particlesQuality	nular			SCALAR
+periscopeElevation	binary	OBJECT	ARRAY	NOTHING	4
 pi	nular			SCALAR
+pickWeaponPool	unary		OBJECT	NOTHING
+pitch	unary		OBJECT	STRING
+pixelGrid	nular			SCALAR
+pixelGridBase	nular			SCALAR
+pixelGridNoUIScale	nular			SCALAR
+pixelH	nular			SCALAR
+pixelW	nular			SCALAR
+playableSlotsNumber	unary		SIDE	SCALAR
+playableUnits	nular			ARRAY
+playAction	binary	OBJECT	STRING	NOTHING	4
+playActionNow	binary	OBJECT	STRING	NOTHING	4
+player	nular			OBJECT
+playerRespawnTime	nular			SCALAR
+playerSide	nular			SIDE
+playersNumber	unary		SIDE	SCALAR
+playerTargetLock	nular			ARRAY
+playGesture	binary	OBJECT	STRING	NOTHING	4
+playMission	unary		ARRAY	NOTHING
+playMove	binary	OBJECT	STRING	NOTHING	4
+playMoveNow	binary	OBJECT	STRING	NOTHING	4
+playMusic	unary		ARRAY	NOTHING
+playMusic	unary		STRING	NOTHING
+playScriptedMission	unary		ARRAY	NOTHING
+playSound	unary		ARRAY	OBJECT
+playSound	unary		STRING	OBJECT
+playSound3D	unary		ARRAY	SCALAR
+playSoundUI	unary		ARRAY	SCALAR
+pose	unary		OBJECT	STRING
+position	unary		LOCATION	ARRAY
+position	unary		OBJECT	ARRAY
+positionCameraToWorld	unary		ARRAY	ARRAY
+posScreenToWorld	binary	CONTROL	ARRAY	ARRAY	4
+posWorldToScreen	binary	CONTROL	ARRAY	ARRAY	4
+ppEffectAdjust	binary	SCALAR	ARRAY	NOTHING	4
+ppEffectAdjust	binary	STRING	ARRAY	NOTHING	4
+ppEffectCommit	binary	ARRAY	SCALAR	NOTHING	4
+ppEffectCommit	binary	SCALAR	SCALAR	NOTHING	4
+ppEffectCommit	binary	STRING	SCALAR	NOTHING	4
+ppEffectCommitted	unary		SCALAR	BOOL
+ppEffectCommitted	unary		STRING	BOOL
+ppEffectCreate	unary		ARRAY	SCALAR,ARRAY
+ppEffectDestroy	unary		ARRAY	NOTHING
+ppEffectDestroy	unary		SCALAR	NOTHING
+ppEffectEnable	binary	ARRAY	BOOL	NOTHING	4
+ppEffectEnable	binary	SCALAR	BOOL	NOTHING	4
+ppEffectEnable	binary	STRING	BOOL	NOTHING	4
+ppEffectEnabled	unary		SCALAR	BOOL
+ppEffectEnabled	unary		STRING	BOOL
+ppEffectForceInNVG	binary	SCALAR	BOOL	NOTHING	4
+precision	unary		OBJECT	SCALAR
+preloadCamera	unary		ARRAY	BOOL
+preloadObject	binary	SCALAR	STRING,OBJECT	BOOL	4
+preloadSound	unary		STRING	BOOL
+preloadTitleObj	unary		ARRAY	BOOL
+preloadTitleRsc	unary		ARRAY	BOOL
 preprocessFile	unary		STRING	STRING
 preprocessFileLineNumbers	unary		STRING	STRING
+primaryWeapon	unary		OBJECT	STRING
+primaryWeaponItems	unary		OBJECT	ARRAY
+primaryWeaponMagazine	unary		OBJECT	ARRAY
+priority	unary		TASK	SCALAR
 private	unary		ARRAY	NOTHING
 private	unary		STRING	NOTHING
 private	unary		STRING,ARRAY	NOTHING
+privateAll	nular			NOTHING
+processDiaryLink	unary		STRING	NOTHING
+productVersion	nular			ARRAY
+profileName	nular			STRING
 profileNamespace	nular			NAMESPACE
-pushBack	binary	ARRAY	ANY	SCALAR
-pushBackUnique	binary	ARRAY	ANY	SCALAR
+profileNameSteam	nular			STRING
+progressLoadingScreen	unary		SCALAR	NOTHING
+progressPosition	unary		CONTROL	SCALAR
+progressSetPosition	binary	CONTROL	SCALAR	NOTHING	4
+publicVariable	unary		STRING	NOTHING
+publicVariableClient	binary	SCALAR	STRING	NOTHING	4
+publicVariableServer	unary		STRING	NOTHING
+pushBack	binary	ARRAY	ANY	SCALAR	4
+pushBackUnique	binary	ARRAY	ANY	SCALAR	4
+putWeaponPool	unary		OBJECT	NOTHING
+pylonAction	unary		ARRAY	ARRAY
+queryItemsPool	unary		STRING	SCALAR
+queryMagazinePool	unary		STRING	SCALAR
+queryWeaponPool	unary		STRING	SCALAR
 rad	unary		SCALAR	SCALAR
+radioChannelAdd	binary	SCALAR	ARRAY	NOTHING	4
+radioChannelCreate	unary		ARRAY	SCALAR
+radioChannelInfo	unary		BOOL,SCALAR	ARRAY
+radioChannelRemove	binary	SCALAR	ARRAY	NOTHING	4
+radioChannelSetCallSign	binary	SCALAR	STRING,ARRAY	NOTHING	4
+radioChannelSetLabel	binary	SCALAR	STRING	NOTHING	4
+radioEnabled	nular			BOOL
+radioVolume	nular			SCALAR
+rain	nular			SCALAR
+rainbow	nular			SCALAR
+rainParams	nular			ARRAY
+random	binary	SCALAR	SCALAR	SCALAR	4
+random	binary	SCALAR	SCALAR,ARRAY	SCALAR	4
+random	unary		ARRAY	SCALAR
 random	unary		SCALAR	SCALAR
+rank	unary		OBJECT	STRING
+rankId	unary		OBJECT	SCALAR
+rating	unary		OBJECT	SCALAR
+rectangular	unary		LOCATION	BOOL
+regexFind	binary	STRING	ARRAY	ARRAY	4
+regexMatch	binary	STRING	STRING	BOOL	4
+regexReplace	binary	STRING	ARRAY	STRING	4
+registeredTasks	unary		TEAM_MEMBER	ARRAY
+registerTask	binary	TEAM_MEMBER	STRING	BOOL	4
+reload	binary	OBJECT	ARRAY	BOOL	4
+reload	unary		OBJECT	NOTHING
+reloadEnabled	unary		OBJECT	BOOL
+remoteControl	binary	OBJECT	OBJECT	NOTHING	4
+remoteControlled	unary		OBJECT	OBJECT
+remoteExec	binary	ANY	ARRAY	NOTHING,STRING	4
+remoteExec	unary		ARRAY	NOTHING,STRING
+remoteExecCall	binary	ANY	ARRAY	NOTHING,STRING	4
+remoteExecCall	unary		ARRAY	NOTHING,STRING
+remoteExecutedJIPID	nular			STRING
+remoteExecutedOwner	nular			SCALAR
+remove3DENConnection	unary		ARRAY	NOTHING
+remove3DENEventHandler	unary		ARRAY	NOTHING
+remove3DENLayer	unary		SCALAR	BOOL
+removeAction	binary	OBJECT	SCALAR	NOTHING	4
+removeAll3DENEventHandlers	unary		STRING	NOTHING
+removeAllActions	unary		OBJECT	NOTHING
+removeAllAssignedItems	unary		ARRAY,OBJECT	NOTHING
+removeAllBinocularItems	unary		OBJECT	NOTHING
+removeAllContainers	unary		OBJECT	NOTHING
+removeAllCuratorAddons	unary		OBJECT	NOTHING
+removeAllCuratorCameraAreas	unary		OBJECT	NOTHING
+removeAllCuratorEditingAreas	unary		OBJECT	NOTHING
+removeAllEventHandlers	binary	GROUP	STRING	NOTHING	4
+removeAllEventHandlers	binary	OBJECT	STRING	NOTHING	4
+removeAllHandgunItems	unary		OBJECT	NOTHING
+removeAllItems	unary		OBJECT	NOTHING
+removeAllItemsWithMagazines	unary		OBJECT	NOTHING
+removeAllMagazines	unary		OBJECT	NOTHING
+removeAllMagazinesTurret	binary	OBJECT	ARRAY	NOTHING	4
+removeAllMissionEventHandlers	unary		STRING	NOTHING
+removeAllMPEventHandlers	binary	OBJECT	STRING	NOTHING	4
+removeAllMusicEventHandlers	unary		STRING	NOTHING
+removeAllOwnedMines	unary		OBJECT	NOTHING
+removeAllPrimaryWeaponItems	unary		OBJECT	NOTHING
+removeAllSecondaryWeaponItems	unary		OBJECT	NOTHING
+removeAllUserActionEventHandlers	unary		ARRAY	NOTHING
+removeAllWeapons	unary		OBJECT	NOTHING
+removeBackpack	unary		OBJECT	NOTHING
+removeBackpackGlobal	unary		OBJECT	NOTHING
+removeBinocularItem	binary	OBJECT	STRING	NOTHING	4
+removeCuratorAddons	binary	OBJECT	ARRAY	NOTHING	4
+removeCuratorCameraArea	binary	OBJECT	SCALAR	NOTHING	4
+removeCuratorEditableObjects	binary	OBJECT	ARRAY	NOTHING	4
+removeCuratorEditingArea	binary	OBJECT	SCALAR	NOTHING	4
+removeDiaryRecord	binary	OBJECT	ARRAY	NOTHING	4
+removeDiarySubject	binary	OBJECT	STRING	NOTHING	4
+removeDrawIcon	binary	CONTROL	ARRAY	NOTHING	4
+removeDrawLinks	binary	CONTROL	ARRAY	NOTHING	4
+removeEventHandler	binary	GROUP	ARRAY	NOTHING	4
+removeEventHandler	binary	OBJECT	ARRAY	NOTHING	4
+removeFromRemainsCollector	unary		ARRAY	NOTHING
+removeGoggles	unary		OBJECT	NOTHING
+removeGroupIcon	binary	GROUP	SCALAR	NOTHING	4
+removeHandgunItem	binary	OBJECT	STRING	NOTHING	4
+removeHeadgear	unary		OBJECT	NOTHING
+removeItem	binary	OBJECT	STRING	NOTHING	4
+removeItemFromBackpack	binary	OBJECT	STRING	NOTHING	4
+removeItemFromUniform	binary	OBJECT	STRING	NOTHING	4
+removeItemFromVest	binary	OBJECT	STRING	NOTHING	4
+removeItems	binary	OBJECT	STRING	NOTHING	4
+removeMagazine	binary	OBJECT	STRING,ARRAY	NOTHING	4
+removeMagazineGlobal	binary	OBJECT	STRING	NOTHING	4
+removeMagazines	binary	OBJECT	STRING	NOTHING	4
+removeMagazinesTurret	binary	OBJECT	ARRAY	NOTHING	4
+removeMagazineTurret	binary	OBJECT	ARRAY	NOTHING	4
+removeMenuItem	binary	CONTROL	SCALAR	NOTHING	4
+removeMenuItem	binary	CONTROL	STRING	NOTHING	4
+removeMissionEventHandler	unary		ARRAY	NOTHING
+removeMPEventHandler	binary	OBJECT	ARRAY	NOTHING	4
+removeMusicEventHandler	unary		ARRAY	NOTHING
+removeOwnedMine	binary	OBJECT	OBJECT	NOTHING	4
+removePrimaryWeaponItem	binary	OBJECT	STRING	NOTHING	4
+removeSecondaryWeaponItem	binary	OBJECT	STRING	NOTHING	4
+removeSimpleTask	binary	OBJECT	TASK	NOTHING	4
+removeSwitchableUnit	unary		OBJECT	NOTHING
+removeTeamMember	binary	TEAM_MEMBER	TEAM_MEMBER	NOTHING	4
+removeUniform	unary		OBJECT	NOTHING
+removeUserActionEventHandler	unary		ARRAY	NOTHING
+removeVest	unary		OBJECT	NOTHING
+removeWeapon	binary	OBJECT	STRING,ARRAY	NOTHING	4
+removeWeaponAttachmentCargo	binary	OBJECT	ARRAY	NOTHING	4
+removeWeaponCargo	binary	OBJECT	ARRAY	NOTHING	4
+removeWeaponGlobal	binary	OBJECT	STRING,ARRAY	NOTHING	4
+removeWeaponItem	binary	OBJECT	ARRAY	NOTHING	4
+removeWeaponTurret	binary	OBJECT	ARRAY	NOTHING	4
+reportRemoteTarget	binary	SIDE	ARRAY	NOTHING	4
+requiredVersion	unary		STRING	BOOL
+resetCamShake	nular			NOTHING
+resetSubgroupDirection	unary		OBJECT	NOTHING
 resistance	nular			SIDE
-resize	binary	ARRAY	ARRAY	NOTHING
-resize	binary	ARRAY	SCALAR	NOTHING
+resize	binary	ARRAY	ARRAY	NOTHING	4
+resize	binary	ARRAY	SCALAR	NOTHING	4
+resources	unary		TEAM_MEMBER	ARRAY
+respawnVehicle	binary	OBJECT	ARRAY	NOTHING	4
+restartEditorCamera	unary		CONTROL	NOTHING
+reveal	binary	OBJECT,GROUP	ARRAY	NOTHING	4
+reveal	binary	OBJECT,GROUP	OBJECT	NOTHING	4
+revealMine	binary	SIDE	OBJECT	NOTHING	4
 reverse	unary		ARRAY	NOTHING
+reverse	unary		STRING	STRING
+reversedMouseY	nular			BOOL
+roadAt	unary		ARRAY,OBJECT	OBJECT
+roadsConnectedTo	unary		ARRAY,OBJECT	ARRAY
+roleDescription	unary		OBJECT	STRING
+ropeAttachedObjects	unary		OBJECT	ARRAY
+ropeAttachedTo	unary		OBJECT	OBJECT
+ropeAttachEnabled	unary		OBJECT	BOOL
+ropeAttachTo	binary	ARRAY,OBJECT	OBJECT	NOTHING	4
+ropeCreate	unary		ARRAY	OBJECT
+ropeCut	unary		ARRAY	NOTHING
+ropeDestroy	unary		OBJECT	NOTHING
+ropeDetach	binary	OBJECT	OBJECT	NOTHING	4
+ropeEndPosition	unary		OBJECT	ARRAY
+ropeLength	unary		OBJECT	SCALAR
+ropes	unary		OBJECT	ARRAY
+ropesAttachedTo	unary		OBJECT	ARRAY
+ropeSegments	unary		OBJECT	ARRAY
+ropeUnwind	unary		ARRAY	NOTHING
+ropeUnwound	unary		OBJECT	BOOL
+rotorsForcesRTD	unary		OBJECT	ARRAY
+rotorsRpmRTD	unary		OBJECT	ARRAY
 round	unary		SCALAR	SCALAR
+runInitScript	nular			NOTHING
+safeZoneH	nular			SCALAR
+safeZoneW	nular			SCALAR
+safeZoneWAbs	nular			SCALAR
+safeZoneX	nular			SCALAR
+safeZoneXAbs	nular			SCALAR
+safeZoneY	nular			SCALAR
+save3DENInventory	unary		ARRAY	NOTHING
+save3DENPreferences	nular			BOOL
+saveGame	nular			NOTHING
+saveIdentity	binary	OBJECT	STRING	BOOL	4
+saveJoysticks	nular			NOTHING
+saveMissionProfileNamespace	nular			BOOL
+saveOverlay	unary		CONTROL	NOTHING
+saveProfileNamespace	nular			NOTHING
+saveStatus	binary	OBJECT	STRING	BOOL	4
+saveVar	unary		STRING	NOTHING
+savingEnabled	nular			BOOL
+say	binary	ARRAY,OBJECT	ARRAY	NOTHING	4
+say	binary	ARRAY,OBJECT	STRING	NOTHING	4
+say2D	binary	ARRAY,OBJECT	STRING,ARRAY	NOTHING	4
+say3D	binary	ARRAY,OBJECT	STRING,ARRAY	OBJECT	4
 scopeName	unary		STRING	NOTHING
+score	unary		OBJECT	SCALAR
+scoreSide	unary		SIDE	SCALAR
+screenshot	unary		STRING	BOOL
+screenToWorld	binary	OBJECT	ARRAY	ARRAY	4
+screenToWorld	unary		ARRAY	ARRAY
+screenToWorldDirection	binary	OBJECT	ARRAY	ARRAY	4
+screenToWorldDirection	unary		ARRAY	ARRAY
 scriptDone	unary		SCRIPT	BOOL
 scriptName	unary		STRING	NOTHING
 scriptNull	nular			SCRIPT
-select	binary	ARRAY	ARRAY	ARRAY
-select	binary	ARRAY	BOOL	ANY
-select	binary	ARRAY	CODE	ARRAY
-select	binary	ARRAY	SCALAR	ANY
-select	binary	STRING	ARRAY	STRING
-select	binary	STRING	SCALAR	STRING
+scudState	unary		OBJECT	SCALAR
+secondaryWeapon	unary		OBJECT	STRING
+secondaryWeaponItems	unary		OBJECT	ARRAY
+secondaryWeaponMagazine	unary		OBJECT	ARRAY
+select	binary	ARRAY	ARRAY	ARRAY	4
+select	binary	ARRAY	BOOL	ANY	4
+select	binary	ARRAY	CODE	ARRAY	4
+select	binary	ARRAY	SCALAR	ANY	4
+select	binary	CONFIG	SCALAR	CONFIG	4
+select	binary	STRING	ARRAY	STRING	4
+select	binary	STRING	SCALAR	STRING	4
+selectBestPlaces	unary		ARRAY	ARRAY
+selectDiarySubject	binary	OBJECT	STRING	BOOL	4
+selectedEditorObjects	unary		CONTROL	NOTHING
+selectEditorObject	binary	CONTROL	STRING	ANY	4
+selectionNames	binary	OBJECT	SCALAR,STRING	ARRAY	4
+selectionNames	unary		OBJECT	ARRAY
+selectionPosition	binary	OBJECT	ARRAY	ARRAY	4
+selectionPosition	binary	OBJECT	STRING	ARRAY	4
+selectionPosition	unary		ARRAY	ARRAY
+selectionVectorDirAndUp	binary	OBJECT	ARRAY	ARRAY	4
+selectLeader	binary	GROUP	OBJECT	NOTHING	4
+selectMax	unary		ARRAY	ANY
+selectMin	unary		ARRAY	ANY
+selectNoPlayer	nular			NOTHING
+selectPlayer	unary		OBJECT	NOTHING
 selectRandom	unary		ARRAY	ANY
+selectRandomWeighted	binary	ARRAY	ARRAY	ANY	4
+selectRandomWeighted	unary		ARRAY	ANY
+selectThrowable	binary	OBJECT	STRING	BOOL	4
+selectWeapon	binary	OBJECT	ARRAY	NOTHING,BOOL	4
+selectWeapon	binary	OBJECT	STRING	NOTHING	4
+selectWeaponTurret	binary	OBJECT	ARRAY	NOTHING	4
+sendAUMessage	unary		ARRAY	NOTHING
+sendChatMessage	binary	STRING	STRING	ANY	4
+sendSimpleCommand	binary	OBJECT	STRING	NOTHING	4
+sendTask	binary	TEAM_MEMBER	ARRAY	TASK	4
+sendTaskResult	binary	TASK	ARRAY	NOTHING	4
+sendUDPMessage	unary		ARRAY	BOOL
+sentencesEnabled	nular			BOOL
+serverCommand	binary	STRING	STRING	BOOL	4
+serverCommand	unary		STRING	BOOL
+serverCommandAvailable	unary		STRING	BOOL
+serverCommandExecutable	unary		STRING	BOOL
+serverName	nular			STRING
 serverNamespace	nular			NAMESPACE
 serverTime	nular			SCALAR
-set	binary	ARRAY	ARRAY	NOTHING
-setVariable	binary	NAMESPACE	ARRAY	NOTHING
+set	binary	ARRAY	ARRAY	NOTHING	4
+set	binary	HASHMAP	ARRAY	BOOL	4
+set3DENAttachedCursorEntity	unary		HASHMAP	NOTHING
+set3DENAttribute	binary	ANY	ARRAY	BOOL	4
+set3DENAttributes	unary		ARRAY	BOOL
+set3DENGrid	unary		ARRAY	NOTHING
+set3DENIconsVisible	unary		ARRAY	NOTHING
+set3DENLayer	binary	ANY	SCALAR	BOOL	4
+set3DENLinesVisible	unary		ARRAY	NOTHING
+set3DENLogicType	binary	ARRAY	STRING	NOTHING	4
+set3DENMissionAttribute	binary	STRING	ARRAY	NOTHING	4
+set3DENMissionAttributes	unary		ARRAY	NOTHING
+set3DENModelsVisible	unary		ARRAY	NOTHING
+set3DENObjectType	binary	ARRAY	STRING	NOTHING	4
+set3DENSelected	unary		ARRAY	NOTHING
+setAccTime	unary		SCALAR	NOTHING
+setActualCollectiveRTD	binary	OBJECT	SCALAR	NOTHING	4
+setAirplaneThrottle	binary	OBJECT	SCALAR	NOTHING	4
+setAirportSide	binary	SCALAR,OBJECT	SIDE	NOTHING	4
+setAmmo	binary	OBJECT	ARRAY	NOTHING	4
+setAmmoCargo	binary	OBJECT	SCALAR	NOTHING	4
+setAmmoOnPylon	binary	OBJECT	ARRAY	NOTHING	4
+setAngularVelocity	binary	OBJECT	ARRAY	NOTHING	4
+setAngularVelocityModelSpace	binary	OBJECT	ARRAY	NOTHING	4
+setAnimSpeedCoef	binary	OBJECT	SCALAR	NOTHING	4
+setAperture	unary		SCALAR	NOTHING
+setApertureNew	unary		ARRAY	NOTHING
+setArmoryPoints	unary		SCALAR	NOTHING
+setAttributes	binary	STRING,TEXT	ARRAY	TEXT	4
+setAutonomous	binary	OBJECT	BOOL	BOOL	4
+setBehaviour	binary	OBJECT,GROUP	STRING	NOTHING	4
+setBehaviourStrong	binary	OBJECT,GROUP	STRING	NOTHING	4
+setBleedingRemaining	binary	OBJECT	SCALAR	NOTHING	4
+setBrakesRTD	binary	OBJECT	ARRAY	NOTHING	4
+setCameraInterest	binary	OBJECT	SCALAR	NOTHING	4
+setCamShakeDefParams	unary		ARRAY	NOTHING
+setCamShakeParams	unary		ARRAY	NOTHING
+setCamUseTI	binary	BOOL	SCALAR	NOTHING	4
+setCaptive	binary	OBJECT	BOOL,SCALAR	NOTHING	4
+setCenterOfMass	binary	OBJECT	ARRAY	NOTHING	4
+setCollisionLight	binary	OBJECT	BOOL	NOTHING	4
+setCombatBehaviour	binary	GROUP	STRING	NOTHING	4
+setCombatBehaviour	binary	OBJECT	STRING	NOTHING	4
+setCombatMode	binary	OBJECT,GROUP	STRING	NOTHING	4
+setCombatMode	binary	TEAM_MEMBER	STRING	NOTHING	4
+setCompassDeclination	unary		SCALAR	NOTHING
+setCompassOscillation	unary		ARRAY	NOTHING
+setConvoySeparation	binary	OBJECT	SCALAR	NOTHING	4
+setCruiseControl	binary	OBJECT	ARRAY	NOTHING	4
+setCuratorCameraAreaCeiling	binary	OBJECT	SCALAR	NOTHING	4
+setCuratorCoef	binary	OBJECT	ARRAY	NOTHING	4
+setCuratorEditingAreaType	binary	OBJECT	BOOL	NOTHING	4
+setCuratorSelected	unary		ARRAY	NOTHING
+setCuratorSelectionPreset	binary	SCALAR	ARRAY	NOTHING	4
+setCuratorWaypointCost	binary	OBJECT	SCALAR	NOTHING	4
+setCurrentChannel	unary		SCALAR	BOOL
+setCurrentTask	binary	OBJECT	TASK	NOTHING	4
+setCurrentWaypoint	binary	GROUP	ARRAY	NOTHING	4
+setCustomAimCoef	binary	OBJECT	SCALAR	NOTHING	4
+setCustomMissionData	unary		ARRAY	NOTHING
+setCustomSoundController	unary		ARRAY	BOOL
+setCustomWeightRTD	binary	OBJECT	SCALAR	NOTHING	4
+setDamage	binary	OBJECT	SCALAR,ARRAY	NOTHING	4
+setDammage	binary	OBJECT	SCALAR	NOTHING	4
+setDate	unary		ARRAY	NOTHING
+setDebriefingText	binary	STRING	ARRAY	NOTHING	4
+setDefaultCamera	unary		ARRAY	NOTHING
+setDestination	binary	OBJECT	ARRAY	NOTHING	4
+setDetailMapBlendPars	unary		ARRAY	NOTHING
+setDiaryRecordText	binary	OBJECT	ARRAY	NOTHING	4
+setDiarySubjectPicture	binary	OBJECT	ARRAY	NOTHING	4
+setDir	binary	OBJECT	SCALAR	NOTHING	4
+setDirection	binary	LOCATION	SCALAR	NOTHING	4
+setDrawIcon	binary	CONTROL	ARRAY	NOTHING	4
+setDriveOnPath	binary	OBJECT	ARRAY	NOTHING	4
+setDropInterval	binary	OBJECT	SCALAR	NOTHING	4
+setDynamicSimulationDistance	binary	STRING	SCALAR	NOTHING	4
+setDynamicSimulationDistanceCoef	binary	STRING	SCALAR	NOTHING	4
+setEditorMode	binary	CONTROL	STRING	NOTHING	4
+setEditorObjectScope	binary	CONTROL	ARRAY	NOTHING	4
+setEffectCondition	binary	ARRAY,OBJECT	STRING	NOTHING	4
+setEffectiveCommander	binary	OBJECT	OBJECT	NOTHING	4
+setEngineRpmRTD	binary	OBJECT	ARRAY	NOTHING	4
+setFace	binary	OBJECT	STRING	NOTHING	4
+setFaceAnimation	binary	OBJECT	SCALAR	NOTHING	4
+setFatigue	binary	OBJECT	SCALAR	NOTHING	4
+setFeatureType	binary	OBJECT	SCALAR	BOOL	4
+setFlagAnimationPhase	binary	OBJECT	SCALAR	NOTHING	4
+setFlagOwner	binary	OBJECT	OBJECT	NOTHING	4
+setFlagSide	binary	OBJECT	SIDE	NOTHING	4
+setFlagTexture	binary	OBJECT	STRING	NOTHING	4
+setFog	binary	SCALAR	SCALAR,ARRAY	NOTHING	4
+setForceGeneratorRTD	binary	SCALAR	ARRAY	NOTHING	4
+setFormation	binary	OBJECT,GROUP	STRING	NOTHING	4
+setFormation	binary	TEAM_MEMBER	STRING	NOTHING	4
+setFormationTask	binary	OBJECT	STRING	NOTHING	4
+setFormDir	binary	OBJECT,GROUP	SCALAR	NOTHING	4
+setFriend	binary	SIDE	ARRAY	NOTHING	4
+setFromEditor	binary	TEAM_MEMBER	BOOL	NOTHING	4
+setFSMVariable	binary	SCALAR	ARRAY	NOTHING	4
+setFuel	binary	OBJECT	SCALAR	NOTHING	4
+setFuelCargo	binary	OBJECT	SCALAR	NOTHING	4
+setFuelConsumptionCoef	binary	OBJECT	SCALAR	NOTHING	4
+setGroupIcon	binary	GROUP	ARRAY	NOTHING	4
+setGroupIconParams	binary	GROUP	ARRAY	NOTHING	4
+setGroupIconsSelectable	unary		BOOL	NOTHING
+setGroupIconsVisible	unary		ARRAY	NOTHING
+setGroupid	binary	OBJECT,GROUP	ARRAY	NOTHING	4
+setGroupIdGlobal	binary	OBJECT,GROUP	ARRAY	NOTHING	4
+setGroupOwner	binary	GROUP	SCALAR	BOOL	4
+setGusts	binary	SCALAR	SCALAR	NOTHING	4
+setHideBehind	binary	OBJECT	ARRAY	NOTHING	4
+setHit	binary	OBJECT	ARRAY	NOTHING	4
+setHitIndex	binary	OBJECT	ARRAY	NOTHING	4
+setHitPointDamage	binary	OBJECT	ARRAY	NOTHING	4
+setHorizonParallaxCoef	unary		SCALAR	NOTHING
+setHUDMovementLevels	unary		ARRAY	NOTHING
+setHumidity	unary		SCALAR	NOTHING
+setIdentity	binary	OBJECT	STRING	NOTHING	4
+setImportance	binary	LOCATION	SCALAR	NOTHING	4
+setInfoPanel	unary		ARRAY	BOOL
+setJointDriveAngularVelocity	binary	ANY	ARRAY	NOTHING	4
+setJointDriveLinearVelocity	binary	ANY	ARRAY	NOTHING	4
+setJointDriveOrientation	binary	ANY	ARRAY	NOTHING	4
+setJointDrivePosition	binary	ANY	ARRAY	NOTHING	4
+setLeader	binary	TEAM_MEMBER	TEAM_MEMBER	NOTHING	4
+setLightAmbient	binary	OBJECT	ARRAY	NOTHING	4
+setLightAttenuation	binary	OBJECT	ARRAY	NOTHING	4
+setLightBrightness	binary	OBJECT	SCALAR	NOTHING	4
+setLightColor	binary	OBJECT	ARRAY	NOTHING	4
+setLightConePars	binary	OBJECT	ARRAY	NOTHING	4
+setLightDayLight	binary	OBJECT	BOOL	NOTHING	4
+setLightFlareMaxDistance	binary	OBJECT	SCALAR	NOTHING	4
+setLightFlareSize	binary	OBJECT	SCALAR	NOTHING	4
+setLightIntensity	binary	OBJECT	SCALAR	NOTHING	4
+setLightIR	binary	OBJECT	BOOL	NOTHING	4
+setLightnings	binary	SCALAR	SCALAR	NOTHING	4
+setLightUseFlare	binary	OBJECT	BOOL	NOTHING	4
+setLightVolumeShape	binary	OBJECT	ARRAY	NOTHING	4
+setLocalWindParams	unary		ARRAY	NOTHING
+setMagazineTurretAmmo	binary	OBJECT	ARRAY	NOTHING	4
+setMarkerAlpha	binary	STRING	SCALAR	NOTHING	4
+setMarkerAlphaLocal	binary	STRING	SCALAR	NOTHING	4
+setMarkerBrush	binary	STRING	STRING	NOTHING	4
+setMarkerBrushLocal	binary	STRING	STRING	NOTHING	4
+setMarkerColor	binary	STRING	STRING	NOTHING	4
+setMarkerColorLocal	binary	STRING	STRING	NOTHING	4
+setMarkerDir	binary	STRING	SCALAR	NOTHING	4
+setMarkerDirLocal	binary	STRING	SCALAR	NOTHING	4
+setMarkerDrawPriority	binary	STRING	SCALAR	NOTHING	4
+setMarkerPolyline	binary	STRING	ARRAY	NOTHING	4
+setMarkerPolylineLocal	binary	STRING	ARRAY	NOTHING	4
+setMarkerPos	binary	STRING	ARRAY,OBJECT	NOTHING	4
+setMarkerPosLocal	binary	STRING	ARRAY,OBJECT	NOTHING	4
+setMarkerShadow	binary	STRING	BOOL	NOTHING	4
+setMarkerShadowLocal	binary	STRING	BOOL	NOTHING	4
+setMarkerShape	binary	STRING	STRING	NOTHING	4
+setMarkerShapeLocal	binary	STRING	STRING	NOTHING	4
+setMarkerSize	binary	STRING	ARRAY	NOTHING	4
+setMarkerSizeLocal	binary	STRING	ARRAY	NOTHING	4
+setMarkerText	binary	STRING	STRING	NOTHING	4
+setMarkerTextLocal	binary	STRING	STRING	NOTHING	4
+setMarkerType	binary	STRING	STRING	NOTHING	4
+setMarkerTypeLocal	binary	STRING	STRING	NOTHING	4
+setMass	binary	OBJECT	SCALAR,ARRAY	NOTHING	4
+setMaxLoad	binary	OBJECT	SCALAR	NOTHING	4
+setMimic	binary	OBJECT	STRING	NOTHING	4
+setMissileTarget	binary	OBJECT	ARRAY,OBJECT	BOOL	4
+setMissileTargetPos	binary	OBJECT	ARRAY	NOTHING	4
+setMissionOptions	unary		HASHMAP	NOTHING
+setMousePosition	unary		ARRAY	NOTHING
+setMusicEffect	binary	ARRAY,OBJECT	STRING	NOTHING	4
+setMusicEventHandler	unary		ARRAY	NOTHING
+setName	binary	LOCATION	STRING	NOTHING	4
+setName	binary	OBJECT	ARRAY	NOTHING	4
+setName	binary	OBJECT	STRING	NOTHING	4
+setNameSound	binary	OBJECT	STRING	NOTHING	4
+setObjectArguments	binary	CONTROL	ARRAY	ANY	4
+setObjectMaterial	binary	OBJECT	ARRAY	NOTHING	4
+setObjectMaterialGlobal	binary	OBJECT	ARRAY	NOTHING	4
+setObjectProxy	binary	CONTROL	ARRAY	ANY	4
+setObjectScale	binary	OBJECT	SCALAR	NOTHING	4
+setObjectTexture	binary	OBJECT	ARRAY	NOTHING	4
+setObjectTextureGlobal	binary	OBJECT	ARRAY	NOTHING	4
+setObjectViewDistance	unary		ARRAY	NOTHING
+setObjectViewDistance	unary		SCALAR	NOTHING
+setOpticsMode	binary	OBJECT	ANY	NOTHING	4
+setOvercast	binary	SCALAR	SCALAR	NOTHING	4
+setOwner	binary	OBJECT	SCALAR	BOOL	4
+setOxygenRemaining	binary	OBJECT	SCALAR	NOTHING	4
+setParticleCircle	binary	OBJECT	ARRAY	NOTHING	4
+setParticleClass	binary	OBJECT	STRING	NOTHING	4
+setParticleFire	binary	OBJECT	ARRAY	NOTHING	4
+setParticleParams	binary	OBJECT	ARRAY	NOTHING	4
+setParticleRandom	binary	OBJECT	ARRAY	NOTHING	4
+setPhysicsCollisionFlag	binary	OBJECT	BOOL	NOTHING	4
+setPilotCameraDirection	binary	OBJECT	ARRAY	NOTHING	4
+setPilotCameraOpticsMode	binary	OBJECT	SCALAR	BOOL	4
+setPilotCameraRotation	binary	OBJECT	ARRAY	NOTHING	4
+setPilotCameraTarget	binary	OBJECT	ARRAY,OBJECT	BOOL	4
+setPilotLight	binary	OBJECT	BOOL	NOTHING	4
+setPiPEffect	binary	STRING	ARRAY	NOTHING	4
+setPiPViewDistance	unary		SCALAR	NOTHING
+setPitch	binary	OBJECT	SCALAR	NOTHING	4
+setPlateNumber	binary	OBJECT	STRING	NOTHING	4
+setPlayable	unary		OBJECT	NOTHING
+setPlayerRespawnTime	unary		SCALAR	NOTHING
+setPlayerVoNVolume	binary	OBJECT	SCALAR	NOTHING	4
+setPos	binary	OBJECT	ARRAY	NOTHING	4
+setPosASL	binary	OBJECT	ARRAY	NOTHING	4
+setPosASL2	binary	OBJECT	ARRAY	NOTHING	4
+setPosASLW	binary	OBJECT	ARRAY	NOTHING	4
+setPosATL	binary	OBJECT	ARRAY	NOTHING	4
+setPosition	binary	LOCATION	ARRAY	NOTHING	4
+setPosWorld	binary	OBJECT	ARRAY	NOTHING	4
+setPylonLoadout	binary	OBJECT	ARRAY	BOOL	4
+setPylonsPriority	binary	OBJECT	ARRAY	NOTHING	4
+setRadioMsg	binary	SCALAR	STRING	NOTHING	4
+setRain	binary	SCALAR	SCALAR	NOTHING	4
+setRain	unary		ARRAY	NOTHING
+setRain	unary		CONFIG	NOTHING
+setRainbow	binary	SCALAR	SCALAR	NOTHING	4
+setRandomLip	binary	OBJECT	BOOL	NOTHING	4
+setRank	binary	OBJECT	STRING	NOTHING	4
+setRectangular	binary	LOCATION	BOOL	NOTHING	4
+setRepairCargo	binary	OBJECT	SCALAR	NOTHING	4
+setRotorBrakeRTD	binary	OBJECT	SCALAR	NOTHING	4
+setShadowDistance	unary		SCALAR	NOTHING
+setShotParents	binary	OBJECT	ARRAY	NOTHING	4
+setSide	binary	LOCATION	SIDE	NOTHING	4
+setSimpleTaskAlwaysVisible	binary	TASK	BOOL	NOTHING	4
+setSimpleTaskCustomData	binary	TASK	ARRAY	NOTHING	4
+setSimpleTaskDescription	binary	TASK	ARRAY	NOTHING	4
+setSimpleTaskDestination	binary	TASK	ARRAY	NOTHING	4
+setSimpleTaskTarget	binary	TASK	ARRAY	NOTHING	4
+setSimpleTaskType	binary	TASK	STRING	NOTHING	4
+setSimulWeatherLayers	unary		SCALAR	NOTHING
+setSize	binary	LOCATION	ARRAY	NOTHING	4
+setSkill	binary	OBJECT	ARRAY	NOTHING	4
+setSkill	binary	OBJECT	SCALAR	NOTHING	4
+setSkyOverlayMaterial	unary		STRING	NOTHING
+setSlingLoad	binary	OBJECT	OBJECT	BOOL	4
+setSoundEffect	binary	ARRAY,OBJECT	ARRAY	NOTHING	4
+setSpeaker	binary	OBJECT	STRING	NOTHING	4
+setSpeech	binary	LOCATION	STRING	NOTHING	4
+setSpeedMode	binary	OBJECT,GROUP	STRING	NOTHING	4
+setStamina	binary	OBJECT	SCALAR	NOTHING	4
+setStaminaScheme	unary		STRING	NOTHING
+setStatValue	unary		ARRAY	BOOL
+setSuppression	binary	OBJECT	SCALAR	NOTHING	4
+setSystemOfUnits	unary		SCALAR	NOTHING
+setTargetAge	binary	OBJECT	STRING	NOTHING	4
+setTargetSize	binary	OBJECT	ARRAY	ARRAY	4
+setTaskMarkerOffset	binary	OBJECT	ARRAY	NOTHING	4
+setTaskResult	binary	TASK	ARRAY	NOTHING	4
+setTaskState	binary	TASK	STRING	NOTHING	4
+setTerrainGrid	unary		SCALAR	NOTHING
+setTerrainHeight	unary		ARRAY	NOTHING
+setText	binary	LOCATION	STRING	NOTHING	4
+setTimeMultiplier	unary		SCALAR	NOTHING
+setTIParameter	unary		ARRAY	NOTHING
+setTitleEffect	binary	ARRAY,OBJECT	ARRAY	NOTHING	4
+setTowParent	binary	OBJECT	OBJECT	NOTHING	4
+setTrafficDensity	unary		ARRAY	NOTHING
+setTrafficDistance	unary		SCALAR	NOTHING
+setTrafficGap	unary		ARRAY	NOTHING
+setTrafficSpeed	unary		ARRAY	NOTHING
+setTriggerActivation	binary	OBJECT	ARRAY	NOTHING	4
+setTriggerArea	binary	OBJECT	ARRAY	NOTHING	4
+setTriggerInterval	binary	OBJECT	SCALAR	NOTHING	4
+setTriggerStatements	binary	OBJECT	ARRAY	NOTHING	4
+setTriggerText	binary	OBJECT	STRING	NOTHING	4
+setTriggerTimeout	binary	OBJECT	ARRAY	NOTHING	4
+setTriggerType	binary	OBJECT	STRING	NOTHING	4
+setTurretLimits	binary	OBJECT	ARRAY	NOTHING	4
+setTurretOpticsMode	binary	OBJECT	ARRAY	NOTHING	4
+setTurretOpticsMode	binary	OBJECT	SCALAR	NOTHING	4
+setType	binary	LOCATION	STRING	NOTHING	4
+setUnconscious	binary	OBJECT	BOOL	NOTHING	4
+setUnitAbility	binary	OBJECT	SCALAR	NOTHING	4
+setUnitCombatMode	binary	OBJECT	STRING	NOTHING	4
+setUnitFreefallHeight	binary	OBJECT	SCALAR	NOTHING	4
+setUnitLoadout	binary	OBJECT	ARRAY	NOTHING	4
+setUnitLoadout	binary	OBJECT	CONFIG	NOTHING	4
+setUnitLoadout	binary	OBJECT	STRING	NOTHING	4
+setUnitPos	binary	OBJECT	STRING	NOTHING	4
+setUnitPosWeak	binary	OBJECT	STRING	NOTHING	4
+setUnitRank	binary	OBJECT	STRING	NOTHING	4
+setUnitRecoilCoefficient	binary	OBJECT	SCALAR	NOTHING	4
+setUnitTrait	binary	OBJECT	ARRAY	NOTHING	4
+setUnloadInCombat	binary	OBJECT	ARRAY	NOTHING	4
+setUserActionText	binary	OBJECT	ARRAY	NOTHING	4
+setUserMFDText	binary	OBJECT	ARRAY	NOTHING	4
+setUserMFDValue	binary	OBJECT	ARRAY	NOTHING	4
+setVariable	binary	CONTROL	ARRAY	NOTHING	4
+setVariable	binary	DISPLAY	ARRAY	NOTHING	4
+setVariable	binary	GROUP	ARRAY	NOTHING	4
+setVariable	binary	LOCATION	ARRAY	NOTHING	4
+setVariable	binary	NAMESPACE	ARRAY	NOTHING	4
+setVariable	binary	OBJECT	ARRAY	NOTHING	4
+setVariable	binary	TASK	ARRAY	NOTHING	4
+setVariable	binary	TEAM_MEMBER	ARRAY	NOTHING	4
+setVectorDir	binary	OBJECT	ARRAY	NOTHING	4
+setVectorDirAndUp	binary	OBJECT	ARRAY	NOTHING	4
+setVectorUp	binary	OBJECT	ARRAY	NOTHING	4
+setVehicleAmmo	binary	OBJECT	SCALAR	NOTHING	4
+setVehicleAmmoDef	binary	OBJECT	SCALAR	NOTHING	4
+setVehicleArmor	binary	OBJECT	SCALAR	NOTHING	4
+setVehicleCargo	binary	OBJECT	OBJECT	BOOL	4
+setVehicleId	binary	OBJECT	SCALAR	NOTHING	4
+setVehicleLock	binary	OBJECT	STRING	NOTHING	4
+setVehiclePosition	binary	OBJECT	ARRAY	BOOL	4
+setVehicleRadar	binary	OBJECT	SCALAR	NOTHING	4
+setVehicleReceiveRemoteTargets	binary	OBJECT	BOOL	NOTHING	4
+setVehicleReportOwnPosition	binary	OBJECT	BOOL	NOTHING	4
+setVehicleReportRemoteTargets	binary	OBJECT	BOOL	NOTHING	4
+setVehicleTIPars	binary	OBJECT	ARRAY	NOTHING	4
+setVehicleVarName	binary	OBJECT	STRING	NOTHING	4
+setVelocity	binary	OBJECT	ARRAY	NOTHING	4
+setVelocityModelSpace	binary	OBJECT	ARRAY	NOTHING	4
+setVelocityTransformation	binary	OBJECT	ARRAY	NOTHING	4
+setViewDistance	unary		SCALAR	NOTHING
+setVisibleIfTreeCollapsed	binary	CONTROL	ARRAY	NOTHING	4
+setWantedRPMRTD	binary	OBJECT	ARRAY	NOTHING	4
+setWaterFillPercentage	binary	OBJECT	SCALAR	NOTHING	4
+setWaterLeakiness	binary	OBJECT	SCALAR	NOTHING	4
+setWaves	binary	SCALAR	SCALAR	NOTHING	4
+setWaypointBehaviour	binary	ARRAY	STRING	NOTHING	4
+setWaypointCombatMode	binary	ARRAY	STRING	NOTHING	4
+setWaypointCompletionRadius	binary	ARRAY	SCALAR	NOTHING	4
+setWaypointDescription	binary	ARRAY	STRING	NOTHING	4
+setWaypointForceBehaviour	binary	ARRAY	BOOL	NOTHING	4
+setWaypointFormation	binary	ARRAY	STRING	NOTHING	4
+setWaypointHousePosition	binary	ARRAY	SCALAR	NOTHING	4
+setWaypointLoiterAltitude	binary	ARRAY	SCALAR	NOTHING	4
+setWaypointLoiterRadius	binary	ARRAY	SCALAR	NOTHING	4
+setWaypointLoiterType	binary	ARRAY	STRING	NOTHING	4
+setWaypointName	binary	ARRAY	STRING	NOTHING	4
+setWaypointPosition	binary	ARRAY	ARRAY	NOTHING	4
+setWaypointScript	binary	ARRAY	STRING	NOTHING	4
+setWaypointSpeed	binary	ARRAY	STRING	NOTHING	4
+setWaypointStatements	binary	ARRAY	ARRAY	NOTHING	4
+setWaypointTimeout	binary	ARRAY	ARRAY	NOTHING	4
+setWaypointType	binary	ARRAY	STRING	NOTHING	4
+setWaypointVisible	binary	ARRAY	BOOL	NOTHING	4
+setWeaponReloadingTime	binary	OBJECT	ARRAY	BOOL	4
+setWeaponZeroing	binary	OBJECT	ARRAY	BOOL	4
+setWind	unary		ARRAY	NOTHING
+setWindDir	binary	SCALAR	SCALAR	NOTHING	4
+setWindDir	unary		ARRAY	NOTHING
+setWindForce	binary	SCALAR	SCALAR	NOTHING	4
+setWindletParams	binary	OBJECT	ARRAY	BOOL	4
+setWindStr	binary	SCALAR	SCALAR	NOTHING	4
+setWingForceScaleRTD	binary	OBJECT	ARRAY	NOTHING	4
+setWPPos	binary	ARRAY	ARRAY	NOTHING	4
+show3DIcons	binary	CONTROL	BOOL	NOTHING	4
+showChat	unary		BOOL	NOTHING
+showCinemaBorder	unary		BOOL	NOTHING
+showCommandingMenu	unary		STRING	NOTHING
+showCompass	unary		BOOL	NOTHING
+showCuratorCompass	unary		BOOL	NOTHING
+showGps	unary		BOOL	NOTHING
+showHUD	unary		ARRAY	NOTHING
+showHUD	unary		BOOL	NOTHING
+showLegend	binary	CONTROL	BOOL	NOTHING	4
+showMap	unary		BOOL	NOTHING
+shownAction	nular			ARRAY
+shownArtilleryComputer	nular			BOOL
+shownChat	nular			BOOL
+shownCompass	nular			BOOL
+shownCuratorCompass	nular			BOOL
+showNewEditorObject	binary	CONTROL	ARRAY	ANY	4
+shownGps	nular			BOOL
+shownHUD	nular			ARRAY
+shownMap	nular			BOOL
+shownPad	nular			BOOL
+shownRadio	nular			BOOL
+shownScoretable	nular			SCALAR
+shownSubtitles	nular			BOOL
+shownUAVFeed	nular			BOOL
+shownWarrant	nular			BOOL
+shownWatch	nular			BOOL
+showPad	unary		BOOL	NOTHING
+showRadio	unary		BOOL	NOTHING
+showScoretable	unary		SCALAR	NOTHING
+showSubtitles	unary		BOOL	BOOL
+showUAVFeed	unary		BOOL	NOTHING
+showWarrant	unary		BOOL	NOTHING
+showWatch	unary		BOOL	NOTHING
+showWaypoint	binary	ARRAY	STRING	NOTHING	4
+showWaypoints	unary		BOOL	NOTHING
+side	unary		GROUP	SIDE
+side	unary		LOCATION	SIDE
+side	unary		OBJECT	SIDE
 sideAmbientLife	nular			SIDE
+sideChat	binary	ARRAY,OBJECT	STRING	NOTHING	4
 sideEmpty	nular			SIDE
 sideEnemy	nular			SIDE
 sideFriendly	nular			SIDE
 sideLogic	nular			SIDE
+sideRadio	binary	ARRAY,OBJECT	STRING	NOTHING	4
 sideUnknown	nular			SIDE
+simpleTasks	unary		OBJECT	ARRAY
+simulationEnabled	unary		OBJECT	BOOL
+simulCloudDensity	unary		ARRAY	SCALAR
+simulCloudOcclusion	unary		ARRAY	SCALAR
+simulInClouds	unary		ARRAY	BOOL
+SimulSetHumidity	unary		SCALAR	NOTHING
+simulWeatherSync	nular			NOTHING
 sin	unary		SCALAR	SCALAR
+size	unary		LOCATION	ARRAY
+sizeOf	unary		STRING	SCALAR
+skill	binary	OBJECT	STRING	SCALAR	4
+skill	unary		OBJECT	SCALAR
+skillFinal	binary	OBJECT	STRING	SCALAR	4
+skipTime	unary		SCALAR	NOTHING
 sleep	unary		SCALAR	NOTHING
-sort	binary	ARRAY	BOOL	NOTHING
-spawn	binary	ANY	CODE	SCRIPT
-splitString	binary	STRING	STRING	ARRAY
+sliderPosition	unary		CONTROL	SCALAR
+sliderPosition	unary		SCALAR	SCALAR
+sliderRange	unary		CONTROL	ARRAY
+sliderRange	unary		SCALAR	ARRAY
+sliderSetPosition	binary	CONTROL	SCALAR	NOTHING	4
+sliderSetPosition	unary		ARRAY	NOTHING
+sliderSetRange	binary	CONTROL	ARRAY	NOTHING	4
+sliderSetRange	unary		ARRAY	NOTHING
+sliderSetSpeed	binary	CONTROL	ARRAY	NOTHING	4
+sliderSetSpeed	unary		ARRAY	NOTHING
+sliderSpeed	unary		CONTROL	ARRAY
+sliderSpeed	unary		SCALAR	ARRAY
+slingLoadAssistantShown	nular			BOOL
+soldierMagazines	unary		OBJECT	ARRAY
+someAmmo	unary		OBJECT	BOOL
+sort	binary	ARRAY	BOOL	NOTHING	4
+soundParams	unary		SCALAR	ARRAY
+soundVolume	nular			SCALAR
+spawn	binary	ANY	CODE	SCRIPT	4
+spawn	unary		CODE	SCRIPT
+spawn	unary		STRING	SCRIPT
+speaker	unary		OBJECT	STRING
+speechVolume	nular			SCALAR
+speed	unary		OBJECT	SCALAR
+speedMode	unary		OBJECT,GROUP	STRING
+splitString	binary	STRING	STRING	ARRAY	4
 sqrt	unary		SCALAR	SCALAR
-step	binary	FOR	SCALAR	FOR
+squadParams	unary		OBJECT	ARRAY
+stance	unary		OBJECT	STRING
+startLoadingScreen	unary		ARRAY	NOTHING
+steamGameRecordingEvent	unary		ARRAY	STRING
+step	binary	FOR	SCALAR	FOR	4
+stop	binary	OBJECT	BOOL	NOTHING	4
+stopEngineRTD	unary		OBJECT	NOTHING
+stopped	unary		OBJECT	BOOL
+stopSound	unary		SCALAR	NOTHING
 str	unary		ANY	STRING
+sunOrMoon	nular			SCALAR
+supportInfo	unary		STRING	ARRAY
+suppressFor	binary	OBJECT	SCALAR	NOTHING	4
+surfaceIsWater	unary		ARRAY	BOOL
+surfaceNormal	unary		ARRAY	ARRAY
+surfaceTexture	unary		ARRAY	STRING
+surfaceType	unary		ARRAY	STRING
+swimInDepth	binary	OBJECT	SCALAR	NOTHING	4
 switch	unary		ANY	SWITCH
+switchableUnits	nular			ARRAY
+switchAction	binary	OBJECT	STRING	NOTHING	4
+switchCamera	binary	OBJECT	STRING	NOTHING	4
+switchCamera	unary		OBJECT	NOTHING
+switchGesture	binary	OBJECT	ARRAY	NOTHING	4
+switchGesture	binary	OBJECT	STRING	NOTHING	4
+switchLight	binary	OBJECT	STRING	NOTHING	4
+switchMove	binary	OBJECT	ARRAY	NOTHING	4
+switchMove	binary	OBJECT	STRING	NOTHING	4
+synchronizedObjects	unary		OBJECT	ARRAY
+synchronizedTriggers	unary		ARRAY	ARRAY
+synchronizedWaypoints	unary		ARRAY	ARRAY
+synchronizedWaypoints	unary		OBJECT	ARRAY
+synchronizeObjectsAdd	binary	OBJECT	ARRAY	NOTHING	4
+synchronizeObjectsRemove	binary	OBJECT	ARRAY	NOTHING	4
+synchronizeTrigger	binary	OBJECT	ARRAY	NOTHING	4
+synchronizeWaypoint	binary	ARRAY	ARRAY	NOTHING	4
+synchronizeWaypoint	binary	OBJECT	ARRAY	NOTHING	4
 systemChat	unary		STRING	NOTHING
+systemOfUnits	nular			SCALAR
+systemTime	nular			ARRAY
+systemTimeUTC	nular			ARRAY
 tan	unary		SCALAR	SCALAR
+targetKnowledge	binary	OBJECT	OBJECT	ARRAY	4
+targets	binary	GROUP	ARRAY	ARRAY	4
+targets	binary	OBJECT	ARRAY	ARRAY	4
+targetsAggregate	binary	ARRAY	ARRAY	ARRAY	4
+targetsQuery	binary	OBJECT	ARRAY	ARRAY	4
+taskAlwaysVisible	unary		TASK	BOOL
+taskChildren	unary		TASK	ARRAY
+taskCompleted	unary		TASK	BOOL
+taskCustomData	unary		TASK	ARRAY
+taskDescription	unary		TASK	ARRAY
+taskDestination	unary		TASK	ARRAY
+taskHint	unary		ARRAY	NOTHING
+taskMarkerOffset	unary		OBJECT	ARRAY
+taskName	unary		TASK	STRING
 taskNull	nular			TASK
+taskParent	unary		TASK	TASK
+taskResult	unary		TASK	ARRAY
+taskState	unary		TASK	STRING
+taskType	unary		TASK	STRING
+teamMember	unary		OBJECT	TEAM_MEMBER
 teamMemberNull	nular			TEAM_MEMBER
+teamName	unary		TEAM_MEMBER	STRING
+teams	nular			ARRAY
+teamSwitch	nular			NOTHING
+teamSwitchEnabled	nular			BOOL
+teamType	unary		TEAM_MEMBER	STRING
+terminate	binary	SCRIPT	ANY	NOTHING	4
+terminate	unary		SCALAR	NOTHING
 terminate	unary		SCRIPT	NOTHING
-then	binary	IF	ARRAY	ANY
-then	binary	IF	ARRAY,CODE	ANY
-then	binary	IF	CODE	ANY
-throw	binary	IF	ANY	NOTHING
+terrainIntersect	unary		ARRAY	BOOL
+terrainIntersectASL	unary		ARRAY	BOOL
+terrainIntersectAtASL	unary		ARRAY	ARRAY
+text	unary		LOCATION	STRING
+text	unary		STRING	TEXT
+textLog	unary		ANY	NOTHING
+textLogFormat	unary		ARRAY	NOTHING
+tg	unary		SCALAR	SCALAR
+then	binary	IF	ARRAY	ANY	4
+then	binary	IF	ARRAY,CODE	ANY	4
+then	binary	IF	CODE	ANY	4
+throw	binary	IF	ANY	NOTHING	4
 throw	unary		ANY	NOTHING
+throwables	unary		ARRAY,OBJECT	ARRAY
 time	nular			SCALAR
-to	binary	FOR	SCALAR	FOR
+timeMultiplier	nular			SCALAR
+titleCut	unary		ARRAY	NOTHING
+titleFadeOut	unary		SCALAR	NOTHING
+titleObj	unary		ARRAY	NOTHING
+titleRsc	unary		ARRAY	NOTHING
+titleText	unary		ARRAY	NOTHING
+to	binary	FOR	SCALAR	FOR	4
+toArray	binary	HASHMAP	BOOL	ARRAY	4
+toArray	unary		HASHMAP	ARRAY
 toArray	unary		STRING	ARRAY
-toFixed	binary	SCALAR	SCALAR	STRING
+toFixed	binary	SCALAR	SCALAR	STRING	4
+toFixed	unary		SCALAR	NOTHING
+toJSON	unary		ANY	STRING
 toLower	unary		STRING	STRING
+toLowerANSI	unary		STRING	STRING
 toString	unary		ARRAY	STRING
 toString	unary		CODE	STRING
 toUpper	unary		STRING	STRING
-trim	binary	STRING	ARRAY	STRING
+toUpperANSI	unary		STRING	STRING
+triggerActivated	unary		OBJECT	BOOL
+triggerActivation	unary		OBJECT	ARRAY
+triggerAmmo	unary		ARRAY,OBJECT	NOTHING
+triggerArea	unary		OBJECT	ARRAY
+triggerAttachedVehicle	unary		OBJECT	OBJECT
+triggerAttachObject	binary	OBJECT	SCALAR	NOTHING	4
+triggerAttachVehicle	binary	OBJECT	ARRAY	NOTHING	4
+triggerDynamicSimulation	binary	OBJECT	BOOL	NOTHING	4
+triggerInterval	unary		OBJECT	SCALAR
+triggerStatements	unary		OBJECT	ARRAY
+triggerText	unary		OBJECT	STRING
+triggerTimeout	unary		OBJECT	ARRAY
+triggerTimeoutCurrent	unary		OBJECT	SCALAR
+triggerType	unary		OBJECT	STRING
+trim	binary	STRING	ARRAY	STRING	4
 trim	unary		STRING	STRING
 true	nular			BOOL
+try	binary	ANY	CODE	EXCEPTION	4
 try	unary		CODE	EXCEPTION
+turretLocal	binary	OBJECT	ARRAY	BOOL	4
+turretOwner	binary	OBJECT	ARRAY	SCALAR	4
+turretUnit	binary	OBJECT	ARRAY	OBJECT	4
+tvAdd	binary	CONTROL	ARRAY	SCALAR	4
+tvAdd	unary		ARRAY	SCALAR
+tvClear	unary		CONTROL	NOTHING
+tvClear	unary		SCALAR	NOTHING
+tvCollapse	binary	CONTROL	ARRAY	NOTHING	4
+tvCollapse	unary		ARRAY	NOTHING
+tvCollapseAll	unary		CONTROL	NOTHING
+tvCollapseAll	unary		SCALAR	NOTHING
+tvCount	binary	CONTROL	ARRAY	SCALAR	4
+tvCount	unary		ARRAY	SCALAR
+tvCurSel	unary		CONTROL	ARRAY
+tvCurSel	unary		SCALAR	ARRAY
+tvData	binary	CONTROL	ARRAY	STRING	4
+tvData	unary		ARRAY	STRING
+tvDelete	binary	CONTROL	ARRAY	NOTHING	4
+tvDelete	unary		ARRAY	NOTHING
+tvExpand	binary	CONTROL	ARRAY	NOTHING	4
+tvExpand	unary		ARRAY	NOTHING
+tvExpandAll	unary		CONTROL	NOTHING
+tvExpandAll	unary		SCALAR	NOTHING
+tvIsSelected	binary	CONTROL	ARRAY	BOOL	4
+tvPicture	binary	CONTROL	ARRAY	STRING	4
+tvPicture	unary		ARRAY	STRING
+tvPictureRight	binary	CONTROL	ARRAY	STRING	4
+tvPictureRight	unary		ARRAY	STRING
+tvSelection	unary		CONTROL	ARRAY
+tvSetColor	binary	CONTROL	ARRAY	NOTHING	4
+tvSetCurSel	binary	CONTROL	ARRAY	NOTHING	4
+tvSetCurSel	unary		ARRAY	NOTHING
+tvSetData	binary	CONTROL	ARRAY	NOTHING	4
+tvSetData	unary		ARRAY	NOTHING
+tvSetPicture	binary	CONTROL	ARRAY	NOTHING	4
+tvSetPicture	unary		ARRAY	NOTHING
+tvSetPictureColor	binary	CONTROL	ARRAY	NOTHING	4
+tvSetPictureColor	unary		ARRAY	NOTHING
+tvSetPictureColorDisabled	binary	CONTROL	ARRAY	NOTHING	4
+tvSetPictureColorSelected	binary	CONTROL	ARRAY	NOTHING	4
+tvSetPictureRight	binary	CONTROL	ARRAY	NOTHING	4
+tvSetPictureRight	unary		ARRAY	NOTHING
+tvSetPictureRightColor	binary	CONTROL	ARRAY	NOTHING	4
+tvSetPictureRightColor	unary		ARRAY	NOTHING
+tvSetPictureRightColorDisabled	binary	CONTROL	ARRAY	NOTHING	4
+tvSetPictureRightColorSelected	binary	CONTROL	ARRAY	NOTHING	4
+tvSetSelectColor	binary	CONTROL	ARRAY	NOTHING	4
+tvSetSelected	binary	CONTROL	ARRAY	NOTHING	4
+tvSetText	binary	CONTROL	ARRAY	NOTHING	4
+tvSetText	unary		ARRAY	STRING
+tvSetTooltip	binary	CONTROL	ARRAY	NOTHING	4
+tvSetTooltip	unary		ARRAY	NOTHING
+tvSetValue	binary	CONTROL	ARRAY	NOTHING	4
+tvSetValue	unary		ARRAY	NOTHING
+tvSort	binary	CONTROL	ARRAY	NOTHING	4
+tvSort	unary		ARRAY	NOTHING
+tvSortAll	binary	CONTROL	ARRAY	NOTHING	4
+tvSortByValue	binary	CONTROL	ARRAY	NOTHING	4
+tvSortByValue	unary		ARRAY	NOTHING
+tvSortByValueAll	binary	CONTROL	ARRAY	NOTHING	4
+tvText	binary	CONTROL	ARRAY	STRING	4
+tvText	unary		ARRAY	STRING
+tvTooltip	binary	CONTROL	ARRAY	STRING	4
+tvTooltip	unary		ARRAY	STRING
+tvValue	binary	CONTROL	ARRAY	SCALAR	4
+tvValue	unary		ARRAY	SCALAR
+type	unary		LOCATION	STRING
+type	unary		TASK	STRING
 typeName	unary		ANY	STRING
+typeOf	unary		ANY	STRING
+UAVControl	unary		ARRAY,OBJECT	ARRAY
 uiNamespace	nular			NAMESPACE
 uiSleep	unary		SCALAR	NOTHING
+uiTime	nular			SCALAR
+unassignCurator	unary		OBJECT	NOTHING
+unassignItem	binary	OBJECT	STRING	NOTHING	4
+unassignTeam	unary		OBJECT	NOTHING
+unassignVehicle	unary		OBJECT	NOTHING
+unban	unary		SCALAR,STRING	NOTHING
+underwater	unary		OBJECT	BOOL
+uniform	unary		OBJECT	STRING
+uniformContainer	unary		OBJECT	OBJECT
+uniformItems	unary		OBJECT	ARRAY
+uniformMagazines	unary		OBJECT	ARRAY
+uniqueUnitItems	unary		ARRAY,OBJECT	HASHMAP
+unitAddons	unary		STRING	ARRAY
+unitAimPosition	unary		OBJECT	ARRAY
+unitAimPositionVisual	unary		OBJECT	ARRAY
+unitBackpack	unary		OBJECT	OBJECT
+unitCombatMode	unary		OBJECT	STRING
+unitIsUAV	unary		OBJECT	BOOL
+unitPos	unary		OBJECT	STRING
+unitReady	unary		ARRAY,OBJECT	BOOL
+unitRecoilCoefficient	unary		OBJECT	SCALAR
+units	unary		GROUP	ARRAY
+units	unary		OBJECT	ARRAY
+units	unary		SIDE	ANY
+unitsBelowHeight	binary	ARRAY	SCALAR	ARRAY	4
+unitsBelowHeight	binary	GROUP	SCALAR	ARRAY	4
+unitTurret	binary	OBJECT	OBJECT	ARRAY	4
+unkick	unary		SCALAR,STRING	NOTHING
+unlinkItem	binary	OBJECT	STRING	NOTHING	4
+unlockAchievement	unary		STRING	BOOL
+unregisterTask	binary	TEAM_MEMBER	STRING	BOOL	4
+updateDrawIcon	binary	CONTROL	ARRAY	NOTHING	4
+updateMenuItem	binary	CONTROL	ARRAY	NOTHING	4
+updateObjectTree	unary		CONTROL	NOTHING
+useAIOperMapObstructionTest	unary		BOOL	NOTHING
+useAISteeringComponent	binary	OBJECT	BOOL	NOTHING	4
+useAISteeringComponent	unary		BOOL	NOTHING
+useAudioTimeForMoves	binary	OBJECT	BOOL	NOTHING	4
+userInputDisabled	nular			BOOL
+users	nular			ARRAY
+values	unary		HASHMAP	ARRAY
+vectorAdd	binary	ARRAY	ARRAY	ARRAY	4
+vectorCos	binary	ARRAY	ARRAY	SCALAR	4
+vectorCrossProduct	binary	ARRAY	ARRAY	ARRAY	4
+vectorDiff	binary	ARRAY	ARRAY	ARRAY	4
+vectorDir	unary		OBJECT	ARRAY
+vectorDirVisual	unary		OBJECT	ARRAY
+vectorDistance	binary	ARRAY	ARRAY	SCALAR	4
+vectorDistanceSqr	binary	ARRAY	ARRAY	SCALAR	4
+vectorDotProduct	binary	ARRAY	ARRAY	SCALAR	4
+vectorFromTo	binary	ARRAY	ARRAY	ARRAY	4
+vectorLinearConversion	unary		ARRAY	ARRAY
+vectorMagnitude	unary		ARRAY	SCALAR
+vectorMagnitudeSqr	unary		ARRAY	SCALAR
+vectorModelToWorld	binary	OBJECT	ARRAY	ARRAY	4
+vectorModelToWorldVisual	binary	OBJECT	ARRAY	ARRAY	4
+vectorMultiply	binary	ARRAY	SCALAR	ARRAY	4
+vectorMultiply	binary	ARRAY	SCALAR,ARRAY	ARRAY	4
+vectorNormalized	unary		ARRAY	ARRAY
+vectorSide	unary		OBJECT	ARRAY
+vectorSideVisual	unary		OBJECT	ARRAY
+vectorUp	unary		OBJECT	ARRAY
+vectorUpVisual	unary		OBJECT	ARRAY
+vectorWorldToModel	binary	OBJECT	ARRAY	ARRAY	4
+vectorWorldToModelVisual	binary	OBJECT	ARRAY	ARRAY	4
+vehicle	unary		OBJECT	OBJECT
+vehicleCargoEnabled	unary		OBJECT	BOOL
+vehicleChat	binary	OBJECT	STRING	NOTHING	4
+vehicleMoveInfo	unary		OBJECT	ARRAY
+vehicleRadio	binary	OBJECT	STRING	NOTHING	4
+vehicleReceiveRemoteTargets	unary		OBJECT	BOOL
+vehicleReportOwnPosition	unary		OBJECT	BOOL
+vehicleReportRemoteTargets	unary		OBJECT	BOOL
+vehicles	nular			ARRAY
+vehicleVarName	unary		OBJECT	STRING
+velocity	unary		OBJECT	ARRAY
+velocityModelSpace	unary		OBJECT	ARRAY
+verifySignature	unary		STRING	BOOL
+vest	unary		OBJECT	STRING
+vestContainer	unary		OBJECT	OBJECT
+vestItems	unary		OBJECT	ARRAY
+vestMagazines	unary		OBJECT	ARRAY
+viewDistance	nular			SCALAR
+visibleCompass	nular			BOOL
+visibleGps	nular			BOOL
+visibleMap	nular			BOOL
+visiblePosition	unary		OBJECT	ARRAY
+visiblePositionASL	unary		OBJECT	ARRAY
+visibleScoretable	nular			BOOL
+visibleWatch	nular			BOOL
+waitUntil	unary		ANY	ANY
 waitUntil	unary		CODE	NOTHING
+waterDamaged	unary		OBJECT	BOOL
+waves	nular			SCALAR
+waypointAttachedObject	unary		ARRAY	OBJECT
+waypointAttachedVehicle	unary		ARRAY	OBJECT
+waypointAttachObject	binary	ARRAY	SCALAR,OBJECT	NOTHING	4
+waypointAttachVehicle	binary	ARRAY	OBJECT	NOTHING	4
+waypointBehaviour	unary		ARRAY	STRING
+waypointCombatMode	unary		ARRAY	STRING
+waypointCompletionRadius	unary		ARRAY	SCALAR
+waypointDescription	unary		ARRAY	STRING
+waypointForceBehaviour	unary		ARRAY	BOOL
+waypointFormation	unary		ARRAY	STRING
+waypointHousePosition	unary		ARRAY	SCALAR
+waypointLoiterAltitude	unary		ARRAY	SCALAR
+waypointLoiterRadius	unary		ARRAY	SCALAR
+waypointLoiterType	unary		ARRAY	STRING
+waypointName	unary		ARRAY	STRING
+waypointPosition	unary		ARRAY	ARRAY
+waypoints	unary		OBJECT,GROUP	ARRAY
+waypointScript	unary		ARRAY	STRING
+waypointsEnabledUAV	unary		OBJECT	BOOL
+waypointShow	unary		ARRAY	STRING
+waypointSpeed	unary		ARRAY	STRING
+waypointStatements	unary		ARRAY	ARRAY
+waypointTimeout	unary		ARRAY	ARRAY
+waypointTimeoutCurrent	unary		GROUP	SCALAR
+waypointType	unary		ARRAY	STRING
+waypointVisible	unary		ARRAY	SCALAR
+weaponAccessories	binary	OBJECT	STRING	ARRAY	4
+weaponAccessoriesCargo	binary	OBJECT	ARRAY	ARRAY	4
+weaponCargo	unary		OBJECT	ARRAY
+weaponDirection	binary	OBJECT	STRING	ARRAY	4
+weaponDisassemblyEnabled	unary		OBJECT	BOOL
+weaponInertia	unary		OBJECT	ARRAY
+weaponLowered	unary		OBJECT	BOOL
+weaponReloadingTime	binary	OBJECT	ARRAY	SCALAR	4
+weapons	unary		OBJECT	ARRAY
+weaponsInfo	binary	OBJECT	ARRAY	ARRAY	4
+weaponsItems	unary		ARRAY,OBJECT	ARRAY
+weaponsItemsCargo	unary		ARRAY,OBJECT	ARRAY
+weaponState	binary	OBJECT	STRING	ARRAY	4
+weaponState	unary		ARRAY	ARRAY
+weaponState	unary		OBJECT	ARRAY
+weaponsTurret	binary	OBJECT	ARRAY	ARRAY	4
+weightRTD	unary		OBJECT	ARRAY
 west	nular			SIDE
+WFSideText	unary		GROUP	STRING
+WFSideText	unary		OBJECT	STRING
+WFSideText	unary		SIDE	STRING
 while	unary		CODE	WHILE
+wind	nular			ARRAY
+windDir	nular			SCALAR
+windRTD	nular			ARRAY
+windStr	nular			SCALAR
+wingsForcesRTD	unary		OBJECT	ARRAY
 with	unary		NAMESPACE	WITH
-||	binary	BOOL	BOOL	BOOL
-||	binary	BOOL	BOOL,CODE	BOOL
-||	binary	BOOL	CODE	BOOL
+worldName	nular			STRING
+worldSize	nular			SCALAR
+worldToModel	binary	OBJECT	ARRAY	ARRAY	4
+worldToModelVisual	binary	OBJECT	ARRAY	ARRAY	4
+worldToScreen	binary	OBJECT	ARRAY	ARRAY	4
+worldToScreen	unary		ARRAY	ARRAY
+||	binary	BOOL	BOOL	BOOL	1
+||	binary	BOOL	BOOL,CODE	BOOL	1
+||	binary	BOOL	CODE	BOOL	1

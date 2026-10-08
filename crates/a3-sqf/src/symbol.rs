@@ -23,17 +23,45 @@ struct Interner {
     names: Vec<&'static str>,
 }
 
+/// Names the VM sets itself, interned first so they have fixed ids.
+const WELL_KNOWN: [&str; 6] = [
+    "_this",
+    "_x",
+    "_y",
+    "_foreachindex",
+    "_exception",
+    "_thisscript",
+];
+
 fn interner() -> &'static RwLock<Interner> {
     static INTERNER: OnceLock<RwLock<Interner>> = OnceLock::new();
     INTERNER.get_or_init(|| {
-        RwLock::new(Interner {
+        let mut i = Interner {
             map: HashMap::new(),
             names: Vec::new(),
-        })
+        };
+        for (n, name) in WELL_KNOWN.iter().enumerate() {
+            i.names.push(name);
+            i.map.insert(name, n as u32 | LOCAL_BIT);
+        }
+        RwLock::new(i)
     })
 }
 
 impl Sym {
+    /// `_this`.
+    pub const THIS: Sym = Sym(LOCAL_BIT);
+    /// `_x`.
+    pub const X: Sym = Sym(1 | LOCAL_BIT);
+    /// `_y`.
+    pub const Y: Sym = Sym(2 | LOCAL_BIT);
+    /// `_forEachIndex`.
+    pub const FOR_EACH_INDEX: Sym = Sym(3 | LOCAL_BIT);
+    /// `_exception`.
+    pub const EXCEPTION: Sym = Sym(4 | LOCAL_BIT);
+    /// `_thisScript`.
+    pub const THIS_SCRIPT: Sym = Sym(5 | LOCAL_BIT);
+
     /// Interns `name`, ignoring ASCII case.
     pub fn new(name: &str) -> Sym {
         let lower_owned;
@@ -98,5 +126,12 @@ mod tests {
         assert_eq!(Sym::new("Foo").as_str(), "foo");
         assert!(Sym::new("_a").is_local());
         assert!(!Sym::new("a").is_local());
+    }
+
+    #[test]
+    fn well_known_names_have_fixed_ids() {
+        assert_eq!(Sym::new("_this"), Sym::THIS);
+        assert_eq!(Sym::FOR_EACH_INDEX, Sym::FOR_EACH_INDEX);
+        assert_eq!(Sym::THIS_SCRIPT.as_str(), "_thisscript");
     }
 }

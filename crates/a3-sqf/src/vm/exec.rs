@@ -33,6 +33,8 @@ pub(crate) struct CodeFrame {
     pub switch: Option<Rc<SwitchState>>,
     /// New variables assigned here are created in the enclosing scope.
     pub transparent: bool,
+    /// `privateAll`: locals of enclosing scopes are invisible from here.
+    pub private_all: bool,
 }
 
 pub(crate) enum Frame<H: Host> {
@@ -100,8 +102,7 @@ impl<H: Host> ScriptState<H> {
         let mut inv = Invoke::new(code);
         inv.this = Some(this.unwrap_or(Value::Nil));
         if scheduled {
-            inv.locals
-                .push((Sym::new("_thisScript"), Value::Script(handle)));
+            inv.locals.push((Sym::THIS_SCRIPT, Value::Script(handle)));
         }
         s.push_code(inv, namespace);
         s
@@ -121,11 +122,10 @@ impl<H: Host> ScriptState<H> {
     }
 
     pub fn push_code(&mut self, inv: Invoke, namespace: Namespace) {
-        let mut locals = Vec::with_capacity(inv.locals.len() + 1);
+        let mut locals = inv.locals;
         if let Some(this) = inv.this {
-            locals.push((Sym::new("_this"), this));
+            locals.push((Sym::THIS, this));
         }
-        locals.extend(inv.locals);
         self.frames.push(Frame::Code(CodeFrame {
             code: inv.code,
             ip: 0,
@@ -135,6 +135,7 @@ impl<H: Host> ScriptState<H> {
             namespace: inv.namespace.unwrap_or(namespace),
             switch: inv.switch,
             transparent: inv.transparent,
+            private_all: false,
         }));
     }
 
@@ -182,6 +183,27 @@ impl<H: Host> ScriptState<H> {
                 if let Some((_, v)) = cf.locals.iter().rev().find(|(s, _)| *s == name) {
                     return Some(v);
                 }
+                if cf.private_all {
+                    break;
+                }
+            }
+        }
+        None
+    }
+
+    /// Looks a local variable up through all scopes, ignoring `privateAll`
+    /// barriers (`import`). The current scope is skipped.
+    pub fn get_local_through_barrier(&self, name: Sym) -> Option<&Value> {
+        let mut seen_current = false;
+        for f in self.frames.iter().rev() {
+            if let Frame::Code(cf) = f {
+                if !seen_current {
+                    seen_current = true;
+                    continue;
+                }
+                if let Some((_, v)) = cf.locals.iter().rev().find(|(s, _)| *s == name) {
+                    return Some(v);
+                }
             }
         }
         None
@@ -195,6 +217,9 @@ impl<H: Host> ScriptState<H> {
                 if let Some(slot) = cf.locals.iter_mut().rev().find(|(s, _)| *s == name) {
                     slot.1 = value;
                     return;
+                }
+                if cf.private_all {
+                    break;
                 }
             }
         }
@@ -630,15 +655,19 @@ fn unwind<H: Host>(
                 None,
             )
         }
-        Unwind::Break => {
+        Unwind::Break | Unwind::BreakWith(_) => {
+            let value = match u {
+                Unwind::BreakWith(v) => v,
+                _ => Value::Nothing,
+            };
             while let Some(f) = script.pop_frame() {
                 if let Frame::Native(cont) = &f {
                     if cont.kind() == ContinuationKind::Loop {
-                        return Next::Deliver(Value::Nothing, false);
+                        return Next::Deliver(value, false);
                     }
                 }
             }
-            Next::Finish(Value::Nothing)
+            Next::Finish(value)
         }
         Unwind::Continue(v) => loop {
             match script.frames.last() {

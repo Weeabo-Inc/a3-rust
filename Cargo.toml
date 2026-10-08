@@ -60,6 +60,12 @@ clap = { version = "4", features = ["derive", "env"] }
 # Collections
 indexmap = "2"
 
+# Text
+fancy-regex = "0.14"
+
+# Benchmarks
+criterion = { version = "0.5", default-features = false }
+
 # Engine core: window, input, rendering
 a3-input = { path = "crates/a3-input" }
 a3-platform = { path = "crates/a3-platform" }

@@ -174,17 +174,18 @@ impl Parser<'_> {
                 }));
             }
         }
-        // name = value
+        // `0 = value`: shipped scripts assign to a number literal to discard
+        // a result (`0 = [] spawn {...}`); the engine accepts it.
+        if matches!(self.peek(), TokenKind::Number(_)) && self.peek_at(1) == &TokenKind::Assign {
+            self.advance();
+            self.advance();
+            return Ok(Statement::Expr(self.expression(0)?));
+        }
+        // name = value. A command name on the left compiles too: the shipped
+        // main menu script assigns `pixelGrid = 16` as a fallback for old
+        // executables.
         if self.is_ident(0) && self.peek_at(1) == &TokenKind::Assign {
             let name = self.text_of(self.pos).to_string();
-            if !name.starts_with('_')
-                && self.table.lookup(&name).is_some_and(|id| {
-                    let info = self.table.get(id);
-                    info.nular.is_some() || !info.unary.is_empty() || !info.binary.is_empty()
-                })
-            {
-                return Err(CompileError::new("Reserved variable in expression", start));
-            }
             self.advance();
             self.advance();
             let value = self.expression(0)?;

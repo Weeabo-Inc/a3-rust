@@ -100,12 +100,12 @@ impl Loop {
         let Some(x) = self.current() else {
             return Ok(Flow::Value(self.finish()));
         };
-        let mut inv = Invoke::new(self.body.clone()).local(Sym::new("_x"), x);
+        let mut inv = Invoke::new(self.body.clone()).local(Sym::X, x);
         if let LoopItems::Map(m) = &self.items {
-            inv = inv.local(Sym::new("_y"), m[self.index].1.clone());
+            inv = inv.local(Sym::Y, m[self.index].1.clone());
         }
         if self.mode == LoopMode::ForEach {
-            inv = inv.local(Sym::new("_forEachIndex"), Value::Number(self.index as f32));
+            inv = inv.local(Sym::FOR_EACH_INDEX, Value::Number(self.index as f32));
         }
         Ok(Flow::Call(inv))
     }
@@ -331,7 +331,7 @@ impl<H: Host> Continuation<H> for TryCatch {
     fn catch(&mut self, _: &mut Ctx<'_, H>, exception: Value) -> Result<Flow<H>, SqfError> {
         self.catching = true;
         Ok(Flow::Call(
-            Invoke::new(self.catch.clone()).local(Sym::new("_exception"), exception),
+            Invoke::new(self.catch.clone()).local(Sym::EXCEPTION, exception),
         ))
     }
 }

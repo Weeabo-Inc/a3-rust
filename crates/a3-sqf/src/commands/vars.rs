@@ -98,12 +98,12 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
     });
 
     r.unary("params", ARR, BOOL, |ctx, a| {
-        let this = ctx.get_var(Sym::new("_this"));
+        let this = ctx.get_var(Sym::THIS);
         params(ctx, this, &a)
     });
     r.binary("params", ANY, ARR, BOOL, |ctx, a, b| params(ctx, a, &b));
     r.unary("param", ARR, ANY, |ctx, a| {
-        let this = ctx.get_var(Sym::new("_this"));
+        let this = ctx.get_var(Sym::THIS);
         param(ctx, this, &a)
     });
     r.binary("param", ANY, ARR, ANY, |ctx, a, b| param(ctx, a, &b));

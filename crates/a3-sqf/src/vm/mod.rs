@@ -270,6 +270,11 @@ impl<H: Host> Ctx<'_, H> {
         self.script.set_private(name, value);
     }
 
+    /// A local of an enclosing scope, ignoring `privateAll` (`import`).
+    pub fn get_local_through_barrier(&self, name: Sym) -> Option<Value> {
+        self.script.get_local_through_barrier(name).cloned()
+    }
+
     /// Whether a local variable is defined in any enclosing scope.
     pub fn local_exists(&self, name: Sym) -> bool {
         self.script.get_local(name).is_some()
@@ -307,6 +312,20 @@ impl<H: Host> Ctx<'_, H> {
 
     pub fn set_script_name(&mut self, name: &str) {
         self.script.name = Some(name.into());
+    }
+
+    /// Hides the locals of enclosing scopes from the current scope
+    /// (`privateAll`).
+    pub fn set_private_all(&mut self) {
+        if let Some(cf) = self.script.top_code_mut() {
+            cf.private_all = true;
+        }
+    }
+
+    /// Names of the scheduled scripts (`diag_activeSQFScripts`), as
+    /// `(handle, name)`.
+    pub fn scheduled_scripts(&self) -> Vec<(ScriptHandle, Option<Rc<str>>)> {
+        self.vm.scheduler.scripts_info()
     }
 
     /// Names the current scope (`scopeName`).
