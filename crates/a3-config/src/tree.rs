@@ -19,7 +19,7 @@
 use std::collections::HashMap;
 use std::ops::Shr;
 
-use crate::{Config, ConfigClass, EntryKind, Value, text::parse_number};
+use crate::{Config, ConfigClass, Entry, EntryKind, Value, text::parse_number};
 
 /// Index of a node in a [`ConfigTree`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -404,6 +404,16 @@ fn new_class(body: &ConfigClass) -> NodeKind {
     })
 }
 
+/// How [`ConfigRef::export`] turns part of the merged tree back into a [`Config`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExportMode {
+    /// Own entries only, as left by patching: declared bases, `class X;` placeholders and
+    /// unresolved `+=` appends are kept.
+    Merged,
+    /// Inheritance flattened: own and inherited entries, `+=` applied, no bases.
+    Resolved,
+}
+
 /// A config entry reached by a path from the root, like an SQF `Config` value.
 ///
 /// The access path is kept: an inherited subclass reached through a derived class reports the
@@ -603,6 +613,71 @@ impl<'a> ConfigRef<'a> {
                 }
             })
             .collect()
+    }
+
+    /// This entry (a class with its subtree, or a value) as a standalone [`Config`] that
+    /// [`crate::write_text`] can print. The root exports as its entries. `None` for null.
+    pub fn export(&self, mode: ExportMode) -> Option<Config> {
+        let id = self.id()?;
+        if self.path.len() == 1 {
+            let mut root = self.export_class(id, mode, 0);
+            root.base = None;
+            return Some(Config {
+                root,
+                enums: Vec::new(),
+            });
+        }
+        let entry = self.export_entry(id, mode, 0)?;
+        Some(Config {
+            root: ConfigClass {
+                base: None,
+                entries: vec![entry],
+            },
+            enums: Vec::new(),
+        })
+    }
+
+    fn export_entry(&self, id: NodeId, mode: ExportMode, depth: usize) -> Option<Entry> {
+        let tree = self.tree;
+        let node = tree.node(id);
+        let kind = match (&node.kind, mode) {
+            (NodeKind::Class(c), ExportMode::Merged) if c.external => EntryKind::External,
+            (NodeKind::Class(_), _) => EntryKind::Class(self.export_class(id, mode, depth + 1)),
+            (NodeKind::ArrayAppend(items), ExportMode::Merged) => {
+                EntryKind::ArrayAppend(items.clone())
+            }
+            (_, _) => EntryKind::Value(tree.value_of(id)?),
+        };
+        Some(Entry::new(node.name.clone(), kind))
+    }
+
+    fn export_class(&self, id: NodeId, mode: ExportMode, depth: usize) -> ConfigClass {
+        let tree = self.tree;
+        // Inherited subclasses can nest without bound in a malformed config.
+        if depth > MAX_CHAIN {
+            return ConfigClass::default();
+        }
+        match mode {
+            ExportMode::Merged => {
+                let class = tree.class(id).expect("class");
+                ConfigClass {
+                    base: class.base.clone(),
+                    entries: class
+                        .entries
+                        .iter()
+                        .filter_map(|&e| self.export_entry(e, mode, depth))
+                        .collect(),
+                }
+            }
+            ExportMode::Resolved => ConfigClass {
+                base: None,
+                entries: ConfigRef::at(tree, id)
+                    .entries_with_inherited()
+                    .iter()
+                    .filter_map(|e| self.export_entry(e.id()?, mode, depth))
+                    .collect(),
+            },
+        }
     }
 
     /// Own and inherited entries (`configProperties` with inheritance): own entries first, then

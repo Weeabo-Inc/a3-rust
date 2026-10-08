@@ -1,6 +1,6 @@
 //! Merged config tree: patching across addons, inheritance and the query API.
 
-use a3_config::{ConfigTree, Value, parse_text};
+use a3_config::{ConfigTree, ExportMode, Value, parse_text, write_text};
 
 fn tree(sources: &[&str]) -> ConfigTree {
     let mut tree = ConfigTree::new();
@@ -203,4 +203,37 @@ fn value_accessors_follow_engine_coercions() {
 fn base_cycles_do_not_hang() {
     let t = tree(&["class A: B { }; class B: A { };"]);
     assert!((t.root() >> "A" >> "x").is_null());
+}
+
+fn exported(t: &ConfigTree, path: &[&str], mode: ExportMode) -> String {
+    let mut c = t.root();
+    for p in path {
+        c = c.get(p);
+    }
+    write_text(&c.export(mode).expect("entry exists"))
+}
+
+#[test]
+fn export_merged_shows_own_entries_as_patched() {
+    let t = tree(&[
+        "class A { x = 1; class S { y = 1; }; }; class B: A { z = 2; list[] += {3}; class Ext; };",
+        "class B: A { z = 4; };",
+    ]);
+    assert_eq!(
+        exported(&t, &["B"], ExportMode::Merged),
+        "class B: A\n{\n    z = 4;\n    list[] += {3};\n    class Ext;\n};\n"
+    );
+}
+
+#[test]
+fn export_resolved_flattens_inheritance() {
+    let t = tree(&[
+        "class A { x = 1; list[] = {1}; class S { y = 1; }; }; class B: A { z = 2; list[] += {3}; };",
+    ]);
+    assert_eq!(
+        exported(&t, &["B"], ExportMode::Resolved),
+        "class B\n{\n    z = 2;\n    list[] = {1, 3};\n    x = 1;\n    class S\n    {\n        y = 1;\n    };\n};\n"
+    );
+    assert_eq!(exported(&t, &["B", "x"], ExportMode::Resolved), "x = 1;\n");
+    assert!(t.root().get("nope").export(ExportMode::Merged).is_none());
 }

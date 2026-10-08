@@ -19,4 +19,4 @@ pub use model::{Config, ConfigClass, Entry, EntryKind, EnumEntry, Value};
 pub use order::{AddonPatches, LoadOrder, load_order};
 pub use rap::{RapError, is_rap, read_rap, write_rap};
 pub use text::{ParseError, parse_text, write_text};
-pub use tree::{ConfigRef, ConfigTree};
+pub use tree::{ConfigRef, ConfigTree, ExportMode};

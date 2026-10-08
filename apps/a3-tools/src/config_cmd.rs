@@ -22,6 +22,24 @@ pub enum ConfigCommand {
         /// Rapified output file.
         output: PathBuf,
     },
+    /// Load the game's merged config and print one class or entry as config text.
+    Dump {
+        /// Path below the root, e.g. `CfgVehicles/B_Soldier_F` (`/`, `\` or `>>` separated);
+        /// the whole config when omitted.
+        path: Option<String>,
+        /// Flatten inheritance: include inherited entries and apply `+=`.
+        #[arg(long)]
+        resolved: bool,
+        /// Game install folder.
+        #[arg(long, env = "A3_ROOT")]
+        game_dir: PathBuf,
+        /// Mod folder to load after the game, in order; repeatable.
+        #[arg(long = "mod", value_name = "DIR")]
+        mods: Vec<PathBuf>,
+        /// Also load every optional DLC and `@mod` folder found in the game folder.
+        #[arg(long)]
+        all_mods: bool,
+    },
 }
 
 pub fn run(cmd: ConfigCommand) -> anyhow::Result<()> {
@@ -39,7 +57,64 @@ pub fn run(cmd: ConfigCommand) -> anyhow::Result<()> {
             }
         }
         ConfigCommand::Rap { input, output } => rap_file(&input, &output),
+        ConfigCommand::Dump {
+            path,
+            resolved,
+            game_dir,
+            mods,
+            all_mods,
+        } => {
+            let options = a3_gamedata::LoadOptions::new(game_dir)
+                .with_mods(mods)
+                .with_optional_mods(all_mods);
+            let data = a3_gamedata::GameData::load(&options)?;
+            let r = &data.report;
+            eprintln!(
+                "loaded {} PBOs, {} addon configs in {:.2?} ({} config errors, {} missing \
+                 requirements)",
+                r.mount.pbos,
+                data.addons.len(),
+                r.timings.total,
+                r.config_errors.len(),
+                r.missing_requirements.len()
+            );
+            print!(
+                "{}",
+                dump(&data.config, path.as_deref().unwrap_or(""), resolved)?
+            );
+            Ok(())
+        }
     }
+}
+
+/// The entry at `path` (components separated by `/`, `\` or `>>`) as config text, preceded by
+/// comments giving its full path and base chain.
+pub fn dump(config: &a3_config::ConfigTree, path: &str, resolved: bool) -> anyhow::Result<String> {
+    let mut entry = config.root();
+    let normalized = path.replace(">>", "/").replace('\\', "/");
+    for part in normalized.split('/').map(|p| p.trim().trim_matches('"')) {
+        if part.is_empty() {
+            continue;
+        }
+        let next = entry.get(part);
+        if next.is_null() {
+            bail!("no entry {part:?} in {}", entry.path_string());
+        }
+        entry = next;
+    }
+    let mode = if resolved {
+        a3_config::ExportMode::Resolved
+    } else {
+        a3_config::ExportMode::Merged
+    };
+    let mut out = format!("// {}\n", entry.path_string());
+    let bases: Vec<&str> = entry.bases().iter().map(|b| b.name()).collect();
+    if !bases.is_empty() {
+        out.push_str(&format!("// inherits: {}\n", bases.join(" -> ")));
+    }
+    let exported = entry.export(mode).expect("entry is not null");
+    out.push_str(&a3_config::write_text(&exported));
+    Ok(out)
 }
 
 fn derap_file(input: &Path) -> anyhow::Result<String> {
@@ -100,6 +175,29 @@ mod tests {
             "class CfgPatches\n{\n    class X\n    {\n        units[] = {\"a\"};\n    };\n};\n"
         );
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    fn tree(src: &str) -> a3_config::ConfigTree {
+        a3_config::ConfigTree::from_config(&a3_config::parse_text(src).unwrap())
+    }
+
+    #[test]
+    fn dump_prints_the_merged_class_or_its_resolved_form() {
+        let t = tree("class Cfg { class A { x = 1; }; class B: A { y = 2; }; };");
+        assert_eq!(
+            dump(&t, "Cfg/B", false).unwrap(),
+            "// bin\\config.bin/Cfg/B\n// inherits: A\nclass B: A\n{\n    y = 2;\n};\n"
+        );
+        assert_eq!(
+            dump(&t, r#"cfg >> "b""#, true).unwrap(),
+            "// bin\\config.bin/Cfg/B\n// inherits: A\nclass B\n{\n    y = 2;\n    x = 1;\n};\n"
+        );
+        assert_eq!(
+            dump(&t, r"Cfg\B\x", true).unwrap(),
+            "// bin\\config.bin/Cfg/B/x\nx = 1;\n"
+        );
+        let err = dump(&t, "Cfg/Nope/x", false).unwrap_err();
+        assert!(err.to_string().contains("\"Nope\""), "{err}");
     }
 
     #[test]
