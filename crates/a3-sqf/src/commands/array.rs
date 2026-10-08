@@ -2,9 +2,9 @@
 //! `append`, `resize`, `reverse`, `sort`, `deleteAt`, `deleteRange` and
 //! `insert` modify the array in place.
 //!
-//! `select` with an index past the end raises "Zero divisor" (an index
-//! equal to the size returns `nil`), as the engine does; `#` returns `nil`
-//! for any index out of range.
+//! `select` and `#` with an index past the end raise "N elements provided,
+//! M expected" (an index equal to the size returns `nil`); negative indices
+//! count from the end. A `[start, count]` range outside the array is empty.
 
 use std::cmp::Ordering;
 
@@ -16,6 +16,27 @@ fn element_at(a: &Value, i: i64) -> Option<Value> {
         return None;
     }
     array(a).borrow().get(i as usize).cloned()
+}
+
+/// `array select index` and `array # index`: a negative index counts from
+/// the end; an index equal to the size gives nil; anything further out is
+/// the engine's "N elements provided, M expected" error.
+fn select_index(a: &Value, b: &Value) -> Result<Value, SqfError> {
+    let len = array(a).len() as i64;
+    let mut i = index(num(b));
+    if i < 0 {
+        i += len;
+    }
+    if i < 0 || i >= len {
+        if i == len {
+            return Ok(Value::Nil);
+        }
+        return Err(SqfError::generic(format!(
+            "{len} elements provided, {} expected",
+            i + 1
+        )));
+    }
+    Ok(element_at(a, i).unwrap_or(Value::Nil))
 }
 
 fn check_not_self(target: &Array, v: &Value) -> Result<(), SqfError> {
@@ -31,14 +52,7 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
     r.unary("count", ARR, NUM, |_, a| {
         Ok(Value::Number(array(&a).len() as f32))
     });
-    r.binary("select", ARR, NUM, ANY, |_, a, b| {
-        let i = index(num(&b));
-        let len = array(&a).len() as i64;
-        if i < 0 || i > len {
-            return Err(SqfError::ZeroDivisor);
-        }
-        Ok(element_at(&a, i).unwrap_or(Value::Nil))
-    });
+    r.binary("select", ARR, NUM, ANY, |_, a, b| select_index(&a, &b));
     r.binary("select", ARR, BOOL, ANY, |_, a, b| {
         Ok(element_at(&a, i64::from(boolean(&b))).unwrap_or(Value::Nil))
     });
@@ -48,20 +62,18 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         let items = array(&a);
         let items = items.borrow();
         let start = args.first().map(|v| index(num(v))).unwrap_or(0);
-        if start < 0 || start as usize > items.len() {
-            return Err(SqfError::ZeroDivisor);
+        if start < 0 || start as usize >= items.len() {
+            return Ok(Value::array([]));
         }
         let start = start as usize;
         let count = args
             .get(1)
-            .map(|v| num(v).max(0.0) as usize)
+            .map(|v| index(num(v)).max(0) as usize)
             .unwrap_or(usize::MAX);
         let end = start.saturating_add(count).min(items.len());
         Ok(Value::array(items[start..end].iter().cloned()))
     });
-    r.binary("#", ARR, NUM, ANY, |_, a, b| {
-        Ok(element_at(&a, index(num(&b))).unwrap_or(Value::Nil))
-    });
+    r.binary("#", ARR, NUM, ANY, |_, a, b| select_index(&a, &b));
     r.binary("pushBack", ARR, ANY, NUM, |_, a, b| {
         let arr = array(&a);
         check_not_self(&arr, &b)?;

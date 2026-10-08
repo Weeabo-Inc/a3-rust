@@ -72,7 +72,6 @@ impl Value {
             Value::Nil => Type::Any,
             Value::Nothing => Type::Nothing,
             Value::Bool(_) => Type::Bool,
-            Value::Number(n) if n.is_nan() => Type::NaN,
             Value::Number(_) => Type::Number,
             Value::String(_) => Type::String,
             Value::Array(_) => Type::Array,
@@ -349,7 +348,8 @@ impl From<Vec<Value>> for Value {
 /// widened to double, with the three-digit exponent of the MSVC runtime
 /// (`str 1e6` is `"1e+006"`).
 ///
-/// _(uncertain: the spelling of infinities and NaN.)_
+/// Infinities print `1.#INF`/`-1.#INF` and NaN `-1.#IND`, the legacy MSVC
+/// spellings the engine's printf options produce (`docs/re/sqf-semantics.md`).
 pub fn format_number(n: f32) -> String {
     format_g(f64::from(n), 6)
 }

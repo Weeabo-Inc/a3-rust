@@ -103,30 +103,68 @@ fn hash_map_plus_copies() {
 
 #[test]
 fn regex_commands() {
-    assert_eq!(
-        s("\"I'm a Cookie clicker\" regexMatch \".*cookie.*/i\""),
-        "true"
+    // Examples from the community wiki pages, checked against the
+    // decompiled flag handling (docs/re/sqf-semantics.md).
+    let t = |src: &str, want: &str| assert_eq!(s(src), want, "{src}");
+    // regexMatch: whole string; default flags are case-insensitive.
+    t(r#""I'm a coOkIe clicker" regexMatch ".*cookie.*""#, "true");
+    t(
+        r#""I'm a coOkIe clicker" regexMatch ".*cookie.*/""#,
+        "false",
     );
-    assert_eq!(
-        s("\"I'm a Cookie clicker\" regexMatch \".*cookie.*\""),
-        "false"
+    t(r#""Cookie clicker" regexMatch "cookie/i""#, "false");
+    t(r#""Hello there!" regexMatch "hello there!/i""#, "true");
+    // regexFind: default flags g+i; "/i" first only; "/" case-sensitive.
+    t(
+        r#""wooKie boOkie cookie" regexFind [".ookie/gio"]"#,
+        r#"[[["wooKie",0]],[["boOkie",7]],[["cookie",14]]]"#,
     );
-    assert_eq!(
-        s("\"wookie boOkie cookie\" regexReplace [\".oo/i\", \"[$&]\"]"),
-        "\"[woo]kie [boO]kie [coo]kie\""
+    t(
+        r#""wooKie boOkie cookie" regexFind [".ookie/i"]"#,
+        r#"[[["wooKie",0]]]"#,
     );
-    assert_eq!(
-        s("\"wookie boOkie cookie\" regexFind [\".ookie\"]"),
-        "[[[\"wookie\",0]],[[\"cookie\",14]]]"
+    t(
+        r#""wooKie boOkie cookie" regexFind [".ookie/"]"#,
+        r#"[[["cookie",14]]]"#,
     );
-    assert_eq!(
-        s("\"a1b22\" regexReplace [\"(\\d+)\", \"<$1>\"]"),
-        "\"a<1>b<22>\""
+    t(
+        "\"co1kie2\nco2kie\" regexFind [\"^co.kie$\"]",
+        r#"[[["co2kie",8]]]"#,
     );
-    assert_eq!(
-        s("\"ab ab\" regexFind [\"(a)(b)\", 1]"),
-        "[[[\"ab\",3],[\"a\",3],[\"b\",4]]]"
+    t(
+        r#""I'm a cookie clicker" regexFind ["c(.*?)k(.*?)e/i"]"#,
+        r#"[[["cookie",6],["oo",7],["i",10]]]"#,
     );
+    t(
+        r#""I'm a cookie clicker" regexFind ["c(.*?)k(.*?)e"]"#,
+        r#"[[["cookie",6],["oo",7],["i",10]],[["clicke",13],["lic",14],["",18]]]"#,
+    );
+    // regexReplace: Boost Perl format strings.
+    t(
+        r#""wookie boOkie cookie" regexReplace [".oo/gio", "[$&]"]"#,
+        r#""[woo]kie [boO]kie [coo]kie""#,
+    );
+    t(
+        r#""wookie boOkie cookie" regexReplace [".oo/gio", "[$']"]"#,
+        r#""[kie boOkie cookie]kie [kie cookie]kie [kie]kie""#,
+    );
+    t(
+        r#""wook1e boOk2e cook3e" regexReplace [".oo/gio", "[$`]"]"#,
+        r#""[]k1e [k1e ]k2e [k2e ]k3e""#,
+    );
+    t(
+        r#""wook1e boOk2e cook3e" regexReplace [".(oo)(.*?)e", "[$2]"]"#,
+        r#""[k1] [k2] [k3]""#,
+    );
+    t(
+        r#""wOokie boOkie cookie" regexReplace [".(?<test>oo)kie/gio", "[$+{test}]"]"#,
+        r#""[Oo] [oO] [oo]""#,
+    );
+    t(
+        r#""ArmA 3 is so awesome!" regexReplace ["(rmA 3)", "\L$1"]"#,
+        r#""Arma 3 is so awesome!""#,
+    );
+    t(r#""aaa" regexReplace ["a/", "b"]"#, r#""baa""#);
 }
 
 #[test]

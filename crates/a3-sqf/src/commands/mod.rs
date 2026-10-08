@@ -100,8 +100,9 @@ pub(crate) fn expect_code(v: &Value) -> Result<Code, SqfError> {
     }
 }
 
-/// An index argument. The engine rounds a fraction of .5 or less down and
-/// above .5 up (`[1,2,3] select 0.5` is `1`, `select 0.6` is `2`).
+/// An index argument. The engine converts with the CPU's default rounding
+/// (`cvtss2si`, round half to even): `select 0.5` is element 0, `select
+/// 1.5` element 2, `select 0.6` element 1.
 pub(crate) fn index(n: f32) -> i64 {
-    (n - 0.5).ceil() as i64
+    n.round_ties_even() as i64
 }

@@ -267,15 +267,24 @@ impl<H: Host> Registry<H> {
         self.nular.get(id.0 as usize).and_then(Option::as_ref)
     }
 
-    /// Picks the unary overload for `arg`, or the error to raise.
-    pub(crate) fn unary_impl(&self, id: CommandId, arg: &Value) -> Result<&UnaryImpl<H>, SqfError> {
+    /// Picks the unary overload for `arg`, or the error to raise. `None`
+    /// means the argument is `nil` and no overload takes `nil`: the engine
+    /// then skips the command and its result is `nil`.
+    pub(crate) fn unary_impl(
+        &self,
+        id: CommandId,
+        arg: &Value,
+    ) -> Result<Option<&UnaryImpl<H>>, SqfError> {
         let overloads = &self.unary[id.0 as usize];
         let ty = arg.ty();
         if let Some(o) = overloads.iter().find(|o| o.right.contains(ty)) {
-            return Ok(&o.imp);
+            return Ok(Some(&o.imp));
         }
         if overloads.is_empty() {
             return Err(SqfError::Unimplemented(self.table.get(id).name.clone()));
+        }
+        if arg.is_nil() {
+            return Ok(None);
         }
         let expected = overloads
             .iter()
@@ -284,22 +293,27 @@ impl<H: Host> Registry<H> {
     }
 
     /// Picks the binary overload for the arguments, or the error to raise.
+    /// `None` means an argument is `nil` and no overload takes it (the
+    /// result is `nil`).
     pub(crate) fn binary_impl(
         &self,
         id: CommandId,
         left: &Value,
         right: &Value,
-    ) -> Result<&BinaryImpl<H>, SqfError> {
+    ) -> Result<Option<&BinaryImpl<H>>, SqfError> {
         let overloads = &self.binary[id.0 as usize];
         let (lt, rt) = (left.ty(), right.ty());
         if let Some(o) = overloads
             .iter()
             .find(|o| o.left.contains(lt) && o.right.contains(rt))
         {
-            return Ok(&o.imp);
+            return Ok(Some(&o.imp));
         }
         if overloads.is_empty() {
             return Err(SqfError::Unimplemented(self.table.get(id).name.clone()));
+        }
+        if left.is_nil() || right.is_nil() {
+            return Ok(None);
         }
         let left_ok: Vec<_> = overloads.iter().filter(|o| o.left.contains(lt)).collect();
         if left_ok.is_empty() {

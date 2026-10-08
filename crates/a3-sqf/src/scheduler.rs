@@ -21,8 +21,8 @@ use crate::vm::{Suspend, Vm, VmState};
 
 /// The scheduler's per-frame budget in the original engine.
 ///
-/// _(uncertain: the community wiki's "Scheduler" page gives 3 ms; to be
-/// confirmed in the binary.)_
+/// The community wiki's "Scheduler" page gives 3 ms in total per frame
+/// (50 ms on a loading screen); not yet located in the binary.
 pub const DEFAULT_FRAME_BUDGET: Duration = Duration::from_millis(3);
 
 #[derive(Clone, Copy, Debug, PartialEq)]

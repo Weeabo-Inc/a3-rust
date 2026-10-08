@@ -306,7 +306,9 @@ fn array_commands() {
     assert_eq!(s("[1,2,3] select [1]"), "[2,3]");
     assert_eq!(s("[1,2,3] select [0, 2]"), "[1,2]");
     assert_eq!(s("[1,2] select true"), "2");
-    assert_eq!(s("[1,2,3] # 5"), "any");
+    assert!(err("[1,2,3] # 5").contains("Error 3 elements provided, 6 expected"));
+    assert_eq!(s("[1,2,3] select -1"), "3");
+    assert_eq!(s("[1,2,3] select [5, 1]"), "[]");
     assert_eq!(s("[1,2] select 2"), "any");
     assert_eq!(s("2 in [1,2]"), "true");
     assert_eq!(s("\"A\" in [\"a\"]"), "false");
@@ -323,8 +325,11 @@ fn array_commands() {
 
 #[test]
 fn select_rounds_indices() {
+    // Round half to even (cvtss2si), as the engine's select does.
     assert_eq!(s("[1,2,3] select 0.5"), "1");
     assert_eq!(s("[1,2,3] select 0.6"), "2");
+    assert_eq!(s("[1,2,3] select 1.5"), "3");
+    assert_eq!(s("[1,2,3] select 2.5"), "3");
 }
 
 #[test]

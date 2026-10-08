@@ -340,6 +340,30 @@ impl<H: Host> Ctx<'_, H> {
         self.script.top_code().and_then(|cf| cf.switch.clone())
     }
 
+    /// The locals of the last ended scope invoked with
+    /// [`Invoke::capture`], if any (consumed).
+    pub fn take_captured(&mut self) -> Option<Vec<(Sym, Value)>> {
+        self.script.captured.take()
+    }
+
+    /// Whether the next string command works on Unicode characters rather
+    /// than bytes (`forceUnicode`). Mode 1 resets after this check.
+    pub fn take_unicode(&mut self) -> bool {
+        match self.script.unicode_mode {
+            0 => true,
+            1 => {
+                self.script.unicode_mode = -1;
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Sets the `forceUnicode` mode (-1, 0 or 1).
+    pub fn set_unicode_mode(&mut self, mode: i8) {
+        self.script.unicode_mode = mode.clamp(-1, 1);
+    }
+
     /// A uniform random number in `[0, 1)`.
     pub fn random(&mut self) -> f32 {
         self.vm.rng.next_f32()
