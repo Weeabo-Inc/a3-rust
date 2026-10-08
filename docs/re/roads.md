@@ -74,6 +74,16 @@ c2 = (d3*p1 - d2*p3 + (2*d3 + 3*sqrt(d2*d3) + d2)*p2) / (3*d3 + 3*sqrt(d2*d3))  
 arc length divided by the material's texture length (UV `v`), and at open ends marks the first
 / last texture length of the curve for the end texture (`mainTerTex`).
 
+## Rendering (`a3-render::roads`)
+
+`RoadFeature` draws the Beziers as strips at the RoadsLib width, draped on the terrain with
+`surface_height` and lifted 4 cm, alpha-blended in the alpha phase with a depth bias towards
+the camera. Texture `u` runs across the road (0 = left), `v` along it in road widths (the
+shipped road textures are square, so one texture length = one width _(assumption: the engine
+reads the length from the material entry at `+0x38`)_). At open ends the first width uses
+`mainTerTex` with `v = 0` at the end. Only stage 0 (albedo) is used so far; the `mainMat`
+normal and `_smdi` stages and the Road pixel shader lighting are follow-ups.
+
 ## Road graph (`a3-landscape::RoadGraph`)
 
 Shipped road networks mostly do not share end points: on Altis only 857 of 2,828 road ends

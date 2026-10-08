@@ -564,6 +564,7 @@ dependencies = [
  "a3-input",
  "a3-landscape",
  "a3-landscape-render",
+ "a3-paa",
  "a3-platform",
  "a3-render",
  "a3-render-models",

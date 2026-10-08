@@ -26,6 +26,8 @@ pub struct LoadedWorld {
     pub centre: DVec3,
     /// The placed objects, when they should be drawn.
     pub objects: Option<WorldObjects>,
+    /// The roads, when the World has a readable roads shapefile.
+    pub roads: Option<crate::roads::LoadedRoads>,
 }
 
 /// Mount the game at `game_dir`, find `CfgWorlds >> world` and load its terrain, and its
@@ -59,6 +61,13 @@ pub fn load(
             layers.errors[0]
         );
     }
+    let roads = match crate::roads::load(&data.vfs, &config, &terrain) {
+        Ok(roads) => Some(roads),
+        Err(e) => {
+            log::warn!("no roads: {e:#}");
+            None
+        }
+    };
     let vfs = data.vfs.clone();
     let mut landscape = Landscape::from_terrain(&terrain, &layers, |p| vfs.open(p.as_str()).ok());
     let class = data.config.root().get("CfgWorlds").get(&config.class);
@@ -98,6 +107,7 @@ pub fn load(
         reader,
         centre,
         objects,
+        roads,
     })
 }
 

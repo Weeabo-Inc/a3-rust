@@ -160,6 +160,12 @@ impl DebugScene {
         }
         let stats = terrain.stats();
         renderer.add_feature(Box::new(terrain));
+        if let Some(roads) = &world.roads {
+            match crate::roads::feature(gpu, renderer, roads) {
+                Ok(feature) => renderer.add_feature(Box::new(feature)),
+                Err(e) => log::warn!("roads not drawn: {e:#}"),
+            }
+        }
         let heights = world.landscape.heights;
         let spec = spec.unwrap_or(CameraSpec {
             east: world.centre.x,
