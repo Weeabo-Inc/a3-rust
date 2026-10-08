@@ -85,6 +85,10 @@ impl Lexer<'_> {
     }
 
     fn run(mut self) -> Result<Vec<Token>, CompileError> {
+        // A UTF-8 byte order mark is not part of the script.
+        if self.bytes.starts_with(&[0xEF, 0xBB, 0xBF]) {
+            self.pos = 3;
+        }
         while self.pos < self.bytes.len() {
             let b = self.bytes[self.pos];
             let start = self.pos;
@@ -298,6 +302,11 @@ mod tests {
                 TokenKind::Eof
             ]
         );
+    }
+
+    #[test]
+    fn byte_order_mark_is_skipped() {
+        assert_eq!(kinds("\u{FEFF}x"), vec![TokenKind::Ident, TokenKind::Eof]);
     }
 
     #[test]

@@ -20,7 +20,7 @@
 //! The VM runs on one thread (the simulation thread), as the engine's does,
 //! so shared values use `Rc`/`RefCell`.
 
-use std::cell::{Ref, RefCell, RefMut};
+use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
@@ -253,7 +253,7 @@ impl Value {
             }
             Value::HashMap(m) => {
                 out.push('[');
-                match m.0.try_borrow() {
+                match m.try_borrow() {
                     Ok(map) => {
                         for (i, (k, v)) in map.iter().enumerate() {
                             if i > 0 {
@@ -459,19 +459,32 @@ impl fmt::Debug for Array {
 
 /// A shared, mutable SQF hash map.
 #[derive(Clone, Default)]
-pub struct HashMap(Rc<RefCell<IndexMap<HashKey, Value>>>);
+pub struct HashMap(Rc<HashMapInner>);
+
+#[derive(Default)]
+struct HashMapInner {
+    map: RefCell<IndexMap<HashKey, Value>>,
+    read_only: Cell<bool>,
+}
 
 impl HashMap {
     pub fn new() -> HashMap {
         HashMap::default()
     }
 
+    pub fn from_map(map: IndexMap<HashKey, Value>) -> HashMap {
+        HashMap(Rc::new(HashMapInner {
+            map: RefCell::new(map),
+            read_only: Cell::new(false),
+        }))
+    }
+
     pub fn borrow(&self) -> Ref<'_, IndexMap<HashKey, Value>> {
-        self.0.borrow()
+        self.0.map.borrow()
     }
 
     pub fn borrow_mut(&self) -> RefMut<'_, IndexMap<HashKey, Value>> {
-        self.0.borrow_mut()
+        self.0.map.borrow_mut()
     }
 
     pub fn ptr_eq(&self, other: &HashMap) -> bool {
@@ -479,11 +492,24 @@ impl HashMap {
     }
 
     pub fn len(&self) -> usize {
-        self.0.borrow().len()
+        self.0.map.borrow().len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.0.borrow().is_empty()
+        self.0.map.borrow().is_empty()
+    }
+
+    /// Whether the map is read-only (`compileFinal` of a hash map).
+    pub fn is_read_only(&self) -> bool {
+        self.0.read_only.get()
+    }
+
+    pub fn set_read_only(&self) {
+        self.0.read_only.set(true);
+    }
+
+    fn try_borrow(&self) -> Result<Ref<'_, IndexMap<HashKey, Value>>, std::cell::BorrowError> {
+        self.0.map.try_borrow()
     }
 }
 

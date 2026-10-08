@@ -1,17 +1,21 @@
 //! SQF, the Real Virtuality scripting language: values, lexer, parser,
-//! compiler and command signature table.
+//! compiler, command registry, VM and scheduler.
 //!
 //! Pipeline: text → [`lexer`] tokens → [`parser`] syntax tree ([`ast`]) →
-//! [`code`] instruction stream. The parser resolves identifiers through a
-//! [`CommandTable`], which knows every engine command's forms (nular, unary,
-//! binary) and binary precedence.
+//! [`code`] instruction stream → [`Vm`]. The parser resolves identifiers
+//! through a [`CommandTable`], which knows every engine command's forms
+//! (nular, unary, binary) and binary precedence (`data/commands.tsv`, from
+//! the game binary). Commands are implemented in a [`Registry`]; the core,
+//! world-independent ones live in [`commands`], and other crates add theirs
+//! against the same registry with their own requirements on the [`Host`].
+//! See `docs/adr/0005-sqf-vm-architecture.md`.
 //!
 //! ```
-//! use a3_sqf::{CommandTable, compile_str};
+//! use a3_sqf::{NullHost, Vm};
 //!
-//! let table = CommandTable::builtin();
-//! let code = compile_str("", "_a = [1, 2] select 0 + 1", &table).unwrap();
-//! assert_eq!(code.source(), "_a = [1, 2] select 0 + 1");
+//! let mut vm = Vm::new(NullHost);
+//! let v = vm.eval("_a = [1, 2, 3]; _a pushBack 4; (_a select 1 + 1) * count _a").unwrap();
+//! assert_eq!(v.to_sqf_string(), "12");
 //! ```
 
 pub mod ast;

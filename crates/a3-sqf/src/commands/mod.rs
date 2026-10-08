@@ -7,9 +7,12 @@
 mod array;
 mod compare;
 mod control;
+mod extra;
+mod hashmap;
 mod logic;
 mod math;
 mod misc;
+mod regex;
 mod string;
 mod vars;
 
@@ -32,6 +35,9 @@ pub fn register_core<H: Host>(r: &mut Registry<H>) {
     misc::register(r);
     string::register(r);
     array::register(r);
+    hashmap::register(r);
+    regex::register(r);
+    extra::register(r);
 }
 
 pub(crate) const NUM: TypeSet = TypeSet::NUMBER;

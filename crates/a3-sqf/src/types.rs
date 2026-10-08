@@ -44,6 +44,11 @@ pub enum Type {
     NetObject,
     Target,
     SubGroup,
+    /// Engine-internal position/orientation types that appear in a few
+    /// command signatures.
+    Vector,
+    Trans,
+    Orient,
     /// Intermediate result of `if cond`.
     If,
     /// Intermediate result of `while {cond}`.
@@ -60,7 +65,7 @@ pub enum Type {
 
 impl Type {
     /// Every type, in declaration order.
-    pub const ALL: [Type; 31] = [
+    pub const ALL: [Type; 34] = [
         Type::Any,
         Type::Nothing,
         Type::Bool,
@@ -86,6 +91,9 @@ impl Type {
         Type::NetObject,
         Type::Target,
         Type::SubGroup,
+        Type::Vector,
+        Type::Trans,
+        Type::Orient,
         Type::If,
         Type::While,
         Type::For,
@@ -122,6 +130,9 @@ impl Type {
             Type::NetObject => "NetObject",
             Type::Target => "TARGET",
             Type::SubGroup => "SUBGROUP",
+            Type::Vector => "VECTOR",
+            Type::Trans => "TRANS",
+            Type::Orient => "ORIENT",
             Type::If => "IF",
             Type::While => "WHILE",
             Type::For => "FOR",
@@ -162,6 +173,9 @@ impl Type {
             Type::NetObject => "Network Object",
             Type::Target => "Target",
             Type::SubGroup => "Sub-group",
+            Type::Vector => "Vector",
+            Type::Trans => "Transformation",
+            Type::Orient => "Orientation",
             Type::If => "If Type",
             Type::While => "While Type",
             Type::For => "For Type",

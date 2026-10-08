@@ -100,8 +100,7 @@ impl<H: Host> ScriptState<H> {
         let mut inv = Invoke::new(code);
         inv.this = Some(this.unwrap_or(Value::Nil));
         if scheduled {
-            inv.locals
-                .push((Sym::new("_thisScript"), Value::Script(handle)));
+            inv.locals.push((Sym::THIS_SCRIPT, Value::Script(handle)));
         }
         s.push_code(inv, namespace);
         s
@@ -121,11 +120,10 @@ impl<H: Host> ScriptState<H> {
     }
 
     pub fn push_code(&mut self, inv: Invoke, namespace: Namespace) {
-        let mut locals = Vec::with_capacity(inv.locals.len() + 1);
+        let mut locals = inv.locals;
         if let Some(this) = inv.this {
-            locals.push((Sym::new("_this"), this));
+            locals.push((Sym::THIS, this));
         }
-        locals.extend(inv.locals);
         self.frames.push(Frame::Code(CodeFrame {
             code: inv.code,
             ip: 0,

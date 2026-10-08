@@ -5,8 +5,10 @@
 use super::*;
 
 /// Types `==` and `!=` accept (both sides of the same type).
-const EQ_TYPES: [Type; 14] = [
+const EQ_TYPES: [Type; 16] = [
     Type::Number,
+    Type::Bool,
+    Type::NetObject,
     Type::String,
     Type::Side,
     Type::Namespace,

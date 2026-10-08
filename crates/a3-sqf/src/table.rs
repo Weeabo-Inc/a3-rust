@@ -103,14 +103,15 @@ impl CommandInfo {
     }
 }
 
-/// Binary operator precedence levels (higher binds tighter), as listed on
-/// the community wiki's "Operators" page and in the engine's operator
-/// table:
+/// Binary operator precedence levels (higher binds tighter), as the engine
+/// registers them (`docs/re/sqf-command-table.md`). The shipped table stores
+/// the level per command; this function gives the default for commands
+/// declared without one:
 ///
 /// | level | operators                               |
 /// |-------|-----------------------------------------|
-/// | 9     | `#`                                     |
-/// | 8     | `^`                                     |
+/// | 10    | `#`                                     |
+/// | 9     | `^`                                     |
 /// | 7     | `* / % mod atan2`                       |
 /// | 6     | `+ - min max`                           |
 /// | 5     | `else`                                  |
@@ -123,8 +124,8 @@ impl CommandInfo {
 /// associate to the left.
 pub fn binary_precedence(name: &str) -> u8 {
     match name.to_ascii_lowercase().as_str() {
-        "#" => 9,
-        "^" => 8,
+        "#" => 10,
+        "^" | "pow" => 9,
         "*" | "/" | "%" | "mod" | "atan2" => 7,
         "+" | "-" | "min" | "max" => 6,
         "else" => 5,
@@ -172,8 +173,9 @@ impl CommandTable {
     /// Parses a table in the `commands.tsv` format: one overload per line,
     /// tab-separated `name`, `form` (`nular`/`unary`/`binary`), `left`
     /// types, `right` types, `return` types. Types are `typeName` tokens
-    /// separated by `,`; `ANY` means every type. Lines starting with `# `
-    /// (hash, space) and blank lines are ignored.
+    /// separated by `,`; `ANY` means every type. Binary rows may have a
+    /// sixth column, the precedence. Lines starting with `# ` (hash, space)
+    /// and blank lines are ignored.
     pub fn from_tsv(text: &str) -> Result<CommandTable, TableError> {
         let mut table = CommandTable::new();
         for (i, raw) in text.lines().enumerate() {
@@ -199,7 +201,16 @@ impl CommandTable {
                 right: parse(cols[3])?,
                 ret: parse(cols[4])?,
             };
-            table.declare(cols[0], form, sig);
+            let id = table.declare(cols[0], form, sig);
+            if form == Form::Binary {
+                if let Some(p) = cols.get(5).filter(|p| !p.trim().is_empty()) {
+                    let p: u8 = p
+                        .trim()
+                        .parse()
+                        .map_err(|_| err(format!("bad precedence {p:?}")))?;
+                    table.set_precedence(id, p);
+                }
+            }
         }
         Ok(table)
     }
@@ -210,14 +221,19 @@ impl CommandTable {
         let mut rows = Vec::new();
         for info in &self.commands {
             let mut push = |form: Form, s: &Signature| {
-                rows.push(format!(
+                let mut row = format!(
                     "{}\t{}\t{}\t{}\t{}",
                     info.name,
                     form.as_str(),
                     s.left.to_tokens_or_empty(),
                     s.right.to_tokens_or_empty(),
                     s.ret.to_tokens_or_empty()
-                ));
+                );
+                if form == Form::Binary {
+                    row.push('\t');
+                    row.push_str(&info.precedence.to_string());
+                }
+                rows.push(row);
             };
             if let Some(s) = &info.nular {
                 push(Form::Nular, s);
@@ -230,7 +246,7 @@ impl CommandTable {
             }
         }
         rows.sort_by_key(|r| r.to_ascii_lowercase());
-        let mut out = String::from("# name\tform\tleft\tright\treturn\n");
+        let mut out = String::from("# name\tform\tleft\tright\treturn\tprecedence\n");
         for r in rows {
             out.push_str(&r);
             out.push('\n');
@@ -259,6 +275,11 @@ impl CommandTable {
             }
         }
         id
+    }
+
+    /// Sets the binary precedence of a command (higher binds tighter).
+    pub fn set_precedence(&mut self, id: CommandId, precedence: u8) {
+        self.commands[id.0 as usize].precedence = precedence;
     }
 
     /// The id of `name`, creating an entry with no forms if it is new.
