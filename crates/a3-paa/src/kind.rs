@@ -72,6 +72,40 @@ impl TextureType {
             .position(|&t| t == self)
             .expect("every variant is listed") as u32
     }
+
+    /// The type the engine gives a texture file, from its name (the engine's rule, see
+    /// `docs/re/paa.md`): the suffix from the last `_` before the extension decides; `_lco`
+    /// is linear except for terrain satellite segments `s_XXX_YYY_lco`; `_ca` preceded by
+    /// `_ti` is thermal. Case-insensitive.
+    pub fn from_path(path: &str) -> Self {
+        let name = path.rsplit(['\\', '/']).next().unwrap_or(path);
+        let name = name.to_ascii_lowercase();
+        // The engine compares `_suffix.`, so a name without an extension never matches.
+        let Some(stem_end) = name.rfind('.') else {
+            return Self::Diffuse;
+        };
+        let Some(underscore) = name[..stem_end].rfind('_') else {
+            return Self::Diffuse;
+        };
+        let suffix = &name[underscore + 1..stem_end];
+        let before = &name[..underscore];
+        match suffix {
+            "detail" | "cdt" | "dt" | "mco" => Self::Detail,
+            "no" | "non" | "nopx" | "noex" | "nohq" | "novhq" | "nofhq" | "nof" | "nofex"
+            | "ns" | "nsex" | "nshq" | "normalmap" => Self::Normal,
+            "mask" => Self::Mask,
+            "mc" => Self::Macro,
+            "as" => Self::AmbientShadow,
+            "sm" | "smdi" => Self::Specular,
+            "dtsmdi" => Self::DetailSpecular,
+            "sky" => Self::DiffuseLinear,
+            // Terrain satellite segments `s_XXX_YYY_lco` stay sRGB diffuse.
+            "lco" if underscore == 9 && name.starts_with("s_") => Self::Diffuse,
+            "lco" => Self::DiffuseLinear,
+            "ca" if before.ends_with("_ti") => Self::Thermal,
+            _ => Self::Diffuse,
+        }
+    }
 }
 
 /// The role of a texture, decided by its file-name suffix.

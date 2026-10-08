@@ -7,7 +7,9 @@ use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
-use a3_paa::{Color, Compression, PaaHeader, TexHeaders, Texture, TextureKind, decode_rgba8};
+use a3_paa::{
+    Color, Compression, PaaHeader, Procedural, TexHeaders, Texture, TextureType, decode_rgba8,
+};
 use a3_vfs::{Vfs, optional_mod_dirs};
 
 fn mount() -> Option<Vfs> {
@@ -250,7 +252,7 @@ fn every_texheaders_bin_parses_round_trips_and_matches_its_textures() {
                 .or_default()
                 .entry(suffix.to_ascii_lowercase())
                 .or_default() += 1;
-            if Some(TextureKind::from_path(&t.path).texture_type()) != t.texture_type() {
+            if Some(TextureType::from_path(&t.path)) != t.texture_type() {
                 add(&mut kind_disagrees, t.path.clone());
             }
             let path = dir.join(&t.path);
@@ -322,7 +324,7 @@ fn every_texheaders_bin_parses_round_trips_and_matches_its_textures() {
         );
     }
     eprintln!(
-        "TextureKind::texture_type disagrees with the cached type for {} entries, e.g. {:?}",
+        "TextureType::from_path disagrees with the cached type for {} entries: {:?}",
         kind_disagrees.len(),
         kind_disagrees.keys().collect::<Vec<_>>()
     );
@@ -332,8 +334,90 @@ fn every_texheaders_bin_parses_round_trips_and_matches_its_textures() {
     assert!(failures.is_empty());
     assert!(mismatches.is_empty());
     assert!(files.len() > 200, "found {} texHeaders.bin", files.len());
-    assert!(
-        kind_disagrees.len() * 50 < entries,
-        "suffix-derived texture types disagree too often"
+    assert!(kind_disagrees.is_empty());
+}
+
+/// Pulls every `#(...)fn(...)` string out of `data`.
+fn procedural_strings(data: &[u8], out: &mut BTreeMap<String, usize>) {
+    let mut i = 0;
+    while let Some(at) = data[i..].windows(2).position(|w| w == b"#(") {
+        let start = i + at;
+        i = start + 2;
+        let tail = &data[start..data.len().min(start + 200)];
+        if !tail.get(2).is_some_and(u8::is_ascii_alphabetic) {
+            continue;
+        }
+        // Header `#(...)`, function name, `(`, arguments up to `)`.
+        let Some(head_end) = tail.iter().position(|&b| b == b')') else {
+            continue;
+        };
+        let Some(args_end) = tail[head_end + 1..].iter().position(|&b| b == b')') else {
+            continue;
+        };
+        let text = &tail[..head_end + 1 + args_end + 1];
+        if text.iter().all(|&b| (0x21..0x7f).contains(&b)) {
+            add(out, String::from_utf8_lossy(text).into_owned());
+        }
+    }
+}
+
+#[test]
+fn every_procedural_texture_in_shipped_data_parses_and_generates() {
+    let Some(vfs) = mount() else { return };
+    let start = Instant::now();
+    let mut found: BTreeMap<String, usize> = BTreeMap::new();
+    let mut files = 0;
+    for pattern in [
+        r"**\*.rvmat",
+        r"**\*.p3d",
+        r"**\*.bin",
+        r"**\*.cpp",
+        r"**\*.hpp",
+    ] {
+        for path in vfs.glob(pattern) {
+            if let Ok(data) = vfs.open(path.as_str()) {
+                files += 1;
+                procedural_strings(&data, &mut found);
+            }
+        }
+    }
+    let mut functions: BTreeMap<String, usize> = BTreeMap::new();
+    let mut rejected = Vec::new();
+    let mut failed = Vec::new();
+    let mut runtime = 0;
+    for (text, uses) in &found {
+        match Procedural::parse(text) {
+            Ok(p) => {
+                let name = p.to_string();
+                let name = name[name.find(')').unwrap() + 1..]
+                    .split('(')
+                    .next()
+                    .unwrap();
+                *functions.entry(name.to_owned()).or_default() += uses;
+                if matches!(p.function, a3_paa::ProceduralFunction::Runtime { .. }) {
+                    runtime += 1;
+                } else if let Err(e) = p.generate() {
+                    failed.push(format!("{text}: {e}"));
+                }
+            }
+            Err(e) => rejected.push(format!("{text} ({uses} uses): {e}")),
+        }
+    }
+    eprintln!(
+        "{} distinct procedural strings ({} uses) in {files} files, {runtime} runtime sources, in {:.2?}",
+        found.len(),
+        found.values().sum::<usize>(),
+        start.elapsed()
     );
+    eprintln!("uses by function: {functions:?}");
+    for r in &rejected {
+        eprintln!("REJECTED {r}");
+    }
+    for f in &failed {
+        eprintln!("FAILED {f}");
+    }
+    assert!(found.len() > 1000, "found {} strings", found.len());
+    assert!(failed.is_empty());
+    // The engine rejects these too (e.g. `fresnelGlass(0.9,0.9)`, `%1` macro placeholders).
+    assert!(rejected.len() * 200 < found.len());
 }

@@ -125,26 +125,35 @@ Survey: 219 files, 38,312 entries; every file writes back byte-identically, and 
 matches its PAA in format, file size, MAXC presence and value, FLAG bits, average colour and the
 full mipmap table (sizes and offsets). **high**
 
-### Texture type (**high** for the seen values, names **medium**)
+### Texture type (**high**)
 
-`texture_type` follows the file-name suffix. Values seen, with the suffixes carrying them:
+`texture_type` is the engine's texture type enum. The engine derives it from the file name in
+`0x10bb880` / `0x10bb490` (also used for the tag of procedural `color()`); `TextureType::
+from_path` reproduces it and matches all 38,312 cached entries.
+
+Rule: take the file name after the last `\`, find the last `.`, then the last `_` before it;
+compare `_suffix.` case-sensitively (names are lower case in the engine; `a3-paa` lowercases).
+A name without `.` never matches and gets 0.
 
 | value | name | suffixes |
 |---|---|---|
-| 0 | Diffuse | `_co`, `_ca`, `_lco`/`_lca` terrain layers, `_ads`, `_adshq`, `_mca`, `_ti`, `_ti_co`, no suffix |
-| 1 | Diffuse linear | `_sky`, `sky_*_lco` |
-| 2 | Detail | `_dt`, `_cdt`, `_mco`, `_detail` |
-| 3 | Normal map | `_nohq`, `_no`, `_nopx`, `_nofhq`, `_non`, `_ns` |
+| 0 | Diffuse | everything else (`_co`, `_ca`, `_lca`, `_mca`, `_ads`, `_ti`, `_ti_co`, ...) and terrain segments `s_XXX_YYY_lco` |
+| 1 | Diffuse linear | `_sky`, `_lco` (except names `s_` + 7 characters + `_lco`, i.e. the `_` at index 9) |
+| 2 | Detail | `_detail`, `_cdt`, `_dt`, `_mco` |
+| 3 | Normal map | `_no`, `_non`, `_nopx`, `_noex`, `_nohq`, `_novhq`, `_nofhq`, `_nof`, `_nofex`, `_ns`, `_nsex`, `_nshq`, `_normalmap` |
+| 4 | Irradiance | procedural `irradiance`, `waterIrradiance`, `fresnel`, `fresnelGlass` |
+| 5 | Random test | internal `TextureSourceRandomTest` (no procedural name reaches it) |
+| 6 | Tree crown | procedural `treeCrown`, `treeCrownAmb` |
 | 7 | Macro | `_mc` |
 | 8 | Ambient shadow | `_as` |
-| 9 | Specular | `_smdi`, `_sm` |
+| 9 | Specular | `_sm`, `_smdi` |
+| 10 | Dither | procedural `dither` |
 | 11 | Detail specular | `_dtsmdi` |
 | 12 | Mask | `_mask` |
-| 13 | Thermal | `_ti_ca` only (541 entries) |
+| 13 | Thermal | `_ca` directly preceded by `_ti` (`*_ti_ca`) |
 
-4, 5, 6 and 10 are unused by files; the gaps line up with the procedural texture sources in the
-RTTI (`TextureSourceIrradiance`, `TextureSourceRandomTest`, `TextureSourceTreeCrown`,
-`TextureSourceDither`), hence the names Irradiance, RandomTest, TreeCrown, Dither. **medium**
+Procedural `perlinNoise` and `point` report 2 (detail); `color()` see below. The values for
+procedural sources come from vtable slot 8 of each `TextureSource*` class.
 
 ## Texture suffixes
 
@@ -155,9 +164,8 @@ RTTI (`TextureSourceIrradiance`, `TextureSourceRandomTest`, `TextureSourceTreeCr
 Terrain layers: `layers\s_XXX_YYY_lco` satellite segment, `m_XXX_YYY_lca` surface mask segment,
 `n_XXX_YYY_no` normal segment.
 
-`TextureKind::texture_type` reproduces the cached type for every entry except the 9 sky/sea
-`*_lco` files (type 1 while terrain `_lco` segments are type 0); Binarize evidently decides
-those by more than the suffix. `_detail` and `_ns` are older spellings of `_dt` and `_no`.
+`TextureKind` is a coarser, suffix-only view; use `TextureType::from_path` for the engine's
+type. `_detail` and `_ns` are older spellings of `_dt` and `_no`.
 
 Uncertain: what the `l` in `_lco`/`_lca` stands for; the channel use of `_ads`/`_adshq`;
 `_non`.
@@ -165,32 +173,110 @@ Uncertain: what the `l` in `_lco`/`_lca` stands for; the channel use of `_ads`/`
 ## Procedural textures
 
 Wherever a texture path is accepted, `#(format,width,height,mipmaps)function(args)` makes the
-engine generate the texture. Formats accepted by the executable's parser: `ai`, `argb`, `rgb`
-(strings `AI`, `ARGB`, `RGB`); the wiki also lists `a` and `i` (**low**). Generator names in the
-executable: `Color`, `Irradiance`, `Dither`, `PerlinNoise`, `WaterIrradiance`, `FresnelGlass`,
-`TreeCrown`, `TreeCrownAmb`, `Fresnel`, plus `R2T` (render-to-texture), `UI`, `UIEx`,
-`Extension`; RTTI also has `TextureSourcePoint`, `TextureSourceRandomTest`, `TextureSourceText`,
-`TextureSourceVideo`, `TextureSourceWebBrowser`. Names are matched case-insensitively (shipped
-data uses `fresnelGlass` and `fresnelglass`).
+engine generate the texture. Implemented in `crates/a3-paa/src/procedural/`; `a3-tools paa
+topng '#(...)...' out.png` renders one.
 
-Occurrences in shipped PBOs (raw string scan, 239,959 hits):
+### Parsing (`TextureSourceProcFactory`, `0x10b0630` → `0x10c0f80`, `0x10b41b0`) **high**
 
-- `color(r,g,b,a[,type])`, 1,497 distinct strings. The optional fifth argument is a texture
-  suffix, unquoted, either case (`co`, `ca`, `dt`, `cdt`, `mc`, `as`, `nohq`, `smdi`,
-  `dtsmdi`); it makes the result behave as that texture type. Most common:
-  `#(rgb,1,1,1)color(0.5,0.5,0.5,1,cdt)`, `#(argb,8,8,3)color(0,0,0,0,mc)`,
-  `#(argb,8,8,3)color(0.5,0.5,1,1,nohq)` (flat normal), `#(argb,8,8,3)color(1,1,1,1,as)`.
-- `fresnel(n,k)`, 980 distinct, always `ai` (e.g. `#(ai,64,64,1)fresnel(1.3,7)`): a Fresnel
-  reflectance lookup for rvmat environment stages, from refractive index and extinction
-  coefficient.
-- `fresnelGlass(n)` / `fresnelGlass()`: glass variant.
-- `perlinNoise(xScale,yScale,min,max)`, e.g. `#(ai,512,512,9)perlinnoise(256,256,0.8,1)`.
-- `waterIrradiance(n)`: `#(ai,16,64,1)waterIrradiance(16)`.
-- `irradiance`, `treeCrown`, `treeCrownAmb`, `dither`: none in shipped data.
+- `#` then `(` at index 1. Format = text up to the first `,` (at most 63 characters), matched
+  case-insensitively by FNV-1a hash: `ai`, `a`, `i` → AI88; `argb`, `rgb` → ARGB8888. `rgb` is
+  *not* opaque-forced: it is the same as `argb`.
+- Width, height, mipmaps: each must start with a digit (`strtol`), separated by `,` `,` `)`.
+  All must be ≥ 1; width and height must be powers of two; `max(w, h) >= 1 << (mipmaps - 1)`.
+- Function name: text up to the next `(` (≤ 63 characters), matched case-insensitively against
+  the name table built in `0x0bd1a0`: 0 `Irradiance`, 1 `Color`, 2 `Dither`, 3 `PerlinNoise`,
+  4 `WaterIrradiance`, 5 `FresnelGlass`, 6 `TreeCrown`, 7 `TreeCrownAmb`, 8 `Point`, 9 `Fresnel`,
+  10 `R2T`, 11 `Text`, 12 `UI`, 13 `UIEx`, 14 `Extension`.
+- Arguments: text up to the first `)` (up to the last `)` when it contains `"`). Numbers are
+  `strtod` but each must start with a digit (`.5`, `-1` are rejected), followed by `,` or the
+  end. A failed parse makes the texture fail to load ("Can not create source for procedural
+  texture").
 
-`a3-paa` parses every form and generates `color` (ARGB8888 for `rgb`/`argb`, AI88 for `ai`,
-intensity taken from the red argument, alpha forced to 1 for `rgb`). The other generators are
-follow-up work; their maths needs the executable.
+| function | arguments | stored as / defaults |
+|---|---|---|
+| `color` | `r,g,b,a[,tag]` | 4 numbers; anything after a 5th comma is the tag |
+| `irradiance` | `power` | exactly 1 number |
+| `dither` | `a,b` | 2 numbers, rounded to integers |
+| `perlinNoise` | `xScale,yScale,min,max` | 4 numbers |
+| `waterIrradiance` | `power` | 1 number |
+| `fresnelGlass` | `[n]` | empty → 1.7; `n <= 0` → warning, 0.001 |
+| `treeCrown`, `treeCrownAmb` | `density` | 1 number |
+| `point` | anything | ignored |
+| `fresnel` | `[n,k]` | empty → n 0.96977, k 0.0118; otherwise both required; `<= 0` → 0.001 |
+
+### Levels **high**
+
+Each level is generated independently at its own size (not downsampled). Generic sources
+(`0x10bc020`): level *i* is `(w >> i, h >> i)` for *i* < mipmaps, stopping after the first level
+with a side below 2. Exceptions fixed at creation: `color` is always one 1x1 level (the declared
+size is ignored); `fresnel` and `fresnelGlass` are one `w` x 1 level; `dither` is a square of
+`max(w, h)` with `floor(log2(size))` levels.
+
+### Generators (vtable slot 14 of each class) **high** for structure and constants
+
+All arithmetic is `f32` in this order; results are rounded half-to-even (`cvtss2si`) and
+clamped to 0..255. In AI88, "value v in alpha" means bytes `I = 0, A = v` unless stated.
+`step(n) = 1 / (n - 1)`.
+
+- **color** (`0x10b8580`): ARGB8888: each channel clamped to 0..1, `round(c * 255)`.
+  AI88: `I = round(g*149.685 + r*76.245 + b*29.07)` (Rec. 601 luma), `A = round(a * 255)`.
+  The renderer may swap R and B at creation (a renderer flag at `0x1421d8498`, vtable +0xe40);
+  that is a texture-layout detail, not a colour change.
+  Texture type: from the tag via the suffix rule (`_<tag>.`, lowercased); without a tag the
+  nearest of 7 reference colours by squared RGBA distance, if below 0.5 (table at
+  `0x1420c0030`): (0.5,0.5,0.5,1) detail, (0.5,0.5,1,1) normal, (1,1,1,1) diffuse linear,
+  (0,0,0,0) and (1,1,1,0) macro, (1,0,0,1) and (1,0,1,1) specular; otherwise diffuse.
+- **fresnel(n,k)** (`0x10b88e0`), conductor reflectance in alpha, one row:
+  `θ = acos(x·step(w))`, `s, c = sin θ, sin(θ + π/2)`, `t = tan θ`;
+  `t0 = (n² − k²) − s²`, `A = sqrt(k²·n·4n + t0²)`, `a² = (A + t0)/2`, `2a = 2·sqrt(a²)`;
+  `Rs = (A − 2a·c + c²) / (2a·c + A + c²)`;
+  `Rp = Rs` at x = 0, else `Rs·(A − 2a·s·t + s²t²) / (2a·s·t + A + s²t²)`;
+  value `round((Rs + Rp) · 127.5)`. Divisions use a guard: denominator below `FLT_MIN` gives
+  ±`FLT_MAX` (or 1 for 0/0).
+- **fresnelGlass(n)** (`0x10b8e80`), dielectric reflectance in alpha, one row:
+  `θi = (float)(acos(x·step(w)) + 1e-6)`, `θt = asin(sin θi · 1.0002927 · (1/n))`;
+  `r = (tan(θi−θt)/tan(θi+θt))² + (sin(θi−θt)/sin(θi+θt))²`; value `round(r / (r/2 + 1) · 255)`.
+  1.0002927 is the refractive index of air.
+- **irradiance(p)** (`0x10b9300`): `I(x) = round(x·step(w)·255)`, `A(y) = round((y·step(h))^p ·
+  255)`; pixel is all zero where `I = 0`. ARGB: grey `I`, alpha `A`.
+- **waterIrradiance(p)** (`0x10baa20`): `I(y) = round((y·step(h))^p · 255)`; alpha = air→water
+  Fresnel of `cos θi = x·step(w)`: `cos θt = sqrt(1 − (1 − cos²θi)·0.5597403)`
+  (`(1.0002927/1.337)²`), `rs = (cosθi·1.337 − cosθt·1.0002927)/(cosθi·1.337 + cosθt·1.0002927)`,
+  `rp = (cosθi·1.0002927 − cosθt·1.337)/(cosθt·1.337 + cosθi·1.0002927)`,
+  `A = round((rs² + rp²)·127.5)`.
+- **perlinNoise(xs,ys,min,max)** (`0x10b9b90`, noise `0x38aca0`): Ken Perlin's improved noise
+  (2002) with the reference permutation (copied at start-up from `0x1aaca60`), `f32`, `z = 0`,
+  lattice cell `round_half_even(x − 0.5)`. Sample `((i + 0.5)/w · xs, (j + 0.5)/h · ys)`;
+  value `round((max − min)·(noise + 1)·127.5 + min·255)` in all channels (AI88 `I = A`).
+- **point** (`0x10b9d90`): `u = 2x·step(w) − 1`, `v = 2y·step(h) − 1` (computed as
+  `((t − 0.5) + t) − 0.5`); alpha `round((1 − sqrt(u² + v²))·255)`, colour white (AI88 `I = 255`).
+- **treeCrown(d)** (`0x10ba0b0`): `I(x) = round(exp(x·step(w)·ln d)·255)`,
+  `A(y) = round(exp(y·step(h)·ln d)·255)`; all zero when `d <= 0`.
+- **treeCrownAmb(d)** (`0x10ba710`, AI88 `0x10b0da0`): `u = x·step(w)`, `v = 2·step(h)·y − 1`,
+  `r² = u² + v²`; value `exp((1 − r²)·ln d)` inside the unit circle, 1 outside; grey and alpha
+  both; all zero when `d <= 0`.
+- **dither(a,b)** (`0x10b88a0` → `0x10b3d80`), AI88 only ("Unsupported format" otherwise): an
+  ordered-dither matrix built over block sizes 2, 4, 8, ...: each block's quadrants get
+  (top-left, top-right, bottom-left, bottom-right) `a`, `(a−b)·2/4 + b`, `b − (b−a)/4`,
+  `(a−b)·3/4 + b` added (C integer division), then `b = (b−a)/4`, `a = 0` for the next size.
+  Cells are 16-bit wrapping; the final value is `min(cell + b/2, 255)` in intensity and alpha.
+  `dither(0,255)` at 8x8 gives the classic Bayer matrix ×4 (first row 0 128 32 160 8 136 40 168).
+- **R2T, Text, UI, UIEx, Extension**: rendered by the engine at run time; `a3-paa` parses them
+  but cannot generate them.
+
+The CRT maths functions (`acosf`, `sinf`, `tanf`, `asinf`, `powf`, `expf`, `logf`) are the
+engine's own (MSVC); Rust's may differ in the last bit, so a generated byte can differ by one
+from the engine. Tests check values against the formulas evaluated independently.
+
+### Use in shipped data
+
+Scan of `.rvmat`, `.p3d`, `.bin`, `.cpp`, `.hpp` files in the VFS (real-data test): 2,455
+distinct strings, 239,030 uses: `color` 194,294, `fresnel` 43,512, `fresnelGlass` 930, `r2t`
+287 (31 distinct), `waterIrradiance` 3, `perlinNoise` 2. All parse and generate except
+`#(ai,64,64,1)fresnelGlass(0.9,0.9)` (2 uses), which the engine rejects too (one argument
+only). Most common: `#(rgb,1,1,1)color(0.5,0.5,0.5,1,cdt)`, `#(argb,8,8,3)color(0,0,0,0,mc)`,
+`#(argb,8,8,3)color(0.5,0.5,1,1,nohq)` (flat normal), `#(ai,64,64,1)fresnel(1.3,7)`.
+`irradiance`, `treeCrown`, `treeCrownAmb`, `point` and `dither` do not occur in shipped data.
 
 ## Performance (release build, warm file cache, 16 threads)
 
