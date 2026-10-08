@@ -18,6 +18,17 @@ impl<'a> Reader<'a> {
         self.pos
     }
 
+    pub fn seek(&mut self, pos: usize) -> Result<()> {
+        if pos > self.data.len() {
+            return Err(Error::Truncated {
+                offset: pos,
+                needed: pos - self.data.len(),
+            });
+        }
+        self.pos = pos;
+        Ok(())
+    }
+
     pub fn remaining(&self) -> usize {
         self.data.len() - self.pos
     }
@@ -27,6 +38,11 @@ impl<'a> Reader<'a> {
             offset: self.pos,
             message: message.into(),
         }
+    }
+
+    /// Everything from the cursor to the end.
+    pub fn rest(&self) -> &'a [u8] {
+        &self.data[self.pos..]
     }
 
     pub fn bytes(&mut self, n: usize) -> Result<&'a [u8]> {
@@ -57,6 +73,14 @@ impl<'a> Reader<'a> {
 
     pub fn bool(&mut self) -> Result<bool> {
         Ok(self.u8()? != 0)
+    }
+
+    pub fn u16(&mut self) -> Result<u16> {
+        Ok(u16::from_le_bytes(self.array()?))
+    }
+
+    pub fn i16(&mut self) -> Result<i16> {
+        Ok(i16::from_le_bytes(self.array()?))
     }
 
     pub fn u32(&mut self) -> Result<u32> {

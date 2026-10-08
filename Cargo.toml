@@ -87,3 +87,6 @@ opt-level = 3
 
 [profile.dev.package.a3-wrp]
 opt-level = 3
+
+[profile.dev.package.a3-p3d]
+opt-level = 3

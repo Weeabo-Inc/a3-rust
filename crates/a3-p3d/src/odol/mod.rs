@@ -1,6 +1,7 @@
 //! ODOL: the binarised encoding that ships in game PBOs. Layout: `docs/re/p3d-odol.md`.
 
 mod header;
+mod lod;
 
 use crate::error::{Error, Result};
 use crate::model::{Encoding, Lod, LodSummary, Model, OdolLod};
@@ -66,12 +67,18 @@ pub(crate) fn read(data: &[u8]) -> Result<Model> {
                 message: format!("LOD {i} spans {start:#x}..{end:#x} of {:#x}", data.len()),
             });
         }
-        lods.push(Lod {
+        let mut lod = Lod {
             resolution,
             bone_animations,
-            odol: Some(OdolLod { permanent, summary }),
+            odol: Some(OdolLod {
+                permanent,
+                summary,
+                ..OdolLod::default()
+            }),
             ..Lod::default()
-        });
+        };
+        lod::read(data, start, end, &mut lod)?;
+        lods.push(lod);
     }
     Ok(Model {
         encoding: Encoding::Odol,
