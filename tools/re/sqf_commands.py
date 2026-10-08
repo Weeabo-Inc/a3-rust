@@ -1,4 +1,4 @@
-﻿"""Extract the SQF script command table from arma3_x64.exe (build 2.22.0.154103).
+"""Extract the SQF script command table from arma3_x64.exe (build 2.22.0.154103).
 
 Usage:
     python tools/re/sqf_commands.py <arma3_x64.exe> [--tsv out.tsv] [--types out.tsv]

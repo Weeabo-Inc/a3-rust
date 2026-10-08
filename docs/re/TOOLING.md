@@ -69,6 +69,7 @@ the server's naming conventions; they do not block the rename.
 | `tools/re/msvc_demangle.py <mangled>...` | demangler for RTTI type names |
 | `tools/re/sqf_commands.py <exe> --tsv out.tsv [--types t.tsv] [--long]` | script command table (10 s) |
 | `tools/re/data_inventory.py` | `docs/re/data-inventory.md` from `A3_ROOT` |
+| `tools/re/a3net.py selftest\|keys\|decode <hex>` | reference codec for the UDP transport and connect handshake (`net-*.md`) |
 
 ## MCP servers for interactive sessions (`.mcp.json`)
 
