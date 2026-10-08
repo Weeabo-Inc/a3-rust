@@ -64,6 +64,45 @@ fn reads_an_uncompressed_dxt1_mip_chain_with_its_taggs() {
     assert_eq!(texture.max_color, Some(Color::WHITE));
 }
 
+/// A 4x1 AI88 texture whose only mip is an 8-byte LZSS stream for 8 raw bytes: one literal
+/// `0x41`, a back-reference (distance 1, length 7) and the checksum `8 * 0x41`.
+fn ai88_lzss_as_long_as_raw() -> Vec<u8> {
+    let mut f = 0x8080u16.to_le_bytes().to_vec();
+    let mut offs = [0u8; 64];
+    offs[..4].copy_from_slice(&((2 + 8 + 4 + 64 + 2) as u32).to_le_bytes());
+    tagg(&mut f, b"SFFO", &offs);
+    f.extend_from_slice(&0u16.to_le_bytes());
+    mip_header(&mut f, 4, 1, 8);
+    f.extend_from_slice(&[0x01, 0x41, 0x01, 0x04, 0x08, 0x02, 0x00, 0x00]);
+    f.extend_from_slice(&[0; 6]);
+    f
+}
+
+#[test]
+fn non_dxt_mips_are_always_lzss_even_when_as_long_as_the_raw_data() {
+    let texture = Texture::read(&ai88_lzss_as_long_as_raw()).unwrap();
+    assert_eq!(texture.mips[0].data, [0x41; 8]);
+    assert_eq!(texture.mips[0].compression, a3_paa::Compression::Lzss);
+}
+
+#[test]
+fn non_dxt_mips_are_written_lzss_whatever_the_requested_compression() {
+    use a3_paa::{Compression, Mip};
+    let texture = Texture {
+        format: PixelFormat::Argb8888,
+        mips: vec![Mip {
+            width: 2,
+            height: 2,
+            data: (0..16).collect(),
+            compression: Compression::None,
+        }],
+        ..Texture::default()
+    };
+    let read = Texture::read(&texture.to_bytes().unwrap()).unwrap();
+    assert_eq!(read.mips[0].data, texture.mips[0].data);
+    assert_eq!(read.mips[0].compression, Compression::Lzss);
+}
+
 #[test]
 fn writing_a_read_texture_reproduces_the_file() {
     let file = dxt1_two_mips();
@@ -81,7 +120,7 @@ fn compressed_mips_round_trip_through_lzo_and_lzss() {
         (PixelFormat::Dxt1, Compression::Lzo),
         (PixelFormat::Argb4444, Compression::Lzss),
         (PixelFormat::Ai88, Compression::Lzss),
-        (PixelFormat::Argb8888, Compression::None),
+        (PixelFormat::Argb8888, Compression::Lzss),
     ] {
         let mips = [(64u16, 32u16), (32, 16), (16, 8)]
             .into_iter()
@@ -160,14 +199,15 @@ mod round_trip {
         #[test]
         fn read_returns_what_was_written(texture in texture()) {
             let bytes = texture.to_bytes().unwrap();
-            let mut read = Texture::read(&bytes).unwrap();
-            // LZSS output that happens to equal the raw size is stored raw.
-            for (r, w) in read.mips.iter_mut().zip(&texture.mips) {
-                if r.compression == Compression::None {
-                    r.compression = w.compression;
+            let read = Texture::read(&bytes).unwrap();
+            // Non-DXT levels are always stored LZSS.
+            let mut expected = texture;
+            if !expected.format.is_dxt() {
+                for m in &mut expected.mips {
+                    m.compression = Compression::Lzss;
                 }
             }
-            prop_assert_eq!(read, texture);
+            prop_assert_eq!(read, expected);
         }
     }
 }

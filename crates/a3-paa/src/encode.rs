@@ -11,7 +11,7 @@ pub struct EncodeOptions {
     /// Generate the mipmap chain, halving until the smaller side reaches 4 (DXT) or 1 (other
     /// formats), as TexConvert does; otherwise only the full-size level.
     pub mipmaps: bool,
-    /// Compress each level (LZO for DXT, LZSS otherwise) when that makes it smaller.
+    /// LZO-compress DXT levels when that makes them smaller. Other formats are always LZSS.
     pub compress: bool,
 }
 
@@ -87,21 +87,16 @@ pub fn encode_rgba8(
 }
 
 fn choose_compression(format: PixelFormat, data: &[u8], compress: bool) -> Compression {
+    if !format.is_dxt() {
+        // The engine reads non-DXT levels only as LZSS.
+        return Compression::Lzss;
+    }
     if !compress {
         return Compression::None;
     }
-    if format.is_dxt() {
-        match lzokay_native::compress(data) {
-            Ok(packed) if packed.len() < data.len() => Compression::Lzo,
-            _ => Compression::None,
-        }
-    } else {
-        let packed = a3_compress::lzss::compress(data, crate::texture::LZSS_CHECKSUM);
-        if packed.len() < data.len() {
-            Compression::Lzss
-        } else {
-            Compression::None
-        }
+    match lzokay_native::compress(data) {
+        Ok(packed) if packed.len() < data.len() => Compression::Lzo,
+        _ => Compression::None,
     }
 }
 

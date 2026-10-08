@@ -19,8 +19,8 @@ impl Texture {
     ///
     /// TAGGs are written in the order TexConvert uses (`AVGC`, `MAXC`, `FLAG`, `SWIZ`, `PROC`,
     /// others, `OFFS`), the `OFFS` table is recomputed, and every mipmap is stored as its
-    /// [`Mip::compression`] says. A non-DXT mipmap whose LZSS form happens to be exactly its raw
-    /// size is stored raw, since readers could not tell the two apart.
+    /// [`Mip::compression`] says for DXT formats. Non-DXT levels are always LZSS-compressed:
+    /// the engine cannot read them raw.
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         if self.mips.is_empty() {
             return malformed("PAA", "cannot write a texture without mipmaps");
@@ -107,7 +107,8 @@ impl Texture {
         }
         let mut width = mip.width;
         let data = match (mip.compression, self.format.is_dxt()) {
-            (Compression::None, _) => mip.data.clone(),
+            (_, false) => a3_compress::lzss::compress(&mip.data, LZSS_CHECKSUM),
+            (Compression::None, true) => mip.data.clone(),
             (Compression::Lzo, true) => {
                 width |= LZO_FLAG;
                 lzokay_native::compress(&mip.data).map_err(|e| crate::Error::Malformed {
@@ -115,15 +116,7 @@ impl Texture {
                     reason: format!("LZO compression of mipmap {index} failed: {e:?}"),
                 })?
             }
-            (Compression::Lzss, false) => {
-                let packed = a3_compress::lzss::compress(&mip.data, LZSS_CHECKSUM);
-                if packed.len() == raw_len {
-                    mip.data.clone()
-                } else {
-                    packed
-                }
-            }
-            (compression, _) => {
+            (compression, true) => {
                 return malformed(
                     "PAA",
                     format!("{compression:?} is not used with {:?}", self.format),

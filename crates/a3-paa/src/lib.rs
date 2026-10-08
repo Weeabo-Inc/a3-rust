@@ -9,8 +9,8 @@
 //!   [`Texture::flags`], [`Texture::swizzle`], the `OFFS` table of mipmap offsets, ...);
 //! - a `u16` palette size and that many B, G, R triples (always 0 in shipped data);
 //! - the mipmaps, largest first, each `u16` width, `u16` height, `u24` stored size and the
-//!   data; a set top bit of a DXT width means LZO1X-compressed data, a non-DXT mipmap smaller
-//!   than its raw size is LZSS-compressed;
+//!   data; a set top bit of a DXT width means LZO1X-compressed data, non-DXT mipmaps are
+//!   always LZSS-compressed;
 //! - a `0, 0` width/height terminator (and usually two more zero bytes).
 //!
 //! [`Texture::read`] decompresses every mipmap but leaves DXT data block-compressed, ready for

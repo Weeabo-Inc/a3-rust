@@ -41,6 +41,12 @@ struct Survey {
     smallest: BTreeMap<String, usize>,
     failures: BTreeMap<String, Vec<String>>,
     offsets_mismatch: Vec<String>,
+    /// Smallest and largest raw size of the levels stored each way, per format.
+    level_bytes: BTreeMap<String, (usize, usize)>,
+    /// Formats of `.pac` files (the engine reads only DXT from `.pac`).
+    pac_formats: BTreeMap<String, usize>,
+    /// Textures with a side above 4096 (the engine rejects them).
+    oversized: Vec<String>,
     mips: usize,
     bytes: usize,
     decoded: usize,
@@ -74,6 +80,14 @@ impl Survey {
             self.failures.entry(k).or_default().extend(v);
         }
         self.offsets_mismatch.extend(other.offsets_mismatch);
+        for (k, (lo, hi)) in other.level_bytes {
+            let e = self.level_bytes.entry(k).or_insert((usize::MAX, 0));
+            *e = (e.0.min(lo), e.1.max(hi));
+        }
+        for (k, v) in other.pac_formats {
+            *self.pac_formats.entry(k).or_default() += v;
+        }
+        self.oversized.extend(other.oversized);
         self.mips += other.mips;
         self.bytes += other.bytes;
         self.decoded += other.decoded;
@@ -90,6 +104,12 @@ impl Survey {
         };
         let format = header.meta.format;
         add(&mut self.formats, format!("{format:?}"));
+        if path.ends_with(".pac") {
+            add(&mut self.pac_formats, format!("{format:?}"));
+        }
+        if header.mips[0].width > 4096 || header.mips[0].height > 4096 {
+            self.oversized.push(path.to_owned());
+        }
         for t in &header.meta.other_taggs {
             add(
                 &mut self.taggs,
@@ -110,10 +130,14 @@ impl Survey {
         }
         let mut mips = Vec::new();
         for (index, info) in header.mips.iter().enumerate() {
-            add(
-                &mut self.storage,
-                format!("{format:?}/{:?}", info.compression),
-            );
+            let key = format!("{format:?}/{:?}", info.compression);
+            let raw = format.data_len(info.width, info.height);
+            let range = self
+                .level_bytes
+                .entry(key.clone())
+                .or_insert((usize::MAX, 0));
+            *range = (range.0.min(raw), range.1.max(raw));
+            add(&mut self.storage, key);
             self.mips += 1;
             match header.read_mip(data, index) {
                 Ok(mip) => mips.push(mip),
@@ -193,6 +217,12 @@ fn every_shipped_texture_parses_and_decompresses() {
     eprintln!("formats: {:?}", survey.formats);
     eprintln!("storage: {:?}", survey.storage);
     eprintln!("other TAGGs: {:?}", survey.taggs);
+    eprintln!(
+        "raw level bytes (min, max) by storage: {:?}",
+        survey.level_bytes
+    );
+    eprintln!(".pac formats: {:?}", survey.pac_formats);
+    eprintln!("textures above 4096: {:?}", survey.oversized);
     eprintln!(
         "smallest mipmap of non-square textures: {:?}",
         survey.smallest
@@ -283,6 +313,11 @@ fn every_texheaders_bin_parses_round_trips_and_matches_its_textures() {
             let flags = meta.flags.unwrap_or_default();
             check(t.is_alpha == flags.is_interpolated(), "is_alpha");
             check(t.is_transparent == flags.is_binary(), "is_transparent");
+            let avg_alpha = meta.average_color.map_or(0x80, |c| c.a);
+            check(
+                t.is_alpha_non_opaque == (flags.is_interpolated() && avg_alpha < 0x80),
+                "is_alpha_non_opaque",
+            );
             let avg = meta.average_color.unwrap_or_default();
             let close = |f: f32, b: u8| (f * 255.0 - f32::from(b)).abs() <= 1.0;
             check(
