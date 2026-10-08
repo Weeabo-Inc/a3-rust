@@ -4,6 +4,7 @@
 //! headless smoke-test mode and an offscreen screenshot mode for checking rendering changes.
 
 mod engine;
+mod keys;
 mod offline;
 mod scene;
 mod windowed;
@@ -30,6 +31,13 @@ struct Cli {
     /// Run in a window instead of borderless fullscreen.
     #[arg(long)]
     windowed: bool,
+    /// Keyboard preset from `CfgDefaultKeysPresets` (default: the config's `default = 1` preset).
+    /// Needs the game folder.
+    #[arg(long, value_name = "CLASS")]
+    keys_preset: Option<String>,
+    /// Player profile (`.Arma3Profile`) whose `key<Action>[]` entries override the preset.
+    #[arg(long, value_name = "FILE")]
+    profile: Option<PathBuf>,
     /// Present without waiting for vertical sync.
     #[arg(long)]
     no_vsync: bool,
@@ -54,6 +62,11 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     let engine = EngineContext {
         game_dir: cli.game_dir.clone(),
+        keys: keys::KeySources {
+            game_dir: cli.game_dir.clone(),
+            preset: cli.keys_preset.clone(),
+            profile: cli.profile.clone(),
+        },
     };
     log::info!(
         "a3-rust {} (targets Arma 3 {}), game dir: {:?}",

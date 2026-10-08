@@ -432,6 +432,11 @@ optional modifier (`LCtrl+X`) and a trigger (press, double tap, hold). Stored as
 codes in `CfgDefaultKeysPresets` and the Profile.
 _Avoid_: shortcut, hotkey
 
+**Key preset**:
+A named set of default Keybindings in `CfgDefaultKeysPresets` (`Arma3Apex` is the default),
+which the Profile's own keybindings override.
+_Avoid_: key scheme (controller schemes are separate classes), layout
+
 **DIK code**:
 A DirectInput keyboard scancode (`DIK_W` = 0x11); RV's identity for keyboard keys.
 

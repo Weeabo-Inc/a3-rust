@@ -7,7 +7,11 @@ rust-version.workspace = true
 description = "Device-independent input state and RV-style action mapping"
 
 [dependencies]
+a3-config.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+a3-gamedata.workspace = true
 
 [lints]
 workspace = true

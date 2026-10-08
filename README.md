@@ -68,6 +68,8 @@ Tab releases the mouse, Esc quits):
 cargo run -p arma3 -- --windowed --width 1600 --height 900
 # Render N frames offscreen and save the last as PNG (for checking rendering changes):
 cargo run -p arma3 -- --screenshot .work/shot.png --frames 10
+# Keybindings from the game's default key preset (or --keys-preset <class>) and a profile:
+cargo run -p arma3 -- --windowed --game-dir "C:/path/to/Arma 3" --profile path/to/Name.Arma3Profile
 # Main loop without window or GPU (smoke test):
 cargo run -p arma3 -- --headless --frames 120
 ```

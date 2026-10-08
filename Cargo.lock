@@ -72,6 +72,8 @@ dependencies = [
 name = "a3-input"
 version = "0.1.0"
 dependencies = [
+ "a3-config",
+ "a3-gamedata",
  "thiserror 2.0.21",
 ]
 
@@ -400,7 +402,9 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 name = "arma3"
 version = "0.1.0"
 dependencies = [
+ "a3-config",
  "a3-core",
+ "a3-gamedata",
  "a3-input",
  "a3-platform",
  "a3-render",
@@ -409,6 +413,7 @@ dependencies = [
  "glam",
  "log",
  "png",
+ "tempfile",
  "tracing",
  "tracing-subscriber",
 ]

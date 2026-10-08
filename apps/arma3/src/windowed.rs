@@ -6,7 +6,10 @@ use a3_input::{Dik, InputCode, actions};
 use a3_platform::{App, Context, FrameTime};
 use a3_render::{DrawList, Gpu, Renderer, WindowSurface};
 
+use std::sync::mpsc::{Receiver, TryRecvError};
+
 use crate::engine::EngineContext;
+use crate::keys::{self, Keybindings};
 use crate::scene::{DebugScene, FpsCounter};
 
 struct Graphics {
@@ -25,6 +28,8 @@ pub struct GameApp {
     draws: DrawList,
     fps: FpsCounter,
     presented: u64,
+    keys_loading: Option<Receiver<anyhow::Result<Keybindings>>>,
+    keys_description: String,
 }
 
 impl GameApp {
@@ -37,6 +42,32 @@ impl GameApp {
             draws: DrawList::default(),
             fps: FpsCounter::default(),
             presented: 0,
+            keys_loading: None,
+            keys_description: "BUILT-IN".to_owned(),
+        }
+    }
+}
+
+impl GameApp {
+    /// Swap in the keybindings once the background loader is done.
+    fn poll_keybindings(&mut self) {
+        let Some(rx) = &self.keys_loading else { return };
+        let result = match rx.try_recv() {
+            Ok(result) => result,
+            Err(TryRecvError::Empty) => return,
+            Err(TryRecvError::Disconnected) => Err(anyhow::anyhow!("keybinding loader stopped")),
+        };
+        self.keys_loading = None;
+        match result {
+            Ok(k) => {
+                log::info!("keybindings: {}", k.description);
+                self.scene.actions = k.map;
+                self.keys_description = k.description;
+            }
+            Err(e) => {
+                log::error!("keybindings: {e:#}; keeping the built-in defaults");
+                self.keys_description = "BUILT-IN (LOAD FAILED)".to_owned();
+            }
         }
     }
 }
@@ -53,6 +84,10 @@ impl App for GameApp {
         );
         let mut renderer = Renderer::new(&gpu, surface.format());
         self.scene.load(&gpu, &mut renderer);
+        if !self.engine.keys.is_empty() {
+            self.keys_loading = Some(keys::load_in_background(self.engine.keys.clone()));
+            self.keys_description = "LOADING...".to_owned();
+        }
         self.graphics = Some(Graphics {
             gpu,
             surface,
@@ -64,6 +99,7 @@ impl App for GameApp {
 
     fn frame(&mut self, cx: &mut Context, time: &FrameTime) {
         self.fps.frame(time.real_dt);
+        self.poll_keybindings();
         let input = cx.input();
         if self
             .scene
@@ -89,8 +125,13 @@ impl App for GameApp {
         };
         self.draws.clear();
         self.scene.draw(&mut self.draws);
-        self.scene
-            .overlay(&mut self.draws, &self.fps, &g.adapter, captured);
+        self.scene.overlay(
+            &mut self.draws,
+            &self.fps,
+            &g.adapter,
+            captured,
+            &self.keys_description,
+        );
         let view = frame.texture.create_view(&Default::default());
         g.renderer.render(
             &g.gpu,

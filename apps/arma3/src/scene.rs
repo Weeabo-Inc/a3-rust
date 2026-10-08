@@ -1,6 +1,6 @@
 //! The debug scene: free-fly camera over a procedural ground grid with a few test meshes.
 
-use a3_input::{ActionMap, InputState, actions};
+use a3_input::{ActionMap, InputCode, InputState, MouseAxis, actions};
 use a3_render::texture::{bc1_block, rgb565};
 use a3_render::{
     Camera, ColorSpace, DrawList, FreeFlyController, FreeFlyInput, Gpu, MeshData, MeshDraw, MeshId,
@@ -48,8 +48,19 @@ impl FpsCounter {
     }
 }
 
-/// Free-camera input derived from user actions.
-pub fn free_fly_input(map: &ActionMap, input: &InputState, mouse_look: bool) -> FreeFlyInput {
+/// Turn rate of the `cameraLook*` actions at full deflection, radians per second.
+const KEY_LOOK_RATE: f64 = 1.5;
+
+/// Free-camera input: movement from user actions; look from raw mouse motion (when the mouse is
+/// captured, like RV's free camera) plus the `cameraLook*` actions (keys, sticks).
+/// `look_sensitivity` is the controller's radians per look unit; `dt` the frame time.
+pub fn free_fly_input(
+    map: &ActionMap,
+    input: &InputState,
+    mouse_look: bool,
+    look_sensitivity: f32,
+    dt: f64,
+) -> FreeFlyInput {
     let v = |name| map.value(input, name);
     let mut out = FreeFlyInput {
         strafe: v(actions::CAMERA_MOVE_RIGHT) - v(actions::CAMERA_MOVE_LEFT),
@@ -58,9 +69,14 @@ pub fn free_fly_input(map: &ActionMap, input: &InputState, mouse_look: bool) -> 
         speed_multiplier: 1.0,
         ..FreeFlyInput::default()
     };
+    // Convert a rate into look units for this frame.
+    let key_units = (KEY_LOOK_RATE * dt) as f32 / look_sensitivity.max(f32::EPSILON);
+    out.yaw = (v(actions::CAMERA_LOOK_RIGHT) - v(actions::CAMERA_LOOK_LEFT)) * key_units;
+    out.pitch = (v(actions::CAMERA_LOOK_UP) - v(actions::CAMERA_LOOK_DOWN)) * key_units;
     if mouse_look {
-        out.yaw = v(actions::CAMERA_LOOK_RIGHT) - v(actions::CAMERA_LOOK_LEFT);
-        out.pitch = v(actions::CAMERA_LOOK_UP) - v(actions::CAMERA_LOOK_DOWN);
+        let m = |axis| input.value(InputCode::MouseAxis(axis));
+        out.yaw += m(MouseAxis::Right) - m(MouseAxis::Left);
+        out.pitch += m(MouseAxis::Up) - m(MouseAxis::Down);
     }
     if map.is_active(input, actions::CAMERA_MOVE_TURBO1) {
         out.speed_multiplier *= 5.0;
@@ -133,7 +149,13 @@ impl DebugScene {
     /// Advance the scene by one frame.
     pub fn update(&mut self, input: &InputState, mouse_look: bool, dt: f64) {
         self.sim_time += dt;
-        let fly = free_fly_input(&self.actions, input, mouse_look);
+        let fly = free_fly_input(
+            &self.actions,
+            input,
+            mouse_look,
+            self.controller.look_sensitivity,
+            dt,
+        );
         self.controller.update(&mut self.camera, &fly, dt);
     }
 
@@ -236,7 +258,14 @@ impl DebugScene {
     }
 
     /// Debug overlay text lines.
-    pub fn overlay(&self, draws: &mut DrawList, fps: &FpsCounter, adapter: &str, captured: bool) {
+    pub fn overlay(
+        &self,
+        draws: &mut DrawList,
+        fps: &FpsCounter,
+        adapter: &str,
+        captured: bool,
+        keys: &str,
+    ) {
         let p = self.camera.position;
         let heading = self.camera.yaw.to_degrees().rem_euclid(360.0);
         let white = [1.0, 1.0, 1.0, 1.0];
@@ -264,6 +293,7 @@ impl DebugScene {
             "WASD Q Z MOVE  SHIFT/CTRL FAST  CLICK TO LOOK  ESC QUIT"
         };
         draws.text(8.0, 52.0, 2.0, dim, help);
+        draws.text(8.0, 74.0, 2.0, dim, format!("KEYS {keys}"));
     }
 }
 
@@ -338,7 +368,7 @@ pub fn checker_bc1(size: u32) -> TextureData {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use a3_input::{Dik, InputCode};
+    use a3_input::Dik;
 
     #[test]
     fn generated_textures_are_valid() {
@@ -354,13 +384,17 @@ mod tests {
         input.press(InputCode::Key(Dik::W));
         input.press(InputCode::Key(Dik::LSHIFT));
         input.mouse_motion(4.0, 0.0);
-        let fly = free_fly_input(&map, &input, false);
+        let fly = free_fly_input(&map, &input, false, 0.01, 0.1);
         assert_eq!(
             (fly.forward, fly.yaw, fly.speed_multiplier),
             (1.0, 0.0, 5.0)
         );
-        let fly = free_fly_input(&map, &input, true);
-        assert_eq!(fly.yaw, 4.0);
+        let fly = free_fly_input(&map, &input, true, 0.01, 0.1);
+        assert_eq!(fly.yaw, 4.0, "raw mouse counts while captured");
+        // Numpad 6 turns right at KEY_LOOK_RATE: 1.5 rad/s * 0.1 s / 0.01 rad per unit.
+        input.press(InputCode::Key(Dik::NUMPAD6));
+        let fly = free_fly_input(&map, &input, false, 0.01, 0.1);
+        assert!((fly.yaw - 15.0).abs() < 1e-4, "{}", fly.yaw);
     }
 
     #[test]
