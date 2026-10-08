@@ -21,10 +21,11 @@ Implemented in `crates/a3-compress`. Findings come from decoding the 2.22 instal
 - Standard LZO1X stream with the `11 00 00` end marker. The executable links "LZO Professional".
 - PAA DXT1/DXT5 mipmaps with the width field's top bit set: LZO1X. **Confirmed** on ~18 000
   mipmaps in `Addons/`; each block ends exactly at the stored mipmap data length.
-- ODOL v73 (all shipped P3D files): arrays of 1024+ bytes are LZO1X, preceded by the `u32`
-  element count and a flag byte `0x02`. **Observed** in a probe of a few models; a few arrays
-  decoded as LZO directly after the count with no flag byte. The meaning of the flag byte (and
-  whether small arrays carry it) is **uncertain**.
+- ODOL v73 (all shipped P3D files): `u32` element count, then, when the data is non-empty, a flag
+  byte: `0` raw bytes follow, `2` an LZO1X block follows. The flag decides, not the size: in a
+  sample of 1,313 arrays, 78 under 1024 bytes were LZO and 20 of 1024 bytes or more were raw.
+  **Verified**: `a3-p3d` decodes every LOD of all 10,472 shipped models with this rule, each LOD
+  ending exactly at its table offset. Details: `p3d-odol.md`.
 - OPRW v25 (all shipped WRP files): the elevation grid (`MapSizeX * MapSizeY` floats) is an
   inline LZO1X block with no flag byte. **Observed** on Stratis.
 
