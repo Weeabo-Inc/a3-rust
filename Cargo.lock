@@ -218,6 +218,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-world"
+version = "0.1.0"
+dependencies = [
+ "a3-pbo",
+ "a3-wrp",
+ "glam",
+ "proptest",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "a3-wrp"
 version = "0.1.0"
 dependencies = [
