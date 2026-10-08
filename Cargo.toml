@@ -13,6 +13,7 @@ rust-version = "1.85"
 a3-core = { path = "crates/a3-core" }
 a3-pbo = { path = "crates/a3-pbo" }
 a3-vfs = { path = "crates/a3-vfs" }
+a3-sqf = { path = "crates/a3-sqf" }
 
 # Errors
 thiserror = "2"
@@ -36,6 +37,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # CLI
 clap = { version = "4", features = ["derive", "env"] }
+
+# Collections
+indexmap = "2"
 
 # Testing
 proptest = "1"

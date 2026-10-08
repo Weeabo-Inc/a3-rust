@@ -1,0 +1,66 @@
+# name	form	left	right	return
+!	unary		BOOL	BOOL
+!=	binary	SCALAR	SCALAR	BOOL
+!=	binary	STRING	STRING	BOOL
+#	binary	ARRAY	SCALAR	ANY
+%	binary	SCALAR	SCALAR	SCALAR
+&&	binary	BOOL	BOOL,CODE	BOOL
+*	binary	SCALAR	SCALAR	SCALAR
++	binary	SCALAR	SCALAR	SCALAR
++	binary	STRING	STRING	STRING
++	binary	ARRAY	ARRAY	ARRAY
++	unary		SCALAR	SCALAR
++	unary		ARRAY	ARRAY
+-	binary	SCALAR	SCALAR	SCALAR
+-	binary	ARRAY	ARRAY	ARRAY
+-	unary		SCALAR	SCALAR
+/	binary	SCALAR	SCALAR	SCALAR
+:	binary	SWITCH	CODE	NOTHING
+<	binary	SCALAR	SCALAR	BOOL
+<=	binary	SCALAR	SCALAR	BOOL
+==	binary	SCALAR	SCALAR	BOOL
+==	binary	STRING	STRING	BOOL
+>	binary	SCALAR	SCALAR	BOOL
+>=	binary	SCALAR	SCALAR	BOOL
+>>	binary	CONFIG	STRING	CONFIG
+^	binary	SCALAR	SCALAR	SCALAR
+||	binary	BOOL	BOOL,CODE	BOOL
+abs	unary		SCALAR	SCALAR
+and	binary	BOOL	BOOL,CODE	BOOL
+call	unary		CODE	ANY
+call	binary	ANY	CODE	ANY
+case	unary		ANY	SWITCH
+count	unary		ARRAY,STRING	SCALAR
+count	binary	CODE	ARRAY	SCALAR
+default	unary		CODE	NOTHING
+do	binary	WHILE	CODE	NOTHING
+do	binary	FOR	CODE	ANY
+do	binary	SWITCH	CODE	ANY
+do	binary	WITH	CODE	ANY
+else	binary	CODE	CODE	ARRAY
+exitWith	binary	IF	CODE	ANY
+false	nular			BOOL
+for	unary		STRING	FOR
+for	unary		ARRAY	FOR
+forEach	binary	CODE	ARRAY,HASHMAP	ANY
+from	binary	FOR	SCALAR	FOR
+hint	unary		STRING	NOTHING
+if	unary		BOOL	IF
+max	binary	SCALAR	SCALAR	SCALAR
+min	binary	SCALAR	SCALAR	SCALAR
+mod	binary	SCALAR	SCALAR	SCALAR
+nil	nular			ANY
+not	unary		BOOL	BOOL
+or	binary	BOOL	BOOL,CODE	BOOL
+private	unary		STRING,ARRAY	NOTHING
+select	binary	ARRAY	SCALAR	ANY
+step	binary	FOR	SCALAR	FOR
+switch	unary		ANY	SWITCH
+then	binary	IF	CODE,ARRAY	ANY
+time	nular			SCALAR
+to	binary	FOR	SCALAR	FOR
+true	nular			BOOL
+while	unary		CODE	WHILE
+with	unary		NAMESPACE	WITH
+params	unary		ARRAY	BOOL
+params	binary	ANY	ARRAY	BOOL
