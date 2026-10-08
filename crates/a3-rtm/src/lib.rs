@@ -104,6 +104,19 @@ pub struct Keystone {
     pub value: String,
 }
 
+/// What an RTM says before its keyframes ([`Animation::read_header`]).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Header {
+    /// Distance the animated model moves over one cycle (the "move vector").
+    pub step: Vec3,
+    /// Bone names, as stored.
+    pub bones: Vec<String>,
+    /// Phase keystones.
+    pub keystones: Vec<Keystone>,
+    /// See [`Animation::extra_names`].
+    pub extra_names: Vec<String>,
+}
+
 /// A decoded RTM animation.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Animation {
@@ -129,6 +142,21 @@ impl Animation {
             Some(b"RTM_0101") | Some(b"RTM_MDAT") => plain::read(data),
             Some(sig) if sig.starts_with(b"BMTR") => bmtr::read(data),
             _ => Err(Error::UnknownSignature(data[..data.len().min(8)].to_vec())),
+        }
+    }
+
+    /// Decodes only what precedes the keyframes: the move vector, the bone names and the
+    /// keystones. Much cheaper than [`Animation::read`] for binarized files, whose keyframes are
+    /// most of the bytes (plain files are read whole).
+    pub fn read_header(data: &[u8]) -> Result<Header> {
+        match data.get(..4) {
+            Some(b"BMTR") => bmtr::read_header(data),
+            _ => Self::read(data).map(|a| Header {
+                step: a.step,
+                bones: a.bones,
+                keystones: a.keystones,
+                extra_names: a.extra_names,
+            }),
         }
     }
 

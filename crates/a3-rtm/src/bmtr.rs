@@ -4,7 +4,7 @@ use glam::{Quat, Vec3};
 
 use crate::cursor::Cursor;
 use crate::half::f16_to_f32;
-use crate::{Animation, BoneTransform, Encoding, Error, Frame, Keystone, Result};
+use crate::{Animation, BoneTransform, Encoding, Error, Frame, Header, Keystone, Result};
 
 /// The only version found in the install (build 2.22).
 const VERSION: u32 = 5;
@@ -20,6 +20,48 @@ const ARRAY_LZO: u8 = 2;
 
 pub fn read(data: &[u8]) -> Result<Animation> {
     let mut c = Cursor::new(data);
+    let (header, phase_count, version) = read_header_from(&mut c)?;
+    let Header {
+        step,
+        bones,
+        keystones,
+        extra_names,
+    } = header;
+    let bone_count = bones.len();
+
+    let phases = array(&mut c, phase_count, 4, "phase times")?;
+    let mut frames = Vec::with_capacity(phase_count);
+    for phase in phases.chunks_exact(4) {
+        let raw = array(&mut c, bone_count, TRANSFORM_SIZE, "bone transforms")?;
+        frames.push(Frame {
+            phase: f32::from_le_bytes(phase.try_into().expect("4 bytes")),
+            transforms: raw.chunks_exact(TRANSFORM_SIZE).map(transform).collect(),
+        });
+    }
+    if !c.remaining().is_empty() {
+        return Err(Error::Malformed(format!(
+            "{} bytes after the last frame",
+            c.remaining().len()
+        )));
+    }
+
+    Ok(Animation {
+        encoding: Encoding::Binarized { version },
+        step,
+        bones,
+        frames,
+        keystones,
+        extra_names,
+    })
+}
+
+/// Reads everything before the phase times.
+pub fn read_header(data: &[u8]) -> Result<Header> {
+    read_header_from(&mut Cursor::new(data)).map(|(h, _, _)| h)
+}
+
+/// The header, the phase count and the version.
+fn read_header_from(c: &mut Cursor) -> Result<(Header, usize, u32)> {
     c.skip(4)?; // "BMTR"
     let version = c.u32()?;
     if version != VERSION {
@@ -56,31 +98,16 @@ pub fn read(data: &[u8]) -> Result<Animation> {
             })
         })
         .collect::<Result<Vec<_>>>()?;
-
-    let phases = array(&mut c, phase_count, 4, "phase times")?;
-    let mut frames = Vec::with_capacity(phase_count);
-    for phase in phases.chunks_exact(4) {
-        let raw = array(&mut c, bone_count, TRANSFORM_SIZE, "bone transforms")?;
-        frames.push(Frame {
-            phase: f32::from_le_bytes(phase.try_into().expect("4 bytes")),
-            transforms: raw.chunks_exact(TRANSFORM_SIZE).map(transform).collect(),
-        });
-    }
-    if !c.remaining().is_empty() {
-        return Err(Error::Malformed(format!(
-            "{} bytes after the last frame",
-            c.remaining().len()
-        )));
-    }
-
-    Ok(Animation {
-        encoding: Encoding::Binarized { version },
-        step,
-        bones,
-        frames,
-        keystones,
-        extra_names,
-    })
+    Ok((
+        Header {
+            step,
+            bones,
+            keystones,
+            extra_names,
+        },
+        phase_count,
+        version,
+    ))
 }
 
 /// Reads an array of `expected` elements of `size` bytes: a `u32` count, a compression flag and

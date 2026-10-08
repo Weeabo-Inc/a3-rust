@@ -56,6 +56,15 @@ fn reads_bones_step_and_frames_of_a_plain_rtm() {
 }
 
 #[test]
+fn reads_the_header_of_a_plain_rtm() {
+    let header = Animation::read_header(&two_frame_rtm()).unwrap();
+
+    assert_eq!(header.step, Vec3::new(0.0, 0.0, -2.0));
+    assert_eq!(header.bones, ["body", "Wing"]);
+    assert!(header.keystones.is_empty());
+}
+
+#[test]
 fn bone_lookup_ignores_case() {
     let anim = Animation::read(&two_frame_rtm()).unwrap();
     assert_eq!(anim.bone_index("WING"), Some(1));

@@ -174,6 +174,29 @@ fn rejects_truncated_files_at_every_length() {
 }
 
 #[test]
+fn reads_the_step_bones_and_keystones_without_the_frames() {
+    let bytes = Builder {
+        keystones: vec![(0, "StepSound", 0.25)],
+        ..Builder::default()
+    }
+    .build();
+    // Phase times (4 + 1 + 2 * 4 bytes) and two frames (4 + 1 + 2 * 14 bytes each) follow the
+    // header; cut inside the phase times.
+    let header_len = bytes.len() - 13 - 2 * 33;
+
+    let header = Animation::read_header(&bytes[..header_len + 3]).unwrap();
+
+    assert_eq!(header.step, Vec3::new(0.0, 0.0, 1.5));
+    assert_eq!(header.bones, ["pelvis", "spine"]);
+    let keystones: Vec<(&str, f32)> = header
+        .keystones
+        .iter()
+        .map(|k| (k.name.as_str(), k.phase))
+        .collect();
+    assert_eq!(keystones, [("StepSound", 0.25)]);
+}
+
+#[test]
 fn samples_between_keyframes() {
     let anim = Animation::read(&plain().build()).unwrap();
     let spine = anim.bone_index("Spine").unwrap();
