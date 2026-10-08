@@ -175,6 +175,22 @@ The regular grid of height samples covering the Landscape; its spacing is the te
 One square of the Terrain grid; the unit of collision, surface type lookup and LOD streaming
 _(uncertain)_.
 
+**Land grid**:
+The coarser square grid of land cells (30 m on Altis) over the Landscape that holds per-cell
+geography flags, the surface material index and the placed objects, grouped by cell. Distinct
+from the Terrain grid of height samples, which is finer (7.5 m on Altis).
+_Avoid_: layer grid, texture grid
+
+**Map object**:
+A symbol of the 2D map stored in the WRP (tree, house, fence, power line, forest cell...),
+pointing at the placed Object it stands for.
+_Avoid_: map marker (markers are mission-placed)
+
+**Road net**:
+The WRP's list of road parts per land cell, each with its connection ends; in Arma 3 it holds
+only bridges and invisible runway roadways, while ordinary roads come from the terrain's roads
+shapefile.
+
 **Satellite map layers**:
 The large `_sat` colour image and the `_mask` layer images that blend per-surface textures
 (each described by an rvmat) across the Landscape.

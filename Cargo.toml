@@ -19,6 +19,7 @@ a3-gamedata = { path = "crates/a3-gamedata" }
 a3-preproc = { path = "crates/a3-preproc" }
 a3-p3d = { path = "crates/a3-p3d" }
 a3-compress = { path = "crates/a3-compress" }
+a3-wrp = { path = "crates/a3-wrp" }
 
 # Errors
 thiserror = "2"
@@ -45,6 +46,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Time
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+
+# Images (png is listed with the engine core)
+tiff = "0.9"
 
 # CLI
 clap = { version = "4", features = ["derive", "env"] }
@@ -75,4 +79,11 @@ all = { level = "warn", priority = -1 }
 
 # Hashing whole archives in tests is far too slow unoptimised.
 [profile.dev.package.sha1]
+opt-level = 3
+
+# Terrain and codec real-data tests decode hundreds of MiB.
+[profile.dev.package.a3-compress]
+opt-level = 3
+
+[profile.dev.package.a3-wrp]
 opt-level = 3

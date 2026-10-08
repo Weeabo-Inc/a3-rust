@@ -4,6 +4,7 @@ mod config_cmd;
 mod p3d_cmd;
 mod pbo_cmd;
 mod vfs_cmd;
+mod wrp_cmd;
 
 use std::path::PathBuf;
 
@@ -30,6 +31,8 @@ enum Command {
     Config(config_cmd::ConfigCommand),
     /// Inspect P3D models (MLOD and ODOL).
     P3d(p3d_cmd::P3dArgs),
+    /// Inspect binarized terrains (WRP): summary, heightmap, objects, overview map.
+    Wrp(wrp_cmd::WrpArgs),
 }
 
 #[derive(Subcommand)]
@@ -127,6 +130,7 @@ fn main() -> anyhow::Result<()> {
         }
         Command::Config(cmd) => config_cmd::run(cmd)?,
         Command::P3d(args) => p3d_cmd::run(args)?,
+        Command::Wrp(args) => wrp_cmd::run(args)?,
     }
     Ok(())
 }
