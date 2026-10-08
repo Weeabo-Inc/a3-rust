@@ -37,7 +37,7 @@ pub use encode::{EncodeOptions, encode_rgba8};
 pub use error::{Error, Result};
 pub use format::PixelFormat;
 pub use kind::{TextureKind, TextureType};
-pub use procedural::{ColorFormat, Procedural, ProceduralFunction};
+pub use procedural::{ColorFormat, Procedural, ProceduralFunction, RuntimeSource};
 pub use tagg::{AlphaFlags, ChannelSource, Color, Swizzle};
 pub use texheaders::{TexHeader, TexHeaderConstants, TexHeaderMip, TexHeaders};
 pub use texture::{Compression, Mip, MipInfo, PaaHeader, Tagg, Texture};

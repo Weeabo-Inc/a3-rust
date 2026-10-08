@@ -5,7 +5,8 @@ use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 
 use a3_paa::{
-    EncodeOptions, PaaHeader, PixelFormat, TexHeaders, TextureKind, decode_rgba8, encode_rgba8,
+    EncodeOptions, PaaHeader, PixelFormat, Procedural, TexHeaders, TextureKind, decode_rgba8,
+    encode_rgba8,
 };
 use anyhow::{Context, Result, bail};
 use clap::{Args, Subcommand};
@@ -28,7 +29,8 @@ enum PaaCommand {
     },
     /// Decode one mipmap to an RGBA PNG.
     Topng {
-        /// A .paa/.pac file, or a VFS path.
+        /// A .paa/.pac file, a VFS path, or a procedural texture string such as
+        /// `#(ai,64,64,1)fresnel(1.3,7)`.
         input: String,
         /// Output PNG file.
         output: PathBuf,
@@ -154,11 +156,21 @@ pub fn to_png(
     unswizzle: bool,
     game_dir: Option<&Path>,
 ) -> Result<()> {
-    let data = load(input, game_dir)?;
-    let header = PaaHeader::read(&data).context("cannot parse PAA")?;
-    let level = header.read_mip(&data, mip)?;
-    let mut rgba = decode_rgba8(header.meta.format, &level)?;
-    if let (true, Some(swizzle)) = (unswizzle, header.meta.swizzle) {
+    let (meta, level) = if Procedural::is_procedural(input) {
+        let mut texture = Procedural::parse(input)?.generate()?;
+        if mip >= texture.mips.len() {
+            bail!("the texture has {} mipmaps", texture.mips.len());
+        }
+        let level = texture.mips.swap_remove(mip);
+        (texture, level)
+    } else {
+        let data = load(input, game_dir)?;
+        let header = PaaHeader::read(&data).context("cannot parse PAA")?;
+        let level = header.read_mip(&data, mip)?;
+        (header.meta, level)
+    };
+    let mut rgba = decode_rgba8(meta.format, &level)?;
+    if let (true, Some(swizzle)) = (unswizzle, meta.swizzle) {
         swizzle.restore(&mut rgba);
     }
     write_png(
@@ -172,7 +184,7 @@ pub fn to_png(
         output.display(),
         level.width,
         level.height,
-        header.meta.format
+        meta.format
     );
     Ok(())
 }

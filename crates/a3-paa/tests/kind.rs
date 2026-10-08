@@ -85,3 +85,38 @@ fn each_kind_has_the_texture_type_binarize_records_in_texheaders() {
     assert_eq!(TextureType::from_index(99), None);
     assert_eq!(TextureType::Macro.index(), 7);
 }
+
+#[test]
+fn texture_type_from_a_path_follows_the_engine_rule() {
+    let cases = [
+        (
+            r"a3\map_altis\data\sky_clear_lco.paa",
+            TextureType::DiffuseLinear,
+        ),
+        (
+            r"a3\map_altis\data\layers\00_00\s_002_016_lco.paa",
+            TextureType::Diffuse,
+        ),
+        (
+            r"a3\map_altis\data\layers\00_00\m_002_016_lca.paa",
+            TextureType::Diffuse,
+        ),
+        (r"x\hat_ti_ca.paa", TextureType::Thermal),
+        (r"x\missilem_at_ti_co.paa", TextureType::Diffuse),
+        (r"x\Armor1_NOHQ.paa", TextureType::Normal),
+        (r"x\y_novhq.paa", TextureType::Normal),
+        (r"x\y_normalmap.paa", TextureType::Normal),
+        (r"x\drevoleta_detail.paa", TextureType::Detail),
+        (r"x\l_middle_mco.paa", TextureType::Detail),
+        (r"x\y_sm.paa", TextureType::Specular),
+        (r"x\y_dtsmdi.paa", TextureType::DetailSpecular),
+        (r"x\y_sky.paa", TextureType::DiffuseLinear),
+        (r"x\y_mask.paa", TextureType::Mask),
+        (r"x\nounderscore.paa", TextureType::Diffuse),
+        // The engine matches `_as.`: without an extension nothing matches.
+        (r"x\y_as", TextureType::Diffuse),
+    ];
+    for (path, ty) in cases {
+        assert_eq!(TextureType::from_path(path), ty, "{path}");
+    }
+}
