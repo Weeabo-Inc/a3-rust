@@ -32,26 +32,29 @@ the engine's left-handed space: x right, y up, z forward). `i8 lod` = LOD index,
 ```
 u32  count
 if count * sizeof(T) > 0:
-    u8   flag            // 0: raw bytes follow, 1: LZO1X stream follows
+    u8   flag            // 0: raw bytes follow, 2: an LZO1X stream follows
     [count * sizeof(T) bytes, raw or LZO1X-compressed]
 ```
 
 The compressed size is not stored: the LZO stream is decoded until `count * sizeof(T)` output bytes
-are produced, and reading continues after the last input byte consumed. A zero count has no flag
-byte. _Verified_ for v73.
+are produced, and reading continues after the last input byte consumed (the stream's `11 00 00`
+end marker included). A zero count has no flag byte. _Verified_ for v73.
+
+The flag, not the size, decides: in a sample of 1,313 arrays, 78 arrays under 1024 bytes were
+LZO and 20 arrays of 1024 bytes or more were raw. (The Arma 2 rule "compressed when 1024 bytes
+or more" does not hold for v73.) No other flag value occurs.
 
 ### Condensed array (`fill<T>`)
 
 ```
 u32  count
-if count > 0:
-    bool default_fill
-    if default_fill: T value          // every element equals value
-    else:            the bytes of carray<T> after its count (flag + data)
+bool default_fill                     // present even when count is 0
+if default_fill: T value              // every element equals value
+else:            the bytes of carray<T> after its count (flag + data; nothing when count is 0)
 ```
 
-_Verified_ for the arrays marked `fill` below (all have count > 0 when present; the empty case is
-inferred).
+_Verified_ for the arrays marked `fill` below, including LODs with no vertices (proxy-only and
+empty LODs store `count = 0, default_fill = 0`).
 
 ## File layout
 
@@ -231,16 +234,20 @@ carray<u32> vertices
 carray<u8>  vertex_weights  // empty or one per selected vertex _(meaning of the byte uncertain)_
 ```
 
-### Proxy (_verified_ size)
+### Proxy (_verified_)
 
 ```
 asciiz model
-f32    transform[12]        // 3x3 orientation then position _(order medium)_
-i32    sequence_id
-i32    named_selection
-i32    bone
-i32    section
+f32    orientation[9]       // 3x3, determinant ±1 on all 39,453 shipped proxies
+vec3   position
+i32    sequence_id          // the .NNN suffix
+i32    named_selection      // the selection "proxy:<model>.<NNN>" (true for every shipped proxy)
+i32    bone                 // skeleton bone, -1 none
+i32    section              // -1 none
 ```
+
+The proxy triangle itself is not kept: the proxy's named selection has no vertices in ODOL.
+Whether the 9 orientation floats are rows or columns is not settled _(medium)_.
 
 ### EmbeddedMaterial (_verified_ for material version 11, the only one shipped)
 
@@ -279,9 +286,20 @@ tangents of sampled models have length 1 ± 0.002, except a few all-zero normals
 ### BoneWeights (12 bytes) and NeighborBones (32 bytes)
 
 ```
-BoneWeights:   u32 count; { u8 bone; u8 weight; }[4]      // bone = LOD bone index; weights sum to 255
+BoneWeights:   u32 count; { u8 bone; u8 weight; }[4]      // bone = LOD bone index (sub_skeleton)
 NeighborBones: u16 pos_a; u16 pad; BoneWeights rtw_a; u16 pos_b; u16 pad; BoneWeights rtw_b
 ```
+
+Over every shipped vertex with a bone-weight entry: 31.1 M have `count = 0` (unskinned), 15.6 M
+one bone with weight 255, 2.5 M several bones whose weights sum to exactly 255. _High_.
+
+## Geometry checks over the whole install
+
+The real-data test (`crates/a3-p3d/tests/real_data.rs`) decodes all 68,522 LODs (92.2 M vertices,
+74.2 M faces) and checks: every position lies inside its LOD's stored bounding box; every
+normal has length 1 ± 0.01 or is zero (381 k zero normals, all in degenerate geometry);
+sections are contiguous and cover every face; proxies as described above; bone weights as
+above. Release build: ~15 s including reading 3 GB from the PBOs.
 
 ## LOD resolutions
 

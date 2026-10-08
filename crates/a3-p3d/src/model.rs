@@ -369,6 +369,27 @@ pub struct Lod {
     pub odol: Option<OdolLod>,
 }
 
+impl Lod {
+    /// Triangle-list indices of every face, in face order (quads split as in [`Face::triangles`]).
+    pub fn triangles(&self) -> Vec<u32> {
+        self.faces
+            .iter()
+            .flat_map(Face::triangles)
+            .flatten()
+            .collect()
+    }
+
+    /// Triangle-list indices of the faces of one section.
+    pub fn section_triangles(&self, section: &Section) -> Vec<u32> {
+        let range = section.faces.start as usize..section.faces.end as usize;
+        self.faces[range]
+            .iter()
+            .flat_map(Face::triangles)
+            .flatten()
+            .collect()
+    }
+}
+
 /// Per-vertex attributes. Every non-empty array has one entry per vertex.
 #[derive(Debug, Clone, Default)]
 pub struct Vertices {
@@ -574,6 +595,53 @@ pub struct OdolLod {
     pub permanent: bool,
     /// Counts the engine reads before loading a non-permanent LOD.
     pub summary: Option<LodSummary>,
+    /// Per LOD bone (the index used by [`BoneWeights`]): its index in [`Skeleton::bones`].
+    pub sub_skeleton: Vec<u32>,
+    /// Per skeleton bone: the LOD bones it maps to.
+    pub skeleton_to_sub_skeleton: Vec<Vec<u32>>,
+    /// Total face area.
+    pub face_area: f32,
+    /// Clip-flag hints of any vertex.
+    pub or_hints: u32,
+    /// Clip-flag hints common to all vertices.
+    pub and_hints: u32,
+    /// Bounding box minimum.
+    pub bbox_min: Vec3,
+    /// Bounding box maximum.
+    pub bbox_max: Vec3,
+    /// Bounding sphere center.
+    pub bbox_center: Vec3,
+    /// Bounding sphere radius.
+    pub bbox_radius: f32,
+    /// Point index to vertex index map (empty in shipped models).
+    pub point_to_vertex: Vec<u32>,
+    /// Packed ARGB icon colour.
+    pub icon_color: u32,
+    /// Packed ARGB selection colour.
+    pub selected_color: u32,
+    /// LOD special flags.
+    pub special: u32,
+    /// Every vertex has a single bone with full weight _(uncertain)_.
+    pub vertex_bone_ref_is_simple: bool,
+    /// Per vertex: the two neighbour vertices and their bone weights (empty for most LODs).
+    pub neighbor_bones: Vec<NeighborBones>,
+    /// Unknown `u32` at the end of the vertex block; 0 in shipped models.
+    pub unknown_u32: u32,
+    /// Unknown trailing byte; 1 in nearly all shipped LODs.
+    pub unknown_u8: u8,
+}
+
+/// The neighbour-vertex record of a skinned vertex _(meaning uncertain)_.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct NeighborBones {
+    /// First neighbour vertex.
+    pub pos_a: u16,
+    /// Its bone weights.
+    pub weights_a: BoneWeights,
+    /// Second neighbour vertex.
+    pub pos_b: u16,
+    /// Its bone weights.
+    pub weights_b: BoneWeights,
 }
 
 /// The header-side summary of a non-permanent ODOL LOD.
@@ -602,4 +670,10 @@ pub struct OdolSection {
     pub min_bone: u32,
     /// Number of sub-skeleton bones used.
     pub bone_count: u32,
+    /// Material path stored inline when the material index is -1 (empty in shipped models).
+    pub material_name: String,
+    /// Area over texture, per stage _(uncertain)_.
+    pub area_over_tex: Vec<f32>,
+    /// Eleven unknown floats present in a few sections.
+    pub unknown: Option<[f32; 11]>,
 }

@@ -201,7 +201,9 @@ fn rejects_other_odol_versions() {
 
 #[test]
 fn rejects_lod_offsets_outside_the_file() {
-    let mut bytes = Odol::new(&[1.0]).build();
+    let mut file = Odol::new(&[1.0]);
+    file.lod_bodies = vec![vec![]];
+    let mut bytes = file.build();
     let n = bytes.len();
     // The LOD end offset is the last u32 before the permanent flag.
     bytes[n - 5..n - 1].copy_from_slice(&u32::MAX.to_le_bytes());

@@ -31,6 +31,15 @@ pub enum Error {
         /// What is wrong.
         message: String,
     },
+
+    /// A compressed array could not be decompressed.
+    #[error("cannot decompress array at byte {offset:#x}: {source}")]
+    Decompress {
+        /// Byte offset of the array data.
+        offset: usize,
+        /// The codec error.
+        source: a3_compress::Error,
+    },
 }
 
 /// Result alias for this crate.

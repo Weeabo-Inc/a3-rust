@@ -6,8 +6,8 @@
 //! Every `.p3d` in the Arma 3 2.22 install is ODOL version 73; that is the ODOL version this
 //! crate reads. The layout is documented in `docs/re/p3d-odol.md`.
 //!
-//! Status: ODOL LOD geometry (vertices, faces, sections, selections, materials) is not decoded
-//! yet; ODOL [`Lod`]s carry their resolution, animation tables and [`OdolLod`] summary only.
+//! Render data: [`Lod::vertices`] holds one entry per render vertex, [`Lod::sections`] split the
+//! faces by texture and material, and [`Lod::section_triangles`] gives a triangle index buffer.
 
 mod error;
 mod mlod;

@@ -107,7 +107,7 @@ impl Odol {
             animations: vec![],
             bones_to_anims: vec![],
             anims_to_bones: vec![],
-            lod_bodies: vec![vec![]; resolutions.len()],
+            lod_bodies: vec![empty_lod_body(); resolutions.len()],
         }
     }
 
@@ -280,5 +280,199 @@ pub fn mlod(lods: &[MlodLod]) -> Vec<u8> {
         b.u8(1).asciiz("#EndOfFile#").u32(0);
         b.f32(lod.resolution);
     }
+    b.0
+}
+
+/// An LZO1X stream holding `data` as one literal run (valid for up to 238 bytes).
+pub fn lzo_literal(data: &[u8]) -> Vec<u8> {
+    assert!(data.len() <= 238);
+    let mut out = vec![17 + data.len() as u8];
+    out.extend_from_slice(data);
+    out.extend_from_slice(&[0x11, 0, 0]);
+    out
+}
+
+impl Bytes {
+    /// A compressed array stored raw (flag 0).
+    pub fn carray(&mut self, count: usize, data: &[u8]) -> &mut Self {
+        self.u32(count as u32);
+        if !data.is_empty() {
+            self.u8(0).raw(data);
+        }
+        self
+    }
+    /// A compressed array stored as LZO1X (flag 2).
+    pub fn carray_lzo(&mut self, count: usize, data: &[u8]) -> &mut Self {
+        self.u32(count as u32).u8(2).raw(&lzo_literal(data))
+    }
+    /// A default-fill array with explicit data.
+    pub fn fill(&mut self, count: usize, data: &[u8]) -> &mut Self {
+        self.u32(count as u32).u8(0);
+        if !data.is_empty() {
+            self.u8(0).raw(data);
+        }
+        self
+    }
+    /// A default-fill array of `count` copies of `value`.
+    pub fn fill_value(&mut self, count: usize, value: &[u8]) -> &mut Self {
+        self.u32(count as u32).u8(1).raw(value)
+    }
+}
+
+pub fn le_u32s(v: &[u32]) -> Vec<u8> {
+    v.iter().flat_map(|x| x.to_le_bytes()).collect()
+}
+
+pub fn le_f32s(v: &[f32]) -> Vec<u8> {
+    v.iter().flat_map(|x| x.to_le_bytes()).collect()
+}
+
+/// A visual ODOL LOD body: a unit quad and a triangle, two sections, one selection, a proxy and
+/// a material. Positions are LZO-compressed; everything else is raw.
+pub fn sample_lod_body() -> Vec<u8> {
+    let positions: [[f32; 3]; 5] = [
+        [0.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [2.0, 0.0, 0.0],
+    ];
+    let mut b = Bytes::new();
+    // Proxy: identity orientation at (0.5, 0.5, 0), selection 1.
+    b.u32(1)
+        .asciiz(r"\a3\proxies\seat")
+        .floats(&[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+        .floats(&[0.5, 0.5, 0.0])
+        .i32(1)
+        .i32(1)
+        .i32(-1)
+        .i32(-1);
+    b.u32(2).u32(0).u32(1); // sub-skeleton: LOD bones 0, 1 -> skeleton bones 0, 1
+    b.u32(2).u32(1).u32(0).u32(1).u32(1); // skeleton -> sub-skeleton
+    b.u32(5) // vertex count
+        .f32(1.5) // face area
+        .u32(0)
+        .u32(0)
+        .floats(&[0.0, 0.0, 0.0])
+        .floats(&[2.0, 1.0, 0.0])
+        .floats(&[1.0, 0.5, 0.0])
+        .f32(1.2);
+    b.u32(2)
+        .asciiz(r"a3\data\a_co.paa")
+        .asciiz(r"a3\data\b_co.paa");
+    // One embedded material, version 11, two stages, one texgen.
+    b.u32(1).asciiz(r"a3\data\a.rvmat").u32(11);
+    for _ in 0..6 {
+        b.floats(&[1.0, 1.0, 1.0, 1.0]);
+    }
+    b.f32(40.0)
+        .u32(7)
+        .u32(3)
+        .u32(1)
+        .u32(0)
+        .asciiz(r"a3\data\a.bisurf");
+    b.u32(1).u32(0x10);
+    b.u32(2).u32(1);
+    b.u32(3).asciiz(r"a3\data\a_nohq.paa").u32(0).u8(0);
+    b.u32(3).asciiz(r"a3\data\a_smdi.paa").u32(0).u8(1);
+    b.u32(1)
+        .floats(&[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]);
+    b.u32(0).asciiz("").u32(0).u8(0); // TI stage
+    b.carray(0, &[]).carray(0, &[]); // point_to_vertex, vertex_to_point
+    // Faces: quad (0 1 2 3) = 20 bytes in memory, triangle (1 4 2) = 16 bytes.
+    b.u32(2).u32(36).u16(0);
+    b.u8(4).u32(0).u32(1).u32(2).u32(3);
+    b.u8(3).u32(1).u32(4).u32(2);
+    // Sections: [0, 20) texture 0 material 0; [20, 36) texture 1, no material.
+    b.u32(2);
+    b.u32(0).u32(20).u32(0).u32(2).u32(0).i16(0).u32(0).i32(0);
+    b.u32(2).f32(1.0).f32(-1000.0).u32(0);
+    b.u32(20)
+        .u32(36)
+        .u32(0)
+        .u32(0)
+        .u32(0)
+        .i16(1)
+        .u32(0x40)
+        .i32(-1)
+        .asciiz("");
+    b.u32(2).f32(1.0).f32(-1000.0).u32(0);
+    // Named selections: "door" = face 1, vertices 1, 4, 2; "proxy:..." = empty.
+    b.u32(2);
+    b.asciiz("door")
+        .carray(1, &le_u32s(&[1]))
+        .u32(0)
+        .u8(1)
+        .carray(1, &le_u32s(&[1]))
+        .carray(3, &le_u32s(&[1, 4, 2]))
+        .carray(0, &[]);
+    b.asciiz(r"proxy:\a3\proxies\seat.001")
+        .carray(0, &[])
+        .u32(0)
+        .u8(0)
+        .carray(0, &[])
+        .carray(0, &[])
+        .carray(0, &[]);
+    b.u32(1).asciiz("lodnoshadow").asciiz("1"); // properties
+    b.u32(0); // frames
+    b.u32(0xff00_0000).u32(0xff00_0000).u32(0).u8(0);
+    let rest_size_at = b.len();
+    b.u32(0);
+    let rest_start = b.len();
+    b.fill_value(5, &0u32.to_le_bytes()); // clip flags
+    // UV set 0 over [0,1]: raw -32767 -> 0, 32767 -> 1, 0 -> 0.5.
+    b.floats(&[0.0, 0.0, 1.0, 1.0]);
+    let uv = |u: i16, v: i16| [u.to_le_bytes(), v.to_le_bytes()].concat();
+    let uvs = [
+        uv(-32767, -32767),
+        uv(32767, -32767),
+        uv(32767, 32767),
+        uv(-32767, 32767),
+        uv(0, 0),
+    ]
+    .concat();
+    b.fill(5, &uvs);
+    b.u32(1); // one UV set
+    let pos: Vec<f32> = positions.iter().flatten().copied().collect();
+    b.carray_lzo(5, &le_f32s(&pos));
+    // Normals: all -Z, packed z = 511 (decodes to -1).
+    b.fill_value(5, &(511u32 << 20).to_le_bytes());
+    b.carray(0, &[]); // tangents
+    // Bone weights: vertex 4 on LOD bone 1, others on bone 0.
+    let mut w = Vec::new();
+    for i in 0..5 {
+        w.extend_from_slice(&1u32.to_le_bytes());
+        w.extend_from_slice(&[if i == 4 { 1 } else { 0 }, 255, 0, 0, 0, 0, 0, 0]);
+    }
+    b.carray(5, &w);
+    b.carray(0, &[]); // neighbour bones
+    b.u32(0);
+    let rest = (b.len() - rest_start) as u32;
+    b.put_u32_at(rest_size_at, rest);
+    b.u8(1);
+    b.0
+}
+/// A LOD body with no vertices, faces or selections.
+pub fn empty_lod_body() -> Vec<u8> {
+    let mut b = Bytes::new();
+    b.u32(0).u32(0).u32(0); // proxies, sub-skeleton, skeleton -> sub-skeleton
+    b.u32(0).f32(0.0).u32(0).u32(0).floats(&[0.0; 10]);
+    b.u32(0).u32(0); // textures, materials
+    b.carray(0, &[]).carray(0, &[]);
+    b.u32(0).u32(0).u16(0); // faces
+    b.u32(0).u32(0).u32(0).u32(0); // sections, selections, properties, frames
+    b.u32(0).u32(0).u32(0).u8(0);
+    let rest_size_at = b.len();
+    b.u32(0);
+    let rest_start = b.len();
+    b.fill(0, &[]); // clip flags
+    b.floats(&[0.0, 0.0, 1.0, 1.0]).fill(0, &[]).u32(1); // UV set 0
+    b.carray(0, &[]); // positions
+    b.fill(0, &[]); // normals
+    b.carray(0, &[]).carray(0, &[]).carray(0, &[]);
+    b.u32(0);
+    let rest = (b.len() - rest_start) as u32;
+    b.put_u32_at(rest_size_at, rest);
+    b.u8(1);
     b.0
 }
