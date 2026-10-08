@@ -7,9 +7,11 @@
 //! - [`spatial`] holds the listener/emitter model: distance curves, panning, doppler, filters.
 
 mod clip;
+pub mod config;
 mod curve;
 mod engine;
 mod error;
+pub mod expr;
 mod filter;
 mod mixer;
 pub mod spatial;
