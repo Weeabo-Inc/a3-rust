@@ -495,6 +495,21 @@ One UI element inside a Display (button, list box, text, map), defined by a conf
 numeric `type` and `style`.
 _Avoid_: widget
 
+**Safe zone**:
+The whole screen in viewport units, the values of `safeZoneX/Y/W/H`; `[0.5, 0.5]` is always the
+screen centre.
+_Avoid_: screen rectangle, bounds
+
+**Interface size**:
+The UI scale setting (Very Small to Very Large, `uiScale`), which scales the 4:3 viewport the Safe
+zone is measured in.
+_Avoid_: DPI scale, resolution scale
+
+**Pixel grid**:
+The screen-height-derived unit that keeps UI aligned across resolutions: `pixelGrid`,
+`pixelGridNoUIScale` and `pixelGridBase`, from config `uiScaleMaxGrids` and `uiScaleFactor`.
+_Avoid_: pixel step
+
 **Curator (Zeus)**:
 The real-time game-master mode in which a player places and commands entities during a running
 mission. The engine name is Curator; Zeus is the product name.
