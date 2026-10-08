@@ -89,6 +89,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-landscape-render"
+version = "0.1.0"
+dependencies = [
+ "a3-config",
+ "a3-core",
+ "a3-landscape",
+ "a3-paa",
+ "a3-render",
+ "a3-vfs",
+ "a3-wrp",
+ "bytemuck",
+ "glam",
+ "log",
+ "proptest",
+]
+
+[[package]]
 name = "a3-p3d"
 version = "0.1.0"
 dependencies = [
@@ -401,9 +418,13 @@ name = "arma3"
 version = "0.1.0"
 dependencies = [
  "a3-core",
+ "a3-gamedata",
  "a3-input",
+ "a3-landscape",
+ "a3-landscape-render",
  "a3-platform",
  "a3-render",
+ "a3-wrp",
  "anyhow",
  "clap",
  "glam",

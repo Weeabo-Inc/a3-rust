@@ -1,12 +1,28 @@
-//! The debug scene: free-fly camera over a procedural ground grid with a few test meshes.
+//! The debug scene: free-fly camera over a procedural ground grid with a few test meshes, or
+//! over a World's terrain when one is loaded (`--world`).
+
+use std::sync::{Arc, Mutex};
 
 use a3_input::{ActionMap, InputState, actions};
+use a3_landscape_render::{HeightField, TerrainRenderer, TerrainStats};
 use a3_render::texture::{bc1_block, rgb565};
 use a3_render::{
     Camera, ColorSpace, DrawList, FreeFlyController, FreeFlyInput, Gpu, MeshData, MeshDraw, MeshId,
     Renderer, TextureData, TextureFormat, TextureId,
 };
 use glam::{DAffine3, DQuat, DVec3, Vec3};
+
+use crate::world::{CameraSpec, LoadedWorld};
+
+/// Closest the free camera gets to the terrain surface, in metres.
+const MIN_ALTITUDE: f64 = 1.5;
+
+/// A loaded World's terrain as the scene sees it.
+struct WorldView {
+    name: String,
+    heights: HeightField,
+    stats: Arc<Mutex<TerrainStats>>,
+}
 
 /// Centre of the test area: far from the world origin, like the middle of a 30 km terrain, so
 /// camera-relative rendering is always exercised.
@@ -85,6 +101,7 @@ pub struct DebugScene {
     pub controller: FreeFlyController,
     pub actions: ActionMap,
     assets: Option<SceneAssets>,
+    world: Option<WorldView>,
     sim_time: f64,
 }
 
@@ -100,8 +117,51 @@ impl DebugScene {
             controller: FreeFlyController::default(),
             actions: actions::default_map(),
             assets: None,
+            world: None,
             sim_time: 0.0,
         }
+    }
+
+    /// Show `world`'s terrain instead of the test meshes and place the camera: at `spec`, or
+    /// above the world's `centerPosition`.
+    pub fn load_world(
+        &mut self,
+        gpu: &Gpu,
+        renderer: &mut Renderer,
+        world: LoadedWorld,
+        spec: Option<CameraSpec>,
+    ) {
+        let terrain = TerrainRenderer::new(gpu, renderer, &world.landscape, Some(world.reader));
+        let stats = terrain.stats();
+        renderer.add_feature(Box::new(terrain));
+        let heights = world.landscape.heights;
+        let spec = spec.unwrap_or(CameraSpec {
+            east: world.centre.x,
+            north: world.centre.z,
+            altitude: 400.0,
+            heading: 30.0,
+            pitch: -15.0,
+        });
+        let ground = f64::from(heights.sample(spec.east as f32, spec.north as f32)).max(0.0);
+        self.camera = Camera {
+            position: DVec3::new(spec.east, ground + spec.altitude, spec.north),
+            yaw: spec.heading.to_radians(),
+            pitch: spec.pitch.to_radians(),
+            ..Camera::default()
+        };
+        // Terrain distances: fly faster than in the test scene.
+        self.controller.speed = 60.0;
+        self.world = Some(WorldView {
+            name: world.name,
+            heights,
+            stats,
+        });
+    }
+
+    /// Terrain statistics of the loaded World.
+    pub fn terrain_stats(&self) -> Option<TerrainStats> {
+        let world = self.world.as_ref()?;
+        world.stats.lock().ok().map(|s| *s)
     }
 
     /// Upload meshes and textures.
@@ -135,10 +195,19 @@ impl DebugScene {
         self.sim_time += dt;
         let fly = free_fly_input(&self.actions, input, mouse_look);
         self.controller.update(&mut self.camera, &fly, dt);
+        if let Some(world) = &self.world {
+            let p = &mut self.camera.position;
+            let ground = f64::from(world.heights.sample(p.x as f32, p.z as f32));
+            p.y = p.y.max(ground.max(0.0) + MIN_ALTITUDE);
+        }
     }
 
     /// Fill `draws` with this frame's meshes and lines.
     pub fn draw(&self, draws: &mut DrawList) {
+        if self.world.is_some() {
+            // The terrain draws itself as a render feature.
+            return;
+        }
         let Some(a) = &self.assets else { return };
         let c = WORLD_CENTRE;
         draws.mesh(MeshDraw {
@@ -264,6 +333,24 @@ impl DebugScene {
             "WASD Q Z MOVE  SHIFT/CTRL FAST  CLICK TO LOOK  ESC QUIT"
         };
         draws.text(8.0, 52.0, 2.0, dim, help);
+        if let (Some(world), Some(stats)) = (&self.world, self.terrain_stats()) {
+            let ground = world.heights.sample(p.x as f32, p.z as f32);
+            draws.text(
+                8.0,
+                74.0,
+                2.0,
+                dim,
+                format!(
+                    "{}  ATL {:.0}  NODES {}  TRIS {}K  TILES {} (+{})",
+                    world.name.to_uppercase(),
+                    p.y - f64::from(ground.max(0.0)),
+                    stats.nodes,
+                    stats.triangles / 1000,
+                    stats.resident_tiles,
+                    stats.pending_tiles
+                ),
+            );
+        }
     }
 }
 

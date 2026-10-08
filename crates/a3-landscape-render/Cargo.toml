@@ -1,0 +1,26 @@
+[package]
+name = "a3-landscape-render"
+description = "Draws the Landscape: terrain LOD, satellite tiles, sea"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+a3-core.workspace = true
+a3-landscape.workspace = true
+a3-paa.workspace = true
+a3-render.workspace = true
+a3-vfs.workspace = true
+a3-wrp.workspace = true
+bytemuck.workspace = true
+glam.workspace = true
+log.workspace = true
+
+[dev-dependencies]
+a3-config.workspace = true
+proptest.workspace = true
+
+[lints]
+workspace = true
+

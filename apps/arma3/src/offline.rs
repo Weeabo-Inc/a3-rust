@@ -10,7 +10,11 @@ use a3_platform::{ClockConfig, FrameClock};
 use a3_render::{DrawList, Gpu, Renderer};
 use anyhow::Context as _;
 
+use crate::engine::EngineContext;
 use crate::scene::{DebugScene, FpsCounter};
+
+/// Longest a screenshot waits for terrain tiles to finish streaming.
+const STREAMING_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// Simulated frame length for window-less runs, so their results are reproducible.
 const FRAME: Duration = Duration::from_micros(16_667);
@@ -50,24 +54,36 @@ pub fn run_headless(frames: u64) -> HeadlessReport {
 }
 
 /// Render `frames` frames offscreen at `width` x `height` and save the last one as a PNG.
-pub fn screenshot(path: &Path, width: u32, height: u32, frames: u64) -> anyhow::Result<()> {
+/// Over a World, keeps rendering until the terrain tiles near the camera have streamed in.
+pub fn screenshot(
+    engine: &EngineContext,
+    path: &Path,
+    width: u32,
+    height: u32,
+    frames: u64,
+) -> anyhow::Result<()> {
     let gpu = Gpu::headless().context("no GPU adapter for offscreen rendering")?;
     let adapter = gpu.adapter_name();
     log::info!("offscreen renderer: {adapter}");
     let mut renderer = Renderer::new(&gpu, a3_render::wgpu::TextureFormat::Rgba8UnormSrgb);
     let mut scene = DebugScene::new();
+    engine.configure(&mut renderer);
     scene.load(&gpu, &mut renderer);
+    if let Some(world) = engine.load_world()? {
+        scene.load_world(&gpu, &mut renderer, world, engine.camera);
+    }
     let input = InputState::new();
     let mut fps = FpsCounter::default();
     let mut draws = DrawList::default();
-    let mut image = Vec::new();
-    for _ in 0..frames.max(1) {
+    let start = Instant::now();
+    let mut frame = 0;
+    let image = loop {
         let started = Instant::now();
         scene.update(&input, false, FRAME.as_secs_f64());
         draws.clear();
         scene.draw(&mut draws);
         scene.overlay(&mut draws, &fps, &adapter, false);
-        image = renderer.render_to_image(
+        let image = renderer.render_to_image(
             &gpu,
             width,
             height,
@@ -76,7 +92,18 @@ pub fn screenshot(path: &Path, width: u32, height: u32, frames: u64) -> anyhow::
             FRAME.as_secs_f32(),
         )?;
         fps.frame(started.elapsed().as_secs_f64());
-    }
+        frame += 1;
+        let streaming = scene.terrain_stats().is_some_and(|s| s.pending_tiles > 0);
+        if frame >= frames.max(1) && (!streaming || start.elapsed() > STREAMING_TIMEOUT) {
+            break image;
+        }
+    };
+    log::info!(
+        "rendered {frame} frames in {:.2?} ({:.1} ms last), terrain {:?}",
+        start.elapsed(),
+        fps.frame_ms(),
+        scene.terrain_stats()
+    );
     write_png(path, width, height, &image)?;
     log::info!("wrote {}", path.display());
     Ok(())

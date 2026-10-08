@@ -52,7 +52,12 @@ impl App for GameApp {
             self.engine.game_dir
         );
         let mut renderer = Renderer::new(&gpu, surface.format());
+        self.engine.configure(&mut renderer);
         self.scene.load(&gpu, &mut renderer);
+        if let Some(world) = self.engine.load_world()? {
+            self.scene
+                .load_world(&gpu, &mut renderer, world, self.engine.camera);
+        }
         self.graphics = Some(Graphics {
             gpu,
             surface,

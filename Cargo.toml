@@ -28,6 +28,7 @@ a3-wrp = { path = "crates/a3-wrp" }
 a3-paa = { path = "crates/a3-paa" }
 a3-landscape = { path = "crates/a3-landscape" }
 a3-world = { path = "crates/a3-world" }
+a3-landscape-render = { path = "crates/a3-landscape-render" }
 
 # Errors
 thiserror = "2"
@@ -112,4 +113,17 @@ opt-level = 3
 opt-level = 3
 
 [profile.dev.package.a3-p3d]
+opt-level = 3
+
+# Building a Landscape decodes thousands of layer materials and satellite tiles.
+[profile.dev.package.a3-landscape-render]
+opt-level = 3
+
+[profile.dev.package.a3-paa]
+opt-level = 3
+
+[profile.dev.package.a3-config]
+opt-level = 3
+
+[profile.dev.package.lzokay-native]
 opt-level = 3
