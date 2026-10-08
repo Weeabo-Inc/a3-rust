@@ -130,6 +130,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-moves"
+version = "0.1.0"
+dependencies = [
+ "a3-config",
+ "a3-gamedata",
+ "a3-rtm",
+ "glam",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "a3-p3d"
 version = "0.1.0"
 dependencies = [

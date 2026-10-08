@@ -193,6 +193,33 @@ A named marker at a phase of an RTM, such as `StepSound` (a footstep), that the 
 while the animation plays.
 _Avoid_: event (alone), animation event
 
+**Moves type**:
+A CfgMoves class (`CfgMovesMaleSdr`, named by a unit's CfgVehicles `moves`): every Move a kind of
+character can play, their Move graph and their Action maps.
+_Avoid_: animation set, moveset
+
+**Move**:
+One class of a Moves type's `States`: an RTM with its playback parameters (speed, looping,
+interpolation speed, minimum play time). What `playMove`, `switchMove` and `animationState`
+name. A Man is always in exactly one Move, possibly blending out of the previous one.
+_Avoid_: state (alone), animation (alone), anim
+
+**Move graph**:
+The directed graph over a Moves type's Moves whose edges (`connectTo`, `interpolateTo`, ...) say
+which Move may follow which, at what cost. A **connect** edge waits for the Move to end; an
+**interpolate** edge blends into the next Move at once.
+_Avoid_: animation graph, state machine
+
+**Move path**:
+The Moves the engine plays to get from the current Move to a requested one, found by a cost
+search over the Move graph.
+
+**Action map**:
+A class of a Moves type's `Actions`, named by each Move: it maps actions (`WalkF`, `Down`,
+`Stop`, `ReloadMagazine`, ...) to the Move or gesture to play from that Move, and gives the
+stance and turn speed. `playAction` goes through it.
+_Avoid_: actions class, action set
+
 **Model animation**:
 A config-defined transform (rotation, translation, hide) of a named selection, driven by an
 Animation source such as a door state, wheel rotation or gun elevation.
