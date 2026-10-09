@@ -244,28 +244,47 @@ fn a_shot_never_reverses_and_never_goes_nan() {
 }
 
 #[test]
-fn dispersion_spreads_shots_within_the_cone() {
+fn dispersion_follows_the_per_shot_seed() {
     let mut world = bare();
-    world.set_random_seed(7);
     let s = shooter(&mut world, DVec3::ZERO);
-    // The `Single` mode of rifle_acc_F: a 0.001 rad half-angle cone around the aim.
+    // `rifle_acc_F`'s Single mode: dispersion 0.001 rad, the largest deviation on **each** axis
+    // (`sim-weapons.md` §2.2). The seed is FNV-1a-64 over the rounds in the magazine and the fire
+    // direction, drawn from the ANSI C LCG: these are the spec's values for a magazine of 1 and 2
+    // rounds, direction +x, 900 m/s, from the formula in `docs/re/sim-weapons.md` §2.2.
     let angle = f32v(0.001_f32);
 
-    let mut directions = Vec::new();
-    for _ in 0..200 {
-        let shot = fire(&mut world, s, "rifle_acc_F", "Flat_Mag", DVec3::ZERO);
-        let v = world.entity(shot).unwrap().velocity();
-        assert!((v.length() - 900.0).abs() < 1e-9, "|v| {}", v.length());
-        let cos = v.normalize().dot(DVec3::X);
-        assert!(cos >= angle.cos() - 1e-12, "outside the cone: {cos}");
-        directions.push(v);
-    }
+    let shot = fire(&mut world, s, "rifle_acc_F", "Flat_Mag", DVec3::ZERO);
+    let v = world.entity(shot).unwrap().velocity();
+    assert!((v.x - 900.0).abs() < 1e-9, "{v:?}");
+    assert!((v.y - 0.446_336_847_881_952_44).abs() < 1e-9, "{v:?}");
+    assert!((v.z - -0.004_421_221_954_265_897).abs() < 1e-9, "{v:?}");
+    // A bullet keeps the dispersed direction's length, so |v| is the initSpeed scaled by
+    // sqrt(1 + dx² + dy²): it never flies slower than the muzzle velocity.
+    let (dx, dy) = (-v.z / 900.0, v.y / 900.0);
     assert!(
-        directions.iter().any(|d| *d != directions[0]),
-        "dispersion 0.001 must not fire a laser"
+        (v.length() - 900.0 * (1.0 + dx * dx + dy * dy).sqrt()).abs() < 1e-9,
+        "|v| {}",
+        v.length()
     );
+    assert!(dx.abs() <= angle && dy.abs() <= angle, "±{angle} per axis");
 
-    // dispersion = 0 fires exactly along the aim.
+    // The same round and direction draw the same numbers; the round before it does not.
+    let again = fire(&mut world, s, "rifle_acc_F", "Flat_Mag", DVec3::ZERO);
+    assert_eq!(world.entity(again).unwrap().velocity(), v);
+    let previous = world
+        .fire(
+            FireRequest::new(s, "rifle_acc_F", "Flat_Mag", DVec3::ZERO, DVec3::X).rounds(2),
+        )
+        .unwrap();
+    let v = world.entity(previous).unwrap().velocity();
+    assert!((v.y - -0.204_808_728_345_897_67).abs() < 1e-9, "{v:?}");
+    assert!((v.z - 0.054_914_725_199_947_93).abs() < 1e-9, "{v:?}");
+}
+
+#[test]
+fn dispersion_zero_fires_along_the_aim() {
+    let mut world = bare();
+    let s = shooter(&mut world, DVec3::ZERO);
     let shot = fire(&mut world, s, "rifle_F", "Ball_Mag", DVec3::ZERO);
     assert_eq!(
         world.entity(shot).unwrap().velocity(),

@@ -1,7 +1,8 @@
 //! `CfgWeapons` / `CfgMagazines` / `CfgAmmo` parameters, from a synthetic config.
 //!
-//! Vocabulary and sources: `docs/re/sim-ballistics.md` §1 (ammo), the offline Arma wiki
-//! (`CfgWeapons Config Reference`: `muzzles[]`, `modes[]`, `initSpeed`, `dispersion`, `recoil`).
+//! Vocabulary and sources: `docs/re/sim-ballistics.md` §1 (ammo), `docs/re/sim-weapons.md` §1
+//! (the loaders) and §2.3 (`initSpeed`), the offline Arma wiki (`muzzles[]`, `modes[]`,
+//! `recoil`).
 
 use std::sync::Arc;
 
@@ -99,6 +100,10 @@ class CfgWeapons {
         dispersion = 0.002;
         initSpeed = 950;
     };
+    class rifle_neg_F {
+        magazines[] = { "30Rnd_65x39_Mag" };
+        initSpeed = -1.1;
+    };
 };
 "#;
 
@@ -193,20 +198,36 @@ fn a_positive_init_speed_overrides_the_magazine() {
     let mag = bank.magazine("30Rnd_65x39_Mag").unwrap();
 
     let shot = w.shot_params(None, None).unwrap();
+    let ammo = bank.ammo(&mag.ammo).unwrap();
 
-    assert!((shot.init_speed(&mag) - 950.0).abs() < 1e-9);
+    assert!((shot.init_speed(&mag, &ammo) - 950.0).abs() < 1e-9);
 }
 
 #[test]
 fn a_negative_init_speed_multiplies_the_magazine() {
     let mut bank = bank();
-    let w = weapon(&mut bank, "launcher_20mm_F");
-    let mag = bank.magazine("1Rnd_20mm_HE_Mag").unwrap();
+    let w = weapon(&mut bank, "rifle_neg_F");
+    let mag = bank.magazine("30Rnd_65x39_Mag").unwrap();
+    let ammo = bank.ammo(&mag.ammo).unwrap();
 
-    // The "this" muzzle: initSpeed = -1.1 → 1.1 × the magazine's 1000.
+    // initSpeed = -1.1 → 1.1 × the magazine's 800.
     let shot = w.shot_params(None, None).unwrap();
 
-    assert_eq!(shot.init_speed(&mag), f32v(1.1) * 1000.0);
+    assert_eq!(shot.init_speed(&mag, &ammo), f32v(1.1) * 800.0);
+}
+
+#[test]
+fn shells_fly_at_the_magazine_speed_whatever_the_weapon_says() {
+    // `0x140faf810` reads the weapon's initSpeed only for shotBullet / shotSpread ammo
+    // (`sim-weapons.md` §2.3): the HE shell keeps its magazine's 1000 under the weapon's -1.1.
+    let mut bank = bank();
+    let w = weapon(&mut bank, "launcher_20mm_F");
+    let mag = bank.magazine("1Rnd_20mm_HE_Mag").unwrap();
+    let ammo = bank.ammo(&mag.ammo).unwrap();
+
+    let shot = w.shot_params(None, None).unwrap();
+
+    assert_eq!(shot.init_speed(&mag, &ammo), 1000.0);
 }
 
 #[test]
@@ -215,34 +236,40 @@ fn init_speed_zero_takes_the_magazine_value() {
     let w = weapon(&mut bank, "arifle_MX_F");
     let mag = bank.magazine("30Rnd_65x39_Mag").unwrap();
 
-    // Neither the muzzle nor the Single mode declares one; the mode inherits `initSpeed = 0`.
+    // The weapon declares none: the engine's default -1 multiplies the magazine's by 1.
     let shot = w.shot_params(None, None).unwrap();
+    let ammo = bank.ammo(&mag.ammo).unwrap();
 
     assert_eq!(mag.init_speed, 800.0);
-    assert!((shot.init_speed(&mag) - 800.0).abs() < 1e-9);
+    assert!((shot.init_speed(&mag, &ammo) - 800.0).abs() < 1e-9);
 }
 
 #[test]
-fn a_muzzles_init_speed_wins_over_its_modes() {
+fn a_named_muzzles_init_speed_is_not_read() {
+    // Muzzles have no initSpeed of their own in the engine (`sim-weapons.md` §1.2, §2.3): the
+    // EGLM's 78 and its mode's 250 are ignored, its shell flies at the magazine's 1000.
     let mut bank = bank();
     let w = weapon(&mut bank, "launcher_20mm_F");
     let mag = bank.magazine("1Rnd_20mm_HE_Mag").unwrap();
+    let ammo = bank.ammo(&mag.ammo).unwrap();
 
-    // EGLM muzzle 78, its mode 250.
     let shot = w.shot_params(Some("EGLM"), None).unwrap();
 
-    assert!((shot.init_speed(&mag) - 78.0).abs() < 1e-9);
+    assert_eq!(shot.init_speed(&mag, &ammo), 1000.0);
 }
 
 #[test]
-fn a_modes_init_speed_is_used_when_the_muzzle_declares_none() {
+fn a_modes_init_speed_is_not_read() {
+    // `WeaponModeType` has no initSpeed (`sim-weapons.md` §1.1): mode_speed_F's mode value 700 is
+    // ignored, the weapon's default -1 keeps the magazine's 800.
     let mut bank = bank();
     let w = weapon(&mut bank, "mode_speed_F");
     let mag = bank.magazine("30Rnd_65x39_Mag").unwrap();
+    let ammo = bank.ammo(&mag.ammo).unwrap();
 
     let shot = w.shot_params(None, None).unwrap();
 
-    assert!((shot.init_speed(&mag) - 700.0).abs() < 1e-9);
+    assert_eq!(shot.init_speed(&mag, &ammo), 800.0);
 }
 
 #[test]

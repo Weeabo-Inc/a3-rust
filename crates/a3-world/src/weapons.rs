@@ -2,8 +2,8 @@
 //! simulation reads.
 //!
 //! Sources: `docs/re/sim-ballistics.md` §1 (`CfgAmmo` → `AmmoType`) and §2 (the `simulation`
-//! kinds); the offline Arma wiki for the config semantics of `muzzles[]`, `modes[]`, `initSpeed`,
-//! `dispersion` and `recoil`.
+//! kinds); `docs/re/sim-weapons.md` §1 (the weapon, muzzle, mode and magazine loaders) and §2.3
+//! (`initSpeed`).
 //!
 //! # Vocabulary
 //!
@@ -15,10 +15,13 @@
 //!   muzzle's `modes[]` and declared as sub-classes of it. `dispersion` and the recoil class names
 //!   live on the mode; when a muzzle declares no `modes[]`, the muzzle itself acts as its single
 //!   `"this"` mode, which is what single-mode weapons (and most hand-written configs) do.
-//! - `initSpeed` is the shot's muzzle velocity in m/s. The magazine's is the base; a muzzle's or
-//!   mode's own value overrides it when positive and scales it when negative (`-1.1` multiplies by
-//!   1.1), and leaves it alone when zero. The muzzle's declared value wins over the mode's.
-//! - `dispersion` is the shot cone half-angle in **radians**.
+//! - `initSpeed` is the shot's muzzle velocity in m/s. The magazine's is the base. For bullets
+//!   (`shotBullet`, `shotSpread`) the **weapon** class's own value (default −1) overrides it when
+//!   positive and scales it when negative (`-1.1` multiplies by 1.1); other ammunition always
+//!   flies at the magazine's. Muzzles and modes have no `initSpeed` of their own
+//!   (`sim-weapons.md` §2.3).
+//! - `dispersion` is the largest deviation of a shot from the aim on each of two axes, in
+//!   **radians** (`sim-weapons.md` §2.2).
 //!
 //! # Not read yet
 //!
@@ -137,6 +140,11 @@ pub struct MagazineType {
     pub tracers_every: u32,
     /// `lastRoundsTracer`: the last n rounds of the magazine are tracers.
     pub last_rounds_tracer: u32,
+    /// `quickReload`: the first round after a magazine change waits exactly `reloadTime`.
+    pub quick_reload: bool,
+    /// `deleteIfEmpty`, `None` when absent: whether a soldier drops the magazine once empty
+    /// (absent: only one-round magazines are dropped).
+    pub delete_if_empty: Option<bool>,
 }
 
 /// One trigger setting of a [`MuzzleType`] (`Single`, `FullAuto`, ... or `"this"`).
@@ -150,14 +158,16 @@ pub struct ModeType {
     pub recoil: Option<String>,
     /// `recoilProne`: the `CfgRecoils` class used while prone.
     pub recoil_prone: Option<String>,
-    /// `initSpeed`, when the class declares one; see [`ShotParams::init_speed`].
-    pub init_speed: Option<f64>,
     /// `reloadTime`: seconds between two rounds.
     pub reload_time: f64,
     /// `burst`: rounds one trigger press fires (at least 1).
     pub burst: u32,
     /// `autoFire`: whether a held trigger keeps firing.
     pub auto_fire: bool,
+    /// `burstRangeMax`: the exclusive upper bound of a random burst length, `None` when absent.
+    pub burst_range_max: Option<u32>,
+    /// `multiplier`: rounds one shot takes from the magazine (default 1).
+    pub multiplier: u32,
 }
 
 /// One muzzle of a weapon: its own magazines, `initSpeed` and modes.
@@ -170,13 +180,16 @@ pub struct MuzzleType {
     pub class: String,
     /// `magazines[]`: the magazine classes this muzzle accepts.
     pub magazines: Vec<String>,
-    /// The muzzle's own `initSpeed`, when its class declares one.
+    /// The muzzle class's own `initSpeed`, when it declares one: data only, the shot reads the
+    /// weapon's ([`ShotParams::init_speed`]).
     pub init_speed: Option<f64>,
     /// `modes[]`, in declaration order; the first is the default. A muzzle with none is its own
     /// single `"this"` mode.
     pub modes: Vec<ModeType>,
     /// `magazineReloadTime`: seconds a magazine change takes.
     pub magazine_reload_time: f64,
+    /// `autoReload`: whether a player's empty muzzle reloads by itself (AI always reloads).
+    pub auto_reload: bool,
 }
 
 impl MuzzleType {
@@ -202,6 +215,8 @@ pub struct WeaponType {
     pub magazines: Vec<String>,
     /// `type`: the slot bit mask (1 primary, 2 handgun, 4 secondary, ...).
     pub kind: u32,
+    /// The weapon class's `initSpeed`, −1 when absent (`WeaponType+0x4f4`).
+    pub init_speed: f64,
 }
 
 impl WeaponType {
@@ -218,6 +233,7 @@ impl WeaponType {
     pub fn shot_params(&self, muzzle: Option<&str>, mode: Option<&str>) -> Option<ShotParams<'_>> {
         let muzzle = self.muzzle(muzzle)?;
         Some(ShotParams {
+            weapon: self,
             muzzle,
             mode: muzzle.mode(mode)?,
         })
@@ -227,29 +243,32 @@ impl WeaponType {
 /// One muzzle of one weapon in one of its modes: everything a single shot reads from `CfgWeapons`.
 #[derive(Debug, Clone, Copy)]
 pub struct ShotParams<'a> {
+    pub weapon: &'a WeaponType,
     pub muzzle: &'a MuzzleType,
     pub mode: &'a ModeType,
 }
 
 impl ShotParams<'_> {
-    /// The shot's muzzle velocity: the magazine's `initSpeed`, overridden by a positive muzzle or
-    /// mode value, scaled by a negative one, and taken as is when both are zero or absent.
-    pub fn init_speed(&self, magazine: &MagazineType) -> f64 {
-        let declared = self
-            .muzzle
-            .init_speed
-            .or(self.mode.init_speed)
-            .unwrap_or(0.0);
-        if declared > 0.0 {
-            declared
-        } else if declared < 0.0 {
-            -declared * magazine.init_speed
-        } else {
+    /// The shot's muzzle velocity (`0x140faf810`, `sim-weapons.md` §2.3): for bullets the
+    /// weapon's `initSpeed` when positive, `|initSpeed|` times the magazine's when negative, the
+    /// magazine's when zero; for every other ammunition the magazine's. (A muzzle accessory's
+    /// `initSpeed` coefficient would scale the first two; there are no accessories yet.)
+    pub fn init_speed(&self, magazine: &MagazineType, ammo: &AmmoType) -> f64 {
+        let bullet = matches!(
+            ammo.simulation,
+            Some(SimulationClass::ShotBullet | SimulationClass::ShotSpread)
+        );
+        let weapon = self.weapon.init_speed;
+        if !bullet || weapon == 0.0 {
             magazine.init_speed
+        } else if weapon > 0.0 {
+            weapon
+        } else {
+            -weapon * magazine.init_speed
         }
     }
 
-    /// The shot cone half-angle in radians.
+    /// The largest deviation per axis, radians.
     pub fn dispersion(&self) -> f64 {
         self.mode.dispersion
     }
@@ -304,6 +323,7 @@ impl WeaponBank {
             muzzles: self.muzzles(&cfg),
             magazines: text_list(&cfg, "magazines"),
             kind: number_or(&cfg, "type", 0.0).max(0.0) as u32,
+            init_speed: number_or(&cfg, "initSpeed", -1.0),
         });
         self.weapons.insert(key, w.clone());
         Ok(w)
@@ -326,6 +346,8 @@ impl WeaponBank {
             init_speed: number(&cfg, "initSpeed").unwrap_or(0.0),
             tracers_every: number_or(&cfg, "tracersEvery", 0.0).max(0.0) as u32,
             last_rounds_tracer: number_or(&cfg, "lastRoundsTracer", 0.0).max(0.0) as u32,
+            quick_reload: number_or(&cfg, "quickReload", 0.0) != 0.0,
+            delete_if_empty: number(&cfg, "deleteIfEmpty").map(|v| v != 0.0),
         });
         self.magazines.insert(key, m.clone());
         Ok(m)
@@ -402,6 +424,7 @@ impl WeaponBank {
                     init_speed: number(&cfg, "initSpeed"),
                     modes: self.modes(&cfg),
                     magazine_reload_time: number_or(&cfg, "magazineReloadTime", 0.0),
+                    auto_reload: number_or(&cfg, "autoReload", 0.0) != 0.0,
                 })
             })
             .collect()
@@ -480,10 +503,13 @@ fn mode_from(cfg: &ConfigRef<'_>, name: &str) -> ModeType {
         dispersion: number_or(cfg, "dispersion", 0.0),
         recoil: text(cfg, "recoil").filter(|s| !s.is_empty()),
         recoil_prone: text(cfg, "recoilProne").filter(|s| !s.is_empty()),
-        init_speed: number(cfg, "initSpeed"),
         reload_time: number_or(cfg, "reloadTime", 0.0),
         burst: number_or(cfg, "burst", 1.0).max(1.0) as u32,
         auto_fire: number_or(cfg, "autoFire", 0.0) != 0.0,
+        burst_range_max: number(cfg, "burstRangeMax")
+            .filter(|n| *n >= 0.0)
+            .map(|n| n as u32),
+        multiplier: number_or(cfg, "multiplier", 1.0).max(0.0) as u32,
     }
 }
 

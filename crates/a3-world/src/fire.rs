@@ -35,6 +35,10 @@ pub struct FireRequest {
     pub direction: DVec3,
     /// Whether the shot draws a tracer.
     pub tracer: bool,
+    /// The rounds in the magazine before this shot: with the direction it seeds the shot's
+    /// dispersion and picks the tracer (`sim-weapons.md` §2.2, §2.5). The engine never fires
+    /// from an empty magazine, so it is at least 1.
+    pub rounds: u32,
 }
 
 impl FireRequest {
@@ -54,7 +58,14 @@ impl FireRequest {
             from,
             direction,
             tracer: false,
+            rounds: 1,
         }
+    }
+
+    /// The rounds in the magazine before this shot (`sim-weapons.md` §2.2, §2.5).
+    pub fn rounds(mut self, rounds: u32) -> Self {
+        self.rounds = rounds;
+        self
     }
 
     /// Fires from the named muzzle instead of the weapon body.
@@ -215,13 +226,19 @@ impl World {
             .ok_or(Error::ZeroDirection)?;
 
         let speed = crate::weapons::ShotParams {
+            weapon: &weapon,
             muzzle: &muzzle,
             mode: &mode,
         }
-        .init_speed(&magazine);
-        let aim = disperse(direction, mode.dispersion, &mut self.random);
-        let _ = shooter_velocity;
-        let velocity = aim * speed;
+        .init_speed(&magazine, &ammo);
+        // §2.2: a bullet keeps the dispersed direction's length, every other shot is normalised;
+        // the shooter's velocity adds on.
+        let aim = disperse(direction, mode.dispersion, request.rounds);
+        let bullet = matches!(
+            ammo.simulation,
+            Some(crate::SimulationClass::ShotBullet | crate::SimulationClass::ShotSpread)
+        );
+        let velocity = if bullet { aim } else { aim.normalize() } * speed + shooter_velocity;
 
         let shot = self.insert(
             shot_type,
@@ -232,7 +249,7 @@ impl World {
         );
         if let Some(e) = self.entity_mut(shot) {
             e.velocity = velocity;
-            e.orientation = orientation_along(aim);
+            e.orientation = orientation_along(aim.normalize());
             e.anchor_visual_state();
             let mut state = ProjectileState::new(ammo);
             state.shooter = Some(request.shooter);
@@ -476,22 +493,41 @@ fn object_key(object: ObjectRef) -> ObjectKey {
     }
 }
 
-/// The shot's direction after the mode's `dispersion` (radians): see `docs/re/sim-weapons.md`.
-fn disperse(aim: DVec3, dispersion: f64, random: &mut crate::random::EngineRandom) -> DVec3 {
+/// The shot's direction after the mode's `dispersion` (`0x140fb05a0`, `sim-weapons.md` §2.2):
+/// `aside·dx + up·dy + aim` in the frame of the aim with `(0, 1, 0)` as the up reference, each
+/// offset `(ΣU·½ − 1)·dispersion` over four draws of a generator seeded per shot by FNV-1a-64
+/// over the rounds before the shot and the aim (`f32` little-endian). Not normalised.
+fn disperse(aim: DVec3, dispersion: f64, rounds: u32) -> DVec3 {
     if dispersion <= 0.0 {
         return aim;
     }
-    // A random direction in the cone of half-angle `dispersion` around the aim.
-    let side = if aim.y.abs() < 0.99 {
-        aim.cross(DVec3::Y).normalize()
-    } else {
-        aim.cross(DVec3::X).normalize()
-    };
-    let up = side.cross(aim);
-    let angle = dispersion * random.uniform().sqrt();
-    let turn = std::f64::consts::TAU * random.uniform();
-    let offset = (side * turn.cos() + up * turn.sin()) * angle.tan();
-    (aim + offset).normalize()
+    let mut seed_bytes = Vec::with_capacity(16);
+    seed_bytes.extend_from_slice(&(rounds as i32).to_le_bytes());
+    for c in [aim.x, aim.y, aim.z] {
+        seed_bytes.extend_from_slice(&(c as f32).to_le_bytes());
+    }
+    let mut rng = crate::random::CRandom::new(fnv1a64(&seed_bytes) as u32);
+    let (mut sx, mut sy) = (0.0, 0.0);
+    for _ in 0..4 {
+        sx += rng.uniform();
+        sy += rng.uniform();
+    }
+    let dx = (sx * 0.5 - 1.0) * dispersion;
+    let dy = (sy * 0.5 - 1.0) * dispersion;
+    // The engine's frame of a direction and an up vector: aside = up × dir, up' = dir × aside.
+    let aside = DVec3::Y.cross(aim).try_normalize().unwrap_or(DVec3::X);
+    let up = aim.cross(aside);
+    aside * dx + up * dy + aim
+}
+
+/// FNV-1a, 64 bits.
+fn fnv1a64(bytes: &[u8]) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for &b in bytes {
+        h ^= u64::from(b);
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    h
 }
 
 /// An orientation whose forward (+Z) is `dir`.

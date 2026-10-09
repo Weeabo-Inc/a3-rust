@@ -1,5 +1,6 @@
-//! The engine's random source for the simulation: the 31-bit linear congruential generator behind
-//! `Rand_MinMidMax` (`0x14030e020`, state at `0x142165668`; `docs/re/sim-ballistics.md` §4.4).
+//! The engine's random sources for the simulation (`docs/re/sim-ballistics.md` §4.1,
+//! `docs/re/sim-weapons.md` §2.2): the global generator behind `Rand_MinMidMax` (`0x14030e020`,
+//! state at `0x142165668`) and the per-shot ANSI C generator of the dispersion.
 
 /// The generator's multiplier and increment (`x = x·0xC1C64E6D + 0x3039`, low 31 bits kept).
 const MULTIPLIER: u32 = 0xC1C6_4E6D;
@@ -56,6 +57,28 @@ impl EngineRandom {
     /// penetration direction.
     pub(crate) fn spread(&mut self, d: f64) -> f64 {
         self.min_mid_max(-d, 0.0, d)
+    }
+}
+
+/// The ANSI C generator a shot's dispersion draws from, seeded per shot
+/// (`s = (s·1103515245 + 12345) & 0x7fffffff`, `U = s·2⁻³¹`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CRandom {
+    state: u32,
+}
+
+impl CRandom {
+    pub(crate) fn new(seed: u32) -> Self {
+        Self { state: seed }
+    }
+
+    pub(crate) fn uniform(&mut self) -> f64 {
+        self.state = self
+            .state
+            .wrapping_mul(1_103_515_245)
+            .wrapping_add(12_345)
+            & 0x7fff_ffff;
+        f64::from(self.state) / f64::from(1u32 << 31)
     }
 }
 
