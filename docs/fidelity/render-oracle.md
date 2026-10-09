@@ -85,8 +85,11 @@ arma3 --world altis --camera east,north,alt,heading,pitch --fov <fovTop> --date 
   --objects-quality Ultra --width 1600 --height 900 --no-overlay --frames 120 --screenshot ours.png
 ```
 
-`--fov` (RV `fovTop`) and `--no-overlay` were added for the oracle. Our camera altitude is
-already measured from `max(terrain, sea level)`, the same as the scenario.
+`--fov` (RV `fovTop`) was added for the oracle. `--no-overlay` leaves out the debug text. Our camera
+altitude is already measured from `max(terrain, sea level)`, the same as the scenario.
+
+The SQF server oracle (`tools/oracle/oracle.py`) needs a mission folder for the dedicated server.
+The client oracle needs none, because `playScriptedMission` starts the scenario.
 
 ### Camera FOV: `camSetFov` against `fovTop` (measured)
 
@@ -117,7 +120,7 @@ size:
 
 ## Results
 
-Run on 2026-10-09 against `main` at `2418a9c` (Arma 3 2.22.0.154103, 1600×900, AMD RX 6600).
+Baseline: run on 2026-10-09 against `main` at `2418a9c` (Arma 3 2.22.0.154103, 1600×900, AMD RX 6600).
 
 | shot | MAE lin | SSIM | lum Arma | lum ours | lum ratio | hist dist | MAE R/G/B (linear) |
 |---|---|---|---|---|---|---|---|
@@ -130,6 +133,25 @@ Run on 2026-10-09 against `main` at `2418a9c` (Arma 3 2.22.0.154103, 1600×900, 
 | altis_kavala_night_moon | 0.048 | 0.308 | 0.051 | 0.009 | 0.180 | 0.119 | 0.038/0.046/0.060 |
 | altis_kavala_overcast_fog | 0.084 | 0.952 | 0.708 | 0.615 | 0.869 | 0.057 | 0.117/0.091/0.045 |
 
+After #290 (the lighting table's hemisphere ambient in the model, terrain and road shaders),
+with the same client images:
+
+| shot | MAE lin | SSIM | lum Arma | lum ours | lum ratio | hist dist |
+|---|---|---|---|---|---|---|
+| altis_kavala_noon | 0.126 | 0.773 | 0.593 | 0.690 | 1.165 | 0.061 |
+| altis_kavala_sunset | 0.135 | 0.716 | 0.384 | 0.274 | 0.713 | 0.119 |
+| altis_hills_ground | 0.118 | 0.549 | 0.535 | 0.627 | 1.170 | 0.058 |
+| stratis_coast | 0.222 | 0.683 | 0.492 | 0.719 | 1.460 | 0.154 |
+| altis_building_close | 0.108 | 0.719 | 0.591 | 0.670 | 1.134 | 0.056 |
+| altis_vegetation_close | 0.139 | 0.677 | 0.472 | 0.546 | 1.155 | 0.096 |
+| altis_kavala_night_moon | 0.047 | 0.322 | 0.051 | 0.010 | 0.192 | 0.113 |
+| altis_kavala_overcast_fog | 0.067 | 0.957 | 0.708 | 0.639 | 0.903 | 0.041 |
+
+The MAE goes down on every shot. The largest changes: overcast fog 0.084 → 0.067, building
+0.118 → 0.108, sunset SSIM 0.642 → 0.716. The blue tree trunks and the blue shaded walls are
+gone, and roads keep their ambient at low sun. The terrain hue is closer to Arma's: the red/blue
+ratio of the bottom third in `altis_hills_ground` is 1.59 for Arma, 1.29 before and 1.48 after.
+Daylight exposure goes up by about 2 % (#296).
 Most informative side-by-sides: `stratis_coast` (water), `altis_vegetation_close` (blue tree
 trunks, missing grass) and `altis_kavala_night_moon` (night exposure, no lamps).
 
@@ -138,7 +160,7 @@ trunks, missing grass) and `altis_kavala_night_moon` (night exposure, no lamps).
 Ranked by visible effect. Each discrepancy has a `fidelity` issue that gives its metric, the RE
 reference and a hypothesis.
 
-1. **Ambient is sky-coloured** (#290). Shaded walls, rocks and tree trunks are blue, and terrain is
+1. **Ambient is sky-coloured** (#290, fixed). Shaded walls, rocks and tree trunks are blue, and terrain is
    lavender. Ours lights ambient with the sky colours, not the lighting table's
    `ambient`/`ambientMid`/`groundReflection` (`render-materials.md` §3.1). Roads get almost no
    ambient and go black at low sun.

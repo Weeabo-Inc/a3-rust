@@ -27,6 +27,10 @@ struct Frame {
     viewport: vec4<f32>,
     // near plane, time in seconds, unused, unused.
     params: vec4<f32>,
+    // The lighting table's hemisphere ambient (AE, AmbientMid, GE); w = 0 when not set.
+    ambient_sky: vec4<f32>,
+    ambient_mid: vec4<f32>,
+    ambient_ground: vec4<f32>,
 }
 
 const FAMILY_BASIC: u32 = 0u;
@@ -364,8 +368,17 @@ fn sample_multi(in: VertexOut) -> Surface {
     return s;
 }
 
-// The hemisphere ambient on the world normal's y: ground, horizon, sky.
+// The hemisphere ambient on the world normal's y (docs/re/render-materials.md §3.1):
+// lerp(AmbientMid, AE, y) above the horizon, lerp(GE, AmbientMid, 1 + y) below, from the
+// lighting table's ambient, ambientMid and groundReflection. Without a lighting table (model
+// viewer, test scene) the sky colours stand in.
 fn hemisphere(y: f32) -> vec3<f32> {
+    if frame.ambient_sky.w > 0.0 {
+        if y > 0.0 {
+            return mix(frame.ambient_mid.rgb, frame.ambient_sky.rgb, saturate(y));
+        }
+        return mix(frame.ambient_ground.rgb, frame.ambient_mid.rgb, saturate(1.0 + y));
+    }
     let level = frame.sun_color.w;
     let sky = frame.sky_zenith.rgb * level * 1.6;
     let mid = frame.sky_horizon.rgb * level;
