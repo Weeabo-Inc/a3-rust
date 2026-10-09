@@ -66,6 +66,22 @@ screenshot (script: `.work/hdr313/aperture_probe.py`; scratch, not committed):
 | the same, `[6.8627186, 8.862719, 21.725437, 41.567963]` (the entry our engine samples there) | 0.38277 | **0.997** |
 | the same, `[20, 25, 35, 250]` (Lighting9) | 0.11245 | 0.293 |
 | the same, `[8, 16, 26, 100]` (Lighting8) | 0.33293 | 0.867 |
+| the same, `[5.728649, 7.457298, 19.457298, 15.658383]` (the entry our engine samples after #329) | 0.43423 | 1.130 |
+| the same, `[45, 60, 80, 800]` (Lighting10) | 0.02223 | 0.058 |
+
+The dusk rows are also the mid-range test: the aperture there is between `apertureMin` and
+`apertureMax`, so the *shape* of the law matters. Fitting the five overrides (the filmic curve
+turns an exposure factor into a display mean, so each candidate law predicts the ratios exactly)
+picks the interpolated curve `E = 1/ap(lum)²` at rms 0.015 against rms 0.034 for a metered
+`clamp(key / lum, 1/apertureMax², 1/apertureMin²)` alternative — so the law above holds in the
+mid-range too, and what is left at dusk is scene, not exposure
+(`docs/fidelity/render-oracle.md` §Separating exposure from scene).
+
+Reading the same captures the other way inverts the curve to `exposure · scene`: on the day shots
+the engine's exposure is the aperture's `1/apertureMax²` and the implied scene luminances
+(10.4k–18.9k for Altis) are physically sensible, which is independent support for the law. At
+night the implied scene luminance is 1.85 against our meter's 0.91 — a scene deficit no exposure
+can remove, because the client's own night aperture is already pinned at `apertureMin = 4`.
 
 Three conclusions (_high_):
 
@@ -79,6 +95,10 @@ Three conclusions (_high_):
    pre-curve values by 4 (the exposure `[2,2,4,4]` asks for) predicts the capture to a mean
    luminance ratio of 0.993 and an MAE of 6.8/255; the 1/4 case predicts 0.900 and 29/255. So the
    total exposure is a pure scale in front of the curve, and `a3-render`'s curve matches RV's.
+4. The mid-range law is the curve, not a metered value clamped to the aperture range: on the dusk
+   overrides the curve predicts the ratios at rms 0.015 against 0.034 for the alternative. The
+   assumed-luminance stage (`Pars1.z`) therefore does not drive the steady-state exposure at any
+   condition we have measured.
 
 `night_stdlum_40` (`[4,4,8,4]` with `standardAvgLum` raised 10x) reproduced the default capture
 (0.05126 vs 0.05123): with `apertureStandard == apertureMin` the dark branch saturates at

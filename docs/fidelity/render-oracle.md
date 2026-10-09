@@ -235,6 +235,53 @@ scene errors that are now unmasked — the same ones #337 names:
   past what the engine's aperture allows (client-verified); relative to the session's first
   capture the night ratio is still 0.192 → 0.807 (#329) → 0.609.
 
+### Separating exposure from scene (#337)
+
+The client's filmic curve is known and verified (`docs/re/hdr.md` §Aperture), so inverting it on a
+capture gives the pre-curve value `c = exposure · scene`. Reading `c` off the client's own images
+against the aperture's exposure range separates the two:
+
+| shot | client `c` (median) | client's implied exposure | client scene `L = c / E` | our `L` (meter) | ours / client |
+|---|---|---|---|---|---|
+| altis_kavala_noon | 1.014 | 1/120² = 6.94e-5 (clamped) | 14600 | 13569 | 0.93 |
+| altis_hills_ground | 0.818 | 6.94e-5 | 11790 | 11021 | 0.94 |
+| altis_building_close | 0.855 | 6.94e-5 | 12320 | 11957 | 0.97 |
+| altis_vegetation_close | 0.823 | 6.94e-5 | 11850 | 6766 | **0.57** |
+| altis_kavala_overcast_fog | 1.311 | 6.94e-5 | 18880 | 12749 | **0.68** |
+| stratis_coast | 0.720 | 6.94e-5 | 10370 | 15760 | **1.52** |
+| altis_kavala_night_moon | 0.115 | 1/4² = 0.0625 (clamped) | 1.85 | 0.91 | **0.49** |
+| altis_kavala_sunset | 0.389 | mid-range (see below) | see below | 16.5 | — |
+
+Two things follow. First, the daylight exposure is the aperture's `1/apertureMax²` on every day
+shot, and the scene luminances that fall out of it (10.4k–18.9k) are physically sensible for
+Altis at different times — independent support for the law in `docs/re/hdr.md`. Second, what is
+left is **scene**, and it is not uniform: the day is within 3–7 % on three shots, 43 % dark on the
+vegetation shot, 32 % dark in the overcast fog, and 52 % *bright* on the coast (the placeholder
+sea, #291). At night we are 2.0x dark at the *same* exposure the client uses, so no exposure can
+recover it: the aperture is already pinned at `apertureMin`.
+
+The dusk shot is the one case where the aperture is mid-range, and a client aperture probe
+(`.work/hdr313/aperture_probe.py`, not committed) settles the law there: overriding the aperture
+tuple on the client and fitting the resulting image ratios, the interpolated aperture curve
+(`E = 1/ap(L)²`) fits with rms 0.015 against 0.034 for a metered `clamp(key/L, 1/apertureMax²,
+1/apertureMin²)` alternative. So the law of #314 holds in the mid-range too, and the dusk deficit
+is also scene — 1.29x short at the same shot (fitting the exposure our capture would need).
+
+Where the scene terms live:
+
+- **night 2.0x and its hue** (our ground third is 0.34/0.75/1.16 of the client's R/G/B): the
+  lighting entry's own night light is blue (`Lighting0` `diffuse` B/R = 2.14, `ambient` 2.16), so
+  the missing term is *warm* — the lamps (#294) and lit interiors. The sky third is a uniform 0.5x,
+  which is the untraced dome tint/level (#326 via #295).
+- **day 0.57–0.97x, dusk 0.78x**: the ambient/haze level the terrain receives; #290 landed the
+  hemisphere ambient but the terrain still scales sky colours by a ratio
+  (`apps/arma3/src/environment.rs`), so its ambient *hue* is the sky's, not `ambientMid`'s — filed
+  as #362 with the per-channel numbers.
+- `stratis_coast` 1.52x: the sea (#291).
+
+None of these is a constant to tune: each is a term with a named owner. That is why #337 closes as
+a measurement rather than a patch.
+
 ## Discrepancies
 
 Ranked by visible effect. Each discrepancy has a `fidelity` issue that gives its metric, the RE
@@ -253,8 +300,11 @@ reference and a hypothesis.
    moonlit; we were using a real ephemeris, which has a new moon below the horizon. Luminance
    ratio 0.192 → 0.807. What is left is the blue cast and the missing lamps.
    With #314 the exposure is the engine's own (`1/apertureMin² = 1/16`, client-verified) instead
-   of a clamp that over-exposed, so the ratio reads 0.609 while the exposure is right: the rest is
-   scene, tracked in #337.
+   of a clamp that over-exposed, so the ratio reads 0.609 while the exposure is right: the scene
+   is 2.0x dark at the same exposure (§Separating exposure from scene, #337). The night's blue
+   cast is the missing warm term (lamps and lit interiors, #294) — the table's own night light is
+   blue (`Lighting0` `diffuse` B/R = 2.14) — and its sky third is a uniform 0.5x (the untraced
+   dome tint, #326).
 5. **No point lights** (#294, split). Street lamps light Kavala at dusk and at night in Arma. Ours
    has no lamps; the light list and the lamp discovery are a separate lighting path.
 6. **Sky colour** (#295, the gradient fixed in `0a8cdff`). Our zenith was paler, more cyan and brighter.
@@ -271,5 +321,7 @@ reference and a hypothesis.
 8. **Fog colour and density, overcast** (#297). Our fog is darker and bluer. Arma's fog is neutral
    white-grey.
 9. **Sunset light** (#298). Ours is too dark and blue at low sun. Arma is still neutral at 19:15.
-   The lighting entry our lookup picks matches the client's default capture (0.3 %, `hdr.md`), so
-   this is the shading under it; the exposure half is #337.
+   The lighting entry our lookup picks matches the client's own capture, and the mid-range aperture
+   law is now client-verified, so this is the same scene term as #337: our dusk scene luminance is
+   16.5 against the client's ~11–13 at a *lower* exposure, and the deficit is 1.29x at the same
+   shot (§Separating exposure from scene).
