@@ -8,10 +8,17 @@ rust-version.workspace = true
 
 [dependencies]
 a3-audio-formats.workspace = true
+a3-config.workspace = true
+a3-vfs.workspace = true
 cpal.workspace = true
 glam.workspace = true
 log.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+a3-gamedata.workspace = true
+a3-pbo.workspace = true
+a3-vfs.workspace = true
 
 [lints]
 workspace = true
