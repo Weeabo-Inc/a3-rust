@@ -468,7 +468,7 @@ _Avoid_: activation range, view distance
 The cell grid `a3-nav` searches a path over: one cell per land cell of the Landscape, each with
 a cost (0 = impassable, 100 = open ground, road 70, forest 130, built-up 140, shallow water
 200) baked from the geography flags, the heightmap slope and the roads
-(ADR 0009).
+(ADR 0011).
 _Avoid_: navmesh (that is the triangle kind we do not use), oper map (that is the engine's own
 field, which also carries cover)
 
