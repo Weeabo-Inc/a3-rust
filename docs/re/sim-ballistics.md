@@ -97,7 +97,37 @@ v  += dv
 ```
 
 This is explicit Euler: position first with the old velocity, then velocity. Velocity is only
-updated when `0 < fraction ≤ caliber·1000`; in practice this is always true.
+updated when `0 < factor ≤ caliber·1000`; the plain move passes `factor = 1`, so a shot with
+`caliber < 0.001` never changes speed. When `|v| = |dv| = 0` (a shot at rest without gravity) the
+clamp divides 0 by 0 and the original gets NaN; we leave the velocity at zero.
+
+`0x140e6c3d0(shot, dt, to, factor)` is the one place a shot moves (high):
+- it subtracts the distance moved from the remaining arming distance (`fuseDistance`, `+0x64c`)
+  while that is positive;
+- it puts the shot at `to`;
+- it steps the velocity with `dt` as above (when `factor` allows);
+- for ammo with the flag at `AmmoType+0x3c7` it turns the shot to face its velocity.
+
+**The move in detail** (`0x140e66ea0(shot, dt, continuing, …)`, high):
+1. `dt ≤ 0` returns. With `k < −0.99`, `dt = min(dt, 4/|v|)`; the rest of the frame step is
+   simply not flown.
+2. `end = p + v·dt`. If `|v|·dt ≤ 0` the shot only steps its velocity.
+3. `continuing` is set for the rest of a step after a ricochet or a penetration: the object test
+   then starts 0.1 m along `v̂` from `p` (so it does not meet the surface it left), and a terrain
+   hit closer than 0.1 m is ignored.
+4. Terrain test from `p` to `end`; object test (Fire Geometry, the filter above) from the start
+   to `end`. An object hit counts only when it is nearer than the terrain hit (distances measured
+   from their own start points). Intersection records on a surface with `thickness > 0` count
+   only with their flag bit0 set (the entry face).
+5. **Object hit** at distance `d` (+0.1 when continuing): `t = min(d/|v|, dt)`;
+   `0x140e6c3d0(t, hitPoint, 1)` — **the velocity steps for `t` before the impact**, so `v_in` is
+   the velocity at the hit point, not the muzzle velocity. Then ricochet (§4.1, with the rest
+   `dt − t`), else penetration (§4.2), else stop (§4.3).
+6. **Terrain hit** (no object hit): the same move to the hit point, then ricochet with the
+   ground's `deflection` and `objLimit = 1`, else stop. The terrain is never penetrated. Water
+   (sea surface) hits take a separate branch (a splash; the shot switches to `waterFriction`)
+   that we do not model yet.
+7. No hit: `0x140e6c3d0(dt, end, 1)`.
 
 **Missiles** (`Missile::Simulate` `0x140e63790`, medium) work in model space. Lateral drag per
 axis is `((|u|·u + u)·10 + u³·0.0005)·sideAirFriction`, and axial drag is
@@ -114,20 +144,28 @@ outcomes in order. `n` is the surface normal and `v̂ = v/|v|`.
 
 ```
 maxSin = max(sin(deflecting · surfDeflect), 0)        // deflecting in radians
-n'     = normalize(n + U(±deflectionDirDistribution) per axis)
-sinG   = −n'·v̂                                         // sine of the grazing angle
-if 0 ≤ sinG < maxSin and sinG < objLimit and |v| > 5 m/s:
-    v' = reflect(v, n')
-    if v'·n > 0:
-        k  = min(max(1 − (sinG/maxSin)², 0), deflectionSlowDown) · U(0.6, 0.9)
+if objLimit > 0 or maxSin > 0:
+  n'   = normalize(n + R(−d, 0, d) per axis, x then y then z)   // d = deflectionDirDistribution
+  sinG = −n'·v̂                                          // sine of the grazing angle
+  if 0 ≤ sinG < maxSin and sinG < objLimit and |v|² > 25:
+    v' = v − 2(v·n')n'
+    if v'·n > 0:                                         // the unrandomized normal
+        k  = min(max(1 − (sinG/maxSin)², 0), deflectionSlowDown) · R(0.6, 0.9, 1.0)
         v' = v'·k
-        apply hit damage with v_in = v, v_out = v'      // §5
-        continue the remaining dt with v'
+        apply hit damage with v_in = v, v_out = v'      // §5 (the hit handler may scale v')
+        v  = v'
+        move(remaining dt, continuing = true)           // recursive 0x140e66ea0
 ```
+`R(min, mid, max)` is `Rand_MinMidMax` (`0x14030e020`, high): four draws of the global 31-bit LCG
+`x = (x·0xC1C64E6D + 0x3039) & 0x7fffffff` (state `0x142165668`) are averaged to `f` in 0..1 (a
+bell around 0.5), then `f < 0.5 → min + (mid − min)·2f`, else `mid + (max − mid)·(2f − 1)`. So a
+ricochet keeps 60–100 % of its speed with a median of 90 %; the earlier reading "U(0.6, 0.9)"
+was wrong (the third argument, 1.0, is passed in XMM3).
 - `surfDeflect` is the surface's deflection coefficient (the hit surface record `+0x48`; for
   terrain, the ground surface). The bisurf/CfgSurfaces entry `deflection` is loaded in
   `0x1410dfd80`. Medium confidence on which of these two fields is used here.
-- `objLimit` comes from the hit object (`vfunc +0x350`).
+- `objLimit` comes from the hit object (`vfunc +0x350`, not decoded; `a3-world` uses 1 for every
+  Object, so the surface alone decides). For the terrain it is 1.
 - A slow-moving shell (normal speed < 2 m/s) with a fuse, or one already rolling, instead loses
   its normal velocity and slides. This is grenade/shell rolling.
 
@@ -138,18 +176,23 @@ Surface data (bisurf / `CfgSurfaces`, loader `0x1410dfd80`):
 - `thickness` is in mm, stored ×0.001 as metres (default −1).
 
 ```
-requires R > 0 and (explosive < 0.7 or R ≤ 100)
+requires a hit Object (not the terrain), a surface, R > 0 and (explosive < 0.7 or R ≤ 100)
 L = length of the ray inside the hit component        // from the intersection record
 if thickness > 0:
-    if component flag bit0: L = thickness / |n·v̂| (clamped to the segment if flag bit1)
-    else:                   R = 0.01                   // literal; meaning unclear (low)
+    if record flag bit0: L = |thickness / (n·v̂)|  (L_geom instead if flag bit1 and L_geom ≤ L)
+    else:                R = 0.01    // unreachable from the move: such records are skipped
+                                     // as the nearest hit (step 4)
 loss = (R / caliber) · L                               // m/s
 if loss < |v|:
     exit = hit + v̂·L
-    v̂'   = normalize(v̂ + U(±penetrationDirDistribution)·loss/|v|)
+    v̂'   = normalize(v̂ + (R(−d,0,d) drawn for z, then y, then x)·loss/|v|)
+                                     // d = penetrationDirDistribution
     v'   = v̂' · (|v| − loss)
-    apply hit damage with v_in = v, v_out = v'         // §5
-    continue the remaining dt from exit
+    t    = min(L/|v|, remaining dt)
+    0x140e6c3d0(t, exit, R)          // velocity steps only if R ≤ caliber·1000; overwritten below
+    apply hit damage with v_in = v, v_out = v'         // §5 (the hit handler may scale v')
+    v = v'
+    move(remaining dt − t, continuing = true)
 else: stop (fall through to 4.3)
 ```
 In other words, `bulletPenetrability` is the depth in mm that a caliber-1 projectile goes
@@ -158,9 +201,12 @@ through at 1000 m/s, and `caliber` scales that depth linearly.
 ### 4.3 Stop
 
 If the shot neither ricochets nor penetrates:
-- an explosive shot (`explosive > 0`) explodes (`0x140e5bf10` for the effects, and the world
-  explosion for the damage);
-- otherwise it deals its direct hit and is deleted.
+- when it is armed — no explosion timer running (`+0x648` ≥ FLT_MAX or ≤ 0), no arming distance
+  left (`+0x64c` ≤ 0) and the flag at `+0x650` clear, or forced by `+0x5ee` — an explosive shot
+  (`explosive > 0`) that has not exploded yet explodes (`0x140e5bf10` for the effects, and the
+  world explosion for the damage), and the hit handler deals the direct hit with `v_out = 0`;
+- in every case the shot is then stopped and deleted (`0x140e583d0`). An unarmed fused shell
+  (inside its `fuseDistance`) is a dud.
 
 ## 5. Direct hit value (high)
 
@@ -181,6 +227,11 @@ The world then applies `hit · e` to the object (`0x14121bcd0` → `0x141028440`
 
 So a bullet that passes through and keeps most of its speed does little damage, and a stopped
 bullet deals up to 2× `hit` at typical speed.
+
+**Implementation note (`a3-world`).** `R` is read as the model's ODOL
+`ModelInfo::bounding_sphere` (`shape+0x7c`, medium on the identification;
+`a3_physics::LayerShape::model_bounding_sphere`). An MLOD model stores none; for a direct hit
+its layer's extent stands in, an explosion treats it as a point.
 
 ## 6. Indirect hits / explosions (high on formulas)
 
