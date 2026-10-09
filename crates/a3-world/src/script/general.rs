@@ -147,4 +147,29 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     r.nular("allCutLayers", ARR, |_ctx| {
         Ok(Value::array(std::iter::empty()))
     });
+
+    // `enableEnvironment`: ambient life (birds, insects, sea life) and the wind sound. We
+    // simulate none of it, so the switch stores nothing (`stub`); the array form carries the same
+    // switch plus the ambient-life flags.
+    r.unary("enableEnvironment", BOOL, NOTHING, |_, _| {
+        Ok(Value::Nothing)
+    });
+    r.unary("enableEnvironment", ARR, NOTHING, |_, _| Ok(Value::Nothing));
+
+    // `enableSentences`: whether units say their sentences aloud. We play no sentences, so the
+    // switch stores nothing (`stub`).
+    r.unary("enableSentences", BOOL, NOTHING, |_, _| Ok(Value::Nothing));
+
+    // `loadStatus object, name`: whether the object's `name` animation source has finished
+    // loading. We load a model's sources with the model, so anything that exists is loaded
+    // (`stub`).
+    r.binary("loadStatus", OBJ, STR, BOOL, |_, _, _| {
+        Ok(Value::Bool(true))
+    });
+
+    // `targetsQuery object, [targets, ...]`: what the object's sensors currently hold. We have no
+    // sensor model, so the query answers nothing (`stub`).
+    r.binary("targetsQuery", OBJ, ARR, ARR, |_, _, _| {
+        Ok(Value::array(std::iter::empty()))
+    });
 }
