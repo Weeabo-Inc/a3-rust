@@ -181,7 +181,7 @@ fn fire<H: WorldHost>(
 
 /// Installs the script host's config as the World's weapons config when it has none, so the
 /// Loadout commands work in any World a script runs in.
-fn ensure_config<H: WorldHost>(ctx: &mut Ctx<'_, H>) {
+pub(super) fn ensure_config<H: WorldHost>(ctx: &mut Ctx<'_, H>) {
     if ctx.host.world().config().is_none() {
         let config = ctx.host.types().config_arc();
         ctx.host.world_mut().set_config(config);

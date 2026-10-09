@@ -335,6 +335,8 @@ fn create_unit<H: WorldHost>(
     let Ok(ty) = ctx.host.types().get(name) else {
         return null_object();
     };
+    // A unit is created with its class's weapons and magazines.
+    super::weapons::ensure_config(ctx);
     let w = ctx.host.world_mut();
     let Ok(unit) = w.create(Create::new(ty, pos).on_surface()) else {
         return null_object();

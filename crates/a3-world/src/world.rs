@@ -274,6 +274,7 @@ impl World {
         let list = ListKind::for_class(ty.class());
         let id = self.insert(ty, position, network_id, Locality::Local, list);
         self.init_projectile(id);
+        self.arm_from_config(id);
         Ok(id)
     }
 

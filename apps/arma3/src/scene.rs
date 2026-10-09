@@ -505,6 +505,10 @@ impl DebugScene {
     /// rendering.
     pub fn update_hud(&mut self, size: (u32, u32), dt: f64) {
         if let (Some(hud), Some(player)) = (&mut self.hud, &self.player) {
+            if let Some(combat) = &self.combat {
+                let (loaded, spare) = combat.rounds();
+                hud.set_rounds(loaded, spare);
+            }
             hud.frame(player, size, dt);
         }
     }

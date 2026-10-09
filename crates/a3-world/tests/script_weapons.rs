@@ -21,6 +21,10 @@ class CfgVehicles {
     class All { scope = 0; simulation = ""; side = 3; };
     class Man: All { simulation = "soldier"; };
     class B_Soldier_F: Man { scope = 2; side = 1; };
+    class B_Rifleman_F: B_Soldier_F {
+        weapons[] = { "rifle_F", "NoSuchWeapon_F" };
+        magazines[] = { "Mag_30", "Mag_30", "Mag_30", "NoSuchMag" };
+    };
 };
 class CfgAmmo {
     class Default { simulation = ""; };
@@ -328,4 +332,20 @@ fn the_shot_leaves_from_the_aim() {
         e,
         WorldEvent::Fired { shooter, .. } if shooter == &a
     )));
+}
+
+#[test]
+fn a_unit_is_created_with_its_class_loadout() {
+    let mut vm = vm();
+    eval(
+        &mut vm,
+        r#"
+        g = createGroup west;
+        a = g createUnit ["B_Rifleman_F", [0, 0, 0], [], 0, "CAN_COLLIDE"];
+        "#,
+    );
+    // The magazines go in first, then the weapons load from them; unknown names are skipped.
+    assert_eq!(text(&mut vm, "weapons a"), r#"["rifle_F"]"#);
+    assert_eq!(num(&mut vm, r#"a ammo "rifle_F""#), 30.0);
+    assert_eq!(text(&mut vm, "magazines a"), r#"["Mag_30","Mag_30"]"#);
 }

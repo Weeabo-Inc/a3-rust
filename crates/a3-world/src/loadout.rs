@@ -183,6 +183,51 @@ impl World {
         self.loadout(unit)
     }
 
+    /// Gives a new unit the weapons and magazines its class lists (`CfgVehicles >> class >>
+    /// weapons[]`, `magazines[]`), as creation does: the magazines first, then each weapon, which
+    /// loads its muzzles from them. Needs the World's config ([`World::set_config`]); names the
+    /// config does not have are skipped.
+    pub(crate) fn arm_from_config(&mut self, unit: EntityId) {
+        let Some(armory) = self.armory.as_ref() else {
+            return;
+        };
+        let Some(ty) = self.entity(unit).map(|e| e.entity_type().clone()) else {
+            return;
+        };
+        if ty.source() != crate::TypeSource::Vehicles
+            || !ty.class().is_kind_of(crate::EntityClass::EntityAi)
+        {
+            return;
+        }
+        // By name: the type may come from another tree than the World's config.
+        let cfg = armory
+            .bank
+            .config()
+            .root()
+            .get("CfgVehicles")
+            .get(ty.name());
+        if !cfg.is_class() {
+            return;
+        }
+        let list = |name: &str| -> Vec<String> {
+            cfg.get(name)
+                .array()
+                .into_iter()
+                .filter_map(|v| match v {
+                    a3_config::Value::String(s) => Some(s),
+                    _ => None,
+                })
+                .collect()
+        };
+        let (weapons, magazines) = (list("weapons"), list("magazines"));
+        for magazine in magazines {
+            let _ = self.add_magazine(unit, &magazine, None);
+        }
+        for weapon in weapons {
+            let _ = self.add_weapon(unit, &weapon);
+        }
+    }
+
     /// `addWeapon`: gives the unit a weapon and loads each muzzle from its carried magazines at
     /// once. The first weapon a unit gets is selected.
     pub fn add_weapon(&mut self, unit: EntityId, weapon: &str) -> Result<(), Error> {

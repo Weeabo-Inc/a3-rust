@@ -74,6 +74,8 @@ fn create<H: WorldHost>(
             .diag_log(&format!("Cannot create non-ai vehicle {name}"));
         return null_object();
     };
+    // A unit is created with its class's weapons and magazines.
+    super::weapons::ensure_config(ctx);
     let mut request = Create::new(ty, pos).on_surface();
     if local_only {
         request = request.local_only();

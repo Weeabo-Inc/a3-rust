@@ -22,11 +22,11 @@ use a3_world::{
 use a3_wrp::Terrain;
 use glam::{DAffine3, DQuat, DVec3};
 
-/// The player's rifle and its magazine: an MX with tracer rounds, so every shot shows.
-pub const WEAPON: &str = "arifle_MX_F";
-pub const MAGAZINE: &str = "30Rnd_65x39_caseless_mag_Tracer";
-/// Magazines the player carries besides the loaded one.
-pub const SPARE_MAGAZINES: u32 = 5;
+/// The rifle a player whose class carries no weapon gets: an MX with tracer rounds.
+pub const FALLBACK_WEAPON: &str = "arifle_MX_F";
+pub const FALLBACK_MAGAZINE: &str = "30Rnd_65x39_caseless_mag_Tracer";
+/// Magazines the fallback rifle comes with besides the loaded one.
+pub const FALLBACK_SPARES: u32 = 5;
 
 /// How far around the player Static objects are streamed into the collision world, metres: past
 /// the 6.5 mm round's 6 s of flight at low angles.
@@ -99,15 +99,21 @@ impl Combat {
         if let Some(e) = world.entity_mut(unit) {
             e.set_simulation_enabled(false);
         }
-        for _ in 0..=SPARE_MAGAZINES {
-            world.add_magazine(unit, MAGAZINE, None)?;
+        // Creation armed the unit with its class's `weapons[]` and `magazines[]`.
+        if world.weapons_of(unit).is_empty() {
+            for _ in 0..=FALLBACK_SPARES {
+                world.add_magazine(unit, FALLBACK_MAGAZINE, None)?;
+            }
+            world.add_weapon(unit, FALLBACK_WEAPON)?;
         }
-        world.add_weapon(unit, WEAPON)?;
         world.drain_events();
         log::info!(
-            "armed the player with {WEAPON} ({} rounds of {MAGAZINE}, {} spare magazines)",
-            world.ammo_in(unit, WEAPON),
-            world.magazines_of(unit).len()
+            "the player carries {:?}: {} with {} rounds of {}, magazines {:?}",
+            world.weapons_of(unit),
+            world.current_weapon(unit),
+            world.ammo_in(unit, &world.current_muzzle(unit)),
+            world.current_magazine(unit),
+            world.magazines_of(unit)
         );
         Ok(Combat {
             world,
@@ -300,6 +306,35 @@ impl Combat {
             lines.wire_sphere(m.position, 0.06, 12, color);
             lines.line(m.position, m.position + m.normal * 0.3, color);
         }
+    }
+
+    /// The rounds in the selected muzzle's magazine (`None` when none is loaded) and the further
+    /// magazines carried for it, for the HUD's ammo counter.
+    pub fn rounds(&self) -> (Option<u32>, u32) {
+        let w = &self.world;
+        let Some(loadout) = w.unit_loadout(self.unit) else {
+            return (None, 0);
+        };
+        let Some((wi, mi)) = loadout.current else {
+            return (None, 0);
+        };
+        let muzzle = &loadout.weapons[wi].kind.muzzles[mi];
+        let loaded = loadout.weapons[wi].muzzles[mi]
+            .magazine
+            .as_ref()
+            .map(|m| m.ammo);
+        let spare = loadout
+            .magazines
+            .iter()
+            .filter(|m| m.ammo > 0)
+            .filter(|m| {
+                muzzle
+                    .magazines
+                    .iter()
+                    .any(|n| n.eq_ignore_ascii_case(m.name()))
+            })
+            .count() as u32;
+        (loaded, spare)
     }
 
     /// Overlay lines: the weapon, its mode and rounds, and the latest hits.
