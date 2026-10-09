@@ -340,6 +340,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-vehicles"
+version = "0.1.0"
+dependencies = [
+ "a3-config",
+ "glam 0.34.1",
+]
+
+[[package]]
 name = "a3-vfs"
 version = "0.1.0"
 dependencies = [

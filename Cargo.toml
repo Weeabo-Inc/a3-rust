@@ -36,6 +36,7 @@ a3-environment = { path = "crates/a3-environment" }
 a3-landscape-render = { path = "crates/a3-landscape-render" }
 a3-ui = { path = "crates/a3-ui" }
 a3-physics = { path = "crates/a3-physics" }
+a3-vehicles = { path = "crates/a3-vehicles" }
 
 # Physics (ADR 0001, ADR 0008)
 rapier3d-f64 = "0.36"

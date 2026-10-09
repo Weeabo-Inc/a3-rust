@@ -1,0 +1,17 @@
+[package]
+name = "a3-vehicles"
+description = "Vehicle handling: the engine, gearbox, wheels and tires a CfgVehicles class configures, and and the drives that turn driver input into motion"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+a3-config.workspace = true
+glam.workspace = true
+
+[dev-dependencies]
+a3-config.workspace = true
+
+[lints]
+workspace = true
