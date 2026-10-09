@@ -85,3 +85,38 @@ a3-ui evaluates these through the SQF VM when building a display.
   The font's number is not its line height.
 - **Size selection:** text uses the size whose line height is closest to `sizeEx × viewportH`,
   scaled to fit _(uncertain, #155)_.
+- **Glyph pages are white with coverage in alpha:** a shipped page (`caveat10-01.paa`, DXT5,
+  256x128) has 2137 texels with alpha > 200 and every one of them is near-white (min channel
+  255). A glyph quad is therefore the text colour multiplied by the page and the coverage is the
+  page alpha — which is what `crates/a3-render-ui`'s shader does.
+
+## Rendering (`crates/a3-render-ui`)
+
+`UiRenderer` implements `RenderFeature`: `prepare` resolves the draw list's textures and turns
+the quads into one vertex buffer (six vertices per quad, TL/TR/BL/BL/TR/BR, `[x, y, u, v]` and
+sRGB colour); `draw` runs in `Phase::Ui`, after the post pass, with no depth attachment and
+`LoadOp::Load`.
+
+- **Batching:** consecutive quads join one draw call while their texture slot and clip match, in
+  list order (painter's order). Clip rectangles (control groups) become `set_scissor_rect` per
+  batch, floored/ceiled to whole pixels and clamped to the viewport.
+- **Textures:** the cache resolves the list's normalized paths. A PAA keeps its block
+  compression when the adapter supports it (DXT1/2/3/4/5 → BC1/2/3) and its whole mip chain, and
+  is decoded to RGBA8 when it does not. `#(...)` strings go through `a3_paa::Procedural`. Slot 0
+  is a 1x1 white texture, the source of untextured (solid colour) quads; a path that does not
+  load drops its quads and is remembered so it is not retried. All views are sRGB, sampled with
+  a clamped linear sampler.
+- **Text:** glyph quads arrive with `Uv::Texels` into their `-NN.paa` page; texel UVs are
+  normalized with the texture's size. A font page is just another texture; the glyph geometry
+  comes from a3-ui's layout, so `sizeEx`, alignment, shadow and structured text are layout
+  concerns (#53, #155).
+- **Colour space (deviation):** the engine draws into an 8-bit LDR backbuffer and blends in it;
+  we draw after the post pass on an sRGB output target, so the shader decodes the authored
+  sRGB colour to linear once and the hardware re-encodes on store: opaque pixels are byte-exact
+  (verified: an untextured `[1, 0, 0]` quad reads back `255, 0, 0, 255`). Blending a translucent
+  UI element instead happens in linear space, which is the physically correct blend and
+  therefore *brighter* than the engine's gamma-blind one: 50% white over black gives 188/255
+  where the engine gives 128/255. Output alpha is straight, from the draw list.
+- **Real data:** all 2106 PAAs under `a3\ui_f` decode, block-compressed and as RGBA8 (0
+  failures), and a real display texture and real FXY text draw over the scene in the text
+  colour (tests gated on `A3_ROOT`).

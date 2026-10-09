@@ -568,6 +568,11 @@ The screen-height-derived unit that keeps UI aligned across resolutions: `pixelG
 `pixelGridNoUIScale` and `pixelGridBase`, from config `uiScaleMaxGrids` and `uiScaleFactor`.
 _Avoid_: pixel step
 
+**Draw list**:
+One frame of UI drawing: the Controls' quads in draw order, each a screen-space rectangle with a
+colour, a texture path and an optional clip, plus the texture paths they name.
+_Avoid_: render list, command buffer
+
 **Curator (Zeus)**:
 The real-time game-master mode in which a player places and commands entities during a running
 mission. The engine name is Curator; Zeus is the product name.
