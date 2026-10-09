@@ -23,10 +23,10 @@ Per-world HDR parameters. Values for `Altis`, `Stratis`, `Tanoa`, `Malden` and `
 | `tonemapLinearWhite` | 11.2 | Hable W (white point) | high |
 | `tonemapExposureBias` | 1.0 | multiplier before the curve | high |
 | `tonemapLinearWhiteReinhard` | 2.5 | white point of extended Reinhard | medium |
-| `minAperture` / `maxAperture` | 1e-5 / 256 | clamp of the adapted "aperture" | medium |
-| `apertureRatioMin` / `apertureRatioMax` | 10 / 4 | unknown, probably limits of adaptation around a standard | low |
-| `eyeAdaptFactorLight` | 3.3 | adaptation speed towards brighter scenes (1/s) | medium |
-| `eyeAdaptFactorDark` | 0.75 | adaptation speed towards darker scenes (1/s) | medium |
+| `minAperture` / `maxAperture` | 1e-5 / 256 | clamp of the CPU aperture (`render-atmosphere.md` §3.3) | high |
+| `apertureRatioMin` / `apertureRatioMax` | 10 / 4 | how far below / above `standardAvgLum` the measured luminance must be for the aperture to reach `apertureMin` / `apertureMax` | high |
+| `eyeAdaptFactorLight` | 3.3 | speed of the CPU aperture stage towards brighter scenes (scaled by `max(|log2 ratio|, 1)` and most likely the frame time) | high (frame time: medium) |
+| `eyeAdaptFactorDark` | 0.75 | the same towards darker scenes | high (frame time: medium) |
 | `bloomScale` etc. | 0.09, ... | bloom (not implemented yet) | — |
 
 `DefaultWorld` uses `tonemapMethod = 2`, `tonemapExposureBias = 2.0`, B = 0.3, E = 0.01,
@@ -55,7 +55,8 @@ filter first.
 
 - ~~Exact enum order of `tonemapMethod`~~ resolved in `render-atmosphere.md` §3.1 (0 none, 1 filmic, 2 Reinhard; `DefaultWorld` therefore uses Reinhard with `tonemapLinearWhiteReinhard` as W).
 - How average luminance is measured (histogram vs. downsampled mean, which percentiles).
-- Meaning of `apertureRatioMin/Max`; interaction with `apertureStandard` of optics.
+- ~~Meaning of `apertureRatioMin/Max`~~ resolved in `render-atmosphere.md` §3.3 (CPU aperture
+  stage).
 - Units of scene luminance (RV's sun and sky intensities in config `CfgWorlds >> LightingNew`).
 
 ## Our implementation (`a3-render::post`)
@@ -66,8 +67,9 @@ Follows `render-atmosphere.md` §3:
   two compute passes (no histogram).
 - **Adaptation**: exposure-like value `key / measured`, stepped from the previous frame's value
   with the soft step near the target, a per-frame ratio clamp, and a clamp to
-  `key / maxAperture ..= key / minAperture`. _Our assumptions_: the ratio limits are
-  `2^(-eyeAdaptFactorLight·dt)` and `2^(eyeAdaptFactorDark·dt)` (stops per second), and `key`
+  `key / maxAperture ..= key / minAperture`. The ratio limits are RV's: halve in 0.5–1 s,
+  double in 1–20 s depending on the CPU exposure (`HdrSettings::cpu_exposure`, 1 while the CPU
+  stage is not wired in). _Our assumption_: `key`
   (0.3) stands in for `PSC_AssumedLuminancePars1.z`. The CPU aperture interpolation from the
   lighting table (`apertureMin/Std/Max`, `standardAvgLum`, `exposure = 1/ap²`) is not wired in.
 - **Bloom**: mixed before the curve as decoded, `k = (1 - saturate(2·luma601)) · bloomScale`. The
@@ -75,4 +77,4 @@ Follows `render-atmosphere.md` §3:
   bloom generation passes (`bloomLuminance*` entries) are not decoded yet.
 - **Curves**: filmic with `bias` and the E/F-offset normalisation, Reinhard on Rec.709 luminance
   with `tonemapLinearWhiteReinhard`, method 0 passes through; then `pow(·, RgbEyeCoef.w)` with
-  `final_gamma = 1` until its value is traced, then our sRGB encode for display.
+  `final_gamma = 1` (RV sets `PSC_RgbEyeCoef.w = 1` always), then our sRGB encode for display.

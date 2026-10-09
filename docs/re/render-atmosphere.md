@@ -168,8 +168,16 @@ out   = saturate(c * (L * (1 + L/W²) / (1 + L)) / (L + 0.0001))
 o.rgb = pow(out, PSC_RgbEyeCoef.w);  o.a = 1
 ```
 Note that `bias` applies only to the Filmic curve. Filmic and Reinhard apply no other exposure:
-the HDR buffer is already exposed (§3.3). `PSC_RgbEyeCoef.w` is a final gamma; its CPU value is not
-traced.
+the HDR buffer is already exposed (§3.3).
+
+**`PSC_RgbEyeCoef`** (set in `0x14173fda0`, descriptor `0x1420cf7b0`, high): `w` is always **1.0**,
+so the final `pow` is the identity. `rgb` is a luminance weight vector:
+- normally `(0.299, 0.587, 0.114)` (`0x1420ce3e0`);
+- with night vision on (`engine+0x115c`) `(0.6, 0.2, 0.2)` (`0x1420ce3f0`);
+- when the night-shift effect is active (`engine+0x1158 > 0.001`) it is
+  `lerp((0.05, 0.55, 0.4), (0.299, 0.587, 0.114), t)` (`0x1420ce400`), with `t` from the CPU
+  exposure `E` (§3.3): `t = 1` for `E < 0.5`, `2 − 2E` up to `E = 1.1`, `−0.2` beyond. The same
+  branch sets `PSC_NightControl = (60 / E, t, 0, 0)` (descriptor `0x1420cf7d0`).
 
 ### 3.3 Luminance measurement and adaptation
 
@@ -197,27 +205,60 @@ if Pars1.x > 0:                                               // previous value 
     target= r * prev
 v = clamp(target, Pars2.x, Pars2.y)
 ```
-`PSC_AssumedLuminancePars1/2` are set in `0x14173fda0`. Their exact CPU values are not traced.
-They likely come from `minAperture`/`maxAperture` and from `eyeAdaptFactorLight/Dark` × frame time.
-
-**CPU aperture (`0x14175ac10`, medium):**
-- With `lum` = the measured luminance, the aperture is interpolated from the current lighting
-  entry's (`apertureStandard` `Pstd`, `apertureMin` `Pmin`, `apertureMax` `Pmax`, `standardAvgLum`
-  `Lstd`). These come from §1.3 or from `setApertureNew`; NVG uses the `nvgAperture*` values.
-- `ratioMax` = `apertureRatioMax` and `ratioMin` = `apertureRatioMin`.
+**`PSC_AssumedLuminancePars1/2`** (`0x14173fda0`, one 8-float constant, descriptor `0x1420cfb50`,
+high on the formulas). `E` is the CPU exposure applied this frame (`engine+0x1140`, copied from
+the view's HDR state `+0x20`, below) and `Eprev` last frame's (`engine+0x116c`):
 
 ```
-if Pstd <= 0 or Lstd <= 0: ap = 1
-elif lum < Lstd:  x = Lstd/lum  →  ap = x <= 1 ? Pstd : x >= ratioMax ? Pmax
-                                    : Pstd + (x-1)/(ratioMax-1) * (Pmax - Pstd)
-else:             x = -Lstd/lum →  ap = x < -ratioMin ? Pmin : x > 1 ? Pstd
-                                    : Pmin + (x+ratioMin)/(1+ratioMin) * (Pstd - Pmin)
+Pars1 = (Eprev / E,  dt,  key,  0)           // dt: post-process object +0x11a0
+Pars2 = (vmin / E,   vmax / E,                // post-process object +0x11a4 / +0x11a8;
+                                              // (1, 1) when engine+0x1144 (fixed aperture) is set
+         min(2^(−dt / τdown), 0.999),         // the exposure may halve every τdown seconds
+         max(2^( dt / τup  ), 1.001))         // and double every τup seconds
+f      = clamp((Eprev − 1) / 3, 0, 1)
+τdown  = 0.5 · (1 − f) + f                    // 0.5 s .. 1 s
+τup    = 1 · (1 − f) + 20 · f                 // 1 s .. 20 s: slow dark adaptation at high exposure
+key    = engine+0x368 · brightness · 0.5,     or 0.781 with night vision on (engine+0x115c)
+brightness = engine vfunc +0x540 (0x1416edad0): with b = engine+0x58 (1 by default),
+             b ≤ 1: 0.74 b / clamp(0.74 b, 0.7, 0.85);  b > 1: 0.74 e^(b−1) / clamp(0.74 e^(b−1), 0.7, 0.85)
+             (1.0 at b = 1)
+```
+`Pars1.x` rescales the stored previous value when the CPU exposure changes, so the product of the
+two stages stays continuous. Not identified: the value of `engine+0x368` (a base-engine float,
+read only together with the brightness) and the source of the post-process object's
+`+0x11a0..+0x11a8` triple (written as one by the setter `0x141771860`) (medium).
+
+**CPU aperture (`0x14175ac10`, high on the code).** A slow first stage, from the lighting table.
+`lum` is the GPU-measured luminance read back on the CPU (`0x1416d2850`, at least 1e-4) divided by
+the exposure it was rendered with (`state+0x20`, unless `pp+0x601`). The lighting entry gives
+`apertureStandard` `Pstd` (`state+0x2bc`), `apertureMin` `Pmin` (`+0x2c0`), `apertureMax` `Pmax`
+(`+0x2c4`) and `standardAvgLum` `Lstd` (`+0x2c8`), from §1.3 or `setApertureNew`; with night
+vision (`state+0x6c`) the `nvgApertureStandard/Min/Max`, `nvgStandardAvgLum` config values.
+`ratioMax` = `apertureRatioMax`, `ratioMin` = `apertureRatioMin` (globals `0x1420bb248`,
+`0x1420bb24c`; the HDRNewPars block is loaded by `0x141031ec0` into `0x1420bb240..`).
+
+```
+if Pstd <= 0 or Lstd <= 0:  ap = 1
+elif lum <= Lstd:                                  // darker than standard: Pmin .. Pstd
+    x  = −Lstd / lum                               // ≤ −1
+    ap = x < −ratioMin ? Pmin : Pmin + (x + ratioMin)/(1 + ratioMin) · (Pstd − Pmin)
+else:                                              // brighter: Pstd .. Pmax
+    y  = lum / Lstd                                // > 1
+    ap = y > ratioMax ? Pmax : Pstd + (y − 1)/(ratioMax − 1) · (Pmax − Pstd)
 ap = clamp(ap, minAperture, maxAperture)
-exposure = 1/ap²   then smoothed toward the previous value with an exp(-k·|log2 ratio|)-style factor
+e  = 1 / ap²
+if prev > 0:                                       // prev = state+0x2b8
+    rate = e > prev ? eyeAdaptFactorDark : eyeAdaptFactorLight
+    k    = max(|log2(e / prev)|, 1) · rate · pp+0x5e0
+    e    = prev + (1 − exp(−k)) · (e − prev)
+state+0x24 = state+0x20;  state+0x3c = state+0x2b8 = e
 ```
-The branch structure above is literal. Some of the branch semantics (sign of `x`, which bound is
-used) look odd and should be checked before relying on them. `hdr.md`'s statement that aperture acts
-like adapted luminance and darkens the image is consistent with `exposure = 1/ap²`.
+The dark branch is literal: at `lum = Lstd` it gives `Pmin + (ratioMin − 1)/(ratioMin + 1) ·
+(Pstd − Pmin)`, not `Pstd`, so the curve jumps there. `pp+0x5e0` is most likely the frame time
+(medium). So `eyeAdaptFactorLight/Dark` set the speed of this CPU stage, not of the GPU limits.
+That `state+0x20` (the exposure applied next) takes the smoothed `e` is medium: the copy was not
+found. `hdr.md`'s statement that aperture acts like adapted luminance and darkens the image is
+consistent with `e = 1/ap²`.
 
 ## 4. Sky
 
@@ -335,7 +376,12 @@ needs `v1.xyz`, which is the next thing to trace.
 
 - Where the cloud factor `c` comes from, sun/moon blending, and the CPU mapping of the lighting outputs
   to `PSC_*` constants (including any division by the aperture).
-- `PSC_RgbEyeCoef.w` (gamma), `PSC_AssumedLuminancePars1/2` values, and `PSC_PhysicalFog` source.
+- The value of `engine+0x368` in the adaptation key, the `pp+0x11a0..0x11a8` triple and the copy
+  of the CPU exposure into `state+0x20` (§3.3); `PSC_PhysicalFog` source.
+- Which channels `0.9·min(t0.x, 1000) + 0.2·min(t0.y, 1000)` mixes (§3.3): a geometric mean alone
+  reads 1.4–4x lower than the client's effective meter on our dusk and night scenes, which
+  suggests one of the two channels is a maximum
+  (`PSPostProcessDownSampleMaxAvgMinLuminance`).
 - The sky dome's per-vertex tint `v1.xyz` and its `sky`/`skyR` blend `v1.w` (§4.2): which lighting
   table colour drives them, and whether the tint varies over the dome. This is what stands between
   our gradient and the engine's.
@@ -345,4 +391,3 @@ needs `v1.xyz`, which is the next thing to trace.
   traced `rayleigh`/`mie` reproduces the *shape* of `PSHorizon`'s glow but is far too dark and too
   saturated at the horizon, so the engine is doing something more (multiple scattering, the
   `fadeNum*` lookup grid, or the horizon band's own texture).
-

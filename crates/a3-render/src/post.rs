@@ -121,16 +121,21 @@ pub struct HdrSettings {
     /// `key / adapted`).
     pub min_aperture: f32,
     pub max_aperture: f32,
-    /// `eyeAdaptFactorLight`: how fast the eye adapts to a brighter scene, in stops per second
-    /// _(uncertain mapping to RV's per-frame limits, see `docs/re/render-atmosphere.md` §3.3)_.
+    /// `eyeAdaptFactorLight`: speed of RV's slow CPU exposure stage towards a brighter scene
+    /// (`docs/re/render-atmosphere.md` §3.3). That stage is not implemented yet; the GPU stage's
+    /// speed comes from [`cpu_exposure`](Self::cpu_exposure).
     pub eye_adapt_light: f32,
-    /// `eyeAdaptFactorDark`: how fast the eye adapts to a darker scene, stops per second.
+    /// `eyeAdaptFactorDark`: the same towards a darker scene.
     pub eye_adapt_dark: f32,
     /// Target of the adaptation: exposure = key / measured log-average luminance (RV's
-    /// `PSC_AssumedLuminancePars1.z`; its value is not traced, ours is chosen by eye).
+    /// `PSC_AssumedLuminancePars1.z` = `engine+0x368 · brightness · 0.5`; the engine value is
+    /// not identified, ours is chosen by eye).
     pub key: f32,
-    /// Final power applied after the curve (`PSC_RgbEyeCoef.w`; CPU value not traced, 1 keeps
-    /// the curve's output). The sRGB encode for display follows separately.
+    /// The exposure of RV's CPU stage (`1 / aperture²` from the lighting table), which sets how
+    /// fast the GPU stage may adapt. 1 until that stage is implemented.
+    pub cpu_exposure: f32,
+    /// Final power applied after the curve: `PSC_RgbEyeCoef.w`, which RV always sets to 1. The
+    /// sRGB encode for display follows separately.
     pub final_gamma: f32,
     /// Fixed exposure instead of eye adaptation (`setAperture`-like override, and for tests).
     pub fixed_exposure: Option<f32>,
@@ -150,6 +155,7 @@ impl Default for HdrSettings {
             eye_adapt_light: 3.3,
             eye_adapt_dark: 0.75,
             key: 0.3,
+            cpu_exposure: 1.0,
             final_gamma: 1.0,
             fixed_exposure: None,
             anti_aliasing: AntiAliasing::Fxaa,
@@ -165,14 +171,18 @@ impl HdrSettings {
         (self.key / max_ap, self.key / min_ap)
     }
 
-    /// Per-frame limits of the exposure ratio (RV's `PSC_AssumedLuminancePars2.zw`): exposure
-    /// may fall by `eye_adapt_light` stops per second (scene got brighter) and rise by
-    /// `eye_adapt_dark` stops per second (scene got darker).
+    /// Per-frame limits of the exposure ratio (RV's `PSC_AssumedLuminancePars2.zw`,
+    /// `0x14173fda0`): the exposure may halve every `τ_down` and double every `τ_up` seconds,
+    /// 0.5 s and 1 s at a CPU exposure up to 1, slowing linearly to 1 s and 20 s at 4 and above;
+    /// at least 0.1 % per frame either way.
     pub fn adaptation_limits(&self, dt: f32) -> (f32, f32) {
         let dt = dt.max(0.0);
+        let f = ((self.cpu_exposure - 1.0) / 3.0).clamp(0.0, 1.0);
+        let tau_down = 0.5 * (1.0 - f) + f;
+        let tau_up = (1.0 - f) + 20.0 * f;
         (
-            (-self.eye_adapt_light.max(0.0) * dt).exp2(),
-            (self.eye_adapt_dark.max(0.0) * dt).exp2(),
+            (-dt / tau_down).exp2().min(0.999),
+            (dt / tau_up).exp2().max(1.001),
         )
     }
 
@@ -774,13 +784,40 @@ mod tests {
     }
 
     #[test]
-    fn adaptation_limits_are_stops_per_second() {
+    fn adaptation_halves_in_half_a_second_and_doubles_in_one_at_daylight_exposure() {
+        // RV's PSC_AssumedLuminancePars2.zw (render-atmosphere.md §3.3): with the CPU
+        // exposure at or below 1 the exposure may halve every 0.5 s and double every 1 s.
         let s = HdrSettings::default();
-        let (down, up) = s.adaptation_limits(0.5);
-        // eyeAdaptFactorLight 3.3 stops/s down, eyeAdaptFactorDark 0.75 stops/s up.
-        assert!((down - 2f32.powf(-1.65)).abs() < 1e-6);
-        assert!((up - 2f32.powf(0.375)).abs() < 1e-6);
-        assert_eq!(s.adaptation_limits(0.0), (1.0, 1.0));
+        let (down, up) = s.adaptation_limits(0.25);
+        assert!((down - 0.5f32.sqrt()).abs() < 1e-6, "{down}");
+        assert!((up - 2f32.powf(0.25)).abs() < 1e-6, "{up}");
+    }
+
+    #[test]
+    fn adaptation_to_the_dark_slows_down_at_high_cpu_exposure() {
+        // From a CPU exposure of 4 up: halving takes 1 s, doubling 20 s; linear in between.
+        let night = HdrSettings {
+            cpu_exposure: 6.0,
+            ..HdrSettings::default()
+        };
+        let (down, up) = night.adaptation_limits(1.0);
+        assert!((down - 0.5).abs() < 1e-6);
+        assert!((up - 2f32.powf(1.0 / 20.0)).abs() < 1e-6);
+        let dusk = HdrSettings {
+            cpu_exposure: 2.5,
+            ..HdrSettings::default()
+        };
+        // f = 0.5: tau_down = 0.75 s, tau_up = 10.5 s.
+        let (down, up) = dusk.adaptation_limits(1.0);
+        assert!((down - 2f32.powf(-1.0 / 0.75)).abs() < 1e-6);
+        assert!((up - 2f32.powf(1.0 / 10.5)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn adaptation_always_allows_a_tenth_of_a_percent_per_frame() {
+        let s = HdrSettings::default();
+        assert_eq!(s.adaptation_limits(0.0), (0.999, 1.001));
+        assert_eq!(s.adaptation_limits(1e-6), (0.999, 1.001));
     }
 
     #[test]

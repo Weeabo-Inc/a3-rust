@@ -97,13 +97,13 @@ fn adaptation_steps_are_limited_per_frame() {
     s.render(&gpu, DT);
     let start = s.renderer.read_exposure(&gpu).unwrap();
 
-    // 16x brighter: exposure falls at most eyeAdaptFactorLight (3.3) stops/s, 0.33 stops in 0.1 s.
+    // 16x brighter: at a CPU exposure of 1 the exposure may halve every 0.5 s: 0.2 stops in 0.1 s.
     s.scale_light(16.0);
     s.render(&gpu, 0.1);
     let step = s.renderer.read_exposure(&gpu).unwrap();
     let ratio = step.exposure / start.exposure;
     assert!(
-        (ratio - 2f32.powf(-0.33)).abs() < 1e-3,
+        (ratio - 2f32.powf(-0.2)).abs() < 1e-3,
         "ratio {ratio}: {start:?} -> {step:?}"
     );
     for _ in 0..60 {
@@ -116,13 +116,13 @@ fn adaptation_steps_are_limited_per_frame() {
         "exposure should settle at key / measured: {settled:?}"
     );
 
-    // 16x darker again: exposure rises at most eyeAdaptFactorDark (0.75) stops/s.
+    // 16x darker again: it may double every 1 s: 0.1 stops in 0.1 s.
     s.scale_light(1.0 / 16.0);
     s.render(&gpu, 0.1);
     let darker = s.renderer.read_exposure(&gpu).unwrap();
     let ratio = darker.exposure / settled.exposure;
     assert!(
-        (ratio - 2f32.powf(0.075)).abs() < 1e-3,
+        (ratio - 2f32.powf(0.1)).abs() < 1e-3,
         "ratio {ratio}: {settled:?} -> {darker:?}"
     );
 }
