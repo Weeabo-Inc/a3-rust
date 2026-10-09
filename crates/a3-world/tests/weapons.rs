@@ -364,3 +364,116 @@ fn unknown_names_are_errors() {
         Error::UnknownAmmo("nope".to_owned())
     );
 }
+
+/// The shipped `CfgWeapons` / `CfgMagazines` / `CfgAmmo` all load and every weapon/magazine pair
+/// resolves to a positive muzzle velocity (`sim-weapons.md` §2.3). Skipped without `A3_ROOT`.
+#[test]
+fn the_shipped_weapons_config_loads() {
+    let Some(root) = std::env::var_os("A3_ROOT") else {
+        eprintln!("skipping: A3_ROOT not set");
+        return;
+    };
+    let data = a3_gamedata::GameData::load(&a3_gamedata::LoadOptions::new(root)).unwrap();
+    let mut bank = WeaponBank::new(data.config.clone());
+
+    let classes = |root_name: &str| -> Vec<String> {
+        data.config
+            .root()
+            .get(root_name)
+            .entries()
+            .into_iter()
+            .filter(|c| c.is_class())
+            .map(|c| c.name().to_owned())
+            .collect()
+    };
+
+    let mut magazines = 0;
+    for name in classes("CfgMagazines") {
+        let Ok(mag) = bank.magazine(&name) else {
+            continue;
+        };
+        // `Default` and other abstract bases name no ammo; the engine errors only when one is
+        // loaded into a muzzle.
+        if mag.ammo.is_empty() {
+            continue;
+        }
+        magazines += 1;
+        assert!(
+            bank.ammo(&mag.ammo).is_ok(),
+            "{}: no ammo class {}",
+            mag.name,
+            mag.ammo
+        );
+    }
+
+    let mut weapons = 0;
+    let mut pairs = 0;
+    let mut bullets = 0;
+    let mut flying = 0;
+    for name in classes("CfgWeapons") {
+        let Ok(weapon) = bank.weapon(&name) else {
+            continue;
+        };
+        let Some(params) = weapon.shot_params(None, None) else {
+            continue;
+        };
+        weapons += 1;
+        for magazine in &weapon.magazines {
+            let Ok(mag) = bank.magazine(magazine) else {
+                continue;
+            };
+            let Ok(ammo) = bank.ammo(&mag.ammo) else {
+                continue;
+            };
+            let speed = params.init_speed(&mag, &ammo);
+            assert!(
+                speed >= 0.0 && speed.is_finite(),
+                "{} with {}: initSpeed {speed}",
+                weapon.name,
+                magazine
+            );
+            // §2.3: only a bullet reads the weapon's own `initSpeed`; everything else flies at
+            // its magazine's.
+            if !matches!(
+                ammo.simulation,
+                Some(SimulationClass::ShotBullet | SimulationClass::ShotSpread)
+            ) {
+                assert_eq!(speed, mag.init_speed, "{} with {}", weapon.name, magazine);
+            } else {
+                bullets += 1;
+            }
+            if speed > 0.0 {
+                flying += 1;
+            }
+            pairs += 1;
+        }
+    }
+    eprintln!(
+        "{magazines} magazines, {weapons} weapons, {pairs} pairs ({bullets} bullet, {flying} flying)"
+    );
+    assert!(magazines > 500, "{magazines} magazines");
+    assert!(weapons > 500, "{weapons} weapons");
+    assert!(pairs > 1000, "{pairs} weapon/magazine pairs");
+    assert!(bullets > 500, "{bullets} bullet pairs");
+    // Missiles fly on `thrust`, not on an initial speed, so a few pairs are 0.
+    assert!(flying > pairs * 9 / 10, "{flying} of {pairs} fly");
+
+    // A shipped example of both branches of §2.3: `arifle_MX_F` declares its own 800, and the
+    // 570x28 SMG's -1.1 multiplies its magazine's 715 by 1.1.
+    let weapon = bank.weapon("arifle_MX_F").expect("the MX");
+    let params = weapon.shot_params(None, None).expect("a muzzle and mode");
+    assert_eq!(weapon.init_speed, 800.0);
+    let mag = bank.magazine("30Rnd_65x39_caseless_mag").expect("its magazine");
+    assert_eq!(mag.ammo, "B_65x39_Caseless");
+    assert_eq!(params.init_speed(&mag, &bank.ammo(&mag.ammo).unwrap()), 800.0);
+
+    let smg = bank.weapon("SMG_03_TR_BASE").expect("the 570x28 SMG");
+    let params = smg.shot_params(None, None).expect("a muzzle and mode");
+    assert_eq!(smg.init_speed, f32v(-1.1));
+    let mag = bank.magazine("50Rnd_570x28_SMG_03").expect("its magazine");
+    assert_eq!(mag.init_speed, 715.0);
+    assert_eq!(
+        params.init_speed(&mag, &bank.ammo(&mag.ammo).unwrap()),
+        f32v(1.1) * 715.0
+    );
+}
