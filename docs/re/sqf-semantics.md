@@ -41,24 +41,62 @@ message is the stringtable entry `STR_EVAL_<NAME>` from `languagecore_f\stringta
 Codes 0 and 32 do not count as errors (`code & ~0x20 == 0`). Confidence: high (names and
 numbers come from the table initializer, messages from the shipped stringtable).
 
+## Errors: how the script continues
+
+Confirmed on the original server with scratch probes (`tools/oracle/oracle.py
+oracle --probes-dir`, 104 probes about errors, nil and sort; the recorded
+`tools/oracle/probes/` results agree). High confidence.
+
+- **An error a command handler raises is logged and the script goes on.** The
+  handler still produces a value: `1/0` logs `Zero divisor` and is `inf`,
+  `5 % 0` logs it and is 0, `[1,2,3] select 9` logs `3 elements provided, 10
+  expected` and is the empty value, `"abc" regexMatch "("` logs the regexp
+  error and is `false`, `{1} count [1,2]` logs `Type Number, expected Bool`
+  and counts 0, `params ["a"]` in a global scope logs `Local variable in
+  global space` and the block still returns its value, `compile "1 2"` logs
+  `Missing ;` and is the empty value.
+- **Only a failure the VM itself detects ends the script**: no overload takes
+  the argument types (`1 + "x"` is `Generic error in expression`, `[1,2]
+  select "a"` is `select: Type String, expected Number,Bool,Array,code`), or
+  an unknown command. The probe's spawned script then never reports.
+- **The code of `isNil {...}` runs in its own evaluation context**: an error
+  in it ends the block, not the script, and `isNil` is `true`
+  (`_r = 1; isNil {_r = 1 + "x"}; _r` is 1).
+- **Only the first error of a script is written to the RPT**: `1/0; 5%0;
+  "END"` logs one `Zero divisor` line and ends with `"END"`. A compile error
+  from `compile`/`compileScript` is printed by the compiler as well, so
+  `call compile "1 2"` shows two blocks.
+- An undefined variable read is a logged error too, and yields nil
+  (`a3ro_undefined + 1` is nil, the script continues).
+- `sleep` in the unscheduled environment is the same: logged, and the script
+  continues.
+
 ## Variables and nil
 
 - **Reading a variable** (`GameInstructionVariable::Execute`, `FUN_1402feef0`): when the
   variable is undefined or holds nil, the VM raises VAR ("Undefined variable in expression:
-  _x") at the read, for locals and globals alike. Two flags suppress it: one on the evaluation
+  _x") at the read, for locals and globals alike. The error is logged and the read is nil
+  (server oracle). Two flags suppress it: one on the evaluation
   state (`+0x1c`) and one on the VM context (`+0x4c4`). The context flag is what `isNil {...}`
   sets, so the code it evaluates may read undefined variables. High confidence for the check;
   medium for which commands set the flags.
-- **Commands with nil arguments** (`GameInstructionOperator::Execute`, `FUN_1402fe7d0`, same
-  for unary): for the first overload whose types match (nil matches every type), the handler
-  is called only if the command accepts nil (an opt-in check through a vtable call). Otherwise
-  the command is skipped and its result is a nil of the overload's return type. There is no
-  error: `nil + 1` is nil. `str`, `typeName`, `isNil`, `isEqualTo` and similar take nil. High
-  confidence.
-- `typeName nil` is `"ANY"` (the nil type is the ANY set at `0x142162480`). `str nil` is
-  `"any"` (`GameDataNil` to-string, `FUN_1402d9bf0`). High confidence.
-- `str` of a NOTHING value is `"nothing"` (`FUN_1402da200`); `typeName` gives `"NOTHING"`. A
-  value with no data at all prints `"<null>"`. High confidence.
+- **A command given `nil` or the empty value as an argument is skipped**; its result is
+  nil. `typeName nil`, `str nil`, `typeName (call {})`, `nil isEqualTo nil` and `_a pushBack
+  nil` all leave the command unrun (server oracle). `count [1, nil, 3]` is 3: a nil *inside*
+  an array is a value, and prints `any`. High confidence.
+- `nil` is the engine's ANY value (`GameDataNil`: `typeName` `ANY`, prints `any`,
+  `FUN_1402d9bf0`); a command result with no data at all (NOTHING) prints
+  **`<null>`** (`format ["%1", call {}]` is `"<null>"`), and so does an
+  undefined array element and a missing hash map key. `isNil` is true for
+  nil, for NOTHING and for `<null>` (`GameData +0x88`). High confidence.
+- `private "x"` declares the variable but keeps the value of a variable that
+  already exists in the current scope, so `private ["_this"]` inside a call
+  leaves `_this` alone (`[1] call {private ["_this"]; _this}` is `[1]`). A
+  declared but never assigned variable reads as an error, as before.
+  High confidence.
+- `isNil {code}` runs its code **unscheduled** (`canSuspend` is `false` in it).
+  High confidence (server oracle).
+- `if` without a matching branch gives the empty value, not a special value.
 
 ## Numbers
 
@@ -106,12 +144,26 @@ Confirmed on the original server with the oracle (`tools/oracle/probes/10_number
 - `array select index` and `array # index` share one handler (`FUN_1402e4aa0`;
   `#` → `FUN_1402e5570`). The index is converted with `cvtss2si`, which rounds half to even
   (0.5 → 0, 1.5 → 2, 2.5 → 2). A negative index counts from the end (2.12+). An index equal to
-  the size gives nil with no error. Anything further out raises DIM with (size, index + 1) and
-  returns nil: `[1,2] select 3` → "2 elements provided, 4 expected". High confidence. The
-  wiki's "Zero divisor" for out-of-range `select` describes older builds.
+  the size gives the empty value (`<null>`) with no error; anything further out logs
+  "N elements provided, M expected" and also gives the empty value: `[1,2] select 3` →
+  "2 elements provided, 4 expected" (server oracle: the script continues). High confidence.
+- `array set [index, value]`: an index equal to the size appends, a negative index counts
+  from the end (`_a set [-1, 9]` on `[1,2,3]` is `[1,2,9]`), one further out than `-size`
+  logs `Zero divisor` and changes nothing, and the elements skipped over are the empty
+  value (`[1,2,3] set [5, 9]` is `[1,2,3,<null>,<null>,9]`). High confidence.
+- `array sort order` compares strings **without regard to ASCII case** and puts the
+  uppercase spelling first when only the case differs: `["b","A","a","B"]` sorts to
+  `["A","a","B","b"]`. Bytes above 127 compare as signed, so `["é","e","f","E"]` keeps `é`
+  first. `order` false reverses the ascending result. Mixed types: the comparator is not a
+  strict order (a number and a string compare equal in both directions), so the order of a
+  mixed array is unspecified; `sort` does not error on one. High confidence for strings,
+  medium for mixed types.
 - `array select [start, count]` (`FUN_1402e4b80`): both values are rounded the same way. A
   start outside `0..size-1` gives `[]` with no error. A count < 1 gives `[]`. The range is
   clipped to the end. High confidence.
+- `vectorAdd` keeps the size of the longer vector: 2D + 2D is 2D, 3D + 2D is 3D with the
+  missing component zero. High confidence.
+
 
 ## Strings and forceUnicode
 
@@ -170,6 +222,35 @@ High confidence for the flags and match mode. Medium for the details of the form
 Supported key types (wiki "HashMap"): Array (of supported types, deep-copied), Boolean, Code,
 Config, Namespace, NaN, Number, Side, String. Iteration order is unspecified. a3-sqf matches
 this. Unverified in the binary.
+
+- `HashMap set [key, value, onlyIfNotExists]` returns whether an **existing** value was
+  overwritten: false for a new key, true for an existing one, false when `onlyIfNotExists`
+  stopped the write (`[_h set ["a",1], _h set ["a",2]]` is `[false,true]`). High confidence
+  (server oracle).
+- A missing key (`get`, `deleteAt`) is the empty value, and `isNil {_h get "x"}` is true.
+  High confidence.
+- Iteration order: for up to four keys it is the insertion order; from five keys on it is
+  the engine's hash order (`["b","a","c","d","e"]` comes back as `["e","a","b","c","d"]`).
+  Not reproduced (a3-sqf keeps insertion order; issue #275). The nine orderings the oracle
+  recorded fit the model "content hash, iterate buckets ascending, one constant bucket
+  count, chain in insertion order", but they do **not** identify the hash or the count:
+  ~1 in 130 random FNV-shaped hashes fits all of them, djb2/sdbm/java31/ELF/PJW are
+  excluded outright (the last character must be mixed non-linearly), and no rehash is
+  needed below ten keys. A trace that prints `keys` after **every** insertion would
+  identify both; the recorded data cannot.
+
+## Strings
+
+- `format [format, args...]`: `%1`..`%N` are the arguments, `%%` is a literal `%`, and any
+  other `%` is dropped, including a trailing one: `format ["100%"]` is `"100"`, `format
+  ["a%bc"]` is `"abc"`, `format ["%1%%", 5]` is `"5%"`, a missing argument is `""`. Same for
+  `formatText`.
+- `parseSimpleArray` returns what it parsed before the error and logs
+  `parseSimpleArray format error`: `"[1, b]"` is `[1]`, `"[1, 2"` is `[1,2]`, `"1"` is `[]`.
+  A trailing comma before `]` is accepted. High confidence.
+- `str` of a namespace is `Namespace` (every namespace), of structured text the markup with
+  every tag dropped (`<br/>` included: `str lineBreak` is `""`). High confidence.
+
 
 ## Scheduler
 
