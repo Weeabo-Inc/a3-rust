@@ -101,6 +101,9 @@ pub struct Entity {
     pub(crate) group: Option<crate::GroupId>,
     /// The unit's weapons and magazines.
     pub(crate) loadout: crate::Loadout,
+    /// The unit's containers, the items in them and the worn gear (`crate::inventory::Gear`):
+    /// what is *not* equipped. A unit that never had a loadout built has an empty one.
+    pub(crate) gear: crate::inventory::Gear,
 }
 
 /// An `attachTo` link: the Entity follows `to` at `offset` in `to`'s model space.
@@ -151,6 +154,7 @@ impl Entity {
             attachment: None,
             group: None,
             loadout: crate::Loadout::default(),
+            gear: crate::inventory::Gear::default(),
         }
     }
 

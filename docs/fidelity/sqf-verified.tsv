@@ -36,3 +36,71 @@ enableDynamicSimulation	binary	0x17e8c0	stub	decompiled 0x17e8c0	flag stored; no
 enableDynamicSimulation	binary	0x17e980	stub	decompiled 0x17e980	flag stored; no dynamic simulation system
 dynamicSimulationEnabled	unary	0x17ea50	verified	decompiled 0x17ea50	
 dynamicSimulationEnabled	unary	0x17eab0	verified	decompiled 0x17eab0	
+weapons	unary	0x83e540	verified	decompiled 0x83e540 + oracle	vehicle turret weapons not listed yet
+primaryWeapon	unary	0x841160	verified	decompiled 0x841160 + oracle	
+secondaryWeapon	unary	0x841230	verified	decompiled 0x841230 + oracle	
+handgunWeapon	unary	0x83fc30	verified	decompiled 0x83fc30 + oracle	
+binocular	unary	0x83f340	verified	decompiled 0x83f340	
+primaryWeaponItems	unary	0x843fe0	verified	decompiled 0x843fe0 + oracle	
+secondaryWeaponItems	unary	0x846c30	verified	decompiled 0x846c30 + oracle	
+handgunItems	unary	0x8428b0	verified	decompiled 0x8428b0 + oracle	
+primaryWeaponMagazine	unary	0x84d700	verified	decompiled 0x84d700 + oracle	
+secondaryWeaponMagazine	unary	0x84d720	verified	decompiled 0x84d720	
+handgunMagazine	unary	0x84d3c0	verified	decompiled 0x84d3c0 + oracle	
+uniform	unary	0x847400	verified	decompiled 0x847400 + oracle	
+vest	unary	0x847850	verified	decompiled 0x847850 + oracle	
+backpack	unary	0x83d3f0	verified	decompiled 0x83d3f0 + oracle	
+headgear	unary	0x8428d0	verified	decompiled 0x8428d0 + oracle	no random headgear at creation
+goggles	unary	0x842690	verified	decompiled 0x842690 + oracle	no random facewear at creation
+items	unary	0x83cc40	verified	decompiled 0x83cc40 + oracle	
+magazines	unary	0x83dfa0	verified	decompiled 0x83dfa0 + oracle	vehicle magazines not listed yet
+magazinesAmmo	unary	0x83e090	verified	decompiled 0x83e090 + oracle	
+uniformItems	unary	0x8471b0	verified	decompiled 0x8471b0 + oracle	
+vestItems	unary	0x847550	verified	decompiled 0x847550 + oracle	
+backpackItems	unary	0x83d120	verified	decompiled 0x83d120 + oracle	
+assignedItems	unary	0x83c530	verified	decompiled 0x83c530 + oracle	an array shorter than 3 elements is [] (oracle)	
+hasWeapon	binary	0x5353e0	verified	decompiled 0x5353e0 + oracle	
+load	unary	0x83dd80	verified	decompiled 0x83dd80 + oracle	
+loadAbs	unary	0x83dee0	verified	decompiled 0x83dee0 + oracle	
+loadUniform	unary	0x840f60	verified	decompiled 0x840f60 + oracle	
+loadVest	unary	0x840ff0	verified	decompiled 0x840ff0 + oracle	
+loadBackpack	unary	0x840ed0	verified	decompiled 0x840ed0 + oracle	
+addHeadgear	binary	0x8436e0	verified	decompiled 0x8436e0 + oracle	a wrong item type leaves the slot empty and does not raise (oracle)	
+addGoggles	binary	0x8436b0	verified	decompiled 0x8436b0 + oracle	
+addVest	binary	0x843fb0	verified	decompiled 0x843fb0 + oracle	
+addUniform	binary	0x843f80	verified	decompiled 0x843f80 + oracle	
+forceAddUniform	binary	0x83dd50	verified	decompiled 0x83dd50 + oracle	
+addBackpack	binary	0x8319f0	verified	decompiled 0x8319f0 + oracle	the old backpack is not dropped on the ground
+removeHeadgear	unary	0x84b8b0	verified	decompiled 0x84b8b0 + oracle	
+removeGoggles	unary	0x84b890	verified	decompiled 0x84b890 + oracle	
+removeUniform	unary	0x84bce0	verified	decompiled 0x84bce0 + oracle	
+removeVest	unary	0x84bd00	verified	decompiled 0x84bd00 + oracle	
+removeBackpack	unary	0x84b730	verified	decompiled 0x84b730 + oracle	
+removeAllContainers	unary	0x844020	verified	decompiled 0x844020 + oracle	
+linkItem	binary	0x842c20	verified	decompiled 0x842c20 + oracle	
+unlinkItem	binary	0x847510	verified	decompiled 0x847510 + oracle	
+unassignItem	binary	0x847170	verified	decompiled 0x847170 + oracle	
+assignItem	binary	0x83ccd0	verified	decompiled 0x83ccd0 + oracle	
+removeAllAssignedItems	unary	0x84b460	verified	decompiled 0x84b460 + oracle	
+addWeapon	binary	0x83b700	verified	decompiled 0x83b700 + oracle	vehicles not supported yet
+removeWeapon	binary	0x8462d0	verified	decompiled 0x8462d0 + oracle	
+removeAllWeapons	unary	0x844790	verified	decompiled 0x844790 + oracle	
+addPrimaryWeaponItem	binary	0x8396a0	verified	decompiled 0x8396a0 + oracle	
+addSecondaryWeaponItem	binary	0x8396d0	verified	decompiled 0x8396d0	
+addHandgunItem	binary	0x839670	verified	decompiled 0x839670 + oracle	
+removePrimaryWeaponItem	binary	0x846290	verified	decompiled 0x846290 + oracle	
+removeSecondaryWeaponItem	binary	0x8462b0	verified	decompiled 0x8462b0	
+removeHandgunItem	binary	0x844860	verified	decompiled 0x844860 + oracle	
+addMagazine	binary	0x83a4a0	verified	decompiled 0x83a4a0 + oracle	thrown magazines do not load the Throw muzzle
+addMagazine	binary	0x839ba0	verified	decompiled 0x839ba0 + oracle	thrown magazines do not load the Throw muzzle
+addMagazines	binary	0x83b290	verified	decompiled 0x83b290 + oracle	thrown magazines do not load the Throw muzzle
+removeMagazine	binary	0x844c90	verified	decompiled 0x844c90 + oracle	
+removeMagazines	binary	0x845940	verified	decompiled 0x845940 + oracle	
+addItem	binary	0x839160	verified	decompiled 0x839160 + oracle	
+addItemToUniform	binary	0x8391a0	verified	decompiled 0x8391a0 + oracle	
+addItemToVest	binary	0x8391c0	verified	decompiled 0x8391c0 + oracle	
+addItemToBackpack	binary	0x839180	verified	decompiled 0x839180 + oracle	
+removeItem	binary	0x844880	verified	decompiled 0x844880 + oracle	
+removeItems	binary	0x844a60	verified	decompiled 0x844a60 + oracle	
+removeAllItems	unary	0x844240	verified	decompiled 0x844240 + oracle	
+removeAllItemsWithMagazines	unary	0x844170	verified	decompiled 0x844170 + oracle	

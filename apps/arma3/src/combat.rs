@@ -323,17 +323,20 @@ impl Combat {
             .magazine
             .as_ref()
             .map(|m| m.ammo);
-        let spare = loadout
-            .magazines
-            .iter()
-            .filter(|m| m.ammo > 0)
-            .filter(|m| {
-                muzzle
-                    .magazines
-                    .iter()
-                    .any(|n| n.eq_ignore_ascii_case(m.name()))
+        let spare = w
+            .gear(self.unit)
+            .map(|gear| {
+                gear.magazines()
+                    .filter(|m| m.ammo > 0)
+                    .filter(|m| {
+                        muzzle
+                            .magazines
+                            .iter()
+                            .any(|n| n.eq_ignore_ascii_case(&m.class))
+                    })
+                    .count() as u32
             })
-            .count() as u32;
+            .unwrap_or(0);
         (loaded, spare)
     }
 

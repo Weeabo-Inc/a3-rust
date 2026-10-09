@@ -41,7 +41,9 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
         let (mag, count) = name_and_number(&b);
         if let (Some(unit), Some(mag)) = (local_unit(ctx, &a), mag) {
             ensure_config(ctx);
-            let ammo = count.map(|c| c.max(0.0) as u32);
+            // `None` (a missing or nil count) fills the magazine; so does a negative one or one
+            // above its `count` (`0x83a4a0`).
+            let ammo = count.map(|c| c as f32);
             let _ = ctx.host.world_mut().add_magazine(unit, &mag, ammo);
         }
         Ok(Value::Nothing)
@@ -51,7 +53,7 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
         let (mag, count) = name_and_number(&b);
         if let (Some(unit), Some(mag)) = (local_unit(ctx, &a), mag) {
             ensure_config(ctx);
-            for _ in 0..count.unwrap_or(1.0).max(0.0) as u32 {
+            for _ in 0..count.unwrap_or(0.0).max(0.0) as u32 {
                 if ctx.host.world_mut().add_magazine(unit, &mag, None).is_err() {
                     break;
                 }
