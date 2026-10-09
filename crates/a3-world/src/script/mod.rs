@@ -15,6 +15,7 @@ mod animation;
 mod create;
 mod groups;
 mod handlers;
+mod identity;
 mod markers;
 mod query;
 mod state;
@@ -34,6 +35,11 @@ pub trait WorldHost: Host {
     fn world_mut(&mut self) -> &mut World;
     /// Entity types for `createVehicle` and `isKindOf`.
     fn types(&mut self) -> &mut TypeBank;
+    /// `missionConfigFile` then `campaignConfigFile`, for lookups the original makes there
+    /// before `configFile` (`CfgIdentities` for `setIdentity`). None by default.
+    fn mission_configs(&self) -> Vec<std::sync::Arc<a3_config::ConfigTree>> {
+        Vec::new()
+    }
 }
 
 /// Registers every world command implemented so far.
@@ -44,6 +50,7 @@ pub fn register_world_commands<H: WorldHost>(r: &mut Registry<H>) {
     groups::register(r);
     handlers::register(r);
     markers::register(r);
+    identity::register(r);
     state::register(r);
     transform::register(r);
     query::register(r);
@@ -123,6 +130,13 @@ pub fn format_handle(world: &World, handle: Handle) -> String {
     };
     let (id, model) = match object {
         ObjectRef::Entity(id) => {
+            // The original's `EntityAI` debug name: the vehicle variable name, else the unit.
+            let ai = world
+                .entity(id)
+                .is_some_and(|e| e.class().is_kind_of(crate::EntityClass::EntityAi));
+            if ai && !world.var_name(id).is_empty() {
+                return world.var_name(id).to_owned();
+            }
             if let Some(unit) = groups::format_unit(world, id) {
                 return unit;
             }

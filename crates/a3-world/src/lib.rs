@@ -105,6 +105,7 @@ pub mod net;
 mod object_ref;
 mod query;
 pub mod script;
+mod script_state;
 mod sim;
 mod statics;
 mod terrain;
@@ -134,6 +135,7 @@ pub use net::{
 };
 pub use object_ref::ObjectRef;
 pub use query::Near;
+pub use script_state::{Identity, ScriptState, VarOwner};
 pub use sim::{
     AirState, ClassState, GRAVITY, GroundState, MAX_STEP_DOWN, MAX_STEP_UP, ManInput, ManState,
     Motion, MoveState, ProjectileState, SUB_STEP,

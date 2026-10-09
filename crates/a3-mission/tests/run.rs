@@ -171,9 +171,16 @@ fn unit_inits_run_first_with_this_bound_and_init_sqf_runs_after_them() {
 
 #[test]
 fn the_player_and_the_named_units_become_mission_namespace_variables() {
-    let (vm, spawned, report, _dir) = load_spawn_run();
+    let (mut vm, spawned, report, _dir) = load_spawn_run();
 
-    assert_eq!(handle(&vm, "player"), entity_handle(&vm, spawned.units[&3]));
+    // `player` is the World's player; named units also get their vehicle variable name.
+    assert_eq!(vm.host.world.player(), Some(spawned.units[&3]));
+    match vm.eval("player").unwrap() {
+        Value::Handle(h) => assert_eq!(h, entity_handle(&vm, spawned.units[&3])),
+        value => panic!("player is not an object: {value:?}"),
+    }
+    let _ = handle(&vm, "boss");
+    assert_eq!(vm.eval("str boss").unwrap().to_sqf_string(), "\"boss\"");
     // `boss` and `suspender` come from `text=`, the player's `shooter` from its init's `this`.
     assert_eq!(report.variables, 2, "boss and suspender");
     assert_eq!(report.markers, 1, "marker_start is carried, not installed");

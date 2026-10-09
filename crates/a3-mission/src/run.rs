@@ -120,6 +120,14 @@ impl WorldHost for MissionVmHost {
     fn types(&mut self) -> &mut TypeBank {
         &mut self.types
     }
+
+    fn mission_configs(&self) -> Vec<std::sync::Arc<a3_config::ConfigTree>> {
+        let configs = self.files.configs();
+        vec![
+            std::sync::Arc::clone(configs.tree(a3_gamedata::ConfigRoot::Mission)),
+            std::sync::Arc::clone(configs.tree(a3_gamedata::ConfigRoot::Campaign)),
+        ]
+    }
 }
 
 impl ConfigHost for MissionVmHost {
@@ -239,6 +247,9 @@ fn install_variables<H: MissionHost>(
                 let Some(&unit) = spawned.units.get(&id) else {
                     continue;
                 };
+                // The engine names the unit (`vehicleVarName`, which `str` prints) and sets
+                // the variable.
+                vm.host.world_mut().set_var_name(unit, &name);
                 let value = object_value(vm.host.world(), ObjectRef::Entity(unit));
                 vm.set_global(&name, value);
                 report.variables += 1;
@@ -246,10 +257,8 @@ fn install_variables<H: MissionHost>(
             MissionVariable::Marker(_) => report.markers += 1,
         }
     }
-    if let Some(player) = spawned.player {
-        let value = object_value(vm.host.world(), ObjectRef::Entity(player));
-        vm.set_global("player", value);
-    }
+    // `player` is a command reading the World's player.
+    vm.host.world_mut().set_player(spawned.player);
 }
 
 fn run_unit_inits<H: MissionHost>(

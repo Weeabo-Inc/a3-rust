@@ -4,3 +4,35 @@
 # docs/re/sqf-commands.tsv or `*`, status (verified|stub), source (`decompiled <addr>`, `oracle`,
 # `wiki`), note.
 # name	form	handler	status	source	note
+setVariable	binary	0x540020	verified	decompiled 0x540020	public flag accepted, broadcast pending #131
+setVariable	binary	0x4b9030	verified	decompiled 0x4b9030	public flag accepted, broadcast pending #131
+getVariable	binary	0x533450	verified	decompiled 0x533450	
+getVariable	binary	0x4b8ab0	verified	decompiled 0x4b8ab0	
+allVariables	unary	0x49b2e0	verified	decompiled 0x49b2e0	sorted instead of hash order
+allVariables	unary	0x49a4d0	verified	decompiled 0x49a4d0	sorted instead of hash order
+player	nular	0x8b1120	verified	decompiled 0x8b1120	
+cameraOn	nular	0x8a5bf0	stub	decompiled 0x8a5bf0	no camera system: the player unless set
+vehicle	unary	0x542510	stub	decompiled 0x542510	no crew yet: every object is its own vehicle
+isPlayer	unary	0x535b00	verified	decompiled 0x535b00	single player only
+isPlayer	unary	0x535b70	verified	decompiled 0x535b70	single player only
+setName	binary	0x553560	verified	decompiled 0x553560	
+setName	binary	0x553610	verified	decompiled 0x553610	
+name	unary	0x538610	verified	decompiled 0x538610	no random names at creation yet; vehicles have no crew
+setFace	binary	0x53ba30	verified	decompiled 0x53ba30	"custom" stored as given
+face	unary	0x528110	verified	decompiled 0x528110	
+setPitch	binary	0x553880	verified	decompiled 0x553880	
+pitch	unary	0x538940	verified	decompiled 0x538940	returns a number
+setSpeaker	binary	0x553940	verified	decompiled 0x553940	
+speaker	unary	0x5418f0	verified	decompiled 0x5418f0	
+setNameSound	binary	0x5537d0	verified	decompiled 0x5537d0	
+nameSound	unary	0x5388b0	verified	decompiled 0x5388b0	
+setIdentity	binary	0x53d440	verified	decompiled 0x53d440	
+setVehicleVarName	binary	0x571f00	verified	decompiled 0x571f00	
+vehicleVarName	unary	0x56ca10	verified	decompiled 0x56ca10	
+synchronizeObjectsAdd	binary	0x5244f0	verified	decompiled 0x5244f0	
+synchronizeObjectsRemove	binary	0x539680	verified	decompiled 0x539680	
+synchronizedObjects	unary	0x532f20	verified	decompiled 0x532f20	
+enableDynamicSimulation	binary	0x17e8c0	stub	decompiled 0x17e8c0	flag stored; no dynamic simulation system
+enableDynamicSimulation	binary	0x17e980	stub	decompiled 0x17e980	flag stored; no dynamic simulation system
+dynamicSimulationEnabled	unary	0x17ea50	verified	decompiled 0x17ea50	
+dynamicSimulationEnabled	unary	0x17eab0	verified	decompiled 0x17eab0	
