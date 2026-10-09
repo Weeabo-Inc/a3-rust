@@ -34,6 +34,7 @@ a3-landscape = { path = "crates/a3-landscape" }
 a3-world = { path = "crates/a3-world" }
 a3-environment = { path = "crates/a3-environment" }
 a3-landscape-render = { path = "crates/a3-landscape-render" }
+a3-render-ui = { path = "crates/a3-render-ui" }
 a3-ui = { path = "crates/a3-ui" }
 a3-physics = { path = "crates/a3-physics" }
 
