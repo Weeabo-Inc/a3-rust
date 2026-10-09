@@ -7,7 +7,7 @@ Reproduce (Windows, game install in `A3_ROOT`): `cargo build --release -p a3-too
 `python tools/oracle/oracle.py run` (add `--filter <regex>` for a subset). Raw results go to
 `.work/oracle/results/` (`oracle.json`, `ours.json`, `diff.json`).
 
-Run: 2026-10-09, ours at commit `82ebba7`.
+Run: 2026-10-09, ours at commit `b881dd4`.
 
 **728 of 787 comparable probes match (92.5%)**; 872 probes in total.
 
