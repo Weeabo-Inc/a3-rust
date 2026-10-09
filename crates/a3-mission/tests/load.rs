@@ -51,9 +51,18 @@ class DebugParams {};
 
 /// Loads `files` as the mission folder `folder` (each file path is relative to that folder).
 fn load(files: &[(&str, &str)], folder: &str) -> Result<Mission, LoadError> {
+    load_with_log(files, folder).0
+}
+
+/// [`load`], plus the host log the load wrote to (engine warnings go there, as the RPT).
+fn load_with_log(
+    files: &[(&str, &str)],
+    folder: &str,
+) -> (Result<Mission, LoadError>, Vec<String>) {
     let (_dir, vfs) = common::mount(files, folder);
     let mut vm = Vm::new(VfsHost::new(vfs.clone()));
-    load_mission(&vfs, folder, &mut vm)
+    let result = load_mission(&vfs, folder, &mut vm);
+    (result, vm.host.log.clone())
 }
 
 fn folder_of(files: &[(&str, &str)]) -> Result<Mission, LoadError> {
@@ -150,19 +159,54 @@ fn a_broken_sqm_names_its_path() {
 }
 
 #[test]
-fn a_broken_description_ext_is_an_error() {
-    let err = folder_of(&[
-        ("mission.sqm", SQM),
-        ("description.ext", "class CfgDebriefing {\n"),
-    ])
-    .unwrap_err();
-    match err {
-        LoadError::Description { path, message } => {
-            assert!(path.ends_with("description.ext"), "{path}");
-            assert!(!message.is_empty());
-        }
-        err => panic!("expected Description, got {err}"),
-    }
+fn a_missing_include_leaves_the_mission_loaded_without_a_description() {
+    // #348: the shipped `repro_objectsimulationloadgame.tanoa` includes a file that does not
+    // exist. The engine logs `Preprocessor failed on file '<path>' - error 1`, drops the whole
+    // config - entries before the include are gone too - and starts the mission anyway
+    // (oracle: tools/oracle/probes/missing_include.py, `include` case).
+    let (mission, log) = load_with_log(
+        &[
+            ("mission.sqm", SQM),
+            (
+                "description.ext",
+                "class Header { gameType = \"Sandbox\"; };\n\
+                 class CfgDebriefing { class Victory { title = \"V\"; }; };\n\
+                 #include \"does_not_exist.inc\"\n\
+                 class CfgDebriefingAfter { class Victory { title = \"V\"; }; };\n",
+            ),
+        ],
+        "missions\\test.altis",
+    );
+    let mission = mission.expect("the engine starts the mission with an empty mission config");
+    assert!(
+        mission.description.is_none(),
+        "a config that failed to preprocess installs nothing"
+    );
+    // Only the config is lost: the units of `mission.sqm` are all there.
+    assert_eq!(mission.units().count(), 1);
+    assert!(
+        log.iter().any(|line| line.contains("does_not_exist.inc")),
+        "the failure is logged, as `Cannot include file` is in the RPT: {log:?}"
+    );
+}
+
+#[test]
+fn a_broken_description_ext_leaves_the_mission_loaded_without_one() {
+    // The same for a config that fails to parse: the config is dropped, the mission is not.
+    let (mission, log) = load_with_log(
+        &[
+            ("mission.sqm", SQM),
+            ("description.ext", "class CfgDebriefing {\n"),
+        ],
+        "missions\\test.altis",
+    );
+    let mission = mission.expect("the engine starts the mission with an empty mission config");
+    assert!(mission.description.is_none());
+    assert_eq!(mission.units().count(), 1);
+    assert!(
+        log.iter().any(|line| line.contains("description.ext")),
+        "the failure is logged: {log:?}"
+    );
 }
 
 #[test]

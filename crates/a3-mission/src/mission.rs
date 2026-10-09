@@ -277,7 +277,7 @@ impl Mission {
     /// Reads the `mission.sqm`, `description.ext` and folder name of the mission in the virtual
     /// folder `folder` (e.g. `a3\missions_f_bootcamp\campaign\missions\boot_m02.altis`).
     /// `description.ext` is preprocessed and parsed through [`a3_gamedata::load_text_config`],
-    /// so `__EXEC` runs on `vm`.
+    /// so `__EXEC` runs on `vm`; one that fails is logged and the mission loads without it.
     pub fn load<H: a3_sqf::Host>(
         vfs: &a3_vfs::Vfs,
         folder: &str,
