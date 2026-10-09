@@ -34,6 +34,11 @@ struct Cli {
     #[arg(long, default_value_t = 2302)]
     port: u16,
 
+    /// The Steam query port the A2S answers are served on (game port + 1 when omitted, 2303 for
+    /// 2302, which is what the original passes to Steamworks).
+    #[arg(long)]
+    query_port: Option<u16>,
+
     /// Server hostname, as the server browser shows it.
     #[arg(long)]
     hostname: Option<String>,
@@ -71,10 +76,13 @@ fn main() -> anyhow::Result<()> {
         .init();
     let cli = Cli::parse();
     let config = build_config(&cli)?;
-    let mut server = BoundServer::bind(config.clone()).context("binding the game port")?;
+    let mut server = BoundServer::bind(config.clone()).context("binding the sockets")?;
     let addr = server.game_addr().context("reading the bound address")?;
+    let query = server
+        .query_addr()
+        .context("reading the bound query address")?;
     tracing::info!(
-        "a3-rust dedicated server listening on {addr} (UDP), hostname {:?}, {} players, world {}, build {}",
+        "a3-rust dedicated server listening on {addr} (UDP), Steam query port {query}, hostname {:?}, {} players, world {}, build {}",
         config.hostname,
         config.max_players,
         config.world,
@@ -85,7 +93,6 @@ fn main() -> anyhow::Result<()> {
             "no --game-dir/A3_ROOT given: using command-line defaults, no server.cfg read"
         );
     }
-    tracing::info!("no Steam query port in this slice: A2S_INFO/PLAYER/RULES are not answered yet");
     server.run().context("serving")
 }
 
@@ -146,6 +153,7 @@ fn build_config(cli: &Cli) -> anyhow::Result<ServerConfig> {
         .unwrap_or(GAME_BUILD);
     Ok(ServerConfig {
         bind: SocketAddr::new(cli.bind, cli.port),
+        query_bind: cli.query_port.map(|port| SocketAddr::new(cli.bind, port)),
         magic: MAGIC,
         hostname: cli
             .hostname
