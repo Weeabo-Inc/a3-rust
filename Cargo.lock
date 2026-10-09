@@ -72,6 +72,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-flight"
+version = "0.1.0"
+dependencies = [
+ "a3-config",
+ "a3-gamedata",
+ "a3-p3d",
+ "a3-vehicles",
+ "glam 0.34.1",
+]
+
+[[package]]
 name = "a3-fonts"
 version = "0.1.0"
 dependencies = [

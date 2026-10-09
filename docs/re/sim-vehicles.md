@@ -111,7 +111,7 @@ can force it):
   - effects: `washDownStrength`/`Diameter`, gear, sling load limits.
 
   Example (`B_Heli_Light_01_F`): `liftForceCoef = 1.5`, `bodyFrictionCoef = 0.3`. **Recommended
-  target for us.** The force formulas are not decoded yet (follow-up on #125).
+  target for us.** The force formulas are decoded in `sim-air.md` §2.
 
 ## 4. Planes (`airplanex`, loader `0x140d1df50`)
 
@@ -126,14 +126,14 @@ can force it):
 | Altitude | `altFullForce`, `altNoForce` |
 | Misc | gear/cabin/tail-hook timings, `ejectSpeed`, `ejectDamageLimit` |
 
-The arrays are sampled by airspeed. The exact bin spacing (relative to `maxSpeed`) and the force
-formulas are not decoded yet (follow-up on #126). The model is a per-axis coefficient model, not
+The arrays are sampled by airspeed. The bin spacing and the force formulas are decoded in
+`sim-air.md` §3. The model is a per-axis coefficient model, not
 a blade-element model, so it can be reimplemented on a rapier rigid body with custom forces once
 the formulas are pinned down.
 
 ## 5. Open points
 
-- Plane aero formulas, envelope bin spacing, basic helicopter forces (#125/#126).
+- Plane aero formulas, envelope bin spacing, basic helicopter forces: done, `sim-air.md`.
 - Confirm the PhysX drive mapping by reading the `PxVehicle*Data` setup (strings around
   `0x141d39118`), especially gear ratios and how `complexGearbox` is converted.
 - Ship/submarine/hovercraft forces.
