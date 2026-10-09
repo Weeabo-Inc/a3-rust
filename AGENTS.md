@@ -37,6 +37,32 @@ Every commit message ends with the trailer:
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ```
 
+### The gate is evidence only if it ran to the end
+
+Step 4's three commands must run **to completion**, judged by their exit code. A gate that was
+truncated by the way its output was piped is not a gate, and it has already cost this repo a red
+CI run on a branch that looked locally green.
+
+In PowerShell, `Select-Object -First N` stops the upstream pipeline once it has N objects:
+
+```powershell
+# WRONG: cargo is killed after the first 20 matches, so the remaining test
+# binaries never run and $LASTEXITCODE means nothing.
+cargo test --workspace 2>&1 | Select-String 'FAILED' | Select-Object -First 20
+```
+
+The same applies to anything that can stop consuming its input early. Run the command in full and
+read the exit code, then filter the log file:
+
+```powershell
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace 2>&1 | Out-File -Encoding utf8 .work/gate-test.log; "exit=$LASTEXITCODE"
+```
+
+`Select-Object -Last N` is safe: it consumes the whole stream. When CI disagrees with a local
+green, suspect the pipeline before the platform.
+
 ## Testing
 
 Use the `mattpocock-skills:tdd` skill: red, green, refactor.
