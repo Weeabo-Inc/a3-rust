@@ -322,3 +322,28 @@ fn description_ext_is_visible_to_mission_config_scripts() {
     vm.call_in(&code, None, Namespace::Mission).expect("runs");
     assert_eq!(text(&vm, "author"), "Tester");
 }
+
+/// `str <config>` prints the config's path (`<NULL-config>` for a null handle) on the mission VM
+/// too, not the raw handle: the world probes `cfg.configfile_str_path` and `cfg.hierarchy_str`
+/// run on this host, while the main-menu VM has routed configs to the configs all along.
+#[test]
+fn config_handles_print_their_path_on_the_mission_vm() {
+    let (mut vm, _spawned, _report, _dir) = load_spawn_run();
+
+    let code = vm
+        .compile_file(
+            "probe.sqf",
+            r#"paths = str [str (missionConfigFile >> "CfgDebriefing" >> "Victory"), str (missionConfigFile >> "Nope"), str configNull];"#,
+        )
+        .expect("compiles");
+    vm.call_in(&code, None, Namespace::Mission).expect("runs");
+    let printed = text(&vm, "paths");
+    // The path of a real entry, under the mission tree's root name (`bin\config.bin`: the
+    // loader in this crate builds the tree with `ConfigTree::new`), and the engine's
+    // `<NULL-config>` for an unknown entry and for `configNull`.
+    assert!(
+        printed.starts_with("[\"bin\\config.bin/CfgDebriefing/Victory\""),
+        "{printed}"
+    );
+    assert_eq!(printed.matches("<NULL-config>").count(), 2, "{printed}");
+}

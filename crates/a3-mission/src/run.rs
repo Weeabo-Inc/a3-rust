@@ -88,6 +88,11 @@ impl Host for MissionVmHost {
     }
 
     fn format_handle(&self, handle: a3_sqf::Handle) -> String {
+        // Config handles print their path (`bin\config.bin/CfgVehicles/Car`, or the engine's
+        // `<NULL-config>`), which only the configs know; everything else is an Object or Group.
+        if handle.kind == a3_sqf::HandleKind::Config {
+            return self.files.configs.format(handle);
+        }
         format_handle(&self.world, handle)
     }
 
