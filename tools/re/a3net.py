@@ -8,6 +8,9 @@ Usage:
     python tools/re/a3net.py selftest
     python tools/re/a3net.py keys [magic]            # print derived obfuscation keys
     python tools/re/a3net.py decode <hex-packet>     # de-obfuscate + parse one UDP datagram
+    python tools/re/a3net.py packet <flags> <serial> <ack> <ack_mask> <extra> [payload-hex]
+                                                     # build one obfuscated datagram (test fixture)
+    python tools/re/a3net.py offset <serial>...      # payload XOR table start for a plaintext serial
 """
 
 from __future__ import annotations
@@ -479,6 +482,15 @@ def main():
         h, p = unpack(bytes.fromhex(sys.argv[2]), derive_keys())
         print(h)
         print(p.hex())
+    elif sys.argv[1] == "packet":
+        # One full datagram from the documented layout, for cross-checking another implementation.
+        flags, serial, ack = (int(sys.argv[i], 0) for i in (2, 3, 4))
+        mask, extra = (int(sys.argv[i], 0) for i in (5, 6))
+        payload = bytes.fromhex(sys.argv[7]) if len(sys.argv) > 7 else b""
+        print(pack(flags, serial, ack, mask, extra, payload, derive_keys()).hex())
+    elif sys.argv[1] == "offset":
+        for arg in sys.argv[2:]:
+            print(f"{int(arg, 0):#010x} {_payload_mask_start(int(arg, 0)):#06x}")
 
 
 if __name__ == "__main__":

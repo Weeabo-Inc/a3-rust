@@ -207,6 +207,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-net"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "proptest",
+ "sha1",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "a3-p3d"
 version = "0.1.0"
 dependencies = [
@@ -350,6 +360,19 @@ dependencies = [
  "a3-vfs",
  "glam 0.34.1",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "a3-server"
+version = "0.1.0"
+dependencies = [
+ "a3-config",
+ "a3-net",
+ "anyhow",
+ "clap",
+ "tempfile",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

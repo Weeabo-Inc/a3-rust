@@ -1,0 +1,18 @@
+[package]
+name = "a3-net"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+description = "Arma 3 UDP transport, connect handshake and Steam A2S queries"
+
+[dependencies]
+log.workspace = true
+sha1.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true
