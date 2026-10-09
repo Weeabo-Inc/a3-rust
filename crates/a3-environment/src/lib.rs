@@ -16,7 +16,8 @@ mod lighting;
 mod weather;
 
 pub use celestial::{
-    Horizontal, Observer, moon_illumination, moon_phase, moon_position, star_rotation, sun_position,
+    Horizontal, Observer, legacy_directions, moon_illumination, moon_phase, moon_position,
+    star_rotation, sun_position,
 };
 pub use datetime::{DateTime, days_in_month, is_leap_year};
 pub use environment::{EnvironmentFrame, EnvironmentState, MAX_WIND_SPEED, WorldEnvironment};

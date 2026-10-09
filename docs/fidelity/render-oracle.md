@@ -179,6 +179,34 @@ takes 14 % off the two worst sky shots without moving anything else. What is lef
 *level*: the shipped ramp carries the gradient and its hue, but the tint under it is still our
 own (`docs/re/render-atmosphere.md` §4.3, §4.5).
 
+After #293 (the engine's own sun and moon model instead of a real ephemeris,
+`docs/re/environment.md` §Sun and moon), with the same client images:
+
+| shot | MAE lin | SSIM | lum Arma | lum ours | lum ratio | hist dist |
+|---|---|---|---|---|---|---|
+| altis_kavala_noon | 0.120 | 0.825 | 0.593 | 0.688 | 1.160 | 0.059 |
+| altis_kavala_sunset | 0.133 | 0.751 | 0.384 | 0.279 | 0.727 | 0.117 |
+| altis_hills_ground | 0.117 | 0.556 | 0.535 | 0.626 | 1.170 | 0.058 |
+| stratis_coast | 0.221 | 0.686 | 0.492 | 0.717 | 1.457 | 0.153 |
+| altis_building_close | 0.095 | 0.722 | 0.591 | 0.648 | 1.097 | 0.045 |
+| altis_vegetation_close | 0.120 | 0.677 | 0.472 | 0.498 | 1.055 | 0.072 |
+| altis_kavala_night_moon | 0.041 | 0.561 | 0.051 | 0.041 | 0.807 | 0.063 |
+| altis_kavala_overcast_fog | 0.073 | 0.973 | 0.708 | 0.634 | 0.895 | 0.044 |
+
+The night shot is the change: its luminance ratio goes from 0.192 (5.2× too dark) to 0.807 and
+its SSIM from 0.322 to 0.561, and its bottom third from (0.0042, 0.0070, 0.0122) to (0.0257,
+0.0596, 0.1099) against Arma's (0.0555, 0.0601, 0.0747) — the green channel now matches. The
+cause was documented and wrong: the engine builds its own sun and moon (a 23° tilt, a yearly and
+a daily rotation and an 81.90581 rad/year lunar angle from 1985.0082) rather than asking trueSKY
+for ephemerides, and for `altis_kavala_night_moon` that model's moon is 43° up and 70 % lit
+while the real Moon is new and below the horizon. The daytime shots do not suffer: the noon shot
+*improves* (0.126 → 0.120, SSIM 0.773 → 0.825) and the rest move by at most 0.006, because the
+model's sun stays within a couple of degrees of the real one.
+
+What is left at night is the lamps (#294, split into its own PR) and our blue cast: our bottom
+third is still short of red (0.026 against 0.056) and long on blue (0.110 against 0.075).
+
+
 
 ## Discrepancies
 
@@ -193,9 +221,12 @@ reference and a hypothesis.
    dark blue-grey water with wave normals, sky reflection and transparent shallows.
 3. **No ground clutter** (#292). Arma shows dense grass and weeds near the camera. Ours shows bare
    terrain.
-4. **Night exposure** (#293). Ours is 5.5× too dark under a full moon. Arma adapts until the moonlit
-   terrain shows its colours.
-5. **No point lights** (#294). Street lamps light Kavala at dusk and at night in Arma. Ours has no lamps.
+4. **Night exposure** (#293, fixed). Ours was 5.2× too dark under what the shot called a full moon.
+   The engine's own sun and moon model puts a 70 %-lit moon 43° up at that date, so the ground is
+   moonlit; we were using a real ephemeris, which has a new moon below the horizon. Luminance
+   ratio 0.192 → 0.807. What is left is the blue cast and the missing lamps.
+5. **No point lights** (#294, split). Street lamps light Kavala at dusk and at night in Arma. Ours
+   has no lamps; the light list and the lamp discovery are a separate lighting path.
 6. **Sky colour** (#295, the gradient fixed). Our zenith was paler, more cyan and brighter.
    The sky now carries the shipped dome's own elevation ramp (`render-atmosphere.md` §4), which
    took `altis_building_close` 0.108 → 0.093 and `altis_vegetation_close` 0.139 → 0.120. What is

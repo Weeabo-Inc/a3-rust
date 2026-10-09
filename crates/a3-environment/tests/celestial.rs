@@ -1,7 +1,10 @@
-//! Sun and moon positions. Reference values come from published almanac data (solstice and
-//! equinox geometry, lunar phase dates), not from this implementation.
+//! Sun and moon positions. The engine builds both itself (`FUN_1410813c0`), so the reference
+//! here is the engine's own model: the `moonPhase` the oracle's client logs for a date, and, for
+//! the sun, the real ephemeris it is designed to approximate (`docs/re/environment.md`).
 
-use a3_environment::{DateTime, Observer, moon_phase, moon_position, sun_position};
+use a3_environment::{
+    DateTime, Observer, legacy_directions, moon_phase, moon_position, sun_position,
+};
 
 fn close(a: f64, b: f64, tol: f64) -> bool {
     (a - b).abs() <= tol
@@ -22,10 +25,11 @@ fn the_world_config_latitude_is_negated_and_the_zone_follows_the_longitude() {
 
 #[test]
 fn midsummer_noon_on_altis_is_high_in_the_south() {
-    // Sun declination on 24 June is about +23.4 degrees: elevation 90 - 35.15 + 23.4.
+    // The real sun stands at 78.25 degrees over Altis on 24 June, and the engine's own model
+    // puts it at 76.5, six degrees further west: it is a coarse model, not an ephemeris.
     let sun = sun_position(&altis(), &DateTime::new(2035, 6, 24, 12.0));
-    assert!(close(sun.elevation, 78.25, 0.5), "{sun:?}");
-    assert!(close(sun.azimuth, 180.0, 5.0), "{sun:?}");
+    assert!(close(sun.elevation, 78.25, 3.0), "{sun:?}");
+    assert!(close(sun.azimuth, 180.0, 10.0), "{sun:?}");
 }
 
 #[test]
@@ -35,12 +39,15 @@ fn equinox_sun_at_the_equator_rises_in_the_east_and_culminates_overhead() {
         longitude: 0.0,
         utc_offset_hours: 0.0,
     };
-    // 2035 March equinox is on 20 March; the equation of time is about -7.5 minutes.
+    // The engine's model is a few degrees off an almanac at the equinox, so this checks the
+    // shape of the day, not the exact geometry.
     let noon = sun_position(&equator, &DateTime::new(2035, 3, 20, 12.125));
-    assert!(noon.elevation > 89.0, "{noon:?}");
+    assert!(noon.elevation > 78.0, "{noon:?}");
     let morning = sun_position(&equator, &DateTime::new(2035, 3, 20, 6.125));
     assert!(close(morning.elevation, 0.0, 1.0), "{morning:?}");
-    assert!(close(morning.azimuth, 90.0, 1.0), "{morning:?}");
+    assert!(close(morning.azimuth, 90.0, 15.0), "{morning:?}");
+    let evening = sun_position(&equator, &DateTime::new(2035, 3, 20, 18.125));
+    assert!(close(evening.azimuth, 270.0, 15.0), "{evening:?}");
 }
 
 #[test]
@@ -76,26 +83,31 @@ fn direction_uses_world_axes_x_east_y_up_z_north() {
 }
 
 #[test]
-fn moon_phase_follows_published_full_and_new_moons() {
-    let utc = Observer {
-        latitude: 35.0,
-        longitude: 0.0,
-        utc_offset_hours: 0.0,
-    };
-    // Full moon 25 January 2024 17:54 UT, new moon 11 January 2024 11:57 UT.
-    let full = DateTime::new(2024, 1, 25, 17.9);
-    let new = DateTime::new(2024, 1, 11, 11.95);
-    let phase = |dt: &DateTime| {
-        moon_phase(
-            sun_position(&utc, dt).direction(),
-            moon_position(&utc, dt).direction(),
-        )
-    };
-    // The moon may pass up to 5 degrees off the ecliptic, so new and full are not exact.
-    assert!(phase(&full) > 0.95, "{}", phase(&full));
-    assert!(phase(&new) < 0.05, "{}", phase(&new));
-    let first_quarter = DateTime::new(2024, 1, 18, 3.9);
-    assert!(close(f64::from(phase(&first_quarter)), 0.5, 0.05));
+fn moon_phase_matches_the_client_and_cycles_over_a_month() {
+    let o = altis();
+    // The oracle's client logs `moonPhase date` for every shot it takes; these are its own
+    // numbers for two of them (`moonPhase` is handed a time of day of zero, so the hour of the
+    // shot does not enter).
+    for (year, month, day, want) in [(2035, 6, 6, 0.704_879_f32), (2035, 6, 24, 0.107_916_f32)] {
+        let dt = DateTime::new(year, month, day, 0.0);
+        let (sun, moon) = legacy_directions(&o, &dt);
+        let phase = moon_phase(sun, moon);
+        assert!(
+            close(f64::from(phase), f64::from(want), 0.001),
+            "{phase} {want}"
+        );
+    }
+    // A synodic month still takes the phase from new to full and back.
+    let mut lowest = 1.0f32;
+    let mut highest = 0.0f32;
+    for day in 1..=30 {
+        let (sun, moon) = legacy_directions(&o, &DateTime::new(2035, 6, day, 0.0));
+        let phase = moon_phase(sun, moon);
+        lowest = lowest.min(phase);
+        highest = highest.max(phase);
+    }
+    assert!(lowest < 0.05, "{lowest}");
+    assert!(highest > 0.95, "{highest}");
 }
 
 #[test]
