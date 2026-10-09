@@ -20,7 +20,7 @@ use a3_moves::{MoveId, Moves};
 use a3_p3d::Model;
 use a3_pose::{ManRig, MoveBlend, MoveClips};
 use a3_vfs::Vfs;
-use glam::Affine3A;
+use glam::{Affine3A, Vec3};
 
 use crate::player::{Motion, Pace, Stance};
 
@@ -28,8 +28,9 @@ use crate::player::{Motion, Pace, Stance};
 /// over.
 pub const PIVOTS_MODEL: &str = r"a3\anims_f\data\skeleton\skeletonpivots.p3d";
 
-/// The name of the Skeleton's weapon bone, whose translations the engine does not convert.
-pub const WEAPON_BONE: &str = "weapon";
+/// The `weaponBone` of the Man's CfgSkeletonParameters (`OFP2_ManSkeleton`): empty in the
+/// shipped config, so the engine converts every bone's translation, `weapon` included.
+pub const WEAPON_BONE: &str = "";
 
 /// The Move every Moves type has, the last fallback: the standing idle.
 const STANDING: &str = "AmovPercMstpSnonWnonDnon";
@@ -174,6 +175,9 @@ fn wrap(phase: f32) -> f32 {
 /// RTMs reached so far and his place in the cycle.
 pub struct ManAnimation {
     rig: ManRig,
+    /// Where the model's origin sits in the rest pivots' space: its `bounding_center` (ODOL
+    /// vertices are stored relative to it).
+    model_offset: Vec3,
     moves: Moves,
     clips: MoveClips,
     clock: MoveClock,
@@ -192,6 +196,7 @@ impl ManAnimation {
         let idle = resolve(&moves, &move_names(Stance::Stand, Motion::default()))?;
         let mut animation = ManAnimation {
             rig,
+            model_offset: soldier.info.bounding_center,
             moves,
             clips: MoveClips::new(),
             clock: MoveClock::new(idle),
@@ -215,11 +220,34 @@ impl ManAnimation {
         self.clock.advance(move_, rate, dt);
     }
 
-    /// The Man's bone palette for this frame: his pose at the clock's place in the cycle, as
-    /// the renderer's skinned instances take it. `None` when the Move's RTM is not loaded.
+    /// The Man's bone palette for this frame: his pose at the clock's place in the cycle,
+    /// composed down his Skeleton, as the renderer's skinned instances take it (in the model's
+    /// own space). `None` when the Move's RTM is not loaded.
     pub fn palette(&self) -> Option<Vec<Affine3A>> {
         let state = self.clock.blend().state(&self.clips, &self.moves)?;
-        Some(self.rig.pose(&state).to_anim_pose().bones)
+        let pose = self.rig.pose(&state);
+        Some(self.rig.skinning_pose(&pose, self.model_offset).bones)
+    }
+
+    /// The point of the model's space that stands on the entity's position when posed: the
+    /// ground under the Man's feet (`ManRig::ground_offset`).
+    pub fn ground(&self) -> Vec3 {
+        ManRig::ground_offset(self.model_offset)
+    }
+
+    /// Put the Man straight into the Move named `name` at `phase` of its cycle, with no blend
+    /// (the `switchMove` of a script). He stays there until [`ManAnimation::advance`] picks
+    /// another Move. `false` when the Moves type has no such Move; he keeps his Move then.
+    pub fn switch_move(&mut self, name: &str, phase: f32) -> bool {
+        let Some(id) = self.moves.find(name) else {
+            return false;
+        };
+        self.load_clips([id]);
+        let mut clock = MoveClock::new(id);
+        clock.current_phase = wrap(phase);
+        clock.previous_phase = clock.current_phase;
+        self.clock = clock;
+        true
     }
 
     /// The name of the Move playing, for the overlay.

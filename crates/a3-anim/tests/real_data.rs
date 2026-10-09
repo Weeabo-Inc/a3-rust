@@ -105,11 +105,10 @@ fn hunter_wheel_hides_when_destroyed() {
     );
 }
 
-/// A soldier and its idle rifle stance: every skeleton bone binds, and the engine's bone frames
-/// keep the bone lengths of the spine, neck, legs and shoulders (the posed pivot is the frame's
-/// translation). The arm chains do not yet (see `docs/re/model-animations.md`).
+/// A soldier and its idle rifle stance: every skeleton bone binds, and the composed pose keeps
+/// every bone length, stands on the ground and holds the rifle in front.
 #[test]
-fn soldier_rtm_frames_keep_trunk_and_leg_bone_lengths() {
+fn soldier_rtm_pose_keeps_every_bone_length() {
     let Some(model) = load(r"a3\characters_f\blufor\b_soldier_01.p3d") else {
         return;
     };
@@ -132,37 +131,53 @@ fn soldier_rtm_frames_keep_trunk_and_leg_bone_lengths() {
     assert_eq!(binding.bound(), skeleton.bones.len());
 
     let frames = binding.frames(&rtm, 0.0, &pivots);
-    let bone = |name: &str| skeleton.bones.iter().position(|b| b.name == name).unwrap();
-    let mut report = Vec::new();
-    for name in [
-        "spine1",
-        "spine2",
-        "spine3",
-        "neck",
-        "neck1",
-        "head",
-        "leftleg",
-        "leftfoot",
-        "rightleg",
-        "rightfoot",
-        "leftshoulder",
-        "rightshoulder",
-        "leftarm",
-        "leftforearm",
-        "lefthand",
-    ] {
-        let b = bone(name);
-        let parent = skeleton.bones[b].parent.unwrap();
+    let pose = a3_anim::Pose::from_rtm_frames(&frames, &pivots, skeleton, Vec3::ZERO);
+    let joint = |b: usize| pose.bones[b].transform_point3(pivots.positions[b]);
+    let mut worst = (0.0f32, "");
+    for (b, bone) in skeleton.bones.iter().enumerate() {
+        // `weapon`, `launcher` and `camera` are attachment points, not joints. `face_hub`'s
+        // record undoes the head's frame (the face rig stays at its rest place); no vertex of
+        // the body binds to the face (see "Face rig" in `docs/re/model-animations.md`).
+        if ["weapon", "launcher", "camera", "face_hub"].contains(&bone.name.as_str()) {
+            continue;
+        }
+        let Some(parent) = bone.parent else { continue };
         let rest = pivots.positions[b].distance(pivots.positions[parent]);
-        let posed = Vec3::from(frames[b].translation).distance(frames[parent].translation.into());
-        report.push((name, rest, posed));
+        let posed = joint(b).distance(joint(parent));
+        if (rest - posed).abs() > worst.0 {
+            worst = ((rest - posed).abs(), &bone.name);
+        }
     }
-    for (name, rest, posed) in &report {
-        eprintln!("{name:14} rest {rest:.3} posed {posed:.3}");
+    eprintln!("worst bone length change: {:.3} m ({})", worst.0, worst.1);
+    // Rigid to f16 precision (a few mm).
+    assert!(
+        worst.0 < 0.01,
+        "{} changes length by {} m",
+        worst.1,
+        worst.0
+    );
+
+    // The root record carries the hip height: the toes stand on y = 0 and the pose faces -Z
+    // like the rest mesh (the toes in front of the heels).
+    let bone = |name: &str| skeleton.bones.iter().position(|b| b.name == name).unwrap();
+    for side in ["left", "right"] {
+        let toe = joint(bone(&format!("{side}toebase")));
+        let ankle = joint(bone(&format!("{side}foot")));
+        assert!(toe.y.abs() < 0.05, "{side} toe at {toe}");
+        assert!(
+            toe.z < ankle.z,
+            "{side} toe {toe} ahead of the ankle {ankle}"
+        );
     }
-    for (name, rest, posed) in &report[..12] {
-        // Within 7 cm (legs shorten by up to 6.5 cm in this pose); the arms are off by up to 1.2 m.
-        assert!((rest - posed).abs() < 0.07, "{name}: {rest} vs {posed}");
+    // Both hands hold the rifle in front of the chest.
+    let chest = joint(bone("spine3"));
+    for hand in ["lefthand", "righthand"] {
+        let h = joint(bone(hand));
+        assert!(h.z < chest.z - 0.1, "{hand} at {h}, chest at {chest}");
+        assert!(
+            (h.y - chest.y).abs() < 0.4,
+            "{hand} at {h}, chest at {chest}"
+        );
     }
 }
 

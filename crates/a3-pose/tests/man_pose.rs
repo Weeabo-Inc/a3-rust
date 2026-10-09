@@ -7,7 +7,7 @@ use a3_anim::SkeletonPivots;
 use a3_p3d::{Bone, Skeleton};
 use a3_pose::{BonePose, ManPose, ManRig, MoveSample, MoveState};
 use a3_rtm::{Animation, BoneTransform, Encoding, Frame};
-use glam::{Quat, Vec3};
+use glam::{Affine3A, Quat, Vec3};
 
 /// The pelvis, at the origin.
 const PELVIS: Vec3 = Vec3::ZERO;
@@ -46,7 +46,9 @@ fn rig(weapon_bone: Option<usize>) -> ManRig {
     )
 }
 
-/// An animation of `bones` with the given keyframes (phase, one transform per bone).
+/// An animation of `bones` with the given keyframes (phase, one transform per bone). The
+/// transforms are given in the model's space and stored [reversed](a3_anim::reversed), as the
+/// shipped files are, so the tests read in model terms.
 fn animation(bones: &[&str], step: Vec3, frames: &[(f32, Vec<BoneTransform>)]) -> Animation {
     Animation {
         encoding: Encoding::Binarized { version: 5 },
@@ -56,7 +58,7 @@ fn animation(bones: &[&str], step: Vec3, frames: &[(f32, Vec<BoneTransform>)]) -
             .iter()
             .map(|(phase, transforms)| Frame {
                 phase: *phase,
-                transforms: transforms.clone(),
+                transforms: transforms.iter().map(|&t| a3_anim::reversed(t)).collect(),
             })
             .collect(),
         keystones: Vec::new(),
@@ -350,13 +352,72 @@ fn the_rig_knows_its_bones_and_root() {
 }
 
 #[test]
-fn a_pose_carries_over_into_an_a3_anim_pose() {
+fn children_follow_their_parents_in_the_skinning_pose() {
     let rig = rig(None);
-    let move_ = offset(&["pelvis", "spine", "head"], Vec3::new(0.1, 0.0, 0.0));
+    // Only the pelvis moves: up 0.1 m. Spine and head follow it.
+    let move_ = offset(&["pelvis"], Vec3::new(0.0, 0.1, 0.0));
     let pose = rig.pose(&MoveState::single(MoveSample::new(&move_, 0.0)));
-    let anim_pose = pose.to_anim_pose();
+    let up = Affine3A::from_translation(Vec3::new(0.0, 0.1, 0.0));
+    for m in rig.compose(&pose) {
+        assert!(m.abs_diff_eq(up, 1e-6), "{m:?}");
+    }
 
-    assert_eq!(anim_pose.bones, pose.to_affines());
-    assert_eq!(anim_pose.hidden, vec![false; 3]);
-    assert_eq!(anim_pose.bones.len(), rig.bone_count());
+    // The model's origin sits at `offset` in pivot space; a lift stays a lift.
+    let offset_ = Vec3::new(0.3, 0.8, -0.4);
+    let skinning = rig.skinning_pose(&pose, offset_);
+    assert_eq!(skinning.hidden, vec![false; 3]);
+    assert_eq!(skinning.bones.len(), rig.bone_count());
+    for m in &skinning.bones {
+        assert!(m.abs_diff_eq(up, 1e-6), "{m:?}");
+    }
+    assert_eq!(ManRig::ground_offset(offset_), -offset_);
+}
+
+#[test]
+fn stored_records_are_reversed_into_model_space() {
+    // Built by hand, not through `animation`, so the record is what the file stores.
+    let mut move_ = still(&["pelvis"]);
+    move_.frames[0].transforms[0] = BoneTransform {
+        rotation: Quat::from_rotation_y(0.5),
+        translation: Vec3::new(0.1, 0.2, 0.3),
+    };
+    let pose = rig(None).pose(&MoveState::single(MoveSample::new(&move_, 0.0)));
+    // A half turn about Y negates x and z; a turn about Y itself is unchanged by it, and the
+    // engine uses the conjugate.
+    assert!(
+        pose.bones[0]
+            .translation
+            .abs_diff_eq(Vec3::new(-0.1, 0.2, -0.3), 1e-6)
+    );
+    assert!(
+        pose.bones[0]
+            .rotation
+            .abs_diff_eq(Quat::from_rotation_y(-0.5), 1e-6)
+    );
+}
+
+#[test]
+fn a_turned_parent_carries_its_child_around_its_joint() {
+    let rig = rig(None);
+    // The spine turns a quarter about Z (the record holds the conjugate). Its translation keeps
+    // the spine's joint in place: t = Q - R * Q.
+    let r = Quat::from_rotation_z(FRAC_PI_2);
+    let stored = BoneTransform {
+        rotation: r.conjugate(),
+        translation: SPINE - r * SPINE,
+    };
+    let move_ = animation(
+        &["pelvis", "spine", "head"],
+        Vec3::ZERO,
+        &[(
+            0.0,
+            vec![BoneTransform::IDENTITY, stored, BoneTransform::IDENTITY],
+        )],
+    );
+    let pose = rig.pose(&MoveState::single(MoveSample::new(&move_, 0.0)));
+    let world = rig.compose(&pose);
+    // The head's pivot swings about the spine's joint with the spine.
+    let head = world[2].transform_point3(HEAD);
+    let expected = SPINE + r * (HEAD - SPINE);
+    assert!(head.abs_diff_eq(expected, 1e-4), "{head} vs {expected}");
 }

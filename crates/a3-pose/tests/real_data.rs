@@ -204,15 +204,18 @@ fn the_pose_matches_the_rtm_bone_frames() {
     let mine = data
         .rig
         .pose(&MoveState::single(MoveSample::new(&data.idle, 0.0)));
-    // The same records through `a3-anim`: the emitted frame is `[M | T - M*Q]` there too.
+    // The same records through `a3-anim`: the emitted frame is `[M | T - M*Q]` there too, and
+    // both compose it down the skeleton.
     let theirs = Pose::from_rtm_frames(
         &binding.keyframe(&data.idle, 0, &data.pivots),
         &data.pivots,
+        skeleton,
         Vec3::ZERO,
     );
+    let composed = data.rig.compose(&mine);
     let mut worst = 0.0f32;
     let mut compared = 0;
-    for bone in 0..data.rig.bone_count() {
+    for (bone, (&a, &b)) in composed.iter().zip(&theirs.bones).enumerate() {
         let Some(rtm_bone) = binding.rtm_bone[bone] else {
             continue;
         };
@@ -220,7 +223,6 @@ fn the_pose_matches_the_rtm_bone_frames() {
             continue;
         }
         compared += 1;
-        let (a, b) = (mine.to_affines()[bone], theirs.bones[bone]);
         worst = worst.max(matrix_difference(a, b));
     }
     eprintln!("cross-checked {compared} bones against a3-anim, worst difference {worst:.2e}");
@@ -234,96 +236,121 @@ fn the_pose_matches_the_rtm_bone_frames() {
     );
 }
 
-/// How coherent the posed joints are, measured rather than asserted (`docs/re/model-animations.md`,
-/// "Pose coherence"). The emitted frame's translation is exactly the file's `t` where nothing is
-/// blended, so this measures the shipped records: the trunk and legs read as `R * Q + t`, the
-/// pelvis's own record is a position rather than a correction, and the arms do not fit any of the
-/// single-rule readings tried. The assertions pin what does hold, so a broken conjugate or pivot
-/// would collapse the count.
+/// Bones that are not joints of the body: `weapon`, `launcher` and `camera` are attachment
+/// points, and `face_hub`'s record undoes the head's frame (the face rig belongs to the head
+/// model; see "Face rig" in `docs/re/model-animations.md`).
+const NOT_JOINTS: [&str; 4] = ["weapon", "launcher", "camera", "face_hub"];
+
+/// The composed pose keeps the body together (`docs/re/model-animations.md`, "Pose
+/// coherence"): every joint stays within 1 cm of its rest distance from its parent's (f16
+/// precision), over every keyframe of the idle and the walk.
 #[test]
-fn posed_joints_are_coherent_along_the_trunk_and_legs() {
+fn the_composed_pose_keeps_every_bone_length() {
     let Some(data) = setup() else {
         return;
     };
     let skeleton = data.skeleton();
     for (label, move_) in [("idle", &data.idle), ("walk", &data.walk)] {
-        let pose = data
-            .rig
-            .pose(&MoveState::single(MoveSample::new(move_, 0.0)));
-        let mut pairs = 0;
-        let mut kept = 0;
-        let mut worst = 0.0f32;
-        let mut named = Vec::new();
-        for bone in 0..data.rig.bone_count() {
-            let Some(parent) = skeleton.bones[bone].parent else {
-                continue;
-            };
-            pairs += 1;
-            let error = rest_distance_error(&pose, &data, bone, parent);
-            worst = worst.max(error);
-            if error < 0.05 {
-                kept += 1;
-            } else {
-                named.push(format!("{} {error:.3}", skeleton.bones[bone].name));
+        let mut worst = (0.0f32, String::new());
+        for frame in &move_.frames {
+            let pose = data
+                .rig
+                .pose(&MoveState::single(MoveSample::new(move_, frame.phase)));
+            let world = data.rig.compose(&pose);
+            let joint = |b: usize| world[b].transform_point3(data.rest(b));
+            for (bone, b) in skeleton.bones.iter().enumerate() {
+                let Some(parent) = b.parent else { continue };
+                if NOT_JOINTS.contains(&b.name.as_str()) {
+                    continue;
+                }
+                let rest = data.rest(bone).distance(data.rest(parent));
+                let error = (joint(bone).distance(joint(parent)) - rest).abs();
+                if error > worst.0 {
+                    worst = (error, format!("{} at phase {}", b.name, frame.phase));
+                }
             }
         }
         eprintln!(
-            "{label}: {kept}/{pairs} joints within 5 cm of their rest distance, worst {worst:.3} m"
+            "{label}: worst bone length change {:.3} m ({})",
+            worst.0, worst.1
         );
-        eprintln!("       off: {named:?}");
-        assert!(
-            kept * 4 >= pairs,
-            "{kept}/{pairs} joints keep their rest distance"
-        );
-
-        // The trunk above the spine does hold, within a centimetre of rest.
-        for name in ["spine1", "spine3", "neck", "head"] {
-            let bone = data.rig.bone_index(name).unwrap();
-            let parent = skeleton.bones[bone].parent.unwrap();
-            let error = rest_distance_error(&pose, &data, bone, parent);
-            assert!(
-                error < 0.06,
-                "{label}: {name} is {error:.3} m off its rest distance"
-            );
-        }
+        assert!(worst.0 < 0.01, "{label}: {} off by {} m", worst.1, worst.0);
     }
 }
 
-fn rest_distance_error(pose: &ManPose, data: &Data, bone: usize, parent: usize) -> f32 {
-    let rest = data.rest(bone).distance(data.rest(parent));
-    let posed = pose.bones[bone]
-        .posed_pivot(data.rest(bone))
-        .distance(pose.bones[parent].posed_pivot(data.rest(parent)));
-    (posed - rest).abs()
-}
-
+/// The root record lifts the pelvis to its hip height, so the posed Man stands on `y = 0` of
+/// the pivots model's space at every keyframe, and his head stays a head's height above it.
 #[test]
-fn the_pelvis_to_head_span_is_stable_over_the_cycle() {
+fn the_composed_man_stands_on_the_ground() {
     let Some(data) = setup() else {
         return;
     };
-    // The pelvis's own record is the hip height while the rest are pelvis-relative, so this span
-    // is not the man's trunk length; it is only checked for staying put frame to frame.
-    let pelvis = data.root();
+    let toes = [
+        data.rig.bone_index("lefttoebase").unwrap(),
+        data.rig.bone_index("righttoebase").unwrap(),
+    ];
     let head = data.rig.bone_index("head").unwrap();
     for (label, move_) in [("idle", &data.idle), ("walk", &data.walk)] {
-        let mut low = f32::MAX;
-        let mut high = f32::MIN;
-        for frame in 0..move_.frames.len() {
-            let phase = move_.frames[frame].phase;
+        let mut lowest = (f32::MAX, f32::MIN);
+        for frame in &move_.frames {
             let pose = data
                 .rig
-                .pose(&MoveState::single(MoveSample::new(move_, phase)));
-            let joint = |bone: usize| pose.bones[bone].posed_pivot(data.rest(bone));
-            let span = joint(pelvis).distance(joint(head));
-            low = low.min(span);
-            high = high.max(span);
-            assert!((0.2..1.5).contains(&span), "{label}: pelvis-head {span}");
+                .pose(&MoveState::single(MoveSample::new(move_, frame.phase)));
+            let world = data.rig.compose(&pose);
+            let toe = toes
+                .iter()
+                .map(|&b| world[b].transform_point3(data.rest(b)).y)
+                .fold(f32::MAX, f32::min);
+            lowest = (lowest.0.min(toe), lowest.1.max(toe));
+            let h = world[head].transform_point3(data.rest(head)).y;
+            assert!((1.2..1.8).contains(&h), "{label}: head at {h}");
         }
-        eprintln!("{label}: pelvis to head stays {low:.3}..{high:.3} m over the cycle");
+        eprintln!(
+            "{label}: lowest toe {:.3}..{:.3} m over the cycle",
+            lowest.0, lowest.1
+        );
         assert!(
-            high - low < 0.1,
-            "the head tracks the pelvis over the cycle"
+            lowest.0 > -0.05 && lowest.1 < 0.08,
+            "{label}: a foot is on the ground at every keyframe"
+        );
+    }
+}
+
+/// Skinned through the composed pose, the soldier's drawn mesh (proxies left out) keeps a
+/// Man's proportions: issue #247 measured a 2.0 x 3.3 x 2.2 m spike-ball with the flat pose.
+#[test]
+fn the_skinned_soldier_keeps_a_mans_proportions() {
+    let Some(data) = setup() else {
+        return;
+    };
+    let offset = data.soldier.info.bounding_center;
+    let lod = &data.soldier.lods[0];
+    for (label, move_) in [("idle", &data.idle), ("walk", &data.walk)] {
+        let pose = data
+            .rig
+            .pose(&MoveState::single(MoveSample::new(move_, 0.0)));
+        let skinning = data.rig.skinning_pose(&pose, offset);
+        let posed = a3_anim::skin(lod, &skinning.skinning(lod)).positions;
+        let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
+        for section in lod.sections.iter().filter(|s| !s.is_proxy()) {
+            for face in &lod.faces[section.faces.start as usize..section.faces.end as usize] {
+                for &i in face.indices() {
+                    let p = posed[i as usize] + offset;
+                    lo = lo.min(p);
+                    hi = hi.max(p);
+                }
+            }
+        }
+        let size = hi - lo;
+        eprintln!("{label}: posed box {lo:.3}..{hi:.3}, size {size:.3}");
+        assert!(
+            (1.3..1.9).contains(&size.y),
+            "{label}: {size} tall (no head: it is a proxy)"
+        );
+        assert!(size.x < 1.2 && size.z < 1.2, "{label}: {size}");
+        assert!(
+            lo.y.abs() < 0.08,
+            "{label}: the boots are on the ground ({lo})"
         );
     }
 }

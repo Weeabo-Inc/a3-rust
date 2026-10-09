@@ -124,7 +124,8 @@ pub fn run(args: P3dArgs) -> anyhow::Result<()> {
                     } else {
                         model.info.bounding_center
                     };
-                    pose = a3_anim::Pose::from_rtm_frames(&frames, &pivots, offset).compose(&pose);
+                    pose = a3_anim::Pose::from_rtm_frames(&frames, &pivots, skeleton, offset)
+                        .compose(&pose);
                 }
                 posed = posed_lod(&model.lods[lod], &pose);
                 &posed

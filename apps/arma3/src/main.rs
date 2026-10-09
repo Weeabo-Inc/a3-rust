@@ -89,9 +89,19 @@ struct Cli {
     /// Model viewer camera pitch in degrees (negative looks down).
     #[arg(long, default_value_t = -20.0, allow_hyphen_values = true)]
     view_pitch: f32,
+    /// Model viewer camera distance in model radii.
+    #[arg(long, default_value_t = 1.9)]
+    view_zoom: f32,
     /// Model viewer: always draw this Resolution LOD (0 = most detailed).
     #[arg(long, value_name = "N")]
     lod: Option<usize>,
+    /// Model viewer: pose the model as a Man in this Move (a `CfgMovesMaleSdr` class, e.g.
+    /// `AmovPpneMstpSrasWrflDnon`), like `switchMove`. Loads the game config.
+    #[arg(long = "move", value_name = "CLASS", requires = "model")]
+    move_: Option<String>,
+    /// Model viewer: the phase of `--move`'s cycle to pose, 0..1.
+    #[arg(long, default_value_t = 0.0, requires = "move_")]
+    move_phase: f32,
     /// `--screenshot`: after loading, time this many frames and print the average.
     #[arg(long, default_value_t = 0)]
     bench_frames: u64,
@@ -142,7 +152,9 @@ fn main() -> anyhow::Result<()> {
             path: path.clone(),
             yaw: cli.view_yaw,
             pitch: cli.view_pitch,
+            zoom: cli.view_zoom,
             lod: cli.lod,
+            pose: cli.move_.clone().map(|name| (name, cli.move_phase)),
         }),
         environment: environment::EnvironmentSpec {
             date: cli.date,

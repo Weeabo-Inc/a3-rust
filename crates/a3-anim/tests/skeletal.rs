@@ -113,9 +113,10 @@ fn builds_engine_frames_with_conjugate_rotation_and_pivot_translation() {
     )]);
     let pivots = SkeletonPivots::from_model(&skeleton(), &pivots_model(), "");
     let frames = RtmBinding::new(&skeleton(), &anim).frames(&anim, 0.0, &pivots);
-    // Bone `lower` (pivot (1,0,0)): rotation is the conjugate (-90 degrees about Z), and the
-    // translation becomes R * pivot + t = (0, -1, 0) + (0, 0.5, 0).
-    let expected = Affine3A::from_rotation_translation(q.conjugate(), Vec3::new(0.0, -0.5, 0.0));
+    // Bone `lower` (pivot (1,0,0)): the record is first reversed (a half turn about Y turns +90
+    // degrees about Z into -90), then its conjugate is taken (+90 degrees about Z), and the
+    // translation becomes R * pivot + t = (0, 1, 0) + (0, 0.5, 0).
+    let expected = Affine3A::from_rotation_translation(q, Vec3::new(0.0, 1.5, 0.0));
     assert!(frames[1].abs_diff_eq(expected, 1e-6), "{:?}", frames[1]);
     assert_eq!(frames[0], Affine3A::IDENTITY);
     assert_eq!(frames[2], Affine3A::IDENTITY, "unbound bones stay put");
@@ -123,9 +124,9 @@ fn builds_engine_frames_with_conjugate_rotation_and_pivot_translation() {
 
 #[test]
 fn blends_keyframes_matrix_by_matrix() {
-    let shift = |x: f32| BoneTransform {
+    let shift = |y: f32| BoneTransform {
         rotation: Quat::IDENTITY,
-        translation: Vec3::new(x, 0.0, 0.0),
+        translation: Vec3::new(0.0, y, 0.0),
     };
     let anim = rtm(vec![
         (0.0, vec![shift(0.0), shift(0.0)]),
@@ -137,14 +138,14 @@ fn blends_keyframes_matrix_by_matrix() {
     assert!(
         mid[1]
             .translation
-            .abs_diff_eq(Vec3::new(1.5, 0.0, 0.0).into(), 1e-6)
+            .abs_diff_eq(Vec3::new(1.0, 0.5, 0.0).into(), 1e-6)
     );
     // Clamped outside the keyframes.
     let after = binding.frames(&anim, 2.0, &pivots);
     assert!(
         after[1]
             .translation
-            .abs_diff_eq(Vec3::new(3.0, 0.0, 0.0).into(), 1e-6)
+            .abs_diff_eq(Vec3::new(1.0, 2.0, 0.0).into(), 1e-6)
     );
 
     let a = [Affine3A::from_translation(Vec3::X)];
@@ -158,18 +159,57 @@ fn blends_keyframes_matrix_by_matrix() {
 }
 
 #[test]
+fn reversing_a_record_is_a_half_turn_about_y() {
+    let record = BoneTransform {
+        rotation: Quat::from_xyzw(0.1, 0.2, 0.3, 0.9).normalize(),
+        translation: Vec3::new(1.0, 2.0, 3.0),
+    };
+    let half_turn = Affine3A::from_rotation_y(std::f32::consts::PI);
+    let affine = |t: BoneTransform| Affine3A::from_rotation_translation(t.rotation, t.translation);
+    let expected = half_turn * affine(record) * half_turn.inverse();
+    assert!(affine(a3_anim::reversed(record)).abs_diff_eq(expected, 1e-6));
+    assert_eq!(
+        a3_anim::reversed(a3_anim::reversed(record)),
+        record,
+        "its own inverse"
+    );
+}
+
+#[test]
+fn children_follow_their_parents_down_the_skeleton() {
+    // upper turns 90 degrees about Z at the origin; lower and tip are unanimated.
+    let turn = Affine3A::from_rotation_z(FRAC_PI_2);
+    let local = [turn, Affine3A::IDENTITY, Affine3A::IDENTITY];
+    let world = a3_anim::compose_hierarchy(&local, &[None, Some(0), Some(1)]);
+    for w in &world {
+        assert!(w.abs_diff_eq(turn, 1e-6));
+    }
+    // A child listed before its parent and a parent out of range still compose.
+    let world = a3_anim::compose_hierarchy(&[Affine3A::IDENTITY, turn], &[Some(1), Some(7)]);
+    assert!(world[0].abs_diff_eq(turn, 1e-6));
+    assert!(world[1].abs_diff_eq(turn, 1e-6));
+}
+
+#[test]
 fn rtm_pose_maps_rest_pivot_frames_and_composes_with_config_animation() {
     let pivots = SkeletonPivots::from_model(&skeleton(), &pivots_model(), "");
-    // `lower`'s frame: rotated -90 degrees about Z, posed pivot at (1, 0, 0) (unchanged).
+    // `lower`'s frame: rotated -90 degrees about Z, posed pivot at (1, 0, 0) (unchanged). The
+    // others are unanimated: their frames keep their pivots in place.
     let frame = Affine3A::from_rotation_translation(Quat::from_rotation_z(-FRAC_PI_2), Vec3::X);
-    let frames = [Affine3A::IDENTITY, frame, Affine3A::IDENTITY];
-    let pose = Pose::from_rtm_frames(&frames, &pivots, Vec3::ZERO);
-    // A point 1 m past the elbow along X swings to 1 m below it.
+    let frames = [
+        Affine3A::IDENTITY,
+        frame,
+        Affine3A::from_translation(pivots.positions[2]),
+    ];
+    let pose = Pose::from_rtm_frames(&frames, &pivots, &skeleton(), Vec3::ZERO);
+    // A point 1 m past the elbow along X swings to 1 m below it, and so does the tip's.
     let p = pose.bones[1].transform_point3(Vec3::new(2.0, 0.0, 0.0));
     assert!(p.abs_diff_eq(Vec3::new(1.0, -1.0, 0.0), 1e-6), "{p}");
+    let tip = pose.bones[2].transform_point3(Vec3::new(2.0, 0.0, 0.0));
+    assert!(tip.abs_diff_eq(Vec3::new(1.0, -1.0, 0.0), 1e-6), "{tip}");
 
     // Model space offset from pivot space by +1 in Y.
-    let shifted = Pose::from_rtm_frames(&frames, &pivots, Vec3::Y);
+    let shifted = Pose::from_rtm_frames(&frames, &pivots, &skeleton(), Vec3::Y);
     let q = shifted.bones[1].transform_point3(Vec3::new(2.0, -1.0, 0.0));
     assert!(q.abs_diff_eq(Vec3::new(1.0, -2.0, 0.0), 1e-6), "{q}");
 
