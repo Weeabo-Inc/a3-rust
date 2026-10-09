@@ -38,6 +38,7 @@ a3-landscape-render = { path = "crates/a3-landscape-render" }
 a3-render-ui = { path = "crates/a3-render-ui" }
 a3-ui = { path = "crates/a3-ui" }
 a3-physics = { path = "crates/a3-physics" }
+a3-vehicles = { path = "crates/a3-vehicles" }
 a3-nav = { path = "crates/a3-nav" }
 
 # Physics (ADR 0001, ADR 0008)
