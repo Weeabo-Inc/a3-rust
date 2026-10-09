@@ -483,8 +483,10 @@ fresnel/layer 1, t7 env/layer 2, t8 layer 3, t9–t11 layer normals 1–3, t12�
   stand in only when there is no lighting table (model viewer). The render oracle measured the
   improvement (#290).
 - The env-map tint `GlassEnvColor × GlassMatSpecular` is replaced by sky level × material specular.
-- `DForced`, point/spot lights, SSAO/caustics, underwater extinction and the FogMode switch are
-  not implemented. Fog and haze come from a3-render's post pass.
+- `DForced`, point/spot lights, SSAO/caustics and the FogMode switch are not implemented. Fog
+  and haze come from a3-render's post pass, underwater fog from the post pass and the sea
+  shader (`render-water.md` §7). The underwater light extinction (ambient and sun dimmed by
+  depth below the sea level) is applied.
 - TreeAdv `TreeAdvPars` (wrap, translucency, rim) are unknown. We use a fixed wrap
   (`N·L·0.5 + 0.5`), no translucency and no rim term.
 - Alpha: Glass blends; Tree and SuperAlphaTest test; for other families the colour map's PAA

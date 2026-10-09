@@ -337,6 +337,13 @@ The large `_sat` colour image and the `_mask` layer images that blend per-surfac
 Small decorative objects (grass, stones) scattered automatically near the camera according to
 the surface type.
 
+**Sea**:
+The ocean surface the Landscape draws wherever the terrain lies below the sea level, also past
+the map edge: square **sea patches** of 8×8 **water cells** (`class Sea >> WaterGrid`, 50 m), each
+an LOD mesh moved by the wave function (rings travelling towards the map centre). Ponds and
+rivers are not the Sea; they are models with a water material.
+_Avoid_: ocean (except in prose), water plane
+
 ## Audio
 
 **WSS**:

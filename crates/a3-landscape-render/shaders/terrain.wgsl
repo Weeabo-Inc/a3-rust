@@ -1,4 +1,4 @@
-// Terrain (CDLOD heightmap patches) and the placeholder sea. Positions are camera-relative
+// Terrain (CDLOD heightmap patches). Positions are camera-relative
 // (ADR 0003). Shading follows the engine's PSTerrainSNX (docs/re/render-terrain.md).
 
 struct Frame {
@@ -16,14 +16,24 @@ struct Frame {
     ambient_sky: vec4<f32>,
     ambient_mid: vec4<f32>,
     ambient_ground: vec4<f32>,
+    fog: vec4<f32>,
+    haze: vec4<f32>,
+    linear_fog: vec4<f32>,
+    // x: water height, z: 1 when there is water.
+    water: vec4<f32>,
+    water_fog_color: vec4<f32>,
+    water_fog_gradient: vec4<f32>,
+    // Underwater extinction per metre of depth: ambient light, sun light.
+    water_light_extinction: vec4<f32>,
+    water_diffuse_extinction: vec4<f32>,
 }
 
 struct Terrain {
-    // Camera world position (x, y, z) and the sea level.
+    // Camera world position (x, y, z), unused.
     camera: vec4<f32>,
     // Height cell edge (m), height samples per axis, world edge (m), land cell edge (m).
     grid: vec4<f32>,
-    // Land cells per axis, tile count, sea extent (m), detail layers loaded (0 or 1).
+    // Land cells per axis, tile count, unused, detail layers loaded (0 or 1).
     misc: vec4<f32>,
     // fullDetailDist, noDetailDist (m), terrainBlendMaxDarkenCoef, terrainBlendMaxBrightenCoef.
     detail: vec4<f32>,
@@ -145,9 +155,13 @@ fn surface_normal(world_xz: vec2<f32>) -> vec3<f32> {
     return normalize(textureSample(normals, linear_clamp, uv).xyz);
 }
 
-fn lit(albedo: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
+fn lit(albedo: vec3<f32>, n: vec3<f32>, height: f32) -> vec3<f32> {
     let diffuse = max(dot(n, frame.sun_dir.xyz), 0.0);
-    return albedo * (frame.sun_color.rgb * diffuse + ambient(n.y));
+    // Under the sea the light dims with the depth (render-water.md section 7).
+    let depth = select(0.0, max(frame.water.x - height, 0.0), frame.water.z > 0.5);
+    let sun = frame.sun_color.rgb * exp(-depth * frame.water_diffuse_extinction.rgb);
+    let sky_light = ambient(n.y) * exp(-depth * frame.water_light_extinction.rgb);
+    return albedo * (sun * diffuse + sky_light);
 }
 
 // Terrain ambient: the engine's hemisphere ambient (AE, AmbientMid, GE on the normal's y,
@@ -193,6 +207,7 @@ fn to_linear(c: vec3<f32>) -> vec3<f32> {
 
 @fragment
 fn fs_terrain(in: TerrainOut) -> @location(0) vec4<f32> {
+    let height = terrain.camera.y + in.rel.y;
     let n0 = surface_normal(in.world_xz);
     let far = overview_color(in.world_xz);
     // Gradients from continuous coordinates, so tile and node borders do not change the mip.
@@ -207,11 +222,11 @@ fn fs_terrain(in: TerrainOut) -> @location(0) vec4<f32> {
     let material = materials[material_index];
     let tile_index = material.x;
     if tile_index == NONE || tile_index >= arrayLength(&tiles) {
-        return vec4<f32>(lit(far, n0), 1.0);
+        return vec4<f32>(lit(far, n0, height), 1.0);
     }
     let tile = tiles[tile_index];
     if tile.slot.x < 0 {
-        return vec4<f32>(lit(far, n0), 1.0);
+        return vec4<f32>(lit(far, n0, height), 1.0);
     }
     let uv = vec2<f32>(dot(tile.u.xy, in.world_xz) + tile.u.z, dot(tile.v.xy, in.world_xz) + tile.v.z);
     let uv_dx = vec2<f32>(dot(tile.u.xy, dx), dot(tile.v.xy, dx));
@@ -223,7 +238,7 @@ fn fs_terrain(in: TerrainOut) -> @location(0) vec4<f32> {
     let distance = length(in.rel);
     let detail_weight = saturate((terrain.detail.y - distance) / (terrain.detail.y - terrain.detail.x));
     if detail_weight <= 0.01 || tile.slot.y == 0 || terrain.misc.w == 0.0 {
-        return vec4<f32>(lit(satellite, n0), 1.0);
+        return vec4<f32>(lit(satellite, n0, height), 1.0);
     }
 
     let mask = textureSampleGrad(masks, tile_sampler, uv, tile.slot.x, uv_dx, uv_dy);
@@ -265,52 +280,5 @@ fn fs_terrain(in: TerrainOut) -> @location(0) vec4<f32> {
     let b = cross(t, n0);
     let dn = normalize(detail_n + vec3<f32>(0.0, 0.0, 0.001));
     let n = normalize(mix(n0, t * dn.x + b * dn.y + n0 * dn.z, detail_weight));
-    return vec4<f32>(lit(albedo, n), 1.0);
-}
-
-// ---------------------------------------------------------------------------------------
-// Placeholder sea until the ocean renderer exists: one camera-centred quad at sea level,
-// blended over the terrain below it by water depth.
-
-struct SeaOut {
-    @builtin(position) clip: vec4<f32>,
-    @location(0) rel: vec3<f32>,
-}
-
-@vertex
-fn vs_sea(@builtin(vertex_index) index: u32) -> SeaOut {
-    // Two clockwise triangles (seen from above) spanning +-extent around the camera.
-    var corners = array<vec2<f32>, 6>(
-        vec2<f32>(-1.0, -1.0), vec2<f32>(-1.0, 1.0), vec2<f32>(1.0, -1.0),
-        vec2<f32>(1.0, -1.0), vec2<f32>(-1.0, 1.0), vec2<f32>(1.0, 1.0),
-    );
-    let c = corners[index] * terrain.misc.z;
-    var out: SeaOut;
-    out.rel = vec3<f32>(c.x, terrain.camera.w - terrain.camera.y, c.y);
-    out.clip = frame.view_proj * vec4<f32>(out.rel, 1.0);
-    return out;
-}
-
-@fragment
-fn fs_sea(in: SeaOut) -> @location(0) vec4<f32> {
-    let world_xz = terrain.camera.xz + in.rel.xz;
-    let world = terrain.grid.z;
-    var depth = 1000.0;
-    if all(world_xz >= vec2<f32>(0.0)) && all(world_xz <= vec2<f32>(world)) {
-        depth = terrain.camera.w - height_at(world_xz / terrain.grid.x);
-    }
-    let view = normalize(-in.rel);
-    // Schlick fresnel for water (F0 = 0.02).
-    let fresnel = 0.02 + 0.98 * pow(1.0 - max(view.y, 0.0), 5.0);
-    let deep = vec3<f32>(0.01, 0.05, 0.08);
-    let shallow = vec3<f32>(0.05, 0.22, 0.24);
-    let body = mix(shallow, deep, clamp(depth / 25.0, 0.0, 1.0));
-    let water = lit(body, vec3<f32>(0.0, 1.0, 0.0));
-    let reflection = mix(frame.sky_horizon.rgb, frame.sky_zenith.rgb, 0.25);
-    let half_vector = normalize(view + frame.sun_dir.xyz);
-    let glint = pow(max(half_vector.y, 0.0), 400.0) * 4.0;
-    let color = mix(water, reflection, fresnel) + frame.sun_color.rgb * glint;
-    // Clear in the shallows, opaque from a few metres down.
-    let alpha = clamp(max(1.0 - exp(-depth * 0.35), fresnel), 0.0, 1.0);
-    return vec4<f32>(color, alpha);
+    return vec4<f32>(lit(albedo, n, height), 1.0);
 }

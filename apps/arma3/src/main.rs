@@ -124,6 +124,9 @@ struct Cli {
     /// Overcast 0..1, as `setOvercast` (default: the world's `startWeather`).
     #[arg(long, value_name = "VALUE", requires = "world")]
     overcast: Option<f32>,
+    /// Waves 0..1, as `setWaves` (default: from the overcast).
+    #[arg(long, value_name = "VALUE", requires = "world")]
+    waves: Option<f32>,
     /// Fog as `setFog`: `value[,decay[,base]]` (default: the world's `startFog*`).
     #[arg(long, value_name = "FOG", requires = "world")]
     fog: Option<environment::FogSpec>,
@@ -182,6 +185,7 @@ fn main() -> anyhow::Result<()> {
             date: cli.date,
             time: cli.time,
             overcast: cli.overcast,
+            waves: cli.waves,
             fog: cli.fog,
             fog_distance: cli.fog_distance,
         },

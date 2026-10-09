@@ -2,8 +2,9 @@
 //! exposure and the sky feature.
 
 use a3_environment::{DateTime, EnvironmentState, Fog, WorldEnvironment};
+use a3_landscape_render::SeaHandle;
 use a3_render::sky::{SkyFeature, SkyHandle};
-use a3_render::{Gpu, Renderer, TextureData};
+use a3_render::{Gpu, Renderer, TextureData, WaterFog};
 use glam::{Vec2, Vec3};
 
 /// Rec. 601 luma, as the engine uses for light colours.
@@ -20,6 +21,8 @@ pub struct EnvironmentSpec {
     pub time: Option<f64>,
     /// `--overcast 0..1`.
     pub overcast: Option<f32>,
+    /// `--waves 0..1`, as `setWaves`.
+    pub waves: Option<f32>,
     /// `--fog value[,decay[,base]]`.
     pub fog: Option<FogSpec>,
     /// `--fog-distance metres`: linear fog end.
@@ -86,6 +89,7 @@ pub struct SceneEnvironment {
     sky: SkyHandle,
     fog_distance: Option<f32>,
     time: f32,
+    sea: Option<(SeaHandle, a3_landscape::WaterExPars)>,
 }
 
 impl SceneEnvironment {
@@ -104,6 +108,9 @@ impl SceneEnvironment {
         state.date_time = DateTime::new(year, month, day, spec.time.unwrap_or(dt.hours));
         if let Some(o) = spec.overcast {
             state.set_overcast(o);
+        }
+        if let Some(w) = spec.waves {
+            state.waves = Some(w.clamp(0.0, 1.0));
         }
         if let Some(f) = spec.fog {
             state.set_fog(Fog {
@@ -126,6 +133,7 @@ impl SceneEnvironment {
             sky,
             fog_distance: spec.fog_distance,
             time: 0.0,
+            sea: None,
         }
     }
 
@@ -148,6 +156,17 @@ impl SceneEnvironment {
         );
         let mut sky = self.sky.lock().unwrap_or_else(|p| p.into_inner());
         sky.dome_ramp = ramp;
+    }
+
+    /// Drive the sea renderer's parameters (behind `handle`) and the underwater fog from this
+    /// environment.
+    pub fn attach_sea(&mut self, handle: SeaHandle, sea: &a3_landscape::Sea) {
+        self.sea = Some((handle, sea.water_ex));
+    }
+
+    /// View distance in metres: the fog distance when given, else the engine's default.
+    fn view_distance(&self) -> f32 {
+        self.fog_distance.unwrap_or(1600.0)
     }
 
     /// Evaluates the environment for a camera at `camera_height` and writes lighting, fog,
@@ -210,6 +229,44 @@ impl SceneEnvironment {
         sky.cloud_color = hue * (luma(l.ambient_mid) * 1.1 + luma(l.diffuse) * 0.12 * w.through);
         sky.wind = Vec2::new(4.0, 1.5) * (0.5 + w.speed);
         sky.time = self.time;
+        drop(sky);
+
+        if let Some((handle, water)) = &self.sea {
+            // PSC_WaterFogColor: the world's fog colour lit by the sky and the sun
+            // (fogColorLightInfluence weights them; an approximation, render-water.md 6).
+            let influence = water
+                .fog_color_light_influence
+                .unwrap_or(Vec3::new(0.8, 0.2, 1.0));
+            let light = l.ambient * influence.x + l.diffuse * influence.y;
+            let fog_color =
+                water.fog_color.unwrap_or(Vec3::new(0.01, 0.06, 0.14)) * light * influence.z;
+            // Sea level: the tide is not simulated (Altis and Stratis have none).
+            let sea_level = 0.0;
+            s.water = Some(WaterFog {
+                height: sea_level,
+                density: water.fog_density.unwrap_or(0.04),
+                color: fog_color,
+                gradient: water.fog_gradient_coefs.unwrap_or(Vec3::new(0.4, 1.0, 1.5)),
+                light_extinction: water.light_extinction_speed.unwrap_or(Vec3::ZERO),
+                diffuse_extinction: water.diffuse_light_extinction_speed.unwrap_or(Vec3::ZERO),
+            });
+            let mut p = handle.lock().unwrap_or_else(|e| e.into_inner());
+            p.time = f64::from(self.time);
+            p.weather_ms = (f64::from(self.time) * 1000.0) as i64;
+            p.waves = self.state.waves.unwrap_or(w.waves).clamp(0.0, 1.0);
+            p.overcast = self.state.overcast;
+            p.sea_level = sea_level;
+            p.light_direction = f.light_direction;
+            p.diffuse = l.diffuse;
+            p.ambient = l.ambient;
+            p.water_fog_color = fog_color;
+            p.sky_reflection = (
+                w.sky_reflection.clone(),
+                f.weather.next_sky_reflection.clone(),
+                f.weather.blend,
+            );
+            p.view_distance = self.view_distance();
+        }
     }
 }
 

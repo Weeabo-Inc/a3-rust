@@ -21,6 +21,11 @@ struct Frame {
     haze: vec4<f32>,
     // x: linear fog end, y: 1 / (end - start); y = 0 disables.
     linear_fog: vec4<f32>,
+    // x: water height, y: water fog extinction per metre, z: 1 when there is water.
+    water: vec4<f32>,
+    water_fog_color: vec4<f32>,
+    // Water fog colour scale looking down, at the horizon and up.
+    water_fog_gradient: vec4<f32>,
 }
 
 @group(0) @binding(0) var<uniform> frame: Frame;
@@ -68,20 +73,56 @@ fn fs_main(@builtin(position) position: vec4<f32>) -> @location(0) vec4<f32> {
     let depth = textureLoad(scene_depth, texel, 0);
     let dir = view_ray(position.xy);
     let color = textureLoad(scene_color, texel, 0).rgb;
-    if depth <= 0.0 {
+    let under_water = frame.water.z > 0.5 && frame.fog.z < frame.water.x;
+    if depth <= 0.0 && !under_water {
         if frame.fog.w > 0.5 {
             return vec4<f32>(sky(dir), 1.0);
         }
         // A render feature drew the sky.
         return vec4<f32>(color, 1.0);
     }
+    if depth <= 0.0 {
+        // Below the water, open sky past the edge of the sea is lost in the water fog.
+        let g = frame.water_fog_gradient;
+        var shade = g.y + dir.y * (g.z - g.y);
+        if dir.y < 0.0 {
+            shade = g.x + (1.0 + dir.y) * (1.0 + dir.y) * (g.y - g.x);
+        }
+        return vec4<f32>(shade * frame.water_fog_color.rgb, 1.0);
+    }
     // Reversed infinite projection: view-space z = near / depth.
     let view_z = frame.params.x / depth;
     let forward = normalize((frame.inv_view_proj * vec4<f32>(0.0, 0.0, 1.0, 1.0)).xyz);
     let distance = view_z / max(dot(dir, forward), 1e-4);
-    var transmittance = exp(-(fog_optical_depth(dir, distance) + frame.haze.rgb * distance));
+    // RV fogs the part of the ray below the water with the water fog (render-atmosphere.md
+    // section 2). Seen from above, the water surface hides everything below it and the sea
+    // shader fogs what it refracts, so only a camera below the water splits rays here.
+    var under = 0.0;
+    let camera_y = frame.fog.z;
+    if frame.water.z > 0.5 && camera_y < frame.water.x {
+        let rise = dir.y * distance;
+        if rise > 1e-4 {
+            under = distance * saturate((frame.water.x - camera_y) / rise);
+        } else {
+            under = distance;
+        }
+    }
+    let in_air = distance - under;
+    var transmittance = exp(-(fog_optical_depth(dir, in_air) + frame.haze.rgb * in_air));
     if frame.linear_fog.y > 0.0 {
         transmittance *= saturate((frame.linear_fog.x - distance) * frame.linear_fog.y);
+    }
+    if under > 0.0 {
+        let water = exp(-under * frame.water.y);
+        let g = frame.water_fog_gradient;
+        var shade = g.y + dir.y * (g.z - g.y);
+        if dir.y < 0.0 {
+            shade = g.x + (1.0 + dir.y) * (1.0 + dir.y) * (g.y - g.x);
+        }
+        // Camera below water: scene*Ta*Tw + airFog*(1 - Ta) + waterFog*Ta*(1 - Tw).
+        let lit = color * transmittance * water + frame.sky_horizon.rgb * (1.0 - transmittance);
+        let fogged = shade * frame.water_fog_color.rgb * transmittance * (1.0 - water);
+        return vec4<f32>(lit + fogged, 1.0);
     }
     return vec4<f32>(mix(frame.sky_horizon.rgb, color, transmittance), 1.0);
 }

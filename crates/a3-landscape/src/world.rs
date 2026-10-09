@@ -5,7 +5,9 @@ use a3_core::VfsPath;
 use glam::{Vec2, Vec3};
 
 use crate::Error;
-use crate::cfg::{array_n, classes, number, number_or, numbers, text, text_or_empty, texts};
+use crate::cfg::{
+    array_n, classes, expr_number, number, number_or, numbers, text, text_or_empty, texts,
+};
 
 /// A step level of the map grid (`class Grid >> ZoomN`).
 #[derive(Debug, Clone, PartialEq)]
@@ -152,6 +154,85 @@ pub struct Sea {
     pub peak_wave_top: f32,
     /// `peakWaveBottom`.
     pub peak_wave_bottom: f32,
+    /// The wave entries of `class Sea`, with the engine's defaults for missing ones.
+    pub waves: SeaWaves,
+    /// `class WaterExPars`: the sea shader's parameters.
+    pub water_ex: WaterExPars,
+}
+
+/// The wave entries of `CfgWorlds >> <world> >> Sea` (`docs/re/render-water.md` §1). Missing
+/// entries take the engine's defaults.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SeaWaves {
+    /// `WaterMapScale`.
+    pub water_map_scale: f32,
+    /// `WaterGrid`: water cell edge in metres.
+    pub water_grid: f32,
+    /// `MaxTide`.
+    pub max_tide: f32,
+    /// `MaxWave`.
+    pub max_wave: f32,
+    /// `SeaWaveXScale`: radial wave frequency, cycles per metre.
+    pub x_scale: f32,
+    /// `SeaWaveZScale`: angular wave frequency, cycles per water cell of arc.
+    pub z_scale: f32,
+    /// `SeaWaveHScale`: wave height scale.
+    pub h_scale: f32,
+    /// `SeaWaveXDuration`: radial wave period in milliseconds.
+    pub x_duration_ms: i32,
+    /// `SeaWaveZDuration`: angular wave period in milliseconds.
+    pub z_duration_ms: i32,
+}
+
+impl Default for SeaWaves {
+    /// The engine's defaults (loader `0x141648a40`).
+    fn default() -> Self {
+        SeaWaves {
+            water_map_scale: 20.0,
+            water_grid: 50.0,
+            max_tide: 1.5,
+            max_wave: 0.25,
+            x_scale: 0.04,
+            z_scale: 0.02,
+            h_scale: 1.0,
+            x_duration_ms: 5000,
+            z_duration_ms: 10000,
+        }
+    }
+}
+
+/// `CfgWorlds >> <world> >> WaterExPars` (`docs/re/render-water.md` §1). `None` marks an
+/// entry the world does not set; the engine then passes 0 to the shaders.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct WaterExPars {
+    pub fog_density: Option<f32>,
+    pub fog_color: Option<Vec3>,
+    pub fog_color_extinction_speed: Option<Vec3>,
+    pub light_extinction_speed: Option<Vec3>,
+    pub diffuse_light_extinction_speed: Option<Vec3>,
+    pub fog_gradient_coefs: Option<Vec3>,
+    pub fog_color_light_influence: Option<Vec3>,
+    pub ss_reflection_strength: Option<f32>,
+    pub ss_reflection_max_jitter: Option<f32>,
+    pub ss_reflection_ripple_influence: Option<f32>,
+    pub ss_reflection_edge_fading_coef: Option<f32>,
+    pub ss_reflection_dist_fading_coef: Option<f32>,
+    pub specular_max_intensity: Option<f32>,
+    pub specular_power_overcast0: Option<f32>,
+    pub specular_power_overcast1: Option<f32>,
+    pub specular_normal_modify_coef: Option<f32>,
+    pub refraction_min_coef: Option<f32>,
+    pub refraction_max_coef: Option<f32>,
+    pub refraction_max_dist: Option<f32>,
+    pub surface_opacity: Option<f32>,
+    pub shadow_intensity: Option<f32>,
+    pub foam_around_objects_intensity: Option<f32>,
+    pub foam_around_objects_fade_coef: Option<f32>,
+    pub foam_color_coef: Option<f32>,
+    pub foam_deformation_coef: Option<f32>,
+    pub foam_texture_coef: Option<f32>,
+    pub foam_time_move_speed: Option<f32>,
+    pub foam_time_move_amount: Option<f32>,
 }
 
 /// One ambient life species (`AmbientA3 >> RadiusX >> Species >> Y`).
@@ -442,6 +523,63 @@ fn read_sea(c: &ConfigRef<'_>) -> Sea {
         shore_top: number_or(c, "shoreTop", 0.0),
         peak_wave_top: number_or(c, "peakWaveTop", 0.0),
         peak_wave_bottom: number_or(c, "peakWaveBottom", 0.0),
+        waves: read_sea_waves(&sea),
+        water_ex: read_water_ex(&c.get("WaterExPars")),
+    }
+}
+
+fn read_sea_waves(sea: &ConfigRef<'_>) -> SeaWaves {
+    let d = SeaWaves::default();
+    // Several entries are expressions such as "2.0/50", which the engine evaluates.
+    let n = |name: &str, default: f32| expr_number(sea, name).unwrap_or(default);
+    SeaWaves {
+        water_map_scale: n("WaterMapScale", d.water_map_scale),
+        water_grid: n("WaterGrid", d.water_grid),
+        max_tide: n("MaxTide", d.max_tide),
+        max_wave: n("MaxWave", d.max_wave),
+        x_scale: n("SeaWaveXScale", d.x_scale),
+        z_scale: n("SeaWaveZScale", d.z_scale),
+        h_scale: n("SeaWaveHScale", d.h_scale),
+        x_duration_ms: n("SeaWaveXDuration", d.x_duration_ms as f32) as i32,
+        z_duration_ms: n("SeaWaveZDuration", d.z_duration_ms as f32) as i32,
+    }
+}
+
+fn read_water_ex(w: &ConfigRef<'_>) -> WaterExPars {
+    let n = |name: &str| expr_number(w, name);
+    let v = |name: &str| {
+        let values = numbers(w, name);
+        (values.len() >= 3).then(|| Vec3::new(values[0], values[1], values[2]))
+    };
+    WaterExPars {
+        fog_density: n("fogDensity"),
+        fog_color: v("fogColor"),
+        fog_color_extinction_speed: v("fogColorExtinctionSpeed"),
+        light_extinction_speed: v("ligtExtinctionSpeed"),
+        diffuse_light_extinction_speed: v("diffuseLigtExtinctionSpeed"),
+        fog_gradient_coefs: v("fogGradientCoefs"),
+        fog_color_light_influence: v("fogColorLightInfluence"),
+        ss_reflection_strength: n("ssReflectionStrength"),
+        ss_reflection_max_jitter: n("ssReflectionMaxJitter"),
+        ss_reflection_ripple_influence: n("ssReflectionRippleInfluence"),
+        ss_reflection_edge_fading_coef: n("ssReflectionEdgeFadingCoef"),
+        ss_reflection_dist_fading_coef: n("ssReflectionDistFadingCoef"),
+        specular_max_intensity: n("specularMaxIntensity"),
+        specular_power_overcast0: n("specularPowerOvercast0"),
+        specular_power_overcast1: n("specularPowerOvercast1"),
+        specular_normal_modify_coef: n("specularNormalModifyCoef"),
+        refraction_min_coef: n("refractionMinCoef"),
+        refraction_max_coef: n("refractionMaxCoef"),
+        refraction_max_dist: n("refractionMaxDist"),
+        surface_opacity: n("surfaceOpacity"),
+        shadow_intensity: n("shadowIntensity"),
+        foam_around_objects_intensity: n("foamAroundObjectsIntensity"),
+        foam_around_objects_fade_coef: n("foamAroundObjectsFadeCoef"),
+        foam_color_coef: n("foamColorCoef"),
+        foam_deformation_coef: n("foamDeformationCoef"),
+        foam_texture_coef: n("foamTextureCoef"),
+        foam_time_move_speed: n("foamTimeMoveSpeed"),
+        foam_time_move_amount: n("foamTimeMoveAmount"),
     }
 }
 
