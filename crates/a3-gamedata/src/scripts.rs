@@ -131,6 +131,12 @@ impl ConfigHost for VfsHost {
     fn configs_mut(&mut self) -> &mut SqfConfigs {
         &mut self.configs
     }
+
+    fn language(&self) -> &str {
+        self.localizer
+            .as_ref()
+            .map_or(a3_stringtable::ENGLISH, |localizer| localizer.language())
+    }
 }
 
 impl std::fmt::Debug for VfsHost {

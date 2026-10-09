@@ -193,3 +193,47 @@ fn config_text_is_localized_through_a_pluggable_localizer() {
     assert_eq!(data.localize("$STR_Missing"), "$STR_Missing");
     assert_eq!(data.localize("plain"), "plain");
 }
+
+/// The stringtables of the mounted game are attached at load time, so `localize`,
+/// `isLocalized`, `$STR_` config text and `language` work (oracle probes `loc.*`, issue #278).
+#[test]
+fn the_stringtables_of_the_loaded_game_answer_localize() {
+    let dir = tempfile::tempdir().unwrap();
+    let xml = r#"<?xml version="1.0" encoding="utf-8"?>
+<Project name="Test">
+  <Package name="P">
+    <Container name="C">
+      <Key ID="STR_Hello">
+        <English>Hello</English>
+        <German>Hallo</German>
+      </Key>
+    </Container>
+  </Package>
+</Project>"#;
+    let mut writer = PboWriter::new().property("prefix", r"a3\x");
+    writer = writer.file(
+        "config.bin",
+        write_rap(&parse_text(&patches("A", &[])).unwrap()),
+    );
+    writer = writer.file("stringtable.xml", xml.as_bytes().to_vec());
+    std::fs::create_dir_all(dir.path().join("Addons")).unwrap();
+    std::fs::write(dir.path().join("Addons/a_main.pbo"), writer.to_bytes()).unwrap();
+
+    let data = GameData::load(&LoadOptions::new(dir.path())).unwrap();
+    assert_eq!(data.language(), "English");
+    assert_eq!(data.localize("$STR_Hello"), "Hello");
+    assert_eq!(data.localize("$STR_Missing"), "$STR_Missing");
+
+    let mut vm = a3_gamedata::script_vm(&data);
+    let eval = |vm: &mut a3_sqf::Vm<_>, code: &str| match vm.eval(code) {
+        Ok(v) => v.to_sqf_string(),
+        Err(e) => panic!("{code}: {}", e.report),
+    };
+    assert_eq!(eval(&mut vm, "localize \"STR_Hello\""), "\"Hello\"");
+    assert_eq!(eval(&mut vm, "localize \"$STR_Hello\""), "\"Hello\"");
+    assert_eq!(eval(&mut vm, "localize \"str_hello\""), "\"Hello\"");
+    assert_eq!(eval(&mut vm, "localize \"STR_Nope\""), "\"\"");
+    assert_eq!(eval(&mut vm, "isLocalized \"STR_Hello\""), "true");
+    assert_eq!(eval(&mut vm, "isLocalized \"STR_Nope\""), "false");
+    assert_eq!(eval(&mut vm, "language"), "\"English\"");
+}

@@ -14,6 +14,8 @@ class CfgVehicles {
     class Man: All { simulation = "soldier"; };
     class B_Soldier_F: Man { scope = 2; side = 1; };
     class O_Soldier_F: Man { scope = 2; side = 0; };
+    class Car: All { simulation = "carx"; };
+    class B_MRAP_01_F: Car { scope = 2; side = 1; };
 };
 "#;
 
@@ -169,4 +171,62 @@ fn side_relations() {
         eval(&mut vm, "west getFriend independent").as_number(),
         Some(1.0)
     );
+}
+
+/// Oracle probes `wstr.createunit_east_in_west` and `wstr.empty_vehicle_side`: a unit reports
+/// its own side even in a group of another side, and an empty vehicle is civilian.
+#[test]
+fn side_of_a_unit_and_of_an_empty_vehicle() {
+    let mut vm = vm(ClientId::SERVER);
+    eval(
+        &mut vm,
+        r#"
+        g = createGroup west;
+        friend = g createUnit ["B_Soldier_F", [0, 0, 0], [], 0, "NONE"];
+        enemy = g createUnit ["O_Soldier_F", [5, 0, 0], [], 0, "NONE"];
+        car = createVehicle ["B_MRAP_01_F", [10, 0, 0], [], 0, "NONE"];
+    "#,
+    );
+
+    assert!(truth(&mut vm, "side friend isEqualTo west"));
+    assert!(truth(&mut vm, "side enemy isEqualTo east"), "own side");
+    assert!(
+        truth(&mut vm, "side group enemy isEqualTo west"),
+        "group side"
+    );
+    assert!(
+        truth(&mut vm, "side car isEqualTo civilian"),
+        "empty vehicle"
+    );
+}
+
+/// Oracle probe `wvr.group_formation`: `behaviour leader grpNull` is "ERROR".
+#[test]
+fn the_modes_of_a_group_without_units() {
+    let mut vm = vm(ClientId::SERVER);
+    eval(&mut vm, "g = createGroup west");
+
+    assert_eq!(text(&mut vm, "behaviour leader g"), "ERROR");
+    assert_eq!(text(&mut vm, "formation g"), "WEDGE");
+    assert_eq!(text(&mut vm, "combatMode g"), "YELLOW");
+    assert_eq!(text(&mut vm, "speedMode g"), "NORMAL");
+}
+
+/// Oracle probe `wstr.allgroups_empty`: `deleteVehicle _u; deleteGroup _g` leaves no group, even
+/// though the deletion of the unit takes effect at the end of the step.
+#[test]
+fn delete_group_takes_units_scheduled_for_deletion() {
+    let mut vm = vm(ClientId::SERVER);
+    eval(
+        &mut vm,
+        r#"
+        g = createGroup west;
+        u = g createUnit ["B_Soldier_F", [0, 0, 0], [], 0, "NONE"];
+        deleteVehicle u;
+        deleteGroup g;
+    "#,
+    );
+
+    assert!(truth(&mut vm, "isNull g"));
+    assert_eq!(eval(&mut vm, "count allGroups").as_number(), Some(0.0));
 }

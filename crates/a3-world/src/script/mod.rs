@@ -18,8 +18,10 @@ mod handlers;
 mod identity;
 mod inventory;
 mod markers;
+mod positions;
 mod query;
 mod state;
+mod terrain;
 mod transform;
 mod weapons;
 
@@ -28,6 +30,7 @@ use glam::DVec3;
 
 pub use groups::{group_arg, group_value, null_group};
 pub use handlers::{dispatch_events, raise_group_event, raise_mission_event, raise_object_event};
+pub use terrain::terrain_normal;
 
 use crate::{ClientId, ObjectRef, TypeBank, World};
 
@@ -56,7 +59,9 @@ pub fn register_world_commands<H: WorldHost>(r: &mut Registry<H>) {
     inventory::register(r);
     state::register(r);
     transform::register(r);
+    positions::register(r);
     query::register(r);
+    terrain::register(r);
     weapons::register(r);
 }
 

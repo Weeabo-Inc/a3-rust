@@ -192,9 +192,11 @@ mod tests {
             dump(&t, r#"cfg >> "b""#, true).unwrap(),
             "// bin\\config.bin/Cfg/B\n// inherits: A\nclass B\n{\n    y = 2;\n    x = 1;\n};\n"
         );
+        // An inherited entry prints at the class that declares it, as the engine's configs do
+        // (oracle probe `cfg.configfile_str_path`).
         assert_eq!(
             dump(&t, r"Cfg\B\x", true).unwrap(),
-            "// bin\\config.bin/Cfg/B/x\nx = 1;\n"
+            "// bin\\config.bin/Cfg/A/x\nx = 1;\n"
         );
         let err = dump(&t, "Cfg/Nope/x", false).unwrap_err();
         assert!(err.to_string().contains("\"Nope\""), "{err}");

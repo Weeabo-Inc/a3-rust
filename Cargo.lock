@@ -109,6 +109,7 @@ dependencies = [
  "a3-pbo",
  "a3-preproc",
  "a3-sqf",
+ "a3-stringtable",
  "a3-vfs",
  "tempfile",
  "thiserror 2.0.21",

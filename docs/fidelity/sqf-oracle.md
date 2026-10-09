@@ -7,9 +7,9 @@ Reproduce (Windows, game install in `A3_ROOT`): `cargo build --release -p a3-too
 `python tools/oracle/oracle.py run` (add `--filter <regex>` for a subset). Raw results go to
 `.work/oracle/results/` (`oracle.json`, `ours.json`, `diff.json`).
 
-Run: 2026-10-09, ours at commit `7c72145`.
+Run: 2026-10-09, ours at commit `31679d7`.
 
-**551 of 787 comparable probes match (70.0%)**; 788 probes in total.
+**667 of 787 comparable probes match (84.8%)**; 824 probes in total.
 
 Categories: `match` same type and `str`, and the same float32 for numbers; `precision` same
 `str` but a different float32; `mismatch` different type or `str`; `ours-error` the
@@ -19,46 +19,30 @@ errors on the original (the probe is wrong or the command is absent; not compare
 
 | Area | match | mismatch | precision | ours-error | oracle-error | both-error | missing |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| arr | 74 | 8 | 0 | 5 | 0 | 1 | 0 |
-| bis | 58 | 3 | 0 | 12 | 0 | 0 | 0 |
-| cfg | 49 | 9 | 0 | 9 | 0 | 0 | 0 |
+| arr | 75 | 7 | 0 | 5 | 0 | 1 | 0 |
+| bis | 66 | 1 | 0 | 6 | 0 | 0 | 0 |
+| cfg | 65 | 0 | 0 | 2 | 0 | 0 | 0 |
 | ctl | 50 | 3 | 0 | 7 | 0 | 2 | 0 |
 | hash | 33 | 6 | 0 | 4 | 1 | 1 | 0 |
-| loc | 4 | 4 | 0 | 1 | 0 | 0 | 0 |
-| num | 77 | 29 | 0 | 4 | 0 | 1 | 0 |
+| loc | 9 | 0 | 0 | 0 | 0 | 0 | 0 |
+| num | 98 | 8 | 0 | 4 | 0 | 1 | 0 |
+| num2 | 0 | 0 | 0 | 0 | 0 | 0 | 32 |
 | rex | 14 | 0 | 0 | 1 | 0 | 0 | 0 |
-| rnd | 0 | 7 | 0 | 0 | 0 | 2 | 0 |
+| rnd | 7 | 0 | 0 | 0 | 0 | 2 | 4 |
 | str | 70 | 5 | 0 | 2 | 0 | 4 | 0 |
-| type | 73 | 9 | 0 | 0 | 0 | 1 | 0 |
-| vec | 22 | 2 | 0 | 10 | 0 | 0 | 0 |
-| wstr | 14 | 25 | 1 | 46 | 0 | 0 | 0 |
-| wvr | 13 | 3 | 0 | 9 | 0 | 0 | 0 |
-| **total** | **551** | **113** | **1** | **110** | **1** | **12** | **0** |
+| type | 74 | 8 | 0 | 0 | 0 | 1 | 0 |
+| vec | 33 | 1 | 0 | 0 | 0 | 0 | 0 |
+| wstr | 52 | 26 | 3 | 5 | 0 | 0 | 0 |
+| wvr | 21 | 3 | 0 | 1 | 0 | 0 | 0 |
+| **total** | **667** | **68** | **3** | **37** | **1** | **12** | **36** |
 
 ## Failing probes
 
 | Probe | Category | Issue |
 |---|---|---|
-| `num.str_1e6` | mismatch | #272 |
-| `num.str_1234567` | mismatch | #272 |
-| `num.str_1e_minus5` | mismatch | #272 |
-| `num.str_1e38` | mismatch | #272 |
-| `num.str_1e39_inf` | mismatch | #272 |
-| `num.str_neg_inf` | mismatch | #272 |
-| `num.str_nan` | mismatch | #272 |
-| `num.str_large_int` | mismatch | #272 |
 | `num.div_by_zero` | ours-error | #271 |
-| `num.pow_neg_frac` | mismatch | #272 |
-| `num.int_overflow_add` | mismatch | #272 |
-| `num.round_neg_half` | mismatch | #273 |
-| `num.round_neg_1_5` | mismatch | #273 |
-| `num.round_neg_2_5` | mismatch | #273 |
-| `num.cos_90` | mismatch | #272 |
 | `num.atan2_neg` | ours-error | #271 |
 | `num.finite_inf` | ours-error | #271 |
-| `num.format_number` | mismatch | #272 |
-| `num.format_array_nums` | mismatch | #272 |
-| `num.str_array_nums` | mismatch | #272 |
 | `num.bitand` | mismatch | #270 |
 | `num.bitor` | mismatch | #270 |
 | `num.bitxor` | mismatch | #270 |
@@ -67,11 +51,7 @@ errors on the original (the probe is wrong or the command is absent; not compare
 | `num.bitshr` | mismatch | #270 |
 | `num.bitand_float` | mismatch | #270 |
 | `num.bitand_neg` | mismatch | #270 |
-| `num.str_int_24bit` | mismatch | #272 |
-| `num.str_7_digits` | mismatch | #272 |
-| `num.str_0_000001` | mismatch | #272 |
 | `num.neg_mod_zero` | ours-error | #271 |
-| `num.parse_inf` | mismatch | #272 |
 | `str.select_neg_start` | mismatch | #275 |
 | `str.format_percent` | mismatch | #276 |
 | `str.format_double_percent` | mismatch | #276 |
@@ -89,7 +69,6 @@ errors on the original (the probe is wrong or the command is absent; not compare
 | `arr.apply_index` | ours-error | #271 |
 | `arr.sort_strings_case` | mismatch | #275 |
 | `arr.sort_mixed` | ours-error | #275 |
-| `arr.sort_floats_neg` | mismatch | #272 |
 | `arr.sort_unicode` | mismatch | #275 |
 | `arr.sort_return` | mismatch | #274 |
 | `hash.from_two_arrays_short` | mismatch | #274 |
@@ -108,7 +87,6 @@ errors on the original (the probe is wrong or the command is absent; not compare
 | `type.str_namespace` | mismatch | #276 |
 | `type.str_uinamespace` | mismatch | #276 |
 | `type.str_profilenamespace` | mismatch | #276 |
-| `type.str_config_null` | mismatch | #276 |
 | `type.isequalto_nil` | mismatch | #274 |
 | `type.eq_objnull` | mismatch | #275 |
 | `ctl.if_no_else` | mismatch | #274 |
@@ -122,92 +100,22 @@ errors on the original (the probe is wrong or the command is absent; not compare
 | `ctl.select_code_index` | ours-error | #271 |
 | `ctl.count_code_bool_required` | ours-error | #271 |
 | `vec.add_2d` | mismatch | #275 |
-| `vec.linear_conversion_degenerate` | mismatch | #272 |
-| `vec.dir_to` | ours-error | #282 |
-| `vec.dir_to_neg` | ours-error | #282 |
-| `vec.distance2d_arrays` | ours-error | #282 |
-| `vec.distance_arrays` | ours-error | #282 |
-| `vec.distancesqr_arrays` | ours-error | #282 |
-| `vec.getpos_relative` | ours-error | #282 |
-| `vec.getpos_relative_45` | ours-error | #282 |
-| `vec.inarea_circle` | ours-error | #282 |
-| `vec.inarea_rect_rot` | ours-error | #282 |
-| `vec.inpolygon` | ours-error | #282 |
-| `rnd.seeded_basic` | mismatch | #279 |
-| `rnd.seeded_same` | mismatch | #279 |
-| `rnd.seeded_zero` | mismatch | #279 |
-| `rnd.seeded_neg` | mismatch | #279 |
-| `rnd.seeded_float_seed` | mismatch | #279 |
-| `rnd.seeded_series` | mismatch | #279 |
-| `rnd.seeded_big` | mismatch | #279 |
 | `rex.bad_pattern` | ours-error | #271 |
-| `cfg.gettext_displayname` | mismatch | #277 |
-| `cfg.gettext_number_entry` | mismatch | #277 |
-| `cfg.getnumber_text_entry` | ours-error | #277 |
-| `cfg.gettext_world_description` | mismatch | #277 |
-| `cfg.configname_root` | mismatch | #277 |
-| `cfg.inheritsfrom_root` | mismatch | #276 |
-| `cfg.hierarchy` | mismatch | #277 |
-| `cfg.parents` | ours-error | #277 |
-| `cfg.iskindof_config` | ours-error | #277 |
-| `cfg.iskindof_config_case` | ours-error | #277 |
-| `cfg.iskindof_config_cfgweapons` | ours-error | #277 |
-| `cfg.iskindof_unknown` | ours-error | #277 |
-| `cfg.configclasses_condition` | ours-error | #277 |
 | `cfg.sourcemod` | ours-error | #277 |
 | `cfg.sourceaddonlist` | ours-error | #277 |
-| `cfg.campaignconfigfile` | mismatch | #276 |
-| `cfg.gettext_cfgfactionclasses` | mismatch | #277 |
-| `cfg.configfile_str_path` | mismatch | #277 |
-| `loc.str_disp_ok` | mismatch | #278 |
-| `loc.str_disp_cancel` | mismatch | #278 |
-| `loc.dollar` | mismatch | #278 |
-| `loc.islocalized` | mismatch | #278 |
-| `loc.language` | ours-error | #278 |
 | `bis.sortalphabetically` | mismatch | #275 |
 | `bis.arrayshift` | ours-error | #281 |
 | `bis.removedupes` | ours-error | #281 |
-| `bis.dirto` | ours-error | #282 |
-| `bis.relpos` | ours-error | #282 |
-| `bis.distance2d` | ours-error | #282 |
 | `bis.trimstring` | ours-error | #281 |
 | `bis.typetext` | ours-error | #281 |
-| `bis.sidename` | mismatch | #278 |
-| `bis.displayname` | mismatch | #277 |
 | `bis.isinfrontof` | ours-error | #281 |
-| `bis.nearestposition` | ours-error | #281 |
-| `bis.weaponcomponents` | ours-error | #277 |
-| `bis.ordinal` | ours-error | #278 |
 | `bis.encodeflags` | ours-error | #281 |
-| `wstr.worldname` | mismatch | #286 |
-| `wstr.worldsize` | ours-error | #283 |
-| `wstr.height_center` | ours-error | #283 |
-| `wstr.height_agia_marina` | ours-error | #283 |
-| `wstr.height_airfield` | ours-error | #283 |
-| `wstr.height_mike26` | ours-error | #283 |
-| `wstr.height_kamino` | ours-error | #283 |
-| `wstr.height_girna` | ours-error | #283 |
-| `wstr.height_hill` | ours-error | #283 |
-| `wstr.height_fraction` | ours-error | #283 |
-| `wstr.height_cell_corner` | ours-error | #283 |
-| `wstr.height_cell_mid` | ours-error | #283 |
-| `wstr.height_sea` | ours-error | #283 |
-| `wstr.height_outside_neg` | ours-error | #283 |
-| `wstr.height_outside_far` | ours-error | #283 |
-| `wstr.height_3d_arg` | ours-error | #283 |
-| `wstr.height_grid` | ours-error | #283 |
-| `wstr.height_grid_fine` | ours-error | #283 |
-| `wstr.water_sea` | ours-error | #283 |
-| `wstr.water_land` | ours-error | #283 |
-| `wstr.water_shore_grid` | ours-error | #283 |
+| `wstr.height_airfield` | precision | #283 |
+| `wstr.height_cell_mid` | precision | #283 |
 | `wstr.surfacetype_land` | ours-error | #283 |
 | `wstr.surfacetype_sea` | ours-error | #283 |
 | `wstr.surfacetype_town` | ours-error | #283 |
-| `wstr.surfacenormal` | ours-error | #283 |
-| `wstr.asl_to_agl` | ours-error | #283 |
-| `wstr.agl_to_asl` | ours-error | #283 |
-| `wstr.atl_to_asl` | ours-error | #283 |
-| `wstr.asl_to_atl` | ours-error | #283 |
+| `wstr.surfacenormal` | mismatch | #283 |
 | `wstr.create_box_atl` | mismatch | #284 |
 | `wstr.create_box_asl` | mismatch | #284 |
 | `wstr.create_box_getpos` | mismatch | #284 |
@@ -222,9 +130,9 @@ errors on the original (the probe is wrong or the command is absent; not compare
 | `wstr.setposatl_getposasl` | mismatch | #284 |
 | `wstr.setposasl_getposatl` | mismatch | #284 |
 | `wstr.setpos_getpos` | mismatch | #284 |
-| `wstr.getdir_between` | ours-error | #283 |
-| `wstr.modeltoworld` | ours-error | #283 |
-| `wstr.worldtomodel` | ours-error | #283 |
+| `wstr.getdir_between` | mismatch | #283 |
+| `wstr.modeltoworld` | mismatch | #283 |
+| `wstr.worldtomodel` | mismatch | #283 |
 | `wstr.nearestobjects_types` | mismatch | #285 |
 | `wstr.nearestobjects_count` | mismatch | #285 |
 | `wstr.nearestobjects_order_dist` | mismatch | #285 |
@@ -234,33 +142,10 @@ errors on the original (the probe is wrong or the command is absent; not compare
 | `wstr.nearestterrainobjects_house` | mismatch | #285 |
 | `wstr.nearestterrainobjects_all` | mismatch | #285 |
 | `wstr.nearestbuilding` | ours-error | #283 |
-| `wstr.lis_ground` | ours-error | #283 |
-| `wstr.lis_ground_normal` | ours-error | #283 |
-| `wstr.lis_count_town` | ours-error | #283 |
-| `wstr.lis_sea` | ours-error | #283 |
-| `wstr.terrainintersect` | ours-error | #283 |
-| `wstr.terrainintersectasl` | ours-error | #283 |
-| `wstr.lineintersects` | ours-error | #283 |
-| `wstr.createunit_east_in_west` | mismatch | #284 |
-| `wstr.empty_vehicle_side` | mismatch | #286 |
-| `wstr.allgroups_empty` | mismatch | #286 |
+| `wstr.lis_ground_normal` | mismatch | #283 |
 | `wstr.boundingbox_box` | ours-error | #283 |
-| `wstr.sizeof` | ours-error | #283 |
-| `wstr.date` | ours-error | #283 |
-| `wstr.overcast` | ours-error | #283 |
-| `wstr.fog` | ours-error | #283 |
-| `wstr.sunormoon` | ours-error | #283 |
-| `wstr.player_null` | ours-error | #283 |
-| `wvr.worldname` | mismatch | #286 |
-| `wvr.worldsize` | ours-error | #283 |
-| `wvr.height_center` | ours-error | #283 |
-| `wvr.height_origin` | ours-error | #283 |
-| `wvr.height_points` | ours-error | #283 |
-| `wvr.water` | ours-error | #283 |
 | `wvr.surfacetype` | ours-error | #283 |
-| `wvr.create_two_none_collide` | ours-error | #283 |
+| `wvr.create_two_none_collide` | mismatch | #283 |
 | `wvr.nearestobjects_tie` | mismatch | #285 |
-| `wvr.lis_ground` | ours-error | #283 |
-| `wvr.lis_box` | ours-error | #283 |
-| `wvr.group_formation` | mismatch | #286 |
+| `wvr.lis_box` | mismatch | #283 |
 

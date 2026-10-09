@@ -428,9 +428,9 @@ pub enum ExportMode {
 
 /// A config entry reached by a path from the root, like an SQF `Config` value.
 ///
-/// The access path is kept: an inherited subclass reached through a derived class reports the
-/// derived path (`configHierarchy`, `str`), while its own base is resolved where it is defined.
-/// A reference to nothing is the null config (`configNull`).
+/// The path is the entry's own: an entry inherited from a base class resolves to the class that
+/// declares it, so `configName`, `str` and `configHierarchy` show the declaring class's path, as
+/// the engine's configs do. A reference to nothing is the null config (`configNull`).
 #[derive(Clone)]
 pub struct ConfigRef<'a> {
     tree: &'a ConfigTree,
@@ -473,20 +473,15 @@ impl<'a> ConfigRef<'a> {
         self.path.last().copied()
     }
 
-    /// `config >> name`: the entry `name` of this class, searching the base chain.
+    /// `config >> name`: the entry `name` of this class, searching the base chain. An inherited
+    /// entry resolves to the class that declares it, as the engine's configs do, so
+    /// `configName`, `str` and `configHierarchy` show the declaring class's path.
     pub fn get(&self, name: &str) -> ConfigRef<'a> {
         let Some(id) = self.id() else {
             return Self::null(self.tree);
         };
         match self.tree.find(id, name, None) {
-            Some(found) => {
-                let mut path = self.path.clone();
-                path.push(found);
-                Self {
-                    tree: self.tree,
-                    path,
-                }
-            }
+            Some(found) => Self::at(self.tree, found),
             None => Self::null(self.tree),
         }
     }
@@ -502,12 +497,19 @@ impl<'a> ConfigRef<'a> {
         self.path.is_empty()
     }
 
-    /// `configName`: the entry's name in its original case; empty for the root and null.
+    /// `configName`: the entry's name in its original case; the tree's root name for the root
+    /// (`bin\config.bin`) and "" for null.
     pub fn name(&self) -> &'a str {
         match self.id() {
-            Some(id) => &self.tree.node(id).name,
+            Some(id) if id != ROOT => &self.tree.node(id).name,
+            Some(_) => &self.tree.root_name,
             None => "",
         }
+    }
+
+    /// The tree's root name (`bin\config.bin`, a mission's `description.ext`).
+    pub fn root_name(&self) -> &'a str {
+        &self.tree.root_name
     }
 
     fn value(&self) -> Option<Value> {

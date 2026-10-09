@@ -21,6 +21,12 @@ class CfgVehicles {
     };
     class Truck: Car { maxSpeed = 80; transportSoldier = 12; };
     class Bike: All { scope = 1; transportSoldier = 0; };
+    class Broken: Car { scope = 0; displayName = "$STR_Nope"; };
+};
+class CfgWeapons {
+    class Rifle_Base_F { scope = 1; baseValue = 7; };
+    class arifle_MX_Base_F: Rifle_Base_F { scope = 1; };
+    class arifle_MX_F: arifle_MX_Base_F { scope = 2; };
 };
 class RscText { idc = -1; };
 "#;
@@ -135,21 +141,25 @@ fn inheritance() {
         s(&format!("str inheritsFrom {truck}")),
         "\"bin\\config.bin/CfgVehicles/Car\""
     );
+    // configName of the root is the tree's name (`bin\config.bin`); the engine's
+    // `configHierarchy (configFile >> "CfgVehicles" >> "B_Soldier_F")` starts with it.
     assert_eq!(
         s(&format!(
             "configHierarchy {truck} apply {{ configName _x }}"
         )),
-        "[\"\",\"CfgVehicles\",\"Truck\"]"
+        "[\"bin\\config.bin\",\"CfgVehicles\",\"Truck\"]"
     );
+    // An entry inherited from a base class prints at the class that declares it (oracle probe
+    // `cfg.configfile_str_path`: arifle_MX_F >> "Single" is arifle_MX_Base_F >> "Single").
     assert_eq!(
         s(&format!("str ({truck} >> \"Turrets\" >> \"Main\")")),
-        "\"bin\\config.bin/CfgVehicles/Truck/Turrets/Main\""
+        "\"bin\\config.bin/CfgVehicles/Car/Turrets/Main\""
     );
 }
 
 #[test]
 fn count_and_select() {
-    assert_eq!(s("count (configFile >> \"CfgVehicles\")"), "4");
+    assert_eq!(s("count (configFile >> \"CfgVehicles\")"), "5");
     assert_eq!(
         s("configName ((configFile >> \"CfgVehicles\") select 1)"),
         "\"Car\""
@@ -174,7 +184,7 @@ fn config_select_rounds_indices_like_arrays() {
 fn config_classes_and_properties() {
     assert_eq!(
         s("(\"true\" configClasses (configFile >> \"CfgVehicles\")) apply { configName _x }"),
-        "[\"All\",\"Car\",\"Truck\",\"Bike\"]"
+        "[\"All\",\"Car\",\"Truck\",\"Bike\",\"Broken\"]"
     );
     assert_eq!(
         s(
@@ -215,5 +225,95 @@ fn configs_are_hash_map_keys() {
             "_m = createHashMap; _m set [{CAR}, 1]; _m get (configFile >> \"CfgVehicles\" >> \"Car\")"
         )),
         "1"
+    );
+}
+
+/// Oracle probes `cfg.gettext_number_entry`, `cfg.getnumber_text_entry` and
+/// `cfg.gettext_displayname`: only a text entry has text, and a text entry that is not a number
+/// evaluates to 0 instead of failing.
+#[test]
+fn text_and_number_coercions() {
+    assert_eq!(s(&format!("getText ({CAR} >> \"maxSpeed\")")), "\"\"");
+    assert_eq!(s(&format!("getTextRaw ({CAR} >> \"maxSpeed\")")), "\"\"");
+    assert_eq!(s(&format!("getNumber ({CAR} >> \"displayName\")")), "0");
+    assert_eq!(s(&format!("getText ({CAR} >> \"displayName\")")), "\"Car\"");
+    assert_eq!(
+        s(&format!("getTextRaw ({CAR} >> \"displayName\")")),
+        "\"$STR_Car\""
+    );
+    assert_eq!(s(&format!("getNumber ({CAR} >> \"expr\")")), "10");
+    // A text entry whose key no localizer knows stays as written.
+    assert_eq!(
+        s("getText (configFile >> \"CfgVehicles\" >> \"Broken\" >> \"displayName\")"),
+        "\"$STR_Nope\""
+    );
+}
+
+/// Oracle probes `cfg.configname_root`, `cfg.hierarchy`, `cfg.configfile_str_path` and
+/// `cfg.campaignconfigfile` (the last one reported by sqf-vm, issue #276).
+#[test]
+fn config_names_and_hierarchy() {
+    assert_eq!(s("configName configFile"), "\"bin\\config.bin\"");
+    assert_eq!(s("str campaignConfigFile"), "\"\"");
+    assert_eq!(
+        s("(configHierarchy (configFile >> \"CfgVehicles\" >> \"Truck\")) apply { configName _x }"),
+        "[\"bin\\config.bin\",\"CfgVehicles\",\"Truck\"]"
+    );
+    // `configHierarchy [config, classesOnly, includeBases, reversedOrder, configNames]`, as
+    // BIS_fnc_returnParents calls it: the class first, then every base.
+    assert_eq!(
+        s(&format!("configHierarchy [{CAR}, true, true, true, true]")),
+        "[\"Car\",\"All\"]"
+    );
+    assert_eq!(
+        s(&format!("configHierarchy [{CAR}, true, true, false, true]")),
+        "[\"All\",\"Car\"]"
+    );
+    // An inherited entry prints at the class that declares it (oracle probe
+    // `cfg.configfile_str_path`: arifle_MX_F >> "Single" is arifle_MX_Base_F >> "Single").
+    assert_eq!(
+        s("str (configFile >> \"CfgWeapons\" >> \"arifle_MX_F\" >> \"baseValue\")"),
+        "\"bin\\config.bin/CfgWeapons/Rifle_Base_F/baseValue\""
+    );
+}
+
+/// Oracle probes `cfg.iskindof_config`, `cfg.iskindof_config_case`,
+/// `cfg.iskindof_config_cfgweapons` and `cfg.iskindof_unknown`.
+#[test]
+fn is_kind_of_class_names() {
+    assert_eq!(s("\"Truck\" isKindOf \"Car\""), "true");
+    assert_eq!(s("\"trUck\" isKindOf \"cAr\""), "true");
+    assert_eq!(s("\"Bike\" isKindOf \"Truck\""), "false");
+    assert_eq!(s("\"a3ro_missing\" isKindOf \"All\""), "false");
+    assert_eq!(
+        s("\"arifle_MX_F\" isKindOf [\"Rifle_Base_F\", configFile >> \"CfgWeapons\"]"),
+        "true"
+    );
+    assert_eq!(
+        s("\"arifle_MX_F\" isKindOf [\"Car\", configFile >> \"CfgVehicles\"]"),
+        "false"
+    );
+}
+
+/// Oracle probe `loc.language`: the language of the stringtables.
+#[test]
+fn language_is_the_localizer_language() {
+    assert_eq!(s("language"), "\"English\"");
+}
+
+/// `configClasses` drops an entry whose condition fails instead of stopping the script: the
+/// engine logs the error and continues (issue #271, oracle probe
+/// `cfg.configclasses_condition`).
+#[test]
+fn a_failing_config_condition_drops_that_entry() {
+    assert_eq!(
+        s("count (\"_x isKindOf 'Rifle_Base_F'\" configClasses (configFile >> \"CfgVehicles\"))"),
+        "0"
+    );
+    assert_eq!(
+        s(
+            "count (\"getNumber (_x >> 'scope') == 2\" configClasses (configFile >> \"CfgVehicles\"))"
+        ),
+        "2"
     );
 }

@@ -331,20 +331,40 @@ impl World {
         Ok(())
     }
 
-    /// `deleteGroup`: only empty groups can be deleted, as in the original.
+    /// `deleteGroup`: only empty groups can be deleted, as in the original. Units that are
+    /// already scheduled for deletion (the usual `deleteVehicle _u; deleteGroup _g` pair) do not
+    /// keep the group alive.
     pub fn delete_group(&mut self, id: GroupId) -> Result<(), Error> {
+        let units = {
+            let groups = self.groups_mut();
+            let slot = groups
+                .slots
+                .get_mut(id.index as usize)
+                .filter(|s| s.generation == id.generation)
+                .ok_or(Error::NoSuchGroup(id))?;
+            match &slot.group {
+                None => return Err(Error::NoSuchGroup(id)),
+                Some(g) => g.units.clone(),
+            }
+        };
+        let live = units
+            .iter()
+            .any(|&u| self.entity(u).is_some_and(|e| !e.is_deleted()));
+        if live {
+            return Err(Error::GroupNotEmpty(id));
+        }
+        for unit in units {
+            if let Some(e) = self.entity_mut(unit) {
+                e.group = None;
+            }
+        }
         let groups = self.groups_mut();
         let slot = groups
             .slots
             .get_mut(id.index as usize)
             .filter(|s| s.generation == id.generation)
             .ok_or(Error::NoSuchGroup(id))?;
-        match &slot.group {
-            None => return Err(Error::NoSuchGroup(id)),
-            Some(g) if !g.units.is_empty() => return Err(Error::GroupNotEmpty(id)),
-            Some(_) => {}
-        }
-        let g = slot.group.take().expect("checked");
+        let g = slot.group.take().expect("checked above");
         slot.generation = slot.generation.wrapping_add(1);
         groups.free.push(id.index);
         groups.by_network_id.remove(&g.network_id);
@@ -367,13 +387,27 @@ impl World {
         Ok(())
     }
 
-    /// The side of a unit or object: its group's side, otherwise its type's config side.
+    /// The side of a unit or object: its group's side, otherwise its type's config side. This is
+    /// the side the AI and the side relations work with; the `side` script command answers
+    /// [`World::object_side`] instead.
     pub fn side_of(&self, entity: EntityId) -> Option<Side> {
         let e = self.entity(entity)?;
         Some(match e.group.and_then(|g| self.group(g)) {
             Some(g) => g.side,
             None => side_from_config(e.entity_type().side()),
         })
+    }
+
+    /// `side` for an Object: a unit reports its own side (a soldier of one side can serve in a
+    /// group of another), a vehicle its crew's — and an empty vehicle is civilian. Crews are not
+    /// modelled yet, so a vehicle is always empty. Community wiki, `side`; oracle probes
+    /// `wstr.createunit_east_in_west` and `wstr.empty_vehicle_side`.
+    pub fn object_side(&self, entity: EntityId) -> Option<Side> {
+        let e = self.entity(entity)?;
+        if e.class().is_kind_of(crate::EntityClass::Man) {
+            return Some(side_from_config(e.entity_type().side()));
+        }
+        Some(Side::Civilian)
     }
 
     /// How much side `a` likes side `b`: below 0.6 they are enemies (`getFriend`).

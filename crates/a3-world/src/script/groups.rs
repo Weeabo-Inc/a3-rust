@@ -206,7 +206,7 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
         let w = ctx.host.world();
         Ok(Value::Side(
             unit_arg(w, &a)
-                .and_then(|u| w.side_of(u))
+                .and_then(|u| w.object_side(u))
                 .unwrap_or(Side::Unknown),
         ))
     });

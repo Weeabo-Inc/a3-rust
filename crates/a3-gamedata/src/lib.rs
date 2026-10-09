@@ -11,8 +11,9 @@
 //! _(uncertain: which one the engine prefers)_. [`VfsResolver`] and [`VfsHost`] give scripts the
 //! same file access.
 //!
-//! Localisation is pluggable through the [`Localizer`] trait so that the stringtable crate can be
-//! attached without this crate depending on it.
+//! Localisation is attached at load time: [`GameData::load`] merges every `stringtable.xml` and
+//! `stringtable.bin` of the mounted files into one [`Localizer`] for English, which the script
+//! commands (`localize`, `$STR_` config text, `language`) read.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -25,6 +26,7 @@ use a3_vfs::{MountReport, Vfs};
 mod boot;
 mod scripts;
 mod sqf_config;
+mod strings;
 mod usage;
 
 pub use boot::{
@@ -34,6 +36,7 @@ pub use boot::{
 };
 pub use scripts::{ErrorLog, VfsHost, VfsResolver, decode_text, load_text_config, read_text};
 pub use sqf_config::{ConfigHost, ConfigRoot, SqfConfigs, register_config_commands};
+pub use strings::{Stringtables, load_english};
 pub use usage::{CommandUsage, UsageSource, command_usage, fsm_code, is_code_entry};
 
 /// Errors that stop a game load. Problems with individual addons are collected in
@@ -129,7 +132,22 @@ pub struct LoadReport {
     pub cycles: Vec<VfsPath>,
     /// Unbinarised `config.cpp` files ignored because their folder also has a `config.bin`.
     pub skipped_config_cpp: Vec<VfsPath>,
+    /// What the stringtable load found.
+    pub strings: StringsReport,
     pub timings: LoadTimings,
+}
+
+/// Summary of the stringtable load (`stringtable.xml`/`stringtable.bin`).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct StringsReport {
+    /// Tables read.
+    pub tables: usize,
+    /// Keys a later table defined again (ignored).
+    pub duplicates: usize,
+    /// Files that failed to read or parse.
+    pub failed: Vec<(VfsPath, String)>,
+    /// `stringtable.csv` files, which are not read.
+    pub skipped_csv: Vec<VfsPath>,
 }
 
 /// Turns `$STR_...` keys into text. Implemented by the stringtable crate.
@@ -137,6 +155,12 @@ pub trait Localizer: Send + Sync {
     /// The text for `key` (e.g. `STR_A3_Rifleman`, without `$`) in the current language, or
     /// `None` when unknown. Keys compare case-insensitively.
     fn localize(&self, key: &str) -> Option<String>;
+
+    /// The language texts are resolved for (`language`), as the stringtable element name, e.g.
+    /// `English`.
+    fn language(&self) -> &str {
+        a3_stringtable::ENGLISH
+    }
 }
 
 /// A loaded game: its files, its merged config, and how they were assembled.
@@ -148,8 +172,11 @@ pub struct GameData {
     /// Addon configs in merge order.
     pub addons: Vec<AddonConfig>,
     pub report: LoadReport,
-    /// Localisation for `$STR_` text; `None` until a stringtable is attached.
+    /// Localisation for `$STR_` text: the merged stringtables of the loaded game. `None` until
+    /// one is attached (a `GameData` built by hand, or a game without stringtables).
     pub localizer: Option<Arc<dyn Localizer>>,
+    /// The language the stringtables were resolved for (`language`), e.g. `English`.
+    pub language: String,
 }
 
 impl std::fmt::Debug for GameData {
@@ -287,6 +314,14 @@ impl GameData {
             addons.push(addon);
         }
         report.timings.merge = merge_start.elapsed();
+        // The stringtables (`$STR_` text and `localize`); English, as the retail server starts.
+        let (localizer, strings) = load_english(&vfs);
+        report.strings = StringsReport {
+            tables: strings.tables.len(),
+            duplicates: strings.duplicates.len(),
+            failed: strings.failed,
+            skipped_csv: strings.skipped_csv,
+        };
         report.timings.total = start.elapsed();
 
         Self {
@@ -294,7 +329,8 @@ impl GameData {
             config: Arc::new(tree),
             addons,
             report,
-            localizer: None,
+            localizer: Some(localizer),
+            language: a3_stringtable::ENGLISH.to_owned(),
         }
     }
 
@@ -310,6 +346,11 @@ impl GameData {
             }
             _ => text.to_owned(),
         }
+    }
+
+    /// The language the stringtables were resolved for (`language`), e.g. `English`.
+    pub fn language(&self) -> &str {
+        &self.language
     }
 }
 
