@@ -65,7 +65,10 @@ oracle --probes-dir`, 104 probes about errors, nil and sort; the recorded
 - **Only the first error of a script is written to the RPT**: `1/0; 5%0;
   "END"` logs one `Zero divisor` line and ends with `"END"`. A compile error
   from `compile`/`compileScript` is printed by the compiler as well, so
-  `call compile "1 2"` shows two blocks.
+  `call compile "1 2"` shows two blocks. A consequence for diagnosis: a harmless
+  first error hides a later fatal one, so a script that aborted can only be read
+  from its first error line. The scenario sweep's `failed_scripts` is
+  unattributable for `A3\functions_f\initFunctions.sqf` for exactly this reason.
 - An undefined variable read is a logged error too, and yields nil
   (`a3ro_undefined + 1` is nil, the script continues).
 - `sleep` in the unscheduled environment is the same: logged, and the script
