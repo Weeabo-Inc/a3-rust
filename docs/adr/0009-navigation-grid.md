@@ -18,8 +18,10 @@ LOD. The query is `Navigator::find_path(from, to, radius) -> Option<Vec<Vec3>>`.
   combat mode, and traversed with pluggable costs. A navmesh would have to be generated from
   the same data plus the placed objects, which the engine never does — and it would have to be
   rebuilt whenever an object moves. A grid is bake-once, cheap to query for many agents, and
-  its cells carry exactly what the WRP already gives us (geography flags, heightmap, surface
-  material).
+  its cells carry much of what the WRP already gives us (geography flags, heightmap). The bake
+  deliberately ignores the surface material: `a3-landscape` reads `CfgSurfaces` for physics and
+  rendering, but no shipped navigation behaviour was found that depends on it, so a cell's cost
+  is geography, slope and roads only.
 - **Land-cell resolution.** The grid is `Terrain::land_grid` sized, one cell per land cell
   (30 m on Altis, 25 m on Malden, 50 m on Livonia). That is the resolution the geography flags
   are stored at, so the bake is a straight copy instead of an interpolation, and the whole of
@@ -34,7 +36,8 @@ LOD. The query is `Navigator::find_path(from, to, radius) -> Option<Vec<Vec3>>`.
 - **Roads are a cost, not a second graph search.** The engine puts the road network into the
   field (roads cheap for AI, `RoadsLib >> AIpathOffset` for the lateral offset), so the same
   search follows roads. `a3-nav` bakes the `RoadGraph`'s curve segments into the cells they
-  cross at cost 70, and a road cell overrides water and built-up. No separate road routing.
+  cross at cost 70, and a road cell wins over water and built-up: a road over water is a bridge
+  or runway deck, and the deck is what a man walks on. No separate road routing.
 - **Cell path becomes positions by string pull.** The engine's paths are oper positions, not
   cell centres. After A*, a greedy furthest-visible pull on the cell centres walks the segment
   at heightmap resolution and rejects a shortcut that leaves walkable ground (blocked cell,
@@ -45,7 +48,9 @@ LOD. The query is `Navigator::find_path(from, to, radius) -> Option<Vec<Vec3>>`.
   keeps a terrain-wide house path index, so an outdoor path ends at a house position and the
   house's own graph continues. `PathMesh` is that graph: triangles from the model's Paths LOD
   (falling back to the Roadway LOD it already has to stand on), adjacency by shared edge, an
-  A* over triangles and a portal pull. It is built per model, not per Object, and shared.
+  A* over triangles and a path crossing each shared edge at its midpoint. It is built per model,
+  not per Object, and shared. The 60 `households` models Altis's object list references that the
+  real-data test checks all have one.
 - **Obstacles come from physics where they are loaded.** The baked grid sees geography and
   terrain; the objects are not in it, because a WRP object has no footprint until its model is
   read and physics has already read those models. `Navigator::block_from_colliders` patches
@@ -77,11 +82,15 @@ LOD. The query is `Navigator::find_path(from, to, radius) -> Option<Vec<Vec3>>`.
 
 ## Consequences
 
-- The grid is baked once per terrain (seconds on Altis) and is read-only afterwards; live
-  obstacles are patched per query area or cleared with `set_cost`.
+- The grid is baked once per terrain and is read-only afterwards; live obstacles are patched per
+  query area or cleared with `set_cost`. On an idle machine, baking Altis (1,048,576 land cells)
+  takes about 45 ms — geography and slope — or 60 ms including its 1,414 roads, and planning 60
+  paths of 300 m – 2 km across the island takes 38 ms (0.6 ms per path, a `Planner` of the
+  caller's own keeping the search allocation-free); with every core busy both scale to about
+  2–3 times that, still well inside a load.
 - Path quality is bounded by the cell size before smoothing and by the smoothing's own checks
   after it: a path never leaves walkable ground, but it can pass within a cell of an object
-  the bake did not know about (an unst streamed collider).
+  the bake did not know about (an unstreamed collider).
 - Vehicles need their own cost set (`CfgVehicles`-driven) before `calculatePath` can be
   answered; the crate's costs are the man's (`CfgSlopeLimits`).
 - Building paths are per model; a door position links the two graphs, and the link is by
