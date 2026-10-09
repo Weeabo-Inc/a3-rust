@@ -91,6 +91,8 @@ clap = { version = "4", features = ["derive", "env"] }
 
 # Collections
 indexmap = "2"
+smallvec = { version = "1", features = ["union"] }
+rustc-hash = "2"
 
 # Text
 fancy-regex = "0.14"

@@ -26,7 +26,7 @@ pub mod vars;
 
 use std::rc::Rc;
 
-pub use flow::{Continuation, ContinuationKind, Flow, Invoke, Suspend, Unwind};
+pub use flow::{Continuation, ContinuationKind, Flow, Invoke, Locals, Suspend, Unwind};
 pub use vars::{Namespaces, Variables};
 
 use crate::code::{Code, compile_source};
@@ -342,7 +342,7 @@ impl<H: Host> Ctx<'_, H> {
 
     /// The locals of the last ended scope invoked with
     /// [`Invoke::capture`], if any (consumed).
-    pub fn take_captured(&mut self) -> Option<Vec<(Sym, Value)>> {
+    pub fn take_captured(&mut self) -> Option<Locals> {
         self.script.captured.take()
     }
 
@@ -417,7 +417,7 @@ impl<H: Host> Ctx<'_, H> {
                     Some(StackFrame {
                         line,
                         scope_name: cf.scope_name.clone(),
-                        locals: cf.locals.clone(),
+                        locals: cf.locals.to_vec(),
                     })
                 }
                 exec::Frame::Native(_) => None,

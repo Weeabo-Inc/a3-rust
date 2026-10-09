@@ -5,7 +5,7 @@
 //! container become `null`; an unsupported value on its own gives `""`.
 //! `fromJSON` reads objects as hash maps and `null` as nil.
 
-use indexmap::IndexMap;
+use crate::value::HashMapEntries;
 
 use super::*;
 use crate::value::{HashKey, HashMap};
@@ -133,7 +133,7 @@ impl Reader<'_> {
             }
             b'{' => {
                 self.pos += 1;
-                let mut map = IndexMap::new();
+                let mut map = HashMapEntries::default();
                 self.ws();
                 if self.eat("}") {
                     return Some(Value::HashMap(HashMap::from_map(map)));

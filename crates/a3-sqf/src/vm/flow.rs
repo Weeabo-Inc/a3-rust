@@ -39,6 +39,10 @@ impl<H: Host> From<Value> for Flow<H> {
     }
 }
 
+/// The private variables of one scope. Most scopes have a handful
+/// (`_this`, `_x`, `_forEachIndex`), kept inline without a heap allocation.
+pub type Locals = smallvec::SmallVec<[(Sym, Value); 2]>;
+
 /// A request to run code in a new scope.
 #[derive(Clone, Debug)]
 pub struct Invoke {
@@ -47,7 +51,7 @@ pub struct Invoke {
     pub this: Option<Value>,
     /// Further private variables of the new scope (`_x`, `_forEachIndex`,
     /// ...).
-    pub locals: Vec<(Sym, Value)>,
+    pub locals: Locals,
     /// Namespace for global variables in the new scope (`with ... do`);
     /// `None` inherits the caller's.
     pub namespace: Option<Namespace>,
@@ -66,7 +70,7 @@ impl Invoke {
         Invoke {
             code,
             this: None,
-            locals: Vec::new(),
+            locals: Locals::new(),
             namespace: None,
             capture: false,
             nil_ok: false,
