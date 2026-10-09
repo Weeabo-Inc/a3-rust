@@ -184,4 +184,4 @@ progressLoadingScreen	unary	0x51f240	stub	wiki	headless: no loading screen to sh
 endLoadingScreen	nular	0x8b0220	stub	wiki	headless: no loading screen to show
 createCenter	unary	0x18db90	verified	decompiled 0x18db90	ensures the side AI center exists, returns the side; the World needs no center object
 deleteCenter	unary	0x18dc60	stub	sqf-commands.tsv	returns nothing; no center object to delete
-worldName	nular	*	verified	oracle	the terrain CfgWorlds class (#286); a3-mission answers it from the running mission
+worldName	nular	*	verified	oracle	the terrain CfgWorlds class (#286); a3-world answers the World's name, which a3-mission sets from the mission's terrain

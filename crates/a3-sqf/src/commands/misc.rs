@@ -148,9 +148,6 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         ctx.set_script_name(string(&a));
         Ok(Value::Nothing)
     });
-    // Handler 0x2d2bf0 clears the running script's "serializable" flag (and its scopes'), so a
-    // saved game skips it. The VM has no saved games: nothing to clear.
-    r.nular("disableSerialization", NOTHING, |_| Ok(Value::Nothing));
 
     r.nular("time", NUM, |ctx| Ok(Value::Number(ctx.host.time())));
     r.nular("serverTime", NUM, |ctx| {

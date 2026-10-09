@@ -58,9 +58,6 @@ pub trait MissionHost: WorldHost + ConfigHost {
 pub struct MissionState {
     /// `missionName`: [`Mission::name`].
     pub name: String,
-    /// `worldName`: the `CfgWorlds` class of the mission's terrain, as config spells it
-    /// (`Altis`, `VR`); empty when config has no class for the folder's world.
-    pub world: String,
 }
 
 /// A self-contained mission host: a [`World`], its [`TypeBank`] and [`VfsHost`] file services.
@@ -208,7 +205,8 @@ pub fn mission_registry<H: WorldHost + ConfigHost>() -> Registry<H> {
 }
 
 /// Registers the commands that answer from the running mission ([`MissionState`]):
-/// `missionName` and `worldName`.
+/// `missionName`. (`worldName` comes from `a3-world`'s terrain commands, which answer the World's
+/// `CfgWorlds` name; [`install_mission_state`] sets it from the mission's terrain.)
 pub fn register_mission_commands<H: MissionHost>(r: &mut Registry<H>) {
     // `missionName` returns a global string the engine sets when a mission loads (handler
     // 0x8b0c00 copies DAT_14225ec48). Its content is the mission folder's name without the world
@@ -217,30 +215,20 @@ pub fn register_mission_commands<H: MissionHost>(r: &mut Registry<H>) {
     r.nular("missionName", TypeSet::of(Type::String), |ctx| {
         Ok(Value::from(ctx.host.mission_state().name.as_str()))
     });
-    // The terrain's CfgWorlds class, as the server oracle shows (`"Stratis"`, `"VR"`, #286).
-    // Without a mission the headless answer (`""`) stands.
-    r.nular("worldName", TypeSet::of(Type::String), |ctx| {
-        Ok(Value::from(ctx.host.mission_state().world.as_str()))
-    });
 }
 
-/// Fills in the host's [`MissionState`] for `mission`.
+/// Fills in the host's [`MissionState`] for `mission`, and names the World's terrain: `worldName`
+/// answers the `CfgWorlds` class of the mission's world (`"Altis"`, `"VR"`), even when no terrain
+/// was loaded.
 fn install_mission_state<H: MissionHost>(vm: &mut Vm<H>, mission: &Mission) {
-    let world = match &mission.terrain {
-        Some(terrain) => {
-            let config = Arc::clone(vm.host.configs().tree(ConfigRoot::Game));
-            let class = config.root().get("CfgWorlds").get(terrain);
-            if class.is_class() {
-                class.name().to_owned()
-            } else {
-                String::new()
-            }
+    if let Some(terrain) = &mission.terrain {
+        let config = Arc::clone(vm.host.configs().tree(ConfigRoot::Game));
+        let class = config.root().get("CfgWorlds").get(terrain);
+        if class.is_class() {
+            vm.host.world_mut().set_world_name(class.name());
         }
-        None => String::new(),
-    };
-    let state = vm.host.mission_state_mut();
-    state.name = mission.name();
-    state.world = world;
+    }
+    vm.host.mission_state_mut().name = mission.name();
 }
 
 /// One script the mission ran.
