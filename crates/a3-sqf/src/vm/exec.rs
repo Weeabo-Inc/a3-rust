@@ -15,7 +15,7 @@ use crate::host::Host;
 use crate::registry::{BinaryImpl, NularImpl, Registry, UnaryImpl};
 use crate::symbol::Sym;
 use crate::value::{Array, Namespace, ScriptHandle, SwitchState, Value};
-use crate::vm::flow::{Continuation, ContinuationKind, Flow, Invoke, Suspend, Unwind};
+use crate::vm::flow::{Continuation, ContinuationKind, Flow, Invoke, Locals, Suspend, Unwind};
 use crate::vm::{Ctx, VmState};
 
 pub(crate) struct CodeFrame {
@@ -24,7 +24,7 @@ pub(crate) struct CodeFrame {
     /// Value stack height when the frame started.
     pub base: usize,
     /// Private variables of this scope.
-    pub locals: Vec<(Sym, Value)>,
+    pub locals: Locals,
     pub scope_name: Option<Rc<str>>,
     /// Namespace for global variables (`with ... do`).
     pub namespace: Namespace,
@@ -59,7 +59,7 @@ pub(crate) struct ScriptState<H: Host> {
     pub handle: ScriptHandle,
     pub name: Option<Rc<str>>,
     /// Locals of the last ended frame that had `capture` set.
-    pub captured: Option<Vec<(Sym, Value)>>,
+    pub captured: Option<Locals>,
     /// `forceUnicode` mode: -1 off, 0 on until the script ends, 1 on for
     /// the next string command.
     pub unicode_mode: i8,
@@ -138,8 +138,10 @@ impl<H: Host> ScriptState<H> {
         if let Some(this) = inv.this {
             locals.push((Sym::THIS, this));
         }
-        let nil_ok = inv.nil_ok || self.top_code().is_some_and(|cf| cf.nil_ok);
-        let fixed = self.top_code().and_then(|cf| cf.fixed);
+        let (parent_nil_ok, fixed) = self
+            .top_code()
+            .map_or((false, None), |cf| (cf.nil_ok, cf.fixed));
+        let nil_ok = inv.nil_ok || parent_nil_ok;
         self.frames.push(Frame::Code(CodeFrame {
             code: inv.code,
             ip: 0,
@@ -163,14 +165,13 @@ impl<H: Host> ScriptState<H> {
     }
 
     fn pop_frame(&mut self) -> Option<Frame<H>> {
-        let f = self.frames.pop()?;
-        if let Frame::Code(cf) = &f {
+        let mut f = self.frames.pop()?;
+        if let Frame::Code(cf) = &mut f {
             self.stack.truncate(cf.base);
             if cf.capture {
-                self.captured = Some(cf.locals.clone());
-            }
-            if self.frames.is_empty() {
-                self.final_locals = cf.locals.clone();
+                self.captured = Some(std::mem::take(&mut cf.locals));
+            } else if self.frames.is_empty() {
+                self.final_locals = std::mem::take(&mut cf.locals).into_vec();
             }
         }
         Some(f)
@@ -462,20 +463,27 @@ fn exec_code<H: Host>(
             }
             Instr::Nular(id) => {
                 save_ip!();
-                let flow = match reg.nular_impl(*id) {
-                    Some(imp) => {
-                        let mut ctx = Ctx {
-                            host,
-                            reg,
-                            vm,
-                            script,
-                        };
-                        match imp {
-                            NularImpl::Value(f) => f(&mut ctx).map(Flow::Value),
-                            NularImpl::Flow(f) => f(&mut ctx),
+                let Some(imp) = reg.nular_impl(*id) else {
+                    let name = reg.table().get(*id).name.clone();
+                    return Next::Fail(SqfError::Unimplemented(name.clone()), Some(name));
+                };
+                let mut ctx = Ctx {
+                    host,
+                    reg,
+                    vm,
+                    script,
+                };
+                // Value commands push directly; only control flow goes
+                // through the (larger) `Flow`.
+                let flow = match imp {
+                    NularImpl::Value(f) => match f(&mut ctx) {
+                        Ok(v) => {
+                            script.stack.push(v);
+                            continue;
                         }
-                    }
-                    None => Err(SqfError::Unimplemented(reg.table().get(*id).name.clone())),
+                        Err(e) => Err(e),
+                    },
+                    NularImpl::Flow(f) => f(&mut ctx),
                 };
                 match flow {
                     Ok(Flow::Value(v)) => script.stack.push(v),
@@ -486,21 +494,29 @@ fn exec_code<H: Host>(
             Instr::Unary(id) => {
                 save_ip!();
                 let arg = script.stack.pop().unwrap_or(Value::Nil);
-                let flow = match reg.unary_impl(*id, &arg) {
-                    Ok(None) => Ok(Flow::Value(Value::Nil)),
-                    Ok(Some(imp)) => {
-                        let mut ctx = Ctx {
-                            host,
-                            reg,
-                            vm,
-                            script,
-                        };
-                        match imp {
-                            UnaryImpl::Value(f) => f(&mut ctx, arg).map(Flow::Value),
-                            UnaryImpl::Flow(f) => f(&mut ctx, arg),
-                        }
+                let imp = match reg.unary_impl(*id, &arg) {
+                    Ok(Some(imp)) => imp,
+                    Ok(None) => {
+                        script.stack.push(Value::Nil);
+                        continue;
                     }
-                    Err(e) => Err(e),
+                    Err(e) => return Next::Fail(e, Some(reg.table().get(*id).name.clone())),
+                };
+                let mut ctx = Ctx {
+                    host,
+                    reg,
+                    vm,
+                    script,
+                };
+                let flow = match imp {
+                    UnaryImpl::Value(f) => match f(&mut ctx, arg) {
+                        Ok(v) => {
+                            script.stack.push(v);
+                            continue;
+                        }
+                        Err(e) => Err(e),
+                    },
+                    UnaryImpl::Flow(f) => f(&mut ctx, arg),
                 };
                 match flow {
                     Ok(Flow::Value(v)) => script.stack.push(v),
@@ -512,21 +528,29 @@ fn exec_code<H: Host>(
                 save_ip!();
                 let right = script.stack.pop().unwrap_or(Value::Nil);
                 let left = script.stack.pop().unwrap_or(Value::Nil);
-                let flow = match reg.binary_impl(*id, &left, &right) {
-                    Ok(None) => Ok(Flow::Value(Value::Nil)),
-                    Ok(Some(imp)) => {
-                        let mut ctx = Ctx {
-                            host,
-                            reg,
-                            vm,
-                            script,
-                        };
-                        match imp {
-                            BinaryImpl::Value(f) => f(&mut ctx, left, right).map(Flow::Value),
-                            BinaryImpl::Flow(f) => f(&mut ctx, left, right),
-                        }
+                let imp = match reg.binary_impl(*id, &left, &right) {
+                    Ok(Some(imp)) => imp,
+                    Ok(None) => {
+                        script.stack.push(Value::Nil);
+                        continue;
                     }
-                    Err(e) => Err(e),
+                    Err(e) => return Next::Fail(e, Some(reg.table().get(*id).name.clone())),
+                };
+                let mut ctx = Ctx {
+                    host,
+                    reg,
+                    vm,
+                    script,
+                };
+                let flow = match imp {
+                    BinaryImpl::Value(f) => match f(&mut ctx, left, right) {
+                        Ok(v) => {
+                            script.stack.push(v);
+                            continue;
+                        }
+                        Err(e) => Err(e),
+                    },
+                    BinaryImpl::Flow(f) => f(&mut ctx, left, right),
                 };
                 match flow {
                     Ok(Flow::Value(v)) => script.stack.push(v),

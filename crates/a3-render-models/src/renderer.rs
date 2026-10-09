@@ -655,6 +655,16 @@ impl ModelRenderer {
         }
     }
 
+    /// The model-space box of the model's geometry, `(lowest corner, highest corner)`, once the
+    /// model is drawable. A model whose body hangs below its origin (a character's bind pose)
+    /// is placed by its lowest point; see `docs/re/p3d-odol.md`.
+    pub fn model_box(&self, model: ModelId) -> Option<(Vec3, Vec3)> {
+        match &self.models.get(model as usize)?.state {
+            ModelState::Ready(m) => Some(m.bbox),
+            _ => None,
+        }
+    }
+
     /// Whether the model failed to load.
     pub fn model_failed(&self, model: ModelId) -> bool {
         matches!(

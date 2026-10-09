@@ -3,13 +3,87 @@
 use glam::{DAffine3, DVec3, Vec3};
 
 /// Handle of a mesh uploaded with [`Renderer::upload_mesh`](crate::Renderer::upload_mesh).
+/// Stale after [`Renderer::remove_mesh`](crate::Renderer::remove_mesh): draws with it are
+/// skipped, even once the slot is reused.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct MeshId(pub(crate) u32);
+pub struct MeshId {
+    pub(crate) index: u32,
+    pub(crate) generation: u32,
+}
 
-/// Handle of a texture uploaded with
-/// [`Renderer::upload_texture`](crate::Renderer::upload_texture).
+/// A texture for [`MeshDraw`]s: uploaded with
+/// [`Renderer::upload_texture`](crate::Renderer::upload_texture), or streamed
+/// ([`TextureHandle::texture_id`](crate::TextureHandle::texture_id)). Stale or not yet loaded
+/// textures draw white.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct TextureId(pub(crate) u32);
+pub struct TextureId(pub(crate) TextureRef);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub(crate) enum TextureRef {
+    Uploaded { index: u32, generation: u32 },
+    Streamed { slot: u32, generation: u32 },
+}
+
+impl TextureId {
+    pub(crate) fn uploaded(index: u32, generation: u32) -> TextureId {
+        TextureId(TextureRef::Uploaded { index, generation })
+    }
+
+    pub(crate) fn streamed(slot: u32, generation: u32) -> TextureId {
+        TextureId(TextureRef::Streamed { slot, generation })
+    }
+}
+
+/// Generational storage: freed slots are reused with a bumped generation, so old ids stay
+/// invalid.
+#[derive(Debug)]
+pub(crate) struct Slots<T> {
+    items: Vec<Option<T>>,
+    generations: Vec<u32>,
+    free: Vec<u32>,
+}
+
+impl<T> Default for Slots<T> {
+    fn default() -> Self {
+        Slots {
+            items: Vec::new(),
+            generations: Vec::new(),
+            free: Vec::new(),
+        }
+    }
+}
+
+impl<T> Slots<T> {
+    /// Store `item`; returns (index, generation).
+    pub fn insert(&mut self, item: T) -> (u32, u32) {
+        let index = self.free.pop().unwrap_or_else(|| {
+            self.items.push(None);
+            self.generations.push(0);
+            self.items.len() as u32 - 1
+        });
+        self.items[index as usize] = Some(item);
+        (index, self.generations[index as usize])
+    }
+
+    pub fn get(&self, index: u32, generation: u32) -> Option<&T> {
+        (self.generations.get(index as usize) == Some(&generation))
+            .then(|| self.items[index as usize].as_ref())
+            .flatten()
+    }
+
+    /// Remove and return the item if `(index, generation)` is current.
+    pub fn remove(&mut self, index: u32, generation: u32) -> Option<T> {
+        self.get(index, generation)?;
+        let item = self.items[index as usize].take();
+        self.generations[index as usize] = generation.wrapping_add(1);
+        self.free.push(index);
+        item
+    }
+
+    pub fn len(&self) -> usize {
+        self.items.iter().flatten().count()
+    }
+}
 
 /// Linear RGBA colour.
 pub type Color = [f32; 4];
@@ -185,6 +259,24 @@ pub(crate) fn relative_model(transform: &DAffine3, camera: DVec3) -> [[f32; 4]; 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn slots_reuse_indices_and_reject_stale_ids() {
+        let mut s = Slots::default();
+        let a = s.insert("a");
+        let b = s.insert("b");
+        assert_eq!(s.get(a.0, a.1), Some(&"a"));
+        assert_eq!(s.remove(a.0, a.1), Some("a"));
+        assert_eq!(s.get(a.0, a.1), None);
+        assert_eq!(s.remove(a.0, a.1), None, "double remove");
+        let c = s.insert("c");
+        assert_eq!(c.0, a.0, "slot reused");
+        assert_ne!(c.1, a.1, "with a new generation");
+        assert_eq!(s.get(a.0, a.1), None, "old id stays stale");
+        assert_eq!(s.get(c.0, c.1), Some(&"c"));
+        assert_eq!(s.len(), 2);
+        let _ = b;
+    }
 
     #[test]
     fn aabb_has_twelve_edges() {

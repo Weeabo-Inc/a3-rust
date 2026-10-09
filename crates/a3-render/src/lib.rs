@@ -23,6 +23,7 @@ mod gpu;
 pub mod mesh;
 mod post;
 mod renderer;
+pub mod residency;
 pub mod roads;
 pub mod shadow;
 pub mod sky;
@@ -36,6 +37,9 @@ pub use gpu::{Gpu, RenderError, WindowSurface};
 pub use mesh::{Mesh, MeshData, Vertex};
 pub use post::{AntiAliasing, BloomSettings, FilmicCurve, HdrSettings, Tonemap};
 pub use renderer::{ExposureReadout, HemisphereAmbient, RenderSettings, Renderer};
+pub use residency::{
+    PaaSource, ResidencyConfig, ResidencyStats, TextureHandle, TextureResidency, TextureSource,
+};
 pub use shadow::ShadowSettings;
 pub use texture::{ColorSpace, GpuTexture, TextureData, TextureError, TextureFormat};
 

@@ -7,8 +7,10 @@
 mod engine;
 mod environment;
 mod keys;
+mod man;
 mod models;
 mod offline;
+mod player;
 mod roads;
 mod scene;
 mod windowed;
@@ -59,9 +61,17 @@ struct Cli {
     #[arg(long, value_name = "NAME")]
     world: Option<String>,
     /// Camera placement over the world: `east,north[,altitude,heading,pitch]` (metres above
-    /// the terrain, degrees).
+    /// the terrain, degrees). With `--play` this is the player's spawn instead, altitude
+    /// ignored.
     #[arg(long, value_name = "SPEC", requires = "world")]
     camera: Option<world::CameraSpec>,
+    /// Play as a Man on the terrain: WASD walks it, the mouse looks, Numpad Enter switches
+    /// first and third person, C/Z/X crouch, go prone and stand (SHIFT sprints, CTRL walks).
+    #[arg(long, requires = "world")]
+    play: bool,
+    /// Camera `--play` starts in: `first` (`fp`) or `third` (`tp`).
+    #[arg(long, value_name = "MODE", requires = "play", default_value = "first")]
+    camera_mode: player::CameraMode,
     /// Objects quality (`VeryLow`, `Low`, `High`, `VeryHigh`, `Ultra`, `Extreme`): LOD
     /// coefficients and how far small objects stay visible.
     #[arg(long, default_value = "High")]
@@ -118,6 +128,8 @@ fn main() -> anyhow::Result<()> {
         },
         world: cli.world.clone(),
         camera: cli.camera,
+        play: cli.play,
+        camera_mode: cli.camera_mode,
         objects: models::ObjectOptions {
             quality: cli.objects_quality,
             view_distance: cli.view_distance,
@@ -187,6 +199,40 @@ mod tests {
         let cli = Cli::try_parse_from(["arma3", "--game-dir", "X:/Arma 3", "--windowed"]).unwrap();
         assert_eq!(cli.game_dir, Some(PathBuf::from("X:/Arma 3")));
         assert!(cli.windowed);
+    }
+
+    #[test]
+    fn play_and_camera_mode_flags_are_parsed() {
+        let cli = Cli::try_parse_from([
+            "arma3",
+            "--world",
+            "altis",
+            "--play",
+            "--camera-mode",
+            "third",
+            "--camera",
+            "3600,13000",
+        ])
+        .unwrap();
+        assert!(cli.play);
+        assert_eq!(cli.camera_mode, crate::player::CameraMode::ThirdPerson);
+        assert!(Cli::try_parse_from(["arma3", "--world", "altis"]).is_ok());
+        assert_eq!(
+            Cli::try_parse_from(["arma3", "--world", "altis", "--play"])
+                .unwrap()
+                .camera_mode,
+            crate::player::CameraMode::FirstPerson,
+            "the game starts in first person"
+        );
+        assert!(
+            Cli::try_parse_from(["arma3", "--play"]).is_err(),
+            "--play needs a world"
+        );
+        assert!(
+            Cli::try_parse_from(["arma3", "--camera-mode", "third"]).is_err(),
+            "--camera-mode needs --play"
+        );
+        assert!(Cli::try_parse_from(["arma3", "--world", "altis", "--camera-mode", "2d"]).is_err());
     }
 
     #[test]

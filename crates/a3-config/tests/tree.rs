@@ -124,6 +124,28 @@ fn unresolved_external_reads_as_missing() {
 }
 
 #[test]
+fn entry_count_and_at_match_entries() {
+    let t = tree(&["class CfgX { class First {}; n = 3; class Ghost; class Second {}; };"]);
+    let cfg = t.root() >> "CfgX";
+    let entries = cfg.entries();
+    let names: Vec<_> = entries.iter().map(|e| e.name()).collect();
+    assert_eq!(
+        names,
+        ["First", "n", "Second"],
+        "Ghost is unresolved, so hidden"
+    );
+    assert_eq!(cfg.entry_count(), entries.len());
+    for (i, e) in entries.iter().enumerate() {
+        assert_eq!(cfg.entry_at(i).node_path(), e.node_path());
+        assert_eq!(cfg.entry_at(i).name(), e.name());
+    }
+    assert!(
+        cfg.entry_at(entries.len()).is_null(),
+        "out of range is null"
+    );
+}
+
+#[test]
 fn delete_removes_unreferenced_classes_only() {
     let t = tree(&[
         "class CfgX { class Gone {}; class Base {}; class Child: Base {}; };",
