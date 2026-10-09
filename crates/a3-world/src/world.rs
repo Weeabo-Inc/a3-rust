@@ -137,6 +137,9 @@ pub struct World {
     /// The model path → type lookup a Static object's model is resolved with (see
     /// [`crate::ModelTypeResolver`]); none until a host installs one.
     pub(crate) model_type_resolver: Option<Box<dyn crate::ModelTypeResolver>>,
+    /// The flight models of aircraft types (see [`World::load_aircraft`]); none until a host
+    /// installs one.
+    pub(crate) aircraft: Option<crate::AircraftBank>,
     time: f64,
     groups: Groups,
     /// The map markers (`createMarker` and the `marker*` commands).
@@ -177,6 +180,7 @@ impl World {
             events: Vec::new(),
             damage_handler: None,
             model_type_resolver: None,
+            aircraft: None,
             time: 0.0,
             groups: Groups::default(),
             markers: Markers::default(),
@@ -289,6 +293,7 @@ impl World {
         }
         self.lists[list as usize].push(id);
         self.events.push(WorldEvent::EntityCreated(id));
+        self.init_flight(id);
         id
     }
 
