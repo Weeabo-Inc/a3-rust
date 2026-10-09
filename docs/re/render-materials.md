@@ -230,6 +230,57 @@ ptD += MatDiffuse.rgb * L2.rgb * max(N·Ldir, 0) * att;  ptA += L3.rgb * att
 ptS += MatSpecular.rgb * L2.rgb * spec(N·Hl) * reflectivity * att
 ```
 
+**Where a light comes from (`CfgVehicles >> <class> >> Reflectors`, high).** A lamp is an
+ordinary Static object whose class carries a `Reflectors` sub-class, one child per light. Street
+lamps (Altis' `Land_LampStreet_F`, `_LampHarbour_F`, `_LampShabby_F`, ...) inherit
+`Lamps_base_F`, which adds nothing but the category. `Land_LampStreet_F >> Reflectors >>
+Light_1`:
+
+| config | value | maps to |
+|---|---|---|
+| `color[]` | `{1200, 600, 300}` | `L2.rgb` |
+| `ambient[]` | `{12, 6, 3}` | `L3.rgb` |
+| `intensity` | 7 | scales the colour |
+| `innerAngle` / `outerAngle` | 100 / 180 degrees | `L1.w` / `L2.w` (180 degrees is a hemisphere, so a lamp is nearly a point light) |
+| `coneFadeCoef` | 2 | `L3.w` |
+| `position` | `"Light_1_pos"` | the light's position, a memory point of the p3d |
+| `direction` | `"Light_1_dir"` | `L1.xyz` |
+| `selection` | `"Light_1_hide"` | the hidden/shown lamp head |
+| `Attenuation.start/constant/linear/quadratic` | 0 / 0 / 0 / 0.3 | `L4` exactly |
+| `Attenuation.hardLimitStart/hardLimitEnd` | 40 / 60 | `L5.x`, `L5.y = 1/(end − start)` |
+| `useFlare`, `flareSize`, `flareMaxDistance` | 1, 2, 220 | the flare sprite, not the light |
+
+Nothing in the config says *when* a lamp is on: `Lamps_base_F` has no `dayLight`/`nightLight`
+entry, so the engine switches them (the light and the `Light_1_hide` selection) with the sun's
+elevation, and the p3d's memory points are the only place the positions live. The WRP stores a
+model *path* per placed object, not a class, so discovery is: scan `CfgVehicles` for classes
+with `Reflectors` keyed by their `model`, then match the terrain's placed objects against it.
+
+**The memory points are points, not vectors (measured on the shipped lamps).** `position` and
+`direction` each name a *single-vertex* Memory LOD selection, and the direction is the
+difference between them:
+
+| model | `light_1_pos` | `light_1_dir` | normalised difference |
+|---|---|---|---|
+| `LampStreet_F.p3d` | (0, 6.201, 1.460) | (0.0002, 5.772, 1.574) | (0.0005, −0.967, 0.256) |
+| `LampHarbour_F.p3d` | (0.0008, 3.101, 0.168) | (0.0008, 2.891, 0.230) | (0, −0.959, 0.284) |
+
+Both point down out of the head, which is what a lamp does. The model stores the names in lower
+case (`light_1_dir`) while the config writes `Light_1_dir`, so matching has to ignore case.
+
+**What is still open (#294's shading pass):**
+
+- Drawing them: a light list in the frame uniforms, the loop of §3.4 in the terrain, road and
+  model shaders, the nearest-N selection per frame, and the oracle shot that proves a lamp lights
+  the road at night.
+- The day/night switch, and the `Light_1_hide` selection that goes with it: the engine's
+  threshold is not in the config and has not been traced.
+- Flares (`useFlare`, `flareSize`, `flareMaxDistance`) and whether these lights cast shadows.
+- `intensity`'s place in the units: `color × intensity` is what the field suggests, but the
+  shader's own scale for `L2.rgb` has not been checked against a rendered lamp.
+
+
+
 ## 4. Per-shader stage meanings (shader; texture suffixes as used in the data)
 
 UV notation: `s0` means stage 0's UV, and so on.

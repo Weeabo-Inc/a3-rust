@@ -13,6 +13,7 @@ mod cfg;
 mod datetime;
 mod environment;
 mod lighting;
+mod reflectors;
 mod weather;
 
 pub use celestial::{
@@ -22,4 +23,8 @@ pub use celestial::{
 pub use datetime::{DateTime, days_in_month, is_leap_year};
 pub use environment::{EnvironmentFrame, EnvironmentState, MAX_WIND_SPEED, WorldEnvironment};
 pub use lighting::{LightingEntry, LightingTable, ev_color};
+pub use reflectors::{
+    Attenuation, Flare, LampClass, PlacedLight, Reflector, lamp_classes, normalise_path,
+    placed_lights, reflectors_of,
+};
 pub use weather::{Fog, FogLimits, OvercastLevel, OvercastSample, OvercastTable};

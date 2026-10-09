@@ -319,6 +319,9 @@ pub struct DebugScene {
     sim_time: f64,
     /// The player's weapon and its shots, when playing.
     combat: Option<Combat>,
+    /// The world's placed lights (lamps), discovered from `CfgVehicles >> Reflectors`. Not drawn
+    /// yet; the shading pass is a separate change (`docs/re/render-materials.md` §3.4).
+    lights: Vec<a3_environment::PlacedLight>,
 }
 
 impl DebugScene {
@@ -343,6 +346,7 @@ impl DebugScene {
             hud_exec: None,
             sim_time: 0.0,
             combat: None,
+            lights: Vec::new(),
         }
     }
 
@@ -368,6 +372,7 @@ impl DebugScene {
         if let Some(env) = &mut self.environment {
             env.set_sky_texture(sky_texture(&world).as_ref());
         }
+        self.lights = world_lights(&world);
         let terrain = TerrainRenderer::new(gpu, renderer, &world.landscape, Some(world.reader));
         if let Some(objects) = world.objects {
             self.models = Some(objects.attach(gpu, renderer));
@@ -956,6 +961,51 @@ impl DebugScene {
             );
         }
     }
+}
+
+/// The World's placed lights: every Static object whose `CfgVehicles` class carries
+/// `Reflectors`, at the position and direction its p3d's Memory LOD names
+/// (`docs/re/render-materials.md` §3.4).
+///
+/// The WRP holds a model path per object and the config holds a model path per class, so the
+/// two are matched on the path ([`a3_environment::normalise_path`]). Each lamp model is decoded
+/// once and its memory points cached; a class whose model is missing, and an object whose
+/// memory point does not resolve, is skipped rather than guessed at.
+fn world_lights(world: &LoadedWorld) -> Vec<a3_environment::PlacedLight> {
+    let Some(objects) = &world.objects else {
+        return Vec::new();
+    };
+    let classes = a3_environment::lamp_classes(&world.config.root());
+    if classes.is_empty() {
+        return Vec::new();
+    }
+    let cache =
+        std::cell::RefCell::new(std::collections::HashMap::<String, Option<a3_p3d::Model>>::new());
+    let locate = |model: &str, point: &str| -> Option<Vec3> {
+        let mut cache = cache.borrow_mut();
+        let entry = cache.entry(model.to_owned()).or_insert_with(|| {
+            let path = model.to_owned();
+            let bytes = world.vfs.open(&path).ok()?;
+            a3_p3d::Model::from_bytes(&bytes)
+                .map_err(|e| log::warn!("lamp model {path}: {e}"))
+                .ok()
+        });
+        entry.as_ref()?.memory_point(point)
+    };
+    let lights = a3_environment::placed_lights(&classes, &objects.models, &objects.placed, locate);
+    let spots = lights.iter().filter(|l| l.spot).count();
+    log::info!(
+        "lights: {} lamp classes, {} placed lights ({} spot) at the first {:?}",
+        classes.len(),
+        lights.len(),
+        spots,
+        lights.first().map(|l| (
+            l.class.as_str(),
+            [l.position.x, l.position.y, l.position.z],
+            l.reflector.attenuation.hard_limit_end
+        ))
+    );
+    lights
 }
 
 /// The World's `skyTexture` (`CfgWorlds >> skyTexture`), decoded for the sky dome's ramp: the

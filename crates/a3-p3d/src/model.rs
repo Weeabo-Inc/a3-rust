@@ -37,6 +37,49 @@ impl Model {
     pub fn lod(&self, resolution: LodResolution) -> Option<&Lod> {
         self.lods.iter().find(|lod| lod.resolution == resolution)
     }
+
+    /// A memory point of the Memory LOD by name: the mean of its vertices, in model space.
+    ///
+    /// The engine names points and vectors in a model's Memory LOD: a lamp's light position is
+    /// the selection `Light_1_pos`, its direction the selection `Light_1_dir` (see
+    /// `docs/re/render-materials.md` §3.4). A point selection may hold one vertex (the point) or
+    /// two (the point and a second sample); the mean is what the engine uses for a position.
+    pub fn memory_point(&self, name: &str) -> Option<Vec3> {
+        let lod = self.lod(LodResolution(1e15))?;
+        let selection = lod
+            .named_selections
+            .iter()
+            .find(|s| s.name.eq_ignore_ascii_case(name))?;
+        let mut sum = Vec3::ZERO;
+        let mut count = 0;
+        for &index in &selection.vertices {
+            if let Some(p) = lod.vertices.positions.get(index as usize) {
+                sum += *p;
+                count += 1;
+            }
+        }
+        (count > 0).then(|| sum / count as f32)
+    }
+
+    /// A memory vector of the Memory LOD by name: `second vertex - first vertex`, in model
+    /// space, normalised. `None` unless the selection holds at least two vertices.
+    pub fn memory_vector(&self, name: &str) -> Option<Vec3> {
+        let lod = self.lod(LodResolution(1e15))?;
+        let selection = lod
+            .named_selections
+            .iter()
+            .find(|s| s.name.eq_ignore_ascii_case(name))?;
+        let first = lod
+            .vertices
+            .positions
+            .get(*selection.vertices.first()? as usize)?;
+        let second = lod
+            .vertices
+            .positions
+            .get(*selection.vertices.get(1)? as usize)?;
+        let v = *second - *first;
+        (v.length_squared() > 1e-12).then(|| v.normalize())
+    }
 }
 
 /// Model-wide data from the ODOL header. Field names follow the community format notes; see
@@ -737,4 +780,89 @@ pub struct OdolSection {
     pub area_over_tex: Vec<f32>,
     /// Collimator (reflector-sight reticle) data of the section, when present.
     pub collimator: Option<Collimator>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A Memory LOD with the given named selections, and nothing else.
+    fn model_with(selections: Vec<NamedSelection>) -> Model {
+        Model {
+            encoding: Encoding::Mlod,
+            version: 257,
+            info: ModelInfo::default(),
+            skeleton: None,
+            animations: Vec::new(),
+            lods: vec![Lod {
+                resolution: LodResolution(1e15),
+                vertices: Vertices {
+                    positions: vec![
+                        Vec3::new(0.0, 6.1, 0.0),
+                        Vec3::new(1.0, 6.1, 0.0),
+                        Vec3::new(0.0, 0.0, 0.0),
+                    ],
+                    ..Default::default()
+                },
+                named_selections: selections,
+                ..Default::default()
+            }],
+        }
+    }
+
+    fn selection(name: &str, vertices: Vec<u32>) -> NamedSelection {
+        NamedSelection {
+            name: name.to_owned(),
+            vertices,
+            ..Default::default()
+        }
+    }
+
+    /// A lamp's Memory LOD as the engine writes it: `Light_1_pos` one point, `Light_1_dir` a
+    /// point and a second sample, and an unrelated `axis` point.
+    fn lamp() -> Model {
+        model_with(vec![
+            selection("Light_1_pos", vec![0]),
+            selection("Light_1_dir", vec![0, 1]),
+            selection("axis", vec![2]),
+        ])
+    }
+
+    #[test]
+    fn reads_memory_points_and_vectors_by_name() {
+        let model = lamp();
+        assert_eq!(
+            model.memory_point("Light_1_pos"),
+            Some(Vec3::new(0.0, 6.1, 0.0))
+        );
+        assert_eq!(
+            model.memory_point("light_1_POS"),
+            Some(Vec3::new(0.0, 6.1, 0.0))
+        );
+        assert_eq!(model.memory_point("axis"), Some(Vec3::ZERO));
+        assert_eq!(model.memory_point("missing"), None);
+        assert_eq!(model.memory_vector("Light_1_dir"), Some(Vec3::X));
+        assert_eq!(
+            model.memory_vector("Light_1_pos"),
+            None,
+            "one vertex is no vector"
+        );
+        assert_eq!(model.memory_vector("axis"), None);
+        // A model without a Memory LOD resolves nothing.
+        let bare = Model {
+            lods: Vec::new(),
+            ..model_with(Vec::new())
+        };
+        assert_eq!(bare.memory_point("Light_1_pos"), None);
+        assert_eq!(bare.memory_vector("Light_1_dir"), None);
+    }
+
+    #[test]
+    fn a_point_selection_with_two_vertices_averages_them() {
+        let model = model_with(vec![selection("Light_2_pos", vec![0, 2])]);
+        assert_eq!(
+            model.memory_point("Light_2_pos"),
+            Some(Vec3::new(0.0, 3.05, 0.0))
+        );
+    }
 }
