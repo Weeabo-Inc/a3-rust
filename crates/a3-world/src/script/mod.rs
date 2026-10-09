@@ -13,6 +13,7 @@
 mod animation;
 mod create;
 mod groups;
+mod markers;
 mod query;
 mod state;
 mod transform;
@@ -37,6 +38,7 @@ pub fn register_world_commands<H: WorldHost>(r: &mut Registry<H>) {
     animation::register(r);
     create::register(r);
     groups::register(r);
+    markers::register(r);
     state::register(r);
     transform::register(r);
     query::register(r);
