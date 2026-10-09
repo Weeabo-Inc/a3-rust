@@ -41,6 +41,8 @@ pub struct ModelSpec {
     pub lod: Option<usize>,
     /// Pose the model as a Man in this Move (`CfgMovesMaleSdr` class) at this phase.
     pub pose: Option<(String, f32)>,
+    /// Dress the posed Man in the gear of this `CfgVehicles` class.
+    pub loadout: Option<String>,
 }
 
 /// A terrain's placed objects, loaded with the World.
@@ -177,6 +179,8 @@ pub struct Orbit {
     lods: usize,
     /// The Man animation posing the model (`ModelSpec::pose`), if any.
     man: Option<crate::man::ManAnimation>,
+    /// The posed Man's gear (`ModelSpec::loadout`), if any.
+    gear: Option<crate::gear::ManGear>,
 }
 
 /// How far below the orbit centre a posed Man's ground point goes: about his hip height, so the
@@ -185,8 +189,13 @@ const POSED_CENTRE_HEIGHT: f64 = 0.9;
 
 impl Orbit {
     /// Pose the model with `man` (already switched into its Move).
-    pub fn with_man(mut self, man: crate::man::ManAnimation) -> Orbit {
+    pub fn with_man(
+        mut self,
+        man: crate::man::ManAnimation,
+        gear: Option<crate::gear::ManGear>,
+    ) -> Orbit {
         self.man = Some(man);
+        self.gear = gear;
         self
     }
 
@@ -206,6 +215,7 @@ impl Orbit {
             lods: 0,
             spec,
             man: None,
+            gear: None,
         }
     }
 
@@ -237,26 +247,16 @@ impl Orbit {
         let mut m = models.lock();
         m.clear_dynamic();
         m.clear_skinned();
-        match self
-            .man
-            .as_ref()
-            .and_then(|man| Some((man.palette()?, man.ground())))
-        {
-            Some((bones, ground)) => {
-                let feet = self.centre - DVec3::new(0.0, POSED_CENTRE_HEIGHT, 0.0);
-                let transform = DAffine3::from_translation(feet - ground.as_dvec3());
-                m.add_skinned(
-                    PlacedObject {
-                        model: self.model,
-                        transform,
-                    },
-                    &bones,
-                );
-            }
-            None => m.add_dynamic(PlacedObject {
+        let feet =
+            DAffine3::from_translation(self.centre - DVec3::new(0.0, POSED_CENTRE_HEIGHT, 0.0));
+        let posed = self.man.as_ref().is_some_and(|man| {
+            crate::gear::place_man(&mut m, self.model, man, self.gear.as_ref(), feet)
+        });
+        if !posed {
+            m.add_dynamic(PlacedObject {
                 model: self.model,
                 transform: DAffine3::from_translation(self.centre),
-            }),
+            });
         }
         let r = f64::from(self.radius);
         draws.lines.axes(self.centre, r * 0.5);

@@ -12,6 +12,7 @@ use a3_render::{
 };
 use glam::{DAffine3, DQuat, DVec3, Vec3};
 
+use crate::gear::{Loadout, ManGear, place_man};
 use crate::man::ManAnimation;
 use crate::models::{ModelSpec, Orbit, stats_line};
 use crate::player::{CameraMode, Ground, Player, Stance, ground_lift};
@@ -142,7 +143,7 @@ fn lift_placement(transform: DAffine3, lift: f32) -> DAffine3 {
 /// `transform` with the model-space point `ground` moved onto its origin: where a posed Man's
 /// model goes so the ground under his feet is at the entity's position. Like the lift, a
 /// placement offset, applied in the model's frame so it turns with the Man.
-fn ground_placement(transform: DAffine3, ground: Vec3) -> DAffine3 {
+pub(crate) fn ground_placement(transform: DAffine3, ground: Vec3) -> DAffine3 {
     transform * DAffine3::from_translation(-ground.as_dvec3())
 }
 
@@ -159,6 +160,8 @@ struct SoldierModel {
     /// The Man's animation, when the game data has his Skeleton, the rest pivots and his Moves
     /// type. Behind a lock because placing is done from `draw`, which takes `&self`.
     man: Option<Mutex<ManAnimation>>,
+    /// What he wears and holds, drawn on his pose.
+    gear: Option<ManGear>,
     path: String,
 }
 
@@ -172,10 +175,21 @@ impl SoldierModel {
         vfs: a3_vfs::Vfs,
         path: &str,
         moves: Option<Moves>,
+        loadout: Option<&Loadout>,
     ) -> SoldierModel {
         let man = match moves {
             Some(moves) => match ManAnimation::load(&vfs, moves, path) {
-                Some(man) => Some(Mutex::new(man)),
+                Some(mut man) => {
+                    if let Some(face) = loadout.and_then(|l| l.head.as_ref()?.face.as_deref()) {
+                        if !man.set_face(face) {
+                            log::warn!("face animation {face} is not in the game data");
+                        }
+                    }
+                    if loadout.is_some_and(|l| l.primary.is_some()) {
+                        man.set_armed(true);
+                    }
+                    Some(Mutex::new(man))
+                }
                 None => {
                     log::warn!(
                         "cannot animate the player Man: {path}, its skeleton or its moves are \
@@ -186,17 +200,19 @@ impl SoldierModel {
             },
             None => None,
         };
-        let feature = crate::models::model_feature_with(gpu, renderer, vfs, 1024, 2);
-        let model = {
+        let feature = crate::models::model_feature_with(gpu, renderer, vfs.clone(), 1024, 2);
+        let (model, gear) = {
             let mut m = feature.lock();
             let model = m.model(path);
             m.preload(model);
-            model
+            let gear = loadout.map(|l| ManGear::load(&vfs, &mut m, l, path));
+            (model, gear)
         };
         SoldierModel {
             feature,
             model,
             man,
+            gear,
             path: path.to_owned(),
         }
     }
@@ -235,17 +251,10 @@ impl SoldierModel {
         let Some(transform) = transform else { return };
         if let Some(man) = &self.man {
             let posed = match man.lock() {
-                Ok(man) => man.palette().map(|bones| (bones, man.ground())),
-                Err(_) => None,
+                Ok(man) => place_man(&mut m, self.model, &man, self.gear.as_ref(), transform),
+                Err(_) => false,
             };
-            if let Some((bones, ground)) = posed {
-                m.add_skinned(
-                    PlacedObject {
-                        model: self.model,
-                        transform: ground_placement(transform, ground),
-                    },
-                    &bones,
-                );
+            if posed {
                 return;
             }
         }
@@ -413,12 +422,14 @@ impl DebugScene {
             ));
             if let Some(path) = &world.player_model {
                 log::info!("player Man model: {path}");
+                let loadout = crate::gear::loadout(&world.config, crate::player::PLAYER_CLASS);
                 self.soldier = Some(SoldierModel::new(
                     gpu,
                     renderer,
                     world.vfs,
                     path,
                     crate::man::moves_of(&world.config),
+                    Some(&loadout),
                 ));
             } else {
                 log::warn!(
@@ -440,12 +451,21 @@ impl DebugScene {
         renderer: &mut Renderer,
         vfs: a3_vfs::Vfs,
         spec: ModelSpec,
-        moves: Option<Moves>,
+        config: Option<&a3_config::ConfigTree>,
     ) {
+        let loadout = match (&spec.loadout, config) {
+            (Some(class), Some(config)) => Some(crate::gear::loadout(config, class)),
+            _ => None,
+        };
+        let moves = config.and_then(crate::man::moves_of);
         let man = match (&spec.pose, moves) {
             (Some((name, phase)), Some(moves)) => {
                 match ManAnimation::load(&vfs, moves, &spec.path) {
                     Some(mut man) => {
+                        let face = loadout.as_ref().and_then(|l| l.head.as_ref()?.face.clone());
+                        if let Some(face) = face {
+                            man.set_face(&face);
+                        }
                         if !man.switch_move(name, *phase) {
                             log::warn!("no Move {name} in CfgMovesMaleSdr; the Man stands idle");
                         }
@@ -459,10 +479,12 @@ impl DebugScene {
             }
             _ => None,
         };
-        let models = crate::models::model_feature(gpu, renderer, vfs, 4096);
+        let models = crate::models::model_feature(gpu, renderer, vfs.clone(), 4096);
         let mut orbit = Orbit::new(&models, spec, WORLD_CENTRE);
         if let Some(man) = man {
-            orbit = orbit.with_man(man);
+            let gear =
+                loadout.map(|l| ManGear::load(&vfs, &mut models.lock(), &l, &orbit.spec.path));
+            orbit = orbit.with_man(man, gear);
         }
         self.orbit = Some(orbit);
         self.models = Some(models);

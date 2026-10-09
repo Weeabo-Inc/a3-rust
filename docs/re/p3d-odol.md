@@ -410,8 +410,10 @@ from indexed vertices.
 - The base-game buildings checked have no proxies.
 
 The renderer skips every proxy path that contains `\proxies\`, starts with
-`a3\characters_f\heads\`, or contains `volumelight`. Whether the 3x3 proxy orientation is stored
-by rows or by columns is still open: no checked proxy has a rotation that shows it.
+`a3\characters_f\heads\`, or contains `volumelight`. The 3x3 proxy orientation is stored **by
+columns** (high): the soldier's `weapon` proxy turns the MX rifle's `-x` muzzle to the Man's
+front only when it is read as columns. A Man's gear proxies are placed by the client itself
+(`model-animations.md`, "Gear on a Man").
 ## LOD resolutions
 
 `LodResolution` in `crates/a3-p3d/src/resolution.rs` lists the named values (1e13 Geometry, 1e15

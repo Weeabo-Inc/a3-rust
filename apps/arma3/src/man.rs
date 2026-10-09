@@ -32,6 +32,21 @@ pub const PIVOTS_MODEL: &str = r"a3\anims_f\data\skeleton\skeletonpivots.p3d";
 /// shipped config, so the engine converts every bone's translation, `weapon` included.
 pub const WEAPON_BONE: &str = "";
 
+/// The root bone of the face rig: the bones a head's face animation drives.
+const FACE_RIG: &str = "face_hub";
+
+/// A config model or file path as a VFS path: no leading separator, `.p3d` added to a model
+/// path without an extension.
+pub fn vfs_path(path: &str) -> String {
+    let p = path.trim_start_matches(['\\', '/']).replace('/', "\\");
+    let file = p.rsplit('\\').next().unwrap_or("");
+    if file.contains('.') {
+        p
+    } else {
+        format!("{p}.p3d")
+    }
+}
+
 /// The Move every Moves type has, the last fallback: the standing idle.
 const STANDING: &str = "AmovPercMstpSnonWnonDnon";
 
@@ -73,6 +88,26 @@ pub fn move_names(stance: Stance, motion: Motion) -> Vec<String> {
         idle,
         STANDING.to_owned(),
     ]
+}
+
+/// The Moves a Man holding a rifle plays: the same stance, gait and direction with the rifle
+/// raised (`SrasWrfl`), then lowered (`SlowWrfl`, which has the prone crawl), then the unarmed
+/// [`move_names`] as the fallback.
+pub fn rifle_move_names(stance: Stance, motion: Motion) -> Vec<String> {
+    let unarmed = move_names(stance, motion);
+    let rifle = unarmed.iter().flat_map(|name| {
+        [
+            name.replace("SnonWnon", "SrasWrfl"),
+            name.replace("SnonWnon", "SlowWrfl"),
+        ]
+    });
+    let mut names: Vec<String> = Vec::new();
+    for name in rifle.chain(unarmed.iter().cloned()) {
+        if !names.contains(&name) {
+            names.push(name);
+        }
+    }
+    names
 }
 
 /// The first of `names` the Moves type has, as its Move. `None` when it has none of them.
@@ -182,6 +217,10 @@ pub struct ManAnimation {
     clips: MoveClips,
     clock: MoveClock,
     vfs: Vfs,
+    /// The head's face animation, laid over the face rig (see [`ManAnimation::set_face`]).
+    face: Option<a3_rtm::Animation>,
+    /// Whether he holds a rifle, so plays its Moves ([`rifle_move_names`]).
+    armed: bool,
 }
 
 impl ManAnimation {
@@ -201,6 +240,8 @@ impl ManAnimation {
             clips: MoveClips::new(),
             clock: MoveClock::new(idle),
             vfs: vfs.clone(),
+            face: None,
+            armed: false,
         };
         animation.load_clips([idle]);
         Some(animation)
@@ -208,7 +249,7 @@ impl ManAnimation {
 
     /// Play the Move `motion` calls for in `stance`, one frame of `dt` seconds long.
     pub fn advance(&mut self, stance: Stance, motion: Motion, dt: f32) {
-        let Some(move_) = resolve(&self.moves, &move_names(stance, motion)) else {
+        let Some(move_) = resolve(&self.moves, &self.names(stance, motion)) else {
             return;
         };
         self.load_clips([move_]);
@@ -220,13 +261,64 @@ impl ManAnimation {
         self.clock.advance(move_, rate, dt);
     }
 
-    /// The Man's bone palette for this frame: his pose at the clock's place in the cycle,
-    /// composed down his Skeleton, as the renderer's skinned instances take it (in the model's
-    /// own space). `None` when the Move's RTM is not loaded.
-    pub fn palette(&self) -> Option<Vec<Affine3A>> {
+    /// The Man's pose this frame composed down his Skeleton, in the pivots model's space, with
+    /// the face animation over the face rig. `None` when the Move's RTM is not loaded.
+    pub fn composed(&self) -> Option<Vec<Affine3A>> {
         let state = self.clock.blend().state(&self.clips, &self.moves)?;
-        let pose = self.rig.pose(&state);
-        Some(self.rig.skinning_pose(&pose, self.model_offset).bones)
+        let mut pose = self.rig.pose(&state);
+        if let Some(face) = &self.face {
+            pose = self.rig.overlay(
+                &pose,
+                a3_pose::MoveSample::new(face, 0.0),
+                &self.rig.subtree(FACE_RIG),
+            );
+        }
+        Some(self.rig.compose(&pose))
+    }
+
+    /// Lay the head's face animation (its `NeutralFace` RTM, from the game data at `path`) over
+    /// the face rig. A move RTM's `face_hub` record undoes the head's frame, so without it the
+    /// face would stay at its rest place while the head moves. `false` when the RTM is missing.
+    pub fn set_face(&mut self, path: &str) -> bool {
+        let face = self
+            .vfs
+            .open(&vfs_path(path))
+            .ok()
+            .and_then(|bytes| a3_rtm::Animation::read(&bytes).ok());
+        self.face = face;
+        self.face.is_some()
+    }
+
+    /// Hold a rifle (or not): he plays the rifle's Moves from now on, starting in its standing
+    /// idle when he is standing in the unarmed one.
+    pub fn set_armed(&mut self, armed: bool) {
+        self.armed = armed;
+        let idle = resolve(&self.moves, &self.names(Stance::Stand, Motion::default()));
+        if let Some(idle) = idle {
+            self.load_clips([idle]);
+            if self.clock.blend >= 1.0 {
+                self.clock = MoveClock::new(idle);
+            }
+        }
+    }
+
+    /// The Moves to try for `stance` and `motion`, armed or not.
+    fn names(&self, stance: Stance, motion: Motion) -> Vec<String> {
+        if self.armed {
+            rifle_move_names(stance, motion)
+        } else {
+            move_names(stance, motion)
+        }
+    }
+
+    /// The Man's rig.
+    pub fn rig(&self) -> &ManRig {
+        &self.rig
+    }
+
+    /// Where his model's origin sits in the pivots model's space (its `bounding_center`).
+    pub fn model_offset(&self) -> Vec3 {
+        self.model_offset
     }
 
     /// The point of the model's space that stands on the entity's position when posed: the
@@ -292,6 +384,30 @@ mod tests {
         ] {
             assert_eq!(move_names(stance, Motion::default())[0], idle);
         }
+    }
+
+    #[test]
+    fn a_rifleman_raises_his_rifle_then_falls_back_to_lowered_then_unarmed() {
+        let names = rifle_move_names(Stance::Stand, Motion::default());
+        assert_eq!(
+            names[..3],
+            [
+                "AmovPercMstpSrasWrflDnon",
+                "AmovPercMstpSlowWrflDnon",
+                "AmovPercMstpSnonWnonDnon"
+            ]
+        );
+        assert_eq!(names.last().unwrap(), STANDING);
+        let crawl = rifle_move_names(Stance::Prone, walking(Pace::Walk, Direction::Forward));
+        assert!(crawl.contains(&"AmovPpneMrunSlowWrflDf".to_owned()));
+        assert_eq!(
+            vfs_path(r"\A3\Characters_F\BLUFOR\equip_b_vest02"),
+            r"A3\Characters_F\BLUFOR\equip_b_vest02.p3d"
+        );
+        assert_eq!(
+            vfs_path("A3/Characters_F/Heads/Anim/male/Neutral.rtm"),
+            r"A3\Characters_F\Heads\Anim\male\Neutral.rtm"
+        );
     }
 
     #[test]

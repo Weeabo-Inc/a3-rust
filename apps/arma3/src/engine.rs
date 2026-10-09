@@ -34,24 +34,33 @@ pub struct EngineContext {
     pub hide_overlay: bool,
 }
 
+/// The model viewer's game data: the VFS, what to show, and the merged config when a posed or
+/// dressed model needs it.
+pub type ModelData = (
+    a3_vfs::Vfs,
+    ModelSpec,
+    Option<std::sync::Arc<a3_config::ConfigTree>>,
+);
+
 impl EngineContext {
-    /// Mount the game data for the model viewer, if a model is requested. A posed model
-    /// (`ModelSpec::pose`) also needs the merged config for its Moves type, which comes back as
-    /// the third element (`None` for an unposed model).
-    pub fn load_model_vfs(
-        &self,
-    ) -> anyhow::Result<Option<(a3_vfs::Vfs, ModelSpec, Option<a3_moves::Moves>)>> {
+    /// Mount the game data for the model viewer, if a model is requested. A posed or dressed
+    /// model (`ModelSpec::pose`, `ModelSpec::loadout`) also needs the merged config, which comes
+    /// back as the third element (`None` otherwise).
+    pub fn load_model_vfs(&self) -> anyhow::Result<Option<ModelData>> {
         let Some(spec) = &self.model else {
             return Ok(None);
         };
         let Some(dir) = &self.game_dir else {
             anyhow::bail!("--model needs the game directory (--game-dir or A3_ROOT)");
         };
-        if spec.pose.is_some() {
+        if spec.pose.is_some() || spec.loadout.is_some() {
             let data = a3_gamedata::GameData::load(&a3_gamedata::LoadOptions::new(dir))
                 .map_err(|e| anyhow::anyhow!("loading the game config for --move: {e}"))?;
-            let moves = crate::man::moves_of(&data.config);
-            return Ok(Some((data.vfs.clone(), spec.clone(), moves)));
+            return Ok(Some((
+                data.vfs.clone(),
+                spec.clone(),
+                Some(data.config.clone()),
+            )));
         }
         let vfs = a3_vfs::Vfs::new();
         let report = vfs.mount_game(dir, &[]);

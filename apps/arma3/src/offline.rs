@@ -79,8 +79,8 @@ pub fn screenshot(
             play,
         );
     }
-    if let Some((vfs, spec, moves)) = engine.load_model_vfs()? {
-        scene.load_model(&gpu, &mut renderer, vfs, spec, moves);
+    if let Some((vfs, spec, config)) = engine.load_model_vfs()? {
+        scene.load_model(&gpu, &mut renderer, vfs, spec, config.as_deref());
     }
     let mut input = InputState::new();
     if engine.play {
