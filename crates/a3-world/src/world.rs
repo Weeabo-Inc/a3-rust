@@ -68,7 +68,7 @@ impl Create {
 
 /// Something that happened in the World that scripts or the network layer react to. Drained
 /// with [`World::drain_events`], oldest first.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum WorldEvent {
     /// An Entity was created on this machine, locally or as the copy of a remote one
     /// (`EntityCreated` mission event).
@@ -80,6 +80,23 @@ pub enum WorldEvent {
     },
     /// This machine gained (`local: true`) or lost ownership (`Local` event handler).
     LocalityChanged { entity: EntityId, local: bool },
+    /// An Entity took damage (`Dammaged`, local). `hit_point` is the hit point that changed, or
+    /// `None` for an engine hit that changed only the total; `damage` is the change, not the new
+    /// value.
+    Dammaged {
+        entity: EntityId,
+        hit_point: Option<usize>,
+        damage: f32,
+        source: Option<EntityId>,
+    },
+    /// An Entity was destroyed (`Killed`, local). `use_effects` is the `_useEffects` argument:
+    /// false means the Object is destroyed without its destruction effects (no ruin).
+    Killed {
+        entity: EntityId,
+        killer: Option<EntityId>,
+        instigator: Option<EntityId>,
+        use_effects: bool,
+    },
     /// A group finished the waypoint at `index` and moved on (#129); a CYCLE waypoint reports
     /// the waypoint it left, so a mission sees each completion once.
     WaypointCompleted { group: GroupId, index: usize },
@@ -115,6 +132,11 @@ pub struct World {
     statics: StaticObjects,
     promoted: HashMap<StaticKey, EntityId>,
     events: Vec<WorldEvent>,
+    /// The `HandleDamage` seam (see [`crate::DamageHandler`]); none until a host installs one.
+    pub(crate) damage_handler: Option<Box<dyn crate::DamageHandler>>,
+    /// The model path → type lookup a Static object's model is resolved with (see
+    /// [`crate::ModelTypeResolver`]); none until a host installs one.
+    pub(crate) model_type_resolver: Option<Box<dyn crate::ModelTypeResolver>>,
     time: f64,
     groups: Groups,
     /// The map markers (`createMarker` and the `marker*` commands).
@@ -151,6 +173,8 @@ impl World {
             statics: StaticObjects::default(),
             promoted: HashMap::new(),
             events: Vec::new(),
+            damage_handler: None,
+            model_type_resolver: None,
             time: 0.0,
             groups: Groups::default(),
             markers: Markers::default(),
@@ -348,6 +372,19 @@ impl World {
             .map(ObjectRef::Entity)
     }
 
+    /// Records an event for scripts and the network layer (see [`WorldEvent`]).
+    pub(crate) fn record(&mut self, event: WorldEvent) {
+        self.events.push(event);
+    }
+
+    /// Drops the Static object record an Entity was promoted from, keeping the Entity: the
+    /// terrain object is gone (a destroyed building is replaced by its ruin, not restored; see
+    /// [`crate::World::apply_damage_to`] and `docs/re/sim-damage.md` §7.2). The promotion stays,
+    /// so the Static handle and Network object ID of the promoted Object keep resolving to it.
+    pub(crate) fn forget_static(&mut self, key: StaticKey) {
+        self.statics.remove(key);
+    }
+
     /// Sets an Entity's locality, recording [`WorldEvent::LocalityChanged`] when this machine
     /// gains or loses ownership. An owner change between two other machines is not a change here.
     pub fn set_locality(&mut self, id: EntityId, locality: Locality) -> Result<(), Error> {
@@ -472,6 +509,16 @@ impl World {
     /// one.
     pub fn collision_world(&self) -> Option<&CollisionWorld> {
         self.collision_world.as_ref()
+    }
+
+    /// Installs the model path → type lookup a Static object's model is resolved with, replacing
+    /// the previous one: [`TypeBank`](crate::TypeBank) implements
+    /// [`ModelTypeResolver`](crate::ModelTypeResolver). With one, a Static object that is changed
+    /// (a hit promotes it) becomes an Entity of its config class — a house with its hit points,
+    /// armor and ruin — and a destroyed building's ruin `type` finds its class; without one it
+    /// becomes the plain type named after its model (`docs/re/sim-damage.md` §7.2, §9).
+    pub fn set_model_type_resolver(&mut self, resolver: Option<Box<dyn crate::ModelTypeResolver>>) {
+        self.model_type_resolver = resolver;
     }
 
     pub(crate) fn set_terrain(&mut self, terrain: Arc<Terrain>, statics: StaticObjects) {

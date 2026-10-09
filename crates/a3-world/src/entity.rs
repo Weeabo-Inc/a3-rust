@@ -5,7 +5,7 @@ use std::sync::Arc;
 use glam::{DQuat, DVec3};
 
 use crate::sim::ClassState;
-use crate::{ClientId, EntityClass, EntityId, EntityType, NetworkId, SimulationClass};
+use crate::{ClientId, DamageState, EntityClass, EntityId, EntityType, NetworkId, SimulationClass};
 
 /// Whether this machine owns an Entity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -94,7 +94,8 @@ pub struct Entity {
     pub(crate) simulated_time: f64,
     pub(crate) class_state: ClassState,
     // Object state scripts see.
-    pub(crate) damage: f32,
+    pub(crate) damage: DamageState,
+    pub(crate) damage_allowed: bool,
     pub(crate) hidden: bool,
     pub(crate) attachment: Option<Attachment>,
     pub(crate) group: Option<crate::GroupId>,
@@ -118,6 +119,7 @@ impl Entity {
     ) -> Self {
         let simulation_step = f64::from(entity_type.simulation_step());
         let class_state = ClassState::for_class(entity_type.class());
+        let damage = DamageState::new(entity_type.damage());
         Self {
             id,
             network_id,
@@ -141,7 +143,8 @@ impl Entity {
             steps: 0,
             simulated_time: 0.0,
             class_state,
-            damage: 0.0,
+            damage,
+            damage_allowed: true,
             hidden: false,
             attachment: None,
             group: None,
@@ -167,6 +170,12 @@ impl Entity {
 
     pub fn entity_type(&self) -> &Arc<EntityType> {
         &self.entity_type
+    }
+
+    /// Swaps the type, for the one case the engine changes an Object's type in place: a
+    /// destroyed Object of a type with a ruin becomes the ruin (`docs/re/sim-damage.md` §7.2).
+    pub(crate) fn set_entity_type(&mut self, entity_type: Arc<EntityType>) {
+        self.entity_type = entity_type;
     }
 
     /// The config class name (`typeOf`).
@@ -282,18 +291,51 @@ impl Entity {
         self.simulated_time
     }
 
-    /// Total damage, 0 (intact) to 1 (destroyed). Hit points come with #128.
+    /// Total damage, 0 (intact) to 1 (destroyed), as `damage`/`getDammage` read it.
     pub fn damage(&self) -> f32 {
-        self.damage
+        self.damage.total()
     }
 
+    /// The total damage and every hit point's damage.
+    pub fn damage_state(&self) -> &DamageState {
+        &self.damage
+    }
+
+    pub(crate) fn set_damage_state(&mut self, damage: DamageState) {
+        self.damage = damage;
+    }
+
+    /// One hit point's damage by index; 0 for an index the type does not have.
+    pub fn hit_point_damage(&self, index: usize) -> f32 {
+        self.damage.hit_point(index)
+    }
+
+    /// Sets the total damage (`setDamage`, `setDammage`). Destroys the Object when it reaches 1;
+    /// see [`World::apply_damage_to`](crate::World::apply_damage_to) for the path that reacts to
+    /// that (a script's `setDamage` has its effects too).
     pub fn set_damage(&mut self, damage: f32) {
-        self.damage = damage.clamp(0.0, 1.0);
+        self.damage.set_total(damage);
+    }
+
+    /// Whether the Object is destroyed: total damage 1, or a fatal hit point of its type depleted
+    /// (`docs/re/sim-damage.md` §2.1).
+    pub fn is_destroyed(&self) -> bool {
+        self.damage.is_destroyed(self.entity_type.damage())
     }
 
     /// `alive`: not destroyed and not scheduled for deletion.
     pub fn is_alive(&self) -> bool {
-        self.damage < 1.0 && !self.deleted
+        !self.is_destroyed() && !self.deleted
+    }
+
+    /// `isDamageAllowed`: whether engine damage applies.
+    pub fn damage_allowed(&self) -> bool {
+        self.damage_allowed
+    }
+
+    /// `allowDamage`.
+    pub fn set_damage_allowed(&mut self, allowed: bool) {
+        self.damage_allowed = allowed;
     }
 
     /// `isObjectHidden`.
