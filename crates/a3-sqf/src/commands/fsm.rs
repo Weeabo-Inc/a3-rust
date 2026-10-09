@@ -30,7 +30,10 @@ pub(crate) fn register<H: Host>(r: &mut Registry<H>) {
             Value::Array(items) => {
                 let items = items.borrow();
                 (
-                    items.first().map(|v| string(v).to_owned()).unwrap_or_default(),
+                    items
+                        .first()
+                        .map(|v| string(v).to_owned())
+                        .unwrap_or_default(),
                     items.get(1).cloned(),
                 )
             }
@@ -74,7 +77,10 @@ fn exec_fsm<H: Host>(ctx: &mut Ctx<'_, H>, this: Value, file: &Value) -> Result<
     let path = match file {
         Value::Array(items) => {
             let items = items.borrow();
-            let path = items.first().map(|v| string(v).to_owned()).unwrap_or_default();
+            let path = items
+                .first()
+                .map(|v| string(v).to_owned())
+                .unwrap_or_default();
             let _allow_termination = items.get(1).is_some_and(boolean);
             path
         }
@@ -83,7 +89,9 @@ fn exec_fsm<H: Host>(ctx: &mut Ctx<'_, H>, this: Value, file: &Value) -> Result<
     let Some(compiled) = load_fsm(ctx, &path) else {
         return Ok(Value::Number(0.0));
     };
-    Ok(Value::Number(ctx.vm.fsms.start(compiled, this, &path) as f32))
+    Ok(Value::Number(
+        ctx.vm.fsms.start(compiled, this, &path) as f32
+    ))
 }
 
 /// The compiled FSM of a file, read and compiled on first use.

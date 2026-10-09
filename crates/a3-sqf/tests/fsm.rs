@@ -4,8 +4,8 @@ mod common;
 
 use std::time::Duration;
 
-use common::{TestHost, vm};
 use a3_sqf::Vm;
+use common::{TestHost, vm};
 
 const FRAME: Duration = Duration::from_millis(100);
 
@@ -44,7 +44,9 @@ class FSM {
 
 fn with_file(path: &str, text: &str) -> Vm<TestHost> {
     let mut vm = vm();
-    vm.host.files.insert(path.to_ascii_lowercase(), text.to_owned());
+    vm.host
+        .files
+        .insert(path.to_ascii_lowercase(), text.to_owned());
     vm
 }
 
@@ -65,13 +67,13 @@ fn an_fsm_takes_one_link_per_frame_and_ends_in_its_final_state() {
     // the next state's init runs.
     vm.run_scheduled(FRAME);
     assert!(vm.host.errors.is_empty(), "{:?}", vm.host.errors);
-    assert_eq!(
-        log(&vm),
-        r#"["init","pre-init","go","count 1"]"#
-    );
+    assert_eq!(log(&vm), r#"["init","pre-init","go","count 1"]"#);
     assert_eq!(vm.get_global("me").to_sqf_string(), "42");
     assert_eq!(vm.get_global("handle").to_sqf_string(), "1");
-    assert_eq!(vm.eval("h getFSMVariable \"_n\"").unwrap().to_sqf_string(), "1");
+    assert_eq!(
+        vm.eval("h getFSMVariable \"_n\"").unwrap().to_sqf_string(),
+        "1"
+    );
 
     // Frame 2: the state resumes with its precondition, then loops to itself.
     vm.run_scheduled(FRAME);
@@ -83,6 +85,9 @@ fn an_fsm_takes_one_link_per_frame_and_ends_in_its_final_state() {
     vm.run_scheduled(FRAME);
     assert_eq!(vm.get_global("result").to_sqf_string(), "3");
     assert!(log(&vm).ends_with(r#""pre-count","end"]"#), "{}", log(&vm));
+    assert_eq!(vm.eval("completedFSM h").unwrap().to_sqf_string(), "false");
+    // The final state ends the FSM one frame after it is entered.
+    vm.run_scheduled(FRAME);
     assert_eq!(vm.eval("completedFSM h").unwrap().to_sqf_string(), "true");
     assert!(vm.host.errors.is_empty(), "{:?}", vm.host.errors);
 }
@@ -94,18 +99,24 @@ fn fsm_variables_can_be_read_and_written_from_outside() {
     vm.run_scheduled(FRAME);
     // Jump the count: the next condition check sees 10 >= 3.
     vm.eval("h setFSMVariable [\"_n\", 10]").unwrap();
-    assert_eq!(vm.eval("h getFSMVariable \"_N\"").unwrap().to_sqf_string(), "10");
     assert_eq!(
-        vm.eval("h getFSMVariable [\"_missing\", 7]").unwrap().to_sqf_string(),
+        vm.eval("h getFSMVariable \"_N\"").unwrap().to_sqf_string(),
+        "10"
+    );
+    assert_eq!(
+        vm.eval("h getFSMVariable [\"_missing\", 7]")
+            .unwrap()
+            .to_sqf_string(),
         "7"
     );
     vm.run_scheduled(FRAME);
     assert_eq!(vm.get_global("result").to_sqf_string(), "10");
+    vm.run_scheduled(FRAME);
     assert_eq!(vm.eval("completedFSM h").unwrap().to_sqf_string(), "true");
 }
 
 #[test]
-fn a_waiting_state_checks_its_links_every_frame_without_rerunning_its_precondition() {
+fn a_waiting_state_runs_its_precondition_and_checks_its_links_every_frame() {
     let text = r#"class FSM { fsmName = "Wait"; class States {
         class A { name = "A"; init = ""; precondition = ""; class Links {
             class Go { priority = 0; to = "B"; precondition = ""; condition = "true"; action = ""; };
@@ -120,7 +131,7 @@ fn a_waiting_state_checks_its_links_every_frame_without_rerunning_its_preconditi
     for _ in 0..4 {
         vm.run_scheduled(FRAME);
     }
-    assert_eq!(vm.get_global("pre").to_sqf_string(), "1");
+    assert_eq!(vm.get_global("pre").to_sqf_string(), "3");
     assert_eq!(vm.get_global("checks").to_sqf_string(), "3");
     assert_eq!(
         vm.eval("diag_activeMissionFSMs").unwrap().to_sqf_string(),
@@ -129,13 +140,25 @@ fn a_waiting_state_checks_its_links_every_frame_without_rerunning_its_preconditi
     vm.eval("open = true").unwrap();
     vm.run_scheduled(FRAME);
     assert_eq!(vm.get_global("reached").to_sqf_string(), "true");
-    assert_eq!(vm.eval("diag_activeMissionFSMs").unwrap().to_sqf_string(), "[]");
+    vm.run_scheduled(FRAME);
+    assert_eq!(
+        vm.eval("diag_activeMissionFSMs").unwrap().to_sqf_string(),
+        "[]"
+    );
 }
 
 #[test]
 fn a_missing_or_broken_file_returns_handle_zero() {
     let mut vm = with_file("broken.fsm", "class Nope {};");
-    assert_eq!(vm.eval("execFSM \"missing.fsm\"").unwrap().to_sqf_string(), "0");
-    assert_eq!(vm.eval("execFSM [\"broken.fsm\", true]").unwrap().to_sqf_string(), "0");
+    assert_eq!(
+        vm.eval("execFSM \"missing.fsm\"").unwrap().to_sqf_string(),
+        "0"
+    );
+    assert_eq!(
+        vm.eval("execFSM [\"broken.fsm\", true]")
+            .unwrap()
+            .to_sqf_string(),
+        "0"
+    );
     assert_eq!(vm.host.errors.len(), 2, "{:?}", vm.host.errors);
 }

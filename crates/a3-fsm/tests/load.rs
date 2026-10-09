@@ -86,7 +86,7 @@ fn scripted_fsm_loads_states_links_and_code() {
     // Highest priority first, whatever the file order.
     let names: Vec<_> = init.links.iter().map(|l| l.name.as_str()).collect();
     assert_eq!(names, ["High", "Low"]);
-    assert_eq!(init.links[0].to, fsm.state_named("End").unwrap());
+    assert_eq!(init.links[0].to, fsm.state_named("End"));
     assert_eq!(init.links[0].condition, Condition::Script("_n > 3".into()));
     assert_eq!(init.links[0].action, Action::Script("done = true;".into()));
 
@@ -96,7 +96,7 @@ fn scripted_fsm_loads_states_links_and_code() {
 }
 
 #[test]
-fn equal_priorities_keep_file_order() {
+fn equal_priorities_come_out_in_the_engine_order() {
     let text = r#"class FSM { fsmName = "Ties"; class States {
         class A { name = "A"; init = ""; class Links {
             class First { priority = 1; to = "B"; condition = "true"; action = ""; };
@@ -107,7 +107,8 @@ fn equal_priorities_keep_file_order() {
     }; initState = "A"; finalStates[] = {}; };"#;
     let fsm = Fsm::parse_scripted(text).unwrap().fsm;
     let names: Vec<_> = fsm.state(0).links.iter().map(|l| l.name.as_str()).collect();
-    assert_eq!(names, ["First", "Second", "Third"]);
+    // The engine's unstable qsort, not file order (`docs/re/ai-fsm.md` §1.4).
+    assert_eq!(names, ["Second", "Third", "First"]);
 }
 
 #[test]
@@ -221,10 +222,18 @@ fn real_game_fsms_load() {
     let mut native = 0;
     for class in cfg.entries().into_iter().filter(|c| c.is_class()) {
         let loaded = Fsm::from_native_config(&class).unwrap();
-        assert!(loaded.warnings.is_empty(), "{}: {:?}", class.name(), loaded.warnings);
+        assert!(
+            loaded.warnings.is_empty(),
+            "{}: {:?}",
+            class.name(),
+            loaded.warnings
+        );
         native += 1;
     }
-    assert!(native >= 4, "CfgFSMs has Dragonfly, Butterfly, HoneyBee and Formation");
+    assert!(
+        native >= 4,
+        "CfgFSMs has Dragonfly, Butterfly, HoneyBee and Formation"
+    );
     let formation = Fsm::from_native_config(&(cfg >> "Formation")).unwrap().fsm;
     assert_eq!(formation.state(formation.init_state).class_name, "Init");
     assert_eq!(formation.states.len(), 18);

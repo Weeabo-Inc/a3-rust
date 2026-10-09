@@ -174,8 +174,12 @@ impl FsmList {
         self.running
             .iter()
             .map(|f| {
-                let state = f.compiled.fsm().state(f.machine.state());
-                (f.name.clone(), state.name.clone())
+                let state = f
+                    .machine
+                    .state()
+                    .map(|s| f.compiled.fsm().state(s).name.clone())
+                    .unwrap_or_default();
+                (f.name.clone(), state)
             })
             .collect()
     }

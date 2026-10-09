@@ -40,5 +40,5 @@ pub use run::{Driver, Machine};
 pub use load::{LoadError, Loaded, SCRIPT_PREFIX};
 pub use model::{
     Action, Condition, Fsm, FsmKind, Link, NativeAction, NativeCondition, State, StateId,
-    ThresholdDraw,
+    THRESHOLD_START, ThresholdDraw, sort_links,
 };

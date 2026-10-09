@@ -9,7 +9,7 @@ use a3_config::{Config, ConfigRef, ConfigTree, Value, parse_text};
 
 use crate::model::{
     Action, Condition, Fsm, FsmKind, Link, NativeAction, NativeCondition, State, StateId,
-    ThresholdDraw,
+    ThresholdDraw, sort_links,
 };
 
 /// The prefix that makes a native action SQF instead of an engine function.
@@ -106,7 +106,7 @@ fn load(class: &ConfigRef<'_>, name: String, kind: FsmKind) -> Result<Loaded, Lo
                 String::new(),
             ),
         };
-        // A final state has no way out: the engine does not load its links.
+        // A final state's own links are ignored: the engine gives it one that ends the machine.
         let links = if is_final {
             Vec::new()
         } else {
@@ -145,14 +145,18 @@ fn links(
             continue;
         }
         let to_name = link.get("to").text();
-        let Some(to) = find(&to_name) else {
+        let to = find(&to_name);
+        if to.is_none() {
             warnings.push(format!(
                 "FSM {fsm:?}: link {:?} of state {:?} leads to unknown state {to_name:?}",
                 link.name(),
                 state.name()
             ));
-            continue;
-        };
+            // The engine refuses a scripted one; a native one stays and only runs its action.
+            if kind == FsmKind::Scripted {
+                continue;
+            }
+        }
         let (condition, action, precondition) = match kind {
             FsmKind::Scripted => (
                 Condition::Script(link.get("condition").text()),
@@ -160,7 +164,7 @@ fn links(
                 link.get("precondition").text(),
             ),
             FsmKind::Native => (
-                native_condition(&link.get("Condition")),
+                native_condition(&link.get("Condition"), fsm, warnings),
                 native_action(&link.get("Action"), fsm, warnings),
                 String::new(),
             ),
@@ -174,17 +178,28 @@ fn links(
             action,
         });
     }
-    // Highest priority first; a stable sort keeps file order among equals.
-    links.sort_by(|a, b| b.priority.total_cmp(&a.priority));
+    sort_links(&mut links);
     links
+}
+
+/// Splits a native condition name into its `1-` negation and the function name, as
+/// `FSMEntity_ParseNegationPrefix` does: the name starts at its first letter; what comes before,
+/// without whitespace, negates when it is exactly `1-` and is dropped otherwise.
+fn parse_negation(written: &str) -> (String, bool) {
+    let start = written
+        .find(|c: char| c.is_ascii_alphabetic())
+        .unwrap_or(written.len());
+    let prefix: String = written[..start]
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect();
+    (written[start..].to_owned(), prefix == "1-")
 }
 
 fn native_action(class: &ConfigRef<'_>, fsm: &str, warnings: &mut Vec<String>) -> Action {
     let function = class.get("function").text();
-    if function.len() >= SCRIPT_PREFIX.len()
-        && function[..SCRIPT_PREFIX.len()].eq_ignore_ascii_case(SCRIPT_PREFIX)
-    {
-        return Action::Script(function[SCRIPT_PREFIX.len()..].to_owned());
+    if let Some(code) = strip_script(&function) {
+        return Action::Script(code.to_owned());
     }
     let function = if function.is_empty() {
         "nothing".to_owned()
@@ -212,18 +227,35 @@ fn native_action(class: &ConfigRef<'_>, fsm: &str, warnings: &mut Vec<String>) -
     })
 }
 
-fn native_condition(class: &ConfigRef<'_>) -> Condition {
+fn native_condition(class: &ConfigRef<'_>, fsm: &str, warnings: &mut Vec<String>) -> Condition {
     let written = class.get("function").text();
-    let (function, inverted) = match written.strip_prefix("1-") {
-        Some(rest) => (rest.trim().to_owned(), true),
-        None => (written.trim().to_owned(), false),
+    let (function, inverted, script) = match strip_script(&written) {
+        Some(code) => (code.to_owned(), false, true),
+        None => {
+            let (function, inverted) = parse_negation(&written);
+            (function, inverted, false)
+        }
     };
+    let threshold = class.get("threshold").number();
+    if threshold < 0.0 {
+        warnings.push(format!("FSM {fsm:?}: wrong threshold {threshold}"));
+    }
     Condition::Native(NativeCondition {
         function,
         inverted,
+        script,
         parameters: numbers(&class.get("parameters")),
-        threshold: class.get("threshold").number().max(0.0) as usize,
+        threshold: threshold.max(0.0) as usize,
     })
+}
+
+/// The code of a `script:` function, prefix matched case-insensitively.
+fn strip_script(function: &str) -> Option<&str> {
+    let n = SCRIPT_PREFIX.len();
+    (function.len() >= n
+        && function.is_char_boundary(n)
+        && function[..n].eq_ignore_ascii_case(SCRIPT_PREFIX))
+    .then(|| &function[n..])
 }
 
 fn numbers(entry: &ConfigRef<'_>) -> Vec<f32> {
