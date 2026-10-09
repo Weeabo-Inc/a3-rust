@@ -113,6 +113,18 @@ pub fn model_feature(
         .map_or(4, |n| n.get())
         .saturating_sub(2)
         .clamp(2, 12);
+    model_feature_with(gpu, renderer, vfs, max_texture, threads)
+}
+
+/// Like [`model_feature`], with an explicit loader thread count. The player's one Man model
+/// needs far fewer threads than a terrain's worth of objects.
+pub fn model_feature_with(
+    gpu: &Gpu,
+    renderer: &mut Renderer,
+    vfs: Vfs,
+    max_texture: u32,
+    threads: usize,
+) -> ModelFeature {
     let mut models = ModelRenderer::new(
         &gpu.device,
         renderer.frame_layout(),

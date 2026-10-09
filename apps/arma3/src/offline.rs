@@ -69,12 +69,14 @@ pub fn screenshot(
     let mut scene = DebugScene::new();
     scene.load(&gpu, &mut renderer);
     if let Some(world) = engine.load_world()? {
+        let play = engine.play.then_some(engine.camera_mode);
         scene.load_world(
             &gpu,
             &mut renderer,
             world,
             engine.camera,
             &engine.environment,
+            play,
         );
     }
     if let Some((vfs, spec)) = engine.load_model_vfs()? {

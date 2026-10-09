@@ -561,6 +561,7 @@ dependencies = [
 name = "arma3"
 version = "0.1.0"
 dependencies = [
+ "a3-anim",
  "a3-config",
  "a3-core",
  "a3-environment",
@@ -568,8 +569,11 @@ dependencies = [
  "a3-input",
  "a3-landscape",
  "a3-landscape-render",
+ "a3-moves",
+ "a3-p3d",
  "a3-paa",
  "a3-platform",
+ "a3-pose",
  "a3-render",
  "a3-render-models",
  "a3-vfs",

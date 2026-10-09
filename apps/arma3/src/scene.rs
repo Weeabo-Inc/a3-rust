@@ -10,20 +10,33 @@ use a3_render::{
     Camera, ColorSpace, DrawList, FreeFlyController, FreeFlyInput, Gpu, MeshData, MeshDraw, MeshId,
     Renderer, TextureData, TextureFormat, TextureId,
 };
-use glam::{DAffine3, DQuat, DVec3, Vec3};
+use glam::{Affine3A, DAffine3, DQuat, DVec3, Vec3};
 
+use crate::man::ManAnimation;
 use crate::models::{ModelSpec, Orbit, stats_line};
+use crate::player::{CameraMode, Ground, Player, Stance, ground_lift};
 use crate::world::{CameraSpec, LoadedWorld};
-use a3_render_models::{ModelFeature, ModelStats};
+use a3_moves::Moves;
+use a3_render_models::{ModelFeature, ModelId, ModelStats, PlacedObject};
 
 /// Closest the free camera gets to the terrain surface, in metres.
 const MIN_ALTITUDE: f64 = 1.5;
+
+/// Closest the third-person camera boom gets to the terrain, in metres, so it does not end up
+/// under a hill behind the player.
+const THIRD_PERSON_CLEARANCE: f64 = 0.4;
 
 /// A loaded World's terrain as the scene sees it.
 struct WorldView {
     name: String,
     heights: HeightField,
     stats: Arc<Mutex<TerrainStats>>,
+}
+
+impl Ground for WorldView {
+    fn height(&self, x: f64, z: f64) -> f32 {
+        self.heights.sample(x as f32, z as f32)
+    }
 }
 
 /// Centre of the test area: far from the world origin, like the middle of a 30 km terrain, so
@@ -113,15 +126,162 @@ struct SceneAssets {
     crate_texture: TextureId,
 }
 
+/// The player Man's own model renderer: `CfgVehicles >> B_Soldier_F >> model`, drawn at the
+/// player's transform in third person and hidden in first person, like the engine hides the
+/// body the eyes are in.
+///
+/// It is its own `ModelFeature` (rather than reusing the World objects' one) so the Man's single
+/// model loads on a couple of threads and the view distance of the terrain's objects does not
+/// decide whether he is drawn.
+struct SoldierModel {
+    feature: ModelFeature,
+    model: ModelId,
+    /// The Man's animation, when the game data has his Skeleton, the rest pivots and his Moves
+    /// type. Behind a lock because placing is done from `draw`, which takes `&self`.
+    man: Option<Mutex<ManAnimation>>,
+    path: String,
+}
+
+impl SoldierModel {
+    /// Register the renderer and start loading `path`. `moves` is the Moves type the Man's
+    /// animation comes from; `None` (or a Moves type his rig cannot be posed with) draws him
+    /// unposed.
+    fn new(
+        gpu: &Gpu,
+        renderer: &mut Renderer,
+        vfs: a3_vfs::Vfs,
+        path: &str,
+        moves: Option<Moves>,
+    ) -> SoldierModel {
+        let man = match moves {
+            Some(moves) => match ManAnimation::load(&vfs, moves, path) {
+                Some(man) => Some(Mutex::new(man)),
+                None => {
+                    log::warn!(
+                        "cannot animate the player Man: {path}, its skeleton or its moves are \
+                         missing from the game data; drawing him unposed"
+                    );
+                    None
+                }
+            },
+            None => None,
+        };
+        let feature = crate::models::model_feature_with(gpu, renderer, vfs, 1024, 2);
+        let model = {
+            let mut m = feature.lock();
+            let model = m.model(path);
+            m.preload(model);
+            model
+        };
+        SoldierModel {
+            feature,
+            model,
+            man,
+            path: path.to_owned(),
+        }
+    }
+
+    /// Whether the model's geometry is loaded and safe to place.
+    fn ready(&self) -> bool {
+        self.feature.lock().model_bounds(self.model).is_some()
+    }
+
+    /// Whether the loader still has work (used to hold a screenshot until the Man is in).
+    fn loading(&self) -> bool {
+        !self.feature.lock().is_idle()
+    }
+
+    /// Advance the Man's animation by one frame of the player's movement.
+    fn advance(&self, player: &Player, dt: f32) {
+        let Some(man) = &self.man else { return };
+        match man.lock() {
+            Ok(mut man) => man.advance(player.stance, player.motion, dt),
+            Err(_) => log::warn!("the Man's animation lock is poisoned; he stands still"),
+        }
+    }
+
+    /// Put the Man at `transform` for this frame, or take him out of the frame with `None`
+    /// (first person, or before the model is ready).
+    ///
+    /// The Man's mesh is stored below its model origin while his Move's translations are
+    /// ground-relative, so his bones are lifted by [`ground_lift`](crate::player::ground_lift):
+    /// his feet, not the crown of his head, land on the ground. Without an animation the whole
+    /// mesh is lifted and placed unposed, the same way.
+    fn place(&self, transform: Option<DAffine3>) {
+        let mut m = self.feature.lock();
+        m.clear_dynamic();
+        m.clear_skinned();
+        let Some(transform) = transform else { return };
+        let lift = m
+            .model_box(self.model)
+            .map_or(0.0, |(lowest, _)| ground_lift(lowest.as_dvec3()) as f32);
+        if let Some(man) = &self.man {
+            let bones = match man.lock() {
+                Ok(man) => man.palette(),
+                Err(_) => None,
+            };
+            if let Some(bones) = bones {
+                let up = Affine3A::from_translation(Vec3::new(0.0, lift, 0.0));
+                let bones: Vec<Affine3A> = bones.into_iter().map(|b| b * up).collect();
+                m.add_skinned(
+                    PlacedObject {
+                        model: self.model,
+                        transform,
+                    },
+                    &bones,
+                );
+                return;
+            }
+        }
+        let mut transform = transform;
+        transform.translation.y += f64::from(lift);
+        m.add_dynamic(PlacedObject {
+            model: self.model,
+            transform,
+        });
+    }
+
+    /// Overlay line describing the Man's model: its state, his Move, and what the renderer did
+    /// with it last frame.
+    fn describe(&self) -> String {
+        let m = self.feature.lock();
+        let stats = m.stats();
+        let state = if m.model_failed(self.model) {
+            "FAILED TO LOAD (SEE LOG)".to_owned()
+        } else if let Some((_, lods)) = m.model_bounds(self.model) {
+            format!("READY  {lods} LODS")
+        } else {
+            "LOADING, STAND-IN DRAWN".to_owned()
+        };
+        let move_ = match &self.man {
+            Some(man) => match man.lock() {
+                Ok(man) => format!("  MOVE {}", man.move_name()),
+                Err(_) => "  ANIMATION LOCK POISONED".to_owned(),
+            },
+            None => "  NO ANIMATION".to_owned(),
+        };
+        format!(
+            "MAN {}  {state}{move_}  INST {} DRAWS {}",
+            self.path.to_uppercase().replace('\\', "/"),
+            stats.instances,
+            stats.draw_calls,
+        )
+    }
+}
+
 /// Everything the debug view shows, independent of window or offscreen output.
 pub struct DebugScene {
     pub camera: Camera,
     pub controller: FreeFlyController,
     pub actions: ActionMap,
+    /// The player Man, when playing (`--play`) instead of flying free.
+    pub player: Option<Player>,
     assets: Option<SceneAssets>,
     world: Option<WorldView>,
     /// Placed objects of the World, or the model viewer's model.
     models: Option<ModelFeature>,
+    /// The player Man's own model, when the game data has one.
+    soldier: Option<SoldierModel>,
     orbit: Option<Orbit>,
     environment: Option<crate::environment::SceneEnvironment>,
     sim_time: f64,
@@ -137,10 +297,12 @@ impl DebugScene {
                 ..Camera::default()
             },
             controller: FreeFlyController::default(),
-            actions: actions::default_map(),
+            actions: crate::keys::client_default_map(),
+            player: None,
             assets: None,
             world: None,
             models: None,
+            soldier: None,
             orbit: None,
             environment: None,
             sim_time: 0.0,
@@ -148,7 +310,8 @@ impl DebugScene {
     }
 
     /// Show `world`'s terrain instead of the test meshes and place the camera: at `spec`, or
-    /// above the world's `centerPosition`.
+    /// above the world's `centerPosition`. With `play` set, a player Man spawns on the terrain
+    /// at the same spot instead, seen through the given camera mode.
     pub fn load_world(
         &mut self,
         gpu: &Gpu,
@@ -156,6 +319,7 @@ impl DebugScene {
         world: LoadedWorld,
         spec: Option<CameraSpec>,
         environment: &crate::environment::EnvironmentSpec,
+        play: Option<CameraMode>,
     ) {
         self.environment = Some(crate::environment::SceneEnvironment::new(
             gpu,
@@ -193,11 +357,49 @@ impl DebugScene {
         };
         // Terrain distances: fly faster than in the test scene.
         self.controller.speed = 60.0;
-        self.world = Some(WorldView {
+        let view = WorldView {
             name: world.name,
             heights,
             stats,
-        });
+        };
+        if let Some(mode) = play {
+            let mut player = Player::new(DVec3::new(
+                spec.east,
+                f64::from(view.height(spec.east, spec.north)).max(0.0),
+                spec.north,
+            ));
+            player.yaw = spec.heading.to_radians();
+            player.pitch = spec.pitch.to_radians();
+            player.switch_mode(mode);
+            log::info!(
+                "playing as a Man at {:.0} {:.0} ({}), {:.0} m above sea level",
+                spec.east,
+                spec.north,
+                match mode {
+                    CameraMode::FirstPerson => "first person",
+                    CameraMode::ThirdPerson => "third person",
+                },
+                player.position.y
+            );
+            if let Some(path) = &world.player_model {
+                log::info!("player Man model: {path}");
+                self.soldier = Some(SoldierModel::new(
+                    gpu,
+                    renderer,
+                    world.vfs,
+                    path,
+                    crate::man::moves_of(&world.config),
+                ));
+            } else {
+                log::warn!(
+                    "no model for {} in the game data; drawing the stand-in Man",
+                    crate::player::PLAYER_CLASS
+                );
+            }
+            self.camera = player.camera();
+            self.player = Some(player);
+        }
+        self.world = Some(view);
     }
 
     /// Show one model with an orbit camera (the model viewer).
@@ -213,9 +415,11 @@ impl DebugScene {
         self.models = Some(models);
     }
 
-    /// Whether models or textures are still loading.
+    /// Whether models or textures are still loading (the player Man included, so a screenshot
+    /// waits for his body).
     pub fn models_loading(&self) -> bool {
         self.models.as_ref().is_some_and(|m| !m.lock().is_idle())
+            || self.soldier.as_ref().is_some_and(SoldierModel::loading)
     }
 
     /// Model renderer statistics of the last frame.
@@ -265,6 +469,10 @@ impl DebugScene {
     /// Advance the scene by one frame.
     pub fn update(&mut self, input: &InputState, mouse_look: bool, dt: f64) {
         self.sim_time += dt;
+        if self.player.is_some() {
+            self.update_player(input, mouse_look, dt);
+            return;
+        }
         let fly = free_fly_input(
             &self.actions,
             input,
@@ -285,11 +493,42 @@ impl DebugScene {
         }
     }
 
+    /// One frame of play: mouse look, movement over the terrain, and the camera on the man.
+    fn update_player(&mut self, input: &InputState, mouse_look: bool, dt: f64) {
+        let Some(world) = &self.world else { return };
+        let Some(player) = &mut self.player else {
+            return;
+        };
+        if mouse_look {
+            // Raw mouse motion, like the free camera: right turns clockwise, up looks up.
+            let m = |axis| input.value(InputCode::MouseAxis(axis));
+            let sensitivity = self.controller.look_sensitivity;
+            player.look(
+                (m(MouseAxis::Right) - m(MouseAxis::Left)) * sensitivity,
+                (m(MouseAxis::Up) - m(MouseAxis::Down)) * sensitivity,
+            );
+        }
+        player.update(&self.actions, input, world, dt);
+        // The Man plays the Move his movement just called for, one frame further on.
+        if let Some(soldier) = &self.soldier {
+            soldier.advance(player, dt as f32);
+        }
+        let mut camera = player.camera();
+        // The third-person boom may hang over a slope behind the player: keep it above the
+        // terrain there.
+        let ground = f64::from(world.height(camera.position.x, camera.position.z)).max(0.0);
+        camera.position.y = camera.position.y.max(ground + THIRD_PERSON_CLEARANCE);
+        self.camera = camera;
+    }
+
     /// Fill `draws` with this frame's meshes and lines.
     pub fn draw(&self, draws: &mut DrawList) {
         if let (Some(orbit), Some(models)) = (&self.orbit, &self.models) {
             orbit.draw(draws, models);
             return;
+        }
+        if let (Some(player), Some(a)) = (&self.player, &self.assets) {
+            self.draw_man(draws, a, player);
         }
         if self.world.is_some() {
             // The terrain draws itself as a render feature.
@@ -391,6 +630,90 @@ impl DebugScene {
         );
     }
 
+    /// Draw the player Man for this frame.
+    ///
+    /// With the game's own Man model loaded, he is placed at the body transform in third person
+    /// and taken out of the frame in first person. Until the model is ready (or when the game
+    /// data has none) the stand-in below is drawn instead, so the player is never a hole in the
+    /// terrain.
+    fn draw_man(&self, draws: &mut DrawList, assets: &SceneAssets, player: &Player) {
+        if player.mode == CameraMode::FirstPerson {
+            if let Some(soldier) = &self.soldier {
+                // The engine hides the body the eyes are in.
+                soldier.place(None);
+            }
+            return;
+        }
+        if let Some(soldier) = &self.soldier {
+            if soldier.ready() {
+                soldier.place(Some(player.transform()));
+                return;
+            }
+        }
+        self.draw_soldier(draws, assets, player);
+    }
+
+    /// Draw the player, seen from outside.
+    ///
+    /// STAND-IN: until the Man's own model is loaded (or when the game data has none), the player
+    /// is built from the test meshes, sized to a soldier (1.8 m tall, shoulders at 1.4 m) and
+    /// rotated with the body. First person hides it, like the engine hides the body the eyes are
+    /// in.
+    fn draw_soldier(&self, draws: &mut DrawList, assets: &SceneAssets, player: &Player) {
+        if player.mode == CameraMode::FirstPerson {
+            return;
+        }
+        let feet = player.position;
+        let rotation = DQuat::from_rotation_y(player.yaw as f64);
+        let boxed = |offset: DVec3, size: DVec3| {
+            DAffine3::from_scale_rotation_translation(size, rotation, feet + rotation * offset)
+        };
+        // Torso centre and height, hip centre, and head centre for the stance.
+        let (torso, hips, head) = match player.stance {
+            Stance::Stand => ((1.05, 0.62), 0.72, 1.52),
+            Stance::Crouch => ((0.72, 0.55), 0.45, 1.05),
+            Stance::Prone => ((0.25, 0.4), 0.22, 0.5),
+        };
+        let olive = [0.24, 0.30, 0.18, 1.0];
+        let part = |offset: DVec3, size: DVec3, color| MeshDraw {
+            mesh: assets.cube,
+            texture: None,
+            transform: boxed(offset, size),
+            color,
+            transparent: false,
+        };
+        draws.mesh(part(
+            DVec3::new(0.0, torso.0, 0.0),
+            DVec3::new(0.44, torso.1, 0.26),
+            olive,
+        ));
+        draws.mesh(part(
+            DVec3::new(0.0, hips, 0.0),
+            DVec3::new(0.36, 0.35, 0.24),
+            olive,
+        ));
+        draws.mesh(MeshDraw {
+            mesh: assets.sphere,
+            texture: None,
+            transform: boxed(DVec3::new(0.0, head, 0.0), DVec3::splat(0.26)),
+            color: [0.55, 0.45, 0.35, 1.0],
+            transparent: false,
+        });
+        for side in [-1.0, 1.0] {
+            // Leg and arm.
+            draws.mesh(part(
+                DVec3::new(0.11 * side, torso.0 - torso.1 * 0.5 - 0.35, 0.0),
+                DVec3::new(0.15, 0.7, 0.18),
+                [0.20, 0.26, 0.15, 1.0],
+            ));
+            draws.mesh(part(
+                DVec3::new(0.28 * side, torso.0 - 0.05, 0.0),
+                DVec3::new(0.13, 0.6, 0.16),
+                olive,
+            ));
+        }
+    }
+
     /// Debug overlay text lines.
     pub fn overlay(
         &self,
@@ -421,13 +744,52 @@ impl DebugScene {
                 p.x, p.y, p.z, heading, adapter
             ),
         );
-        let help = if captured {
-            "WASD Q Z MOVE  SHIFT/CTRL FAST  MOUSE LOOK  TAB RELEASE  ESC QUIT"
-        } else {
-            "WASD Q Z MOVE  SHIFT/CTRL FAST  CLICK TO LOOK  ESC QUIT"
+        let help = match (self.player.is_some(), captured) {
+            (true, true) => {
+                "WASD MOVE  SHIFT SPRINT  CTRL WALK  C CROUCH  Z PRONE  X STAND  \
+                 NUM ENTER VIEW  MOUSE LOOK  TAB RELEASE  ESC QUIT"
+            }
+            (true, false) => {
+                "WASD MOVE  C CROUCH  Z PRONE  X STAND  NUM ENTER VIEW  \
+                 CLICK TO LOOK  ESC QUIT"
+            }
+            (false, true) => "WASD Q Z MOVE  SHIFT/CTRL FAST  MOUSE LOOK  TAB RELEASE  ESC QUIT",
+            (false, false) => "WASD Q Z MOVE  SHIFT/CTRL FAST  CLICK TO LOOK  ESC QUIT",
         };
         draws.text(8.0, 52.0, 2.0, dim, help);
         draws.text(8.0, 74.0, 2.0, dim, format!("KEYS {keys}"));
+        // Play mode reports the player first; the World objects line follows it.
+        let mut y: f32 = 118.0;
+        if let Some(p) = &self.player {
+            draws.text(
+                8.0,
+                y,
+                2.0,
+                dim,
+                format!(
+                    "PLAYER {} {}",
+                    match p.mode {
+                        CameraMode::FirstPerson => "FIRST PERSON",
+                        CameraMode::ThirdPerson => "THIRD PERSON",
+                    },
+                    match p.stance {
+                        Stance::Stand => "STANDING",
+                        Stance::Crouch => "CROUCHED",
+                        Stance::Prone => "PRONE",
+                    }
+                ),
+            );
+            y += 22.0;
+            let man = match &self.soldier {
+                Some(soldier) => soldier.describe(),
+                None => format!(
+                    "MAN {}  NO MODEL IN THE GAME DATA, STAND-IN DRAWN",
+                    crate::player::PLAYER_CLASS
+                ),
+            };
+            draws.text(8.0, y, 2.0, dim, man);
+            y += 22.0;
+        }
         if let Some(models) = &self.models {
             let line = match &self.orbit {
                 Some(orbit) => format!(
@@ -437,7 +799,7 @@ impl DebugScene {
                 ),
                 None => stats_line(&models.lock().stats()),
             };
-            draws.text(8.0, 118.0, 2.0, dim, line);
+            draws.text(8.0, y, 2.0, dim, line);
         }
         if let (Some(world), Some(stats)) = (&self.world, self.terrain_stats()) {
             let ground = world.heights.sample(p.x as f32, p.z as f32);

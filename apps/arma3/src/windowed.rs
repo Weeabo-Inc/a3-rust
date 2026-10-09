@@ -89,12 +89,14 @@ impl App for GameApp {
             self.keys_description = "LOADING...".to_owned();
         }
         if let Some(world) = self.engine.load_world()? {
+            let play = self.engine.play.then_some(self.engine.camera_mode);
             self.scene.load_world(
                 &gpu,
                 &mut renderer,
                 world,
                 self.engine.camera,
                 &self.engine.environment,
+                play,
             );
         }
         if let Some((vfs, spec)) = self.engine.load_model_vfs()? {
