@@ -439,11 +439,9 @@ fresnel/layer 1, t7 env/layer 2, t8 layer 3, t9–t11 layer normals 1–3, t12�
 - Sun shadows: opaque and alpha-tested sections cast within the shadow distance. Receivers use
   a3-render's cascades (`sun_visibility`), multiplied by the AS `aoSun` term.
 
-**LOD selection** (`lod.rs`) follows `render-lod.md`. These parts are the engine's:
-- the objects-quality coefficients and their distance curve;
-- the object size;
-- the draw/fade test (a dithered fade per instance);
-- the shadow test.
-
-The global area multiplier and the per-LOD index are named stand-ins (`LodSelector::area_scale`,
-`stand_in_lod_index`) until §5 of that page is decoded.
+**LOD selection** (`lod.rs`) follows `render-lod.md`: the objects-quality coefficients and
+their distance curve, the object size, the draw/fade test with the object-view-distance fade (a
+dithered fade per instance), the shadow test, and the frame-wide face budget that picks each
+object's Resolution LOD. Departures: no frame-to-frame hysteresis yet (area class and LOD), and
+proxies pick their LOD at the frame's faces-per-pixel ratio outside the budget. The shadow pass
+draws the visual LOD instead of the model's shadow-LOD table (`render-lod.md` §7).
