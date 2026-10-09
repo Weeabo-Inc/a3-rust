@@ -340,7 +340,9 @@ fn create_unit<H: WorldHost>(
         return null_object();
     };
     let _ = w.join(unit, group);
-    object_value(w, ObjectRef::Entity(unit))
+    let object = object_value(w, ObjectRef::Entity(unit));
+    super::handlers::dispatch_events_in(ctx);
+    object
 }
 
 fn join<H: WorldHost>(ctx: &mut Ctx<'_, H>, units: &Value, group: Option<GroupId>) {

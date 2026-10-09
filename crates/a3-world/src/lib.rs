@@ -97,7 +97,9 @@ mod class;
 mod damage;
 mod entity;
 mod groups;
+mod handlers;
 mod id;
+mod markers;
 mod moves;
 pub mod net;
 mod object_ref;
@@ -122,7 +124,9 @@ pub use damage::{
 };
 pub use entity::{Attachment, Entity, ListKind, Locality, VisualState};
 pub use groups::{ENEMY_THRESHOLD, Group, GroupId, Side, default_group_name, side_from_config};
+pub use handlers::{Handler, Handlers};
 pub use id::{ClientId, EntityId, NetworkId, ParseNetworkIdError};
+pub use markers::{Marker, Markers};
 pub use net::{
     DAMAGE_ERROR_SCALE, JipObject, OwedUpdate, RemoteCreate, RemoteUpdate, ReplicatedState,
     STATE_FLAG_ERROR, TRANSFORM_ERROR_PER_METRE, TRANSFORM_ERROR_PER_MPS,

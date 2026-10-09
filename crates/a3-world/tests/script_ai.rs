@@ -409,3 +409,35 @@ fn target_knowledge_rises_with_reveal_and_falls_with_forget() {
     eval(&mut vm, "a reveal e");
     assert_eq!(number(&mut vm, "b knowsAbout e"), 1.0);
 }
+
+#[test]
+fn copy_waypoints_replaces_the_target_queue_and_get_wp_pos_reads_the_position() {
+    let mut vm = vm(ClientId::SERVER);
+    eval(
+        &mut vm,
+        &format!(
+            r#"{TWO_GROUPS}
+            g addWaypoint [[10, 0, 20], 0];
+            g addWaypoint [[30, 0, 40], 0];
+            g2 addWaypoint [[99, 0, 99], 0];
+            g2 copyWaypoints g;
+            "#
+        ),
+    );
+
+    assert_eq!(
+        number(&mut vm, "count waypoints g2"),
+        3.0,
+        "start + 2 copies"
+    );
+    assert!(truth(
+        &mut vm,
+        "getWPPos [g2, 1] isEqualTo waypointPosition [g, 1]"
+    ));
+    assert_eq!(number(&mut vm, "getWPPos [g2, 1] select 0"), 10.0);
+    assert!(truth(
+        &mut vm,
+        "getWPPos [g2, 2] isEqualTo waypointPosition [g, 2]"
+    ));
+    assert_eq!(number(&mut vm, "currentWaypoint g2"), 1.0);
+}

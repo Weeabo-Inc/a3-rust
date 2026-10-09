@@ -110,9 +110,19 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
             Ok(Value::Nothing)
         });
     }
-    r.unary("waypointPosition", ARR, ARR, |ctx, wp| {
-        let p = get_waypoint(ctx.host.world(), &wp).map_or(DVec3::ZERO, |w| w.position);
-        Ok(position_value(p))
+    for name in ["waypointPosition", "getWPPos"] {
+        r.unary(name, ARR, ARR, |ctx, wp| {
+            let p = get_waypoint(ctx.host.world(), &wp).map_or(DVec3::ZERO, |w| w.position);
+            Ok(position_value(p))
+        });
+    }
+    // AG EG. `groupTo copyWaypoints groupFrom`: the target starts over at the first copy.
+    r.binary("copyWaypoints", GRP, GRP, NOTHING, |ctx, to, from| {
+        let w = ctx.host.world();
+        if let (Some(to), Some(from)) = (group_arg(w, &to), group_arg(w, &from)) {
+            let _ = ctx.host.world_mut().copy_waypoints(from, to);
+        }
+        Ok(Value::Nothing)
     });
     // "UNCHANGED" comes back None from the name lookup, which is what the waypoint stores.
     r.binary("setWaypointBehaviour", ARR, STR, NOTHING, |ctx, wp, s| {

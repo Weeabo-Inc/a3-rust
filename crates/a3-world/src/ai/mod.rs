@@ -583,6 +583,22 @@ impl World {
         Ok(())
     }
 
+    /// `copyWaypoints`: `to` gets a copy of `from`'s waypoints, replacing its own, and starts
+    /// over at the first one.
+    pub fn copy_waypoints(&mut self, from: GroupId, to: GroupId) -> Result<(), Error> {
+        let waypoints = self
+            .group(from)
+            .ok_or(Error::NoSuchGroup(from))?
+            .ai
+            .waypoints
+            .clone();
+        self.group_mut(to)
+            .ok_or(Error::NoSuchGroup(to))?
+            .ai
+            .waypoints = waypoints;
+        self.set_current_waypoint(to, 0)
+    }
+
     /// `move`: drop what the group was doing and walk to `position` — one MOVE waypoint, active
     /// at once (`docs/re/ai.md`).
     pub fn move_group(&mut self, group: GroupId, position: DVec3) -> Result<(), Error> {
