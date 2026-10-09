@@ -141,6 +141,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-nav"
+version = "0.1.0"
+dependencies = [
+ "a3-config",
+ "a3-gamedata",
+ "a3-landscape",
+ "a3-p3d",
+ "a3-physics",
+ "a3-wrp",
+ "glam 0.34.1",
+]
+
+[[package]]
 name = "a3-p3d"
 version = "0.1.0"
 dependencies = [
