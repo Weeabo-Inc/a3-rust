@@ -166,6 +166,22 @@ impl<H: Host> Vm<H> {
         self.state.scheduler.len()
     }
 
+    /// Starts a scripted FSM with `_this = this` (`execFSM`); it takes its first step at the
+    /// next scheduler frame. Returns its handle.
+    pub fn exec_fsm(&mut self, fsm: Rc<crate::fsm::CompiledFsm>, this: Value, name: &str) -> u32 {
+        self.state.fsms.start(fsm, this, name)
+    }
+
+    /// Whether a scripted FSM has ended (`completedFSM`).
+    pub fn fsm_completed(&self, handle: u32) -> bool {
+        self.state.fsms.is_completed(handle)
+    }
+
+    /// A variable of a running scripted FSM (`getFSMVariable`).
+    pub fn fsm_variable(&self, handle: u32, name: &str) -> Option<Value> {
+        self.state.fsms.variable(handle, name)
+    }
+
     /// Runs one frame of the scheduled environment with the given time
     /// budget.
     pub fn run_scheduled(&mut self, budget: Duration) -> FrameReport {
@@ -267,5 +283,7 @@ fn run_frame<H: Host>(
     let s = &mut state.scheduler;
     s.scripts = kept;
     report.finished += s.apply_terminations();
+    // Each scripted FSM takes one step per frame (`docs/re/ai-fsm.md` §3).
+    crate::fsm::step_all(host, reg, state);
     report
 }

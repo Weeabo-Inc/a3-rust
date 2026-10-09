@@ -33,6 +33,9 @@
 
 mod load;
 mod model;
+mod run;
+
+pub use run::{Driver, Machine};
 
 pub use load::{LoadError, Loaded, SCRIPT_PREFIX};
 pub use model::{

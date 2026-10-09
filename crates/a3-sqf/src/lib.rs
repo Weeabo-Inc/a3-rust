@@ -22,6 +22,7 @@ pub mod ast;
 pub mod code;
 pub mod commands;
 pub mod error;
+pub mod fsm;
 pub mod host;
 pub mod lexer;
 pub mod parser;

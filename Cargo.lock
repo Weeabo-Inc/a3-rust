@@ -341,6 +341,7 @@ dependencies = [
 name = "a3-sqf"
 version = "0.1.0"
 dependencies = [
+ "a3-fsm",
  "a3-preproc",
  "a3-vfs",
  "criterion",

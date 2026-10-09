@@ -10,6 +10,7 @@ mod control;
 mod diag;
 mod env;
 mod extra;
+mod fsm;
 mod hashmap;
 mod json;
 mod logic;
@@ -48,6 +49,7 @@ pub fn register_core<H: Host>(r: &mut Registry<H>) {
     json::register(r);
     object::register(r);
     env::register(r);
+    fsm::register(r);
 }
 
 pub(crate) const NUM: TypeSet = TypeSet::NUMBER;
