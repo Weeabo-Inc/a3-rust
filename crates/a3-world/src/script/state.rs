@@ -96,6 +96,17 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     });
     r.unary("isBurning", OBJ, BOOL, |_, _| Ok(Value::Bool(false)));
 
+    // `canMove`: whether the unit can move. We have no unconsciousness or injury model yet, so
+    // the answer follows `alive`; a Static object never moves.
+    r.unary("canMove", OBJ, BOOL, |ctx, a| {
+        let w = ctx.host.world();
+        Ok(Value::Bool(match object_arg(w, &a) {
+            Some(ObjectRef::Entity(id)) => w.entity(id).expect("exists").is_alive(),
+            Some(ObjectRef::Static(_)) => false,
+            None => false,
+        }))
+    });
+
     // Damage. The formulas and the locality rules are in `docs/re/sim-damage.md`; a hit point
     // is addressed by config name (`HitHead`) or by model selection (`head`).
     r.unary("alive", OBJ, BOOL, |ctx, a| {

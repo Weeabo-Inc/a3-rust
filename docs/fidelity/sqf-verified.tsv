@@ -246,3 +246,9 @@ cutText	*	*	stub	wiki	no cut-text rendering; the named form answers layer 0
 enableMimics	binary	*	stub	wiki	no facial animation
 disableCollisionWith	binary	0x568f80	stub	wiki	no per-pair collision filter yet
 driver	unary	*	implemented	wiki	no crew model, so nobody is in a vehicle and the answer is objNull
+remoteExec	*	0x8c0600	stub	wiki	no network (#7); a machine in the targets runs the function locally in the engine, so headless is a no-op for now
+remoteExecCall	*	0x8c0620	stub	wiki	no network (#7)
+canMove	unary	*	implemented	wiki	no unconsciousness model; follows alive
+soundVolume	*	*	stub	wiki	no mixer bus; the getter answers 1
+titleCut	unary	*	stub	wiki	no title rendering
+titleText	unary	*	stub	wiki	no title rendering

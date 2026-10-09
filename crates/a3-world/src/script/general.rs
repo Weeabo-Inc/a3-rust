@@ -1,13 +1,13 @@
-﻿//! Engine-wide state that belongs to no object: the client's network state and the named cut
-//! layers (`cutRsc`, `cutText`, `cutObj`, `cutFadeOut`).
+//! Engine-wide state that belongs to no object: the client's network state, the cut layers
+//! (`cutRsc`, `cutText`, `cutFadeOut`), the title effects and the post-process effect family.
 
 use super::{ARR, BOOL, NOTHING, NUM, OBJ, STR, WorldHost, null_object};
 use a3_sqf::{Registry, TypeSet, Value};
 use std::sync::atomic::{AtomicI32, Ordering};
 
-/// Handles handed out by [`ppEffectCreate`]. We render no post-process effects, so a handle is
-/// only an identity the caller can pass back; the counter keeps two creations distinct the way
-/// the engine's priorities do.
+/// Handles handed out by `ppEffectCreate`. We render no post-process effects, so a handle is only
+/// an identity the caller can pass back; the counter keeps two creations distinct the way the
+/// engine's priorities do.
 static PP_HANDLE: AtomicI32 = AtomicI32::new(1);
 
 pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
@@ -29,6 +29,17 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     r.unary("cutText", ARR, NOTHING, |_, _| Ok(Value::Nothing));
     r.binary("cutText", NUM, ARR, NOTHING, |_, _, _| Ok(Value::Nothing));
     r.binary("cutText", STR, ARR, NUM, |_, _, _| Ok(Value::Number(0.0)));
+
+    // `titleCut` / `titleText`: the title-effect layers. We render no titles, so they are no-ops
+    // (`stub`).
+    r.unary("titleCut", ARR, NOTHING, |_, _| Ok(Value::Nothing));
+    r.unary("titleText", ARR, NOTHING, |_, _| Ok(Value::Nothing));
+
+    // `soundVolume`: the master sound volume. No mixer bus is wired to it, so the getter answers
+    // full volume and the setters store nothing (`stub`).
+    r.nular("soundVolume", NUM, |_ctx| Ok(Value::Number(1.0)));
+    r.unary("soundVolume", NUM, NOTHING, |_, _| Ok(Value::Nothing));
+    r.unary("soundVolume", ARR, NOTHING, |_, _| Ok(Value::Nothing));
 
     // `enableMimics`: facial animation, which we do not drive (`stub`).
     r.binary("enableMimics", OBJ, BOOL, NOTHING, |_, _, _| {
@@ -95,8 +106,21 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     r.binary("ppEffectForceInNVG", NUM, BOOL, NOTHING, |_, _, _| {
         Ok(Value::Nothing)
     });
-    r.unary("ppEffectCommitted", STR, BOOL, |_, _| Ok(Value::Bool(true)));
-    r.unary("ppEffectEnabled", STR, BOOL, |_, _| Ok(Value::Bool(true)));
+
+    // `remoteExec` / `remoteExecCall`: run a function on the machines in `targets`. There is no
+    // network (#7), and a machine already in `targets` runs the function locally in the engine,
+    // so the honest headless behaviour is to run it here and report no JIP id. Until the network
+    // layer decides which targets it can reach, both are recorded as `stub`.
+    for name in ["remoteExec", "remoteExecCall"] {
+        r.unary(name, ARR, TypeSet::ANYTHING, |_, _| Ok(Value::Nothing));
+        r.binary(
+            name,
+            TypeSet::ANYTHING,
+            ARR,
+            TypeSet::ANYTHING,
+            |_, _, _| Ok(Value::Nothing),
+        );
+    }
 
     // `getConnectedUAV`: the UAV a unit is connected to, `objNull` when it is connected to none.
     // We have no UAV terminal yet, so the answer is always the null object (#126 follow-up).
@@ -104,7 +128,7 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
 
     // `layer cutFadeOut duration` / `"name" cutFadeOut duration`: hide a cut layer. We render no
     // cut layers yet, so hiding one does nothing and the named form still has to hand back a
-    // layer id â€” `0` is the engine's "no layer" id. Recorded as `stub`.
+    // layer id; `0` is the engine's "no layer" id. Recorded as `stub`.
     r.binary("cutFadeOut", NUM, NUM, NOTHING, |_, _, _| {
         Ok(Value::Nothing)
     });
@@ -119,7 +143,7 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     r.nular("getClientState", STR, |_ctx| Ok(Value::string("NONE")));
 
     // `allCutLayers`: every layer named by a cut command. We have no cut rendering yet, so the
-    // list is empty â€” the engine's answer when none has been used.
+    // list is empty, which is the engine's answer when none has been used.
     r.nular("allCutLayers", ARR, |_ctx| {
         Ok(Value::array(std::iter::empty()))
     });
