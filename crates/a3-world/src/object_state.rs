@@ -149,6 +149,13 @@ pub struct ObjectState {
     pub cargo_seats: Vec<(i32, EntityId)>,
     /// `assignAsCargo`: the seat a unit boards when he gets in.
     pub assigned_cargo: Vec<(EntityId, i32)>,
+    /// `assignAsDriver` / `assignAsGunner`: the seat a unit boards when he gets in. The engine
+    /// keeps one reservation per seat, so a later assignment replaces the earlier one.
+    pub assigned_driver: Option<EntityId>,
+    pub assigned_gunner: Option<EntityId>,
+    /// `createDiarySubject`: `[subject, display name]` in the order added; like `diary`, there is
+    /// no diary UI yet.
+    pub diary_subjects: Vec<(String, String)>,
     /// `allowCrewInImmobile`: the whole crew, or (`_cargo`) the cargo seats only.
     pub crew_in_immobile: bool,
     pub crew_in_immobile_cargo: bool,

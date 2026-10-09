@@ -103,6 +103,27 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
         }
         Ok(Value::Nothing)
     });
+    // 0x5251a0: `unit assignAsDriver vehicle` — the seat is taken when he boards, and a later
+    // assignment replaces the earlier one.
+    r.binary("assignAsDriver", OBJ, OBJ, NOTHING, |ctx, a, b| {
+        if let Some((unit, vehicle)) = unit_and_vehicle(ctx.host.world(), &a, &b) {
+            ctx.host
+                .world_mut()
+                .object_state_mut(vehicle)
+                .assigned_driver = Some(unit);
+        }
+        Ok(Value::Nothing)
+    });
+    // 0x525230: `unit assignAsGunner vehicle`, the same for the gunner's seat.
+    r.binary("assignAsGunner", OBJ, OBJ, NOTHING, |ctx, a, b| {
+        if let Some((unit, vehicle)) = unit_and_vehicle(ctx.host.world(), &a, &b) {
+            ctx.host
+                .world_mut()
+                .object_state_mut(vehicle)
+                .assigned_gunner = Some(unit);
+        }
+        Ok(Value::Nothing)
+    });
     // 0x47e3b0: `vehicle allowCrewInImmobile allow`, and `[allow, "CARGO"]` for the cargo seats.
     r.binary(
         "allowCrewInImmobile",
