@@ -135,6 +135,30 @@ axis is `((|u|·u + u)·10 + u³·0.0005)·sideAirFriction`, and axial drag is
 `9.8066·coefGravity`. Thrust and guidance (`thrust`, `thrustTime`, `maneuvrability`, the
 lock types) are applied in helpers that have not been decoded yet.
 
+A second pass over the same function (2026-10-09) confirms the constants and pins the shape of
+the step; the *inputs* stay (medium) because the fields they read are not yet named:
+
+- The three drag terms are computed from three floats of the shot's block
+  (`+0x60`, `+0x64`, `+0x68`; with `pfVar10 = block + 0x2c` being the position these read like a
+  **model-space velocity**, medium). Lateral (`+0x60`, `+0x64`) is scaled by `sideAirFriction`
+  (`AmmoType+0x3ac`), axial (`+0x68`) by `airFriction` (`AmmoType+0x3f8`); all three are then
+  multiplied by `k·0.1`, so the implemented scale is **`0.1·dt`** if `k` is the step.
+- `k = FUN_140e85230(shot)`: the shot's `+0x88` read as an int when `vfunc +0x1d0` (the PhysX
+  body test) answers yes, else `shooter(+0xc8) + 0x5c8`, else 0. Unnamed; it also scales the
+  gravity term (`− k·9.8066`), which is what makes "k is the step" (medium) plausible.
+- The acceleration is rotated from model to world space by a 3×3 matrix at `block + 8 …
+  block + 0x28` (the missile's orientation), then handed to `FUN_140e59ab0(shot, &accel, &vel,
+  arg, k)`, which is where the shooter's velocity (`+0x54`) and the shot's `+0x740` enter.
+- `FUN_140e59d50(shot, &accel, &vel, lockType == 0x40)` is thrust and guidance. It is called only
+  when the shot's lock state (`+0xea`) is not 1 **and** the axial speed is at least 30 m/s.
+- `FUN_1410f5830(AmmoType)` returns the lock type. `0x40` takes a different drag branch
+  (`−0.03·|u|·u` lateral, `−0.005·w − 0.00033·|w|·w` axial, both scaled by `k`), the "advanced"
+  model some missiles use.
+
+Open: what `+0x60/+0x64/+0x68` hold exactly, what `k` is, the thrust and guidance law inside
+`0x140e59d50` (and its `maneuvrability`, `trackOversteer`, `trackLead` inputs), the lock types of
+`0x1410f5830`, and `initTime`/`thrustTime`.
+
 ## 4. Impact: ricochet → penetration → stop (high)
 
 When the segment hits something, the shot advances to the hit point and then tries the three
