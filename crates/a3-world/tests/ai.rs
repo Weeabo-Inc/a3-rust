@@ -613,3 +613,44 @@ fn a_group_on_the_defensive_turns_to_face_an_enemy_it_knows_about() {
         "he ends up facing east, not {heading}"
     );
 }
+
+#[test]
+fn a_unit_whose_courage_broke_runs_from_the_enemy_instead_of_his_waypoint() {
+    let mut world = world();
+    let start = DVec3::new(10.0, 100.0, 10.0);
+    let (group, units) = group_at(&mut world, start, 1);
+    let enemy_group = world.create_group(Side::East, false);
+    // An enemy 40 m east, in plain sight, and the group's waypoint 120 m north: the two pull
+    // the man in different directions.
+    let enemy = create_man(&mut world, start + DVec3::new(40.0, 0.0, 0.0));
+    world.join(enemy, enemy_group).unwrap();
+    world
+        .add_waypoint(
+            group,
+            Waypoint::new(WaypointType::Move, start + DVec3::new(0.0, 0.0, 120.0)),
+        )
+        .unwrap();
+
+    // Full cowardice (`allowFleeing 1`, read back by `fleeing`): he breaks off west instead.
+    world.object_state_mut(units[0]).fleeing = 1.0;
+    run(&mut world, 200);
+    let fled = position(&world, units[0]);
+    assert!(
+        fled.x < start.x - 5.0,
+        "he runs away from the enemy, not on to the waypoint: {fled:?}"
+    );
+    assert!(
+        fled.z < start.z + 40.0,
+        "and does not work the waypoint meanwhile: {fled:?}"
+    );
+
+    // With his courage back he works the waypoint again.
+    world.object_state_mut(units[0]).fleeing = 0.0;
+    let broke = position(&world, units[0]);
+    run(&mut world, 200);
+    assert!(
+        position(&world, units[0]).z > broke.z + 5.0,
+        "he walks north to the waypoint again: {broke:?} -> {:?}",
+        position(&world, units[0])
+    );
+}

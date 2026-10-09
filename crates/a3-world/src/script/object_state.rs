@@ -142,16 +142,39 @@ fn register_unit<H: WorldHost>(r: &mut Registry<H>) {
     // 0x481cc0: the global feature switches (`enableAIFeature`), off unless enabled — no
     // global switch exists yet _(stub)_.
     r.unary("checkAIFeature", STR, BOOL, |_, _| Ok(Value::Bool(false)));
-    // 0x1907c0: courage; the morale system does not exist yet _(stub)_.
-    r.binary("allowFleeing", OBJ, NUM, NOTHING, |_, _, _| {
+    // 0x1907c0: the cowardice of a unit, or of every man of a group: 1 breaks first, 0 never
+    // breaks (wiki). Stored 0..1 on the unit; the group tick acts on it (`docs/re/ai.md` §4). No
+    // morale model of the engine's own — losses and the leader's courage sub-skill are not in it.
+    r.binary("allowFleeing", OBJ, NUM, NOTHING, |ctx, a, b| {
+        let cowardice = b.as_number().unwrap_or(0.0).clamp(0.0, 1.0);
+        if let Some(id) = unit(ctx.host.world(), &a) {
+            state(ctx, id).fleeing = cowardice;
+        }
         Ok(Value::Nothing)
     });
-    r.binary("allowFleeing", GRP, NUM, NOTHING, |ctx, a, _| {
-        let _ = group_arg(ctx.host.world(), &a);
+    r.binary("allowFleeing", GRP, NUM, NOTHING, |ctx, a, b| {
+        let cowardice = b.as_number().unwrap_or(0.0).clamp(0.0, 1.0);
+        let Some(id) = group_arg(ctx.host.world(), &a) else {
+            return Ok(Value::Nothing);
+        };
+        let men = ctx
+            .host
+            .world()
+            .group(id)
+            .map(|g| g.units.clone())
+            .unwrap_or_default();
+        for man in men {
+            state(ctx, man).fleeing = cowardice;
+        }
         Ok(Value::Nothing)
     });
-    // 0x528630: nobody flees yet.
-    r.unary("fleeing", OBJ, BOOL, |_, _| Ok(Value::Bool(false)));
+    // 0x528630. The engine answers a Boolean ("is he running right now", which its morale decides).
+    // Here the courage itself comes back, 0..1: `fleeing` is a number a mission can read and
+    // `if (fleeing u)` reads it the same way. Deviation, `docs/re/ai.md` §7.
+    r.unary("fleeing", OBJ, NUM, |ctx, a| {
+        let w = ctx.host.world();
+        Ok(Value::Number(unit(w, &a).map_or(0.0, |id| w.fleeing(id))))
+    });
 
     // 0x5660a0 / 0x5660c0: rank names any case; an unknown name sets PRIVATE and runs on (oracle:
     // `setRank "bogus"` leaves PRIVATE; the original logs the enum error to the RPT).
@@ -492,11 +515,43 @@ fn register_vehicle<H: WorldHost>(r: &mut Registry<H>) {
                 .is_some_and(|id| w.object_state(id).is_some_and(|s| s.engine_on)),
         ))
     });
-    // 0x53c0b0: the flight height of air AI; no air AI yet _(stub)_.
-    r.binary("flyInHeight", OBJ, NUM, NOTHING, |_, _, _| {
+    // 0x53c0b0: the altitude above the ground below it air AI holds, in metres; `[height, forced]`
+    // takes the height and ignores the flag. Stored on the aircraft, where the air step flies it
+    // (`sim/air.rs`); the wiki's default of 100 m for an aircraft nobody told is not modelled.
+    r.binary("flyInHeight", OBJ, NUM, NOTHING, |ctx, a, b| {
+        let height = b.as_number();
+        let aircraft = entity(ctx.host.world(), &a, EntityClass::PlaneOrHeli);
+        if let (Some(height), Some(id)) = (height, aircraft) {
+            state(ctx, id).fly_in_height = Some(height.max(0.0));
+        }
         Ok(Value::Nothing)
     });
-    r.binary("flyInHeight", OBJ, ARR, NOTHING, |_, _, _| {
+    r.binary("flyInHeight", OBJ, ARR, NOTHING, |ctx, a, b| {
+        let Some(height) = items(&b).first().and_then(Value::as_number) else {
+            return Ok(Value::Nothing);
+        };
+        if let Some(id) = entity(ctx.host.world(), &a, EntityClass::PlaneOrHeli) {
+            state(ctx, id).fly_in_height = Some(height.max(0.0));
+        }
+        Ok(Value::Nothing)
+    });
+    // 0x53c2a0: `[standard, combat, stealth]` altitudes above sea level, the crew's behaviour
+    // picking one (`sim/air.rs`); the engine then flies the higher of this and `flyInHeight`
+    // (wiki). Fewer than three elements leave the rest at 0.
+    r.binary("flyInHeightASL", OBJ, ARR, NOTHING, |ctx, a, b| {
+        let values = items(&b);
+        let aircraft = entity(ctx.host.world(), &a, EntityClass::PlaneOrHeli);
+        let Some(id) = aircraft else {
+            return Ok(Value::Nothing);
+        };
+        if values.is_empty() {
+            return Ok(Value::Nothing);
+        }
+        let mut altitudes = [0.0f32; 3];
+        for (slot, value) in altitudes.iter_mut().zip(&values) {
+            *slot = value.as_number().unwrap_or(0.0).max(0.0);
+        }
+        state(ctx, id).fly_in_height_asl = Some(altitudes);
         Ok(Value::Nothing)
     });
 }

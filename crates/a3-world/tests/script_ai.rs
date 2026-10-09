@@ -369,6 +369,29 @@ fn unit_orders_set_and_clear() {
 }
 
 #[test]
+fn stop_is_do_stop_as_a_switch() {
+    let mut vm = vm(ClientId::SERVER);
+    eval(&mut vm, TWO_GROUPS);
+
+    eval(&mut vm, "b doMove [40, 0, 0]");
+    assert_eq!(move_order(&mut vm, "b"), Some(DVec3::new(40.0, 0.0, 0.0)));
+
+    // `unit stop true` is `doStop` as a switch: he stands, out of the formation, and the order he
+    // was walking is dropped.
+    eval(&mut vm, "b stop true");
+    assert!(truth(&mut vm, "stopped b"));
+    assert_eq!(move_order(&mut vm, "b"), None);
+    assert!(
+        !truth(&mut vm, "stopped a"),
+        "only the one he was told about"
+    );
+
+    // `false` releases the flag again.
+    eval(&mut vm, "b stop false");
+    assert!(!truth(&mut vm, "stopped b"));
+}
+
+#[test]
 fn target_knowledge_rises_with_reveal_and_falls_with_forget() {
     let mut vm = vm(ClientId::SERVER);
     eval(&mut vm, TWO_GROUPS);

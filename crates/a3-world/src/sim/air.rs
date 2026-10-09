@@ -5,6 +5,9 @@
 //! Called once per simulation step of each Entity of this family, on every machine. Do the
 //! authoritative work (forces, damage, decisions) only when `entity.is_local()`; a remote
 //! Entity only advances from its last received state.
+//!
+//! An aircraft nobody flies holds the altitude a mission commanded (`flyInHeight`,
+//! `flyInHeightASL`): the AI pilot's altitude hold below.
 
 use std::sync::Arc;
 
@@ -14,7 +17,7 @@ use a3_flight::{Environment, FlightInput, Ground, RigidBody};
 use glam::DVec3;
 
 use crate::aircraft::{FlightData, FlightType};
-use crate::{ClassState, Entity, EntityType, World};
+use crate::{Behaviour, ClassState, Entity, EntityId, EntityType, World};
 
 use super::StepContext;
 
@@ -198,6 +201,75 @@ fn body_of(entity: &Entity, angular_velocity: DVec3) -> RigidBody {
     }
 }
 
+// ---- The AI pilot's altitude hold (`flyInHeight` / `flyInHeightASL`) ----
+
+/// The climb rate a metre of height error asks for in the hold, m/s per metre. Ours, not traced.
+const CLIMB_PER_METRE: f64 = 0.2;
+
+/// The most the hold asks for, m/s — the digital collective's full deflection
+/// (`HeliState::pilot`).
+const MAX_CLIMB: f64 = 10.0;
+
+/// The elevator a metre per second of vertical-speed error asks for, in the plane's control units
+/// (its full deflection is ±4.5, `PlaneState::pilot`).
+const ELEVATOR_PER_MPS: f64 = 1.0;
+
+/// The plane's full elevator deflection (`PlaneState::pilot` scales its input by 4.5).
+const MAX_ELEVATOR: f64 = 4.5;
+
+/// The altitude an aircraft is commanded to hold, in world Y: `flyInHeight` above the ground
+/// below it, `flyInHeightASL` above sea level, the higher of the two winning as the engine's does
+/// (wiki). `behaviour` picks the ASL element — standard, combat, stealth — and `surface` is the
+/// ground under the aircraft. `None` when no mission commanded a height.
+fn commanded_altitude(
+    above_ground: Option<f64>,
+    above_sea: Option<[f64; 3]>,
+    behaviour: Behaviour,
+    surface: f64,
+) -> Option<f64> {
+    let ground = above_ground.map(|height| surface + height);
+    let sea = above_sea.map(|heights| match behaviour {
+        Behaviour::Combat => heights[1],
+        Behaviour::Stealth => heights[2],
+        _ => heights[0],
+    });
+    match (ground, sea) {
+        (Some(ground), Some(sea)) => Some(ground.max(sea)),
+        (ground, sea) => ground.or(sea),
+    }
+}
+
+/// The behaviour that picks the `flyInHeightASL` element: the aircraft's driver's group's, or the
+/// default (AWARE, so the standard altitude) without one.
+fn crew_behaviour(world: &World, aircraft: EntityId) -> Behaviour {
+    world
+        .object_state(aircraft)
+        .and_then(|state| state.driver)
+        .and_then(|driver| world.group_of(driver))
+        .and_then(|group| world.group_behaviour(group))
+        .unwrap_or_default()
+}
+
+/// The AI pilot's altitude hold for a helicopter: level it and ask for the climb rate that closes
+/// the height error (`HeliState`'s climb hold turns the rate into a collective).
+fn hold_heli_altitude(state: &mut HeliState, body: &RigidBody, target: f64) {
+    let error = target - body.position.y;
+    state.controls.climb = Some((error * CLIMB_PER_METRE).clamp(-MAX_CLIMB, MAX_CLIMB));
+    // A hand on the cyclic: a hover, not the empty cockpit's slow drift.
+    state.controls.cyclic_forward = 0.0;
+    state.controls.cyclic_aside = 0.0;
+    state.controls.rudder = 0.0;
+}
+
+/// The AI pilot's altitude hold for a plane: the elevator that flies it to the vertical speed the
+/// height error asks for. Positive elevator is nose down (`PlaneState::pilot`).
+fn hold_plane_altitude(state: &mut PlaneState, body: &RigidBody, target: f64) {
+    let error = target - body.position.y;
+    let wanted = (error * CLIMB_PER_METRE).clamp(-MAX_CLIMB, MAX_CLIMB);
+    state.controls.elevator =
+        ((body.velocity.y - wanted) * ELEVATOR_PER_MPS).clamp(-MAX_ELEVATOR, MAX_ELEVATOR);
+}
+
 pub(crate) fn simulate(entity: &mut Entity, ctx: &mut StepContext<'_>, dt: f64) {
     if !entity.is_local() {
         return;
@@ -214,6 +286,18 @@ pub(crate) fn simulate(entity: &mut Entity, ctx: &mut StepContext<'_>, dt: f64) 
     let mut flight = flight.clone();
     let input = air.input;
     let mut body = body_of(entity, air.angular_velocity);
+    // What a mission told this aircraft to hold (`flyInHeight` / `flyInHeightASL`), if anything:
+    // it flies that altitude while nobody is at the controls.
+    let commanded = {
+        let world = ctx.world();
+        let aircraft = entity.id();
+        commanded_altitude(
+            world.fly_in_height(aircraft),
+            world.fly_in_height_asl(aircraft),
+            crew_behaviour(world, aircraft),
+            world.surface_height(body.position.x, body.position.z),
+        )
+    };
     let ground = WorldGround(ctx.world());
     let env = Environment::calm(&ground);
     match &mut flight {
@@ -227,7 +311,12 @@ pub(crate) fn simulate(entity: &mut Entity, ctx: &mut StepContext<'_>, dt: f64) 
             state.damage.destroyed = destroyed;
             match input {
                 Some(input) => state.pilot(&input, &body),
-                None => state.no_pilot(),
+                None => {
+                    state.no_pilot();
+                    if let Some(target) = commanded {
+                        hold_heli_altitude(state, &body, target);
+                    }
+                }
             }
             heli::step(ty, &data.airframe, state, &mut body, &env, dt);
         }
@@ -239,6 +328,8 @@ pub(crate) fn simulate(entity: &mut Entity, ctx: &mut StepContext<'_>, dt: f64) 
             state.damage.destroyed = destroyed;
             if let Some(input) = input {
                 state.pilot(ty, &input, dt);
+            } else if let Some(target) = commanded {
+                hold_plane_altitude(state, &body, target);
             }
             plane::step(ty, &data.airframe, state, &mut body, &env, dt);
         }
@@ -249,5 +340,81 @@ pub(crate) fn simulate(entity: &mut Entity, ctx: &mut StepContext<'_>, dt: f64) 
     if let ClassState::Air(air) = &mut entity.class_state {
         air.angular_velocity = body.angular_velocity;
         air.flight = Some(flight);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A body at `y` moving vertically at `climb`, m/s.
+    fn body_at(y: f64, climb: f64) -> RigidBody {
+        RigidBody {
+            position: DVec3::new(0.0, y, 0.0),
+            velocity: DVec3::new(0.0, climb, 0.0),
+            ..RigidBody::default()
+        }
+    }
+
+    #[test]
+    fn the_higher_of_the_two_commanded_altitudes_wins() {
+        // `flyInHeight 80` over ground at 100 m: 180 m above the sea.
+        assert_eq!(
+            commanded_altitude(Some(80.0), None, Behaviour::Aware, 100.0),
+            Some(180.0)
+        );
+        // `flyInHeightASL [standard, combat, stealth]`: the crew's behaviour picks the element.
+        let asl = Some([200.0, 100.0, 400.0]);
+        assert_eq!(
+            commanded_altitude(None, asl, Behaviour::Aware, 0.0),
+            Some(200.0)
+        );
+        assert_eq!(
+            commanded_altitude(None, asl, Behaviour::Combat, 0.0),
+            Some(100.0)
+        );
+        assert_eq!(
+            commanded_altitude(None, asl, Behaviour::Stealth, 0.0),
+            Some(400.0)
+        );
+        // Both commanded: the higher altitude has priority.
+        assert_eq!(
+            commanded_altitude(Some(80.0), asl, Behaviour::Combat, 100.0),
+            Some(180.0)
+        );
+        assert_eq!(
+            commanded_altitude(Some(80.0), asl, Behaviour::Stealth, 100.0),
+            Some(400.0)
+        );
+        assert_eq!(commanded_altitude(None, None, Behaviour::Aware, 12.0), None);
+    }
+
+    #[test]
+    fn the_hold_asks_for_the_climb_that_closes_the_height_error() {
+        let mut heli = HeliState::flying();
+        let below = body_at(50.0, 0.0);
+        hold_heli_altitude(&mut heli, &below, 100.0);
+        assert!(
+            heli.controls.climb.is_some_and(|climb| climb > 0.0),
+            "below the commanded height: climb to it"
+        );
+        hold_heli_altitude(&mut heli, &below, 20.0);
+        assert!(
+            heli.controls.climb.is_some_and(|climb| climb < 0.0),
+            "above it: descend to it"
+        );
+        assert_eq!(
+            heli.controls.cyclic_forward, 0.0,
+            "the cyclic is held still"
+        );
+
+        let mut plane = PlaneState::flying(0.8);
+        hold_plane_altitude(&mut plane, &below, 100.0);
+        assert!(
+            plane.controls.elevator < 0.0,
+            "below it: nose up, and the elevator is nose down"
+        );
+        hold_plane_altitude(&mut plane, &below, 20.0);
+        assert!(plane.controls.elevator > 0.0, "above it: nose down");
     }
 }

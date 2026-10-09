@@ -75,6 +75,38 @@ fn a_piloted_hummingbird_holds_its_height_with_the_keys_released() {
 }
 
 #[test]
+fn a_helicopter_with_a_commanded_height_holds_it_with_nobody_flying() {
+    let Some((mut world, id)) = world_with("B_Heli_Light_01_F", DVec3::new(0.0, 130.0, 0.0)) else {
+        return;
+    };
+    world
+        .air_state_mut(id)
+        .unwrap()
+        .flight
+        .as_mut()
+        .expect("flight model")
+        .take_to_the_air();
+    // `flyInHeight 100`: the AI pilot flies it to 100 m above the ground below (this World has
+    // no terrain, so the surface is at 0) with nobody at the controls, and holds it there.
+    world.object_state_mut(id).fly_in_height = Some(100.0);
+
+    run(&mut world, 60.0);
+
+    let e = world.entity(id).unwrap();
+    eprintln!("after 60 s: {:?}, v {:?}", e.position(), e.velocity());
+    assert!(
+        (e.position().y - 100.0).abs() < 15.0,
+        "holds the commanded altitude: {:?}",
+        e.position()
+    );
+    assert!(
+        e.velocity().y.abs() < 5.0,
+        "and has stopped climbing or sinking: {:?}",
+        e.velocity()
+    );
+}
+
+#[test]
 fn a_parked_hummingbird_starts_its_engine_and_climbs_on_the_collective() {
     let Some((mut world, id)) = world_with("B_Heli_Light_01_F", DVec3::ZERO) else {
         return;

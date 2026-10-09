@@ -459,8 +459,14 @@ stops a velocity within one step.
   contact model of §2.6 / §3.5 instead.
 - The PhysX vehicle drive of plane wheels (`vtable+0x160` with ±1 when the thrust pushes along the
   motion on land) is not decoded; wheels free-roll and brake.
-- The mouse-flight autopilot branches (`+0x150b`) and the AI pilot (`0x140db5810` main body:
-  `flyInHeight`, landing) are not transcribed.
+- The mouse-flight autopilot branches (`+0x150b`) are not transcribed, and neither is the
+  engine's AI pilot (`0x140db5810` main body: `flyInHeight`, landing). `sim/air.rs` flies a
+  stand-in altitude hold for it: with a commanded height (`flyInHeight` / `flyInHeightASL`,
+  `sqf-object-state.md`) and nobody at the controls, a helicopter asks for the climb rate
+  `0.2 m/s per metre of height error` (saturating at the collective's `±10 m/s`) with the cyclic
+  centred, and a plane for the elevator that closes the same error through the vertical speed
+  (saturating at its full `±4.5`). The gain and the saturation points are ours; the engine's AI
+  pilot was not traced.
 - VTOL vectoring (`VTOL > 0`, `+0x1fc`): thrust split by `sincos`, VTOL control torques
   `2.5·m·influence·control·σv` — read but not implemented.
 - Animation source name → value mapping for `rotorh`, `rotorv` (§2.7).
