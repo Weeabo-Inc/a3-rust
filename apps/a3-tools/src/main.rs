@@ -3,6 +3,7 @@
 mod config_cmd;
 mod coverage_cmd;
 mod font_cmd;
+mod image_diff_cmd;
 mod input;
 mod mission_cmd;
 mod p3d_cmd;
@@ -66,6 +67,9 @@ enum Command {
     /// Load a mission (mission.sqm, description.ext) and print what it places; `--run` spawns it
     /// into a World and runs its scripts.
     Mission(mission_cmd::MissionArgs),
+    /// Compare a screenshot of the real game with ours: error, SSIM, luminance and histogram
+    /// metrics, side-by-side and difference images.
+    ImageDiff(image_diff_cmd::ImageDiffArgs),
 }
 
 #[derive(Subcommand)]
@@ -172,6 +176,7 @@ fn main() -> anyhow::Result<()> {
         Command::Stringtable(cmd) => stringtable_cmd::run(cmd)?,
         Command::Sqf(args) => sqf_cmd::run(args)?,
         Command::Mission(args) => mission_cmd::run(args)?,
+        Command::ImageDiff(args) => image_diff_cmd::run(args)?,
     }
     Ok(())
 }

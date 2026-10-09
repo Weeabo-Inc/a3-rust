@@ -19,6 +19,8 @@ pub struct EngineContext {
     pub world: Option<String>,
     /// Initial camera placement over the World, and where the player spawns when playing.
     pub camera: Option<CameraSpec>,
+    /// Camera `fovTop` over the World (`--fov`); `None` keeps RV's default 0.75.
+    pub fov: Option<f32>,
     /// Play as a Man on the terrain instead of flying the free camera.
     pub play: bool,
     /// Which camera `--play` starts in; the `personView` key toggles it at runtime.

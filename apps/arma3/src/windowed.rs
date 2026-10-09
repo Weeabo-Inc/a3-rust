@@ -98,6 +98,9 @@ impl App for GameApp {
                 &self.engine.environment,
                 play,
             );
+            if let Some(top) = self.engine.fov {
+                self.scene.camera.fov.top = top;
+            }
         }
         if let Some((vfs, spec, moves)) = self.engine.load_model_vfs()? {
             self.scene.load_model(&gpu, &mut renderer, vfs, spec, moves);

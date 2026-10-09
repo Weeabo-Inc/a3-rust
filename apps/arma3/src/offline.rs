@@ -78,6 +78,9 @@ pub fn screenshot(
             &engine.environment,
             play,
         );
+        if let Some(top) = engine.fov {
+            scene.camera.fov.top = top;
+        }
     }
     if let Some((vfs, spec, moves)) = engine.load_model_vfs()? {
         scene.load_model(&gpu, &mut renderer, vfs, spec, moves);
