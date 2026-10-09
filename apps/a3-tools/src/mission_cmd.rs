@@ -22,8 +22,10 @@ pub struct MissionArgs {
     #[arg(long)]
     all_mods: bool,
     /// The mission folder inside the game, e.g.
-    /// `a3\missions_f_bootcamp\campaign\missions\boot_m02.altis`.
-    folder: String,
+    /// `a3\missions_f_bootcamp\campaign\missions\boot_m02.altis`; several run one after
+    /// another over one loaded game, with a summary of their script errors.
+    #[arg(required = true)]
+    folders: Vec<String>,
     /// Spawn the mission into a World and run its scripts (unit `init` fields, then `init.sqf`),
     /// printing the report.
     #[arg(long)]
@@ -35,11 +37,50 @@ pub struct MissionArgs {
 
 pub fn run(args: MissionArgs) -> anyhow::Result<()> {
     let data = load(&args)?;
-    let mut vm = Vm::new(VfsHost::for_game(&data));
-    let mission = load_mission(&data.vfs, &args.folder, &mut vm)?;
-    print_mission(&mission);
+    if let [folder] = args.folders.as_slice() {
+        let mut vm = Vm::new(VfsHost::for_game(&data));
+        let mission = load_mission(&data.vfs, folder, &mut vm)?;
+        print_mission(&mission);
+        if args.run {
+            run_it(&data, &mission, args.missing);
+        }
+        return Ok(());
+    }
+    // Several missions: script errors by first line, over all of them.
+    let mut errors: std::collections::BTreeMap<String, usize> = Default::default();
+    let mut ran = 0;
+    for folder in &args.folders {
+        let mut vm = Vm::new(VfsHost::for_game(&data));
+        let mission = match load_mission(&data.vfs, folder, &mut vm) {
+            Ok(mission) => mission,
+            Err(e) => {
+                println!("{folder}: not loaded: {e}");
+                continue;
+            }
+        };
+        print_mission(&mission);
+        if args.run {
+            ran += 1;
+            for error in run_it(&data, &mission, args.missing) {
+                *errors.entry(error).or_default() += 1;
+            }
+        }
+    }
     if args.run {
-        run_it(&data, &mission, args.missing);
+        let total: usize = errors.values().sum();
+        let unimplemented: usize = errors
+            .iter()
+            .filter(|(e, _)| e.contains("Unimplemented command"))
+            .map(|(_, n)| n)
+            .sum();
+        println!(
+            "== {ran} missions run: {total} script error(s), {unimplemented} of them              \"Unimplemented command\""
+        );
+        let mut sorted: Vec<_> = errors.into_iter().collect();
+        sorted.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        for (error, count) in sorted {
+            println!("{count:5}  {error}");
+        }
     }
     Ok(())
 }
@@ -188,7 +229,8 @@ fn print_unit(unit: &a3_mission::Unit, indent: &str) {
 }
 
 /// Spawns the mission over the real config and runs its scripts, printing what happened.
-fn run_it(data: &GameData, mission: &Mission, missing: usize) {
+/// Returns the first line of each script error.
+fn run_it(data: &GameData, mission: &Mission, missing: usize) -> Vec<String> {
     let mut world = World::new(ClientId::SERVER);
     let mut types = TypeBank::new(data.config.clone());
     let spawned = spawn_mission(&mut world, &mut types, mission);
@@ -236,5 +278,42 @@ fn run_it(data: &GameData, mission: &Mission, missing: usize) {
     );
     for (name, count) in report.missing_commands.iter().take(missing) {
         println!("  {name} x{count}");
+    }
+    let errors: Vec<String> = report
+        .errors
+        .iter()
+        .map(|e| error_message(e).to_owned())
+        .collect();
+    for error in &errors {
+        println!("  error: {error}");
+    }
+    errors
+}
+
+/// The message of an engine-style error report (the `Error <message>` line after the expression
+/// and position lines), or its first line.
+fn error_message(report: &str) -> &str {
+    report
+        .lines()
+        .map(str::trim)
+        .find(|l| {
+            l.starts_with("Error ")
+                && !l.starts_with("Error in expression <")
+                && !l.starts_with("Error position: <")
+        })
+        .or_else(|| report.lines().next())
+        .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn error_message_is_the_error_line() {
+        let report = "Error in expression <a = b c>\n  Error position: <c>\n  Error Missing ;\nfile.sqf, line 1";
+        assert_eq!(super::error_message(report), "Error Missing ;");
+        assert_eq!(
+            super::error_message("Script x not found"),
+            "Script x not found"
+        );
     }
 }

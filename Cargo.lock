@@ -373,6 +373,7 @@ dependencies = [
  "a3-signing",
  "a3-sqf",
  "a3-stringtable",
+ "a3-ui",
  "a3-vfs",
  "a3-world",
  "a3-wrp",

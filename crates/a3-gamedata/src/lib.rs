@@ -25,6 +25,7 @@ use a3_vfs::{MountReport, Vfs};
 mod boot;
 mod scripts;
 mod sqf_config;
+mod usage;
 
 pub use boot::{
     CompileStats, FunctionsReport, compile_all, engine_command_table, error_category,
@@ -33,6 +34,7 @@ pub use boot::{
 };
 pub use scripts::{VfsHost, VfsResolver, decode_text, load_text_config, read_text};
 pub use sqf_config::{ConfigHost, ConfigRoot, SqfConfigs, register_config_commands};
+pub use usage::{CommandUsage, UsageSource, command_usage, fsm_code, is_code_entry};
 
 /// Errors that stop a game load. Problems with individual addons are collected in
 /// [`LoadReport`] instead.

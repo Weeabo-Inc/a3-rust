@@ -1,0 +1,6 @@
+# How implemented SQF command overloads were verified; read by `a3-tools sqf coverage` for
+# docs/fidelity/sqf-coverage.md. One record per overload (or `*` for every overload of a form).
+# Columns (tab-separated): name, form (nular|unary|binary), handler RVA from
+# docs/re/sqf-commands.tsv or `*`, status (verified|stub), source (`decompiled <addr>`, `oracle`,
+# `wiki`), note.
+# name	form	handler	status	source	note
