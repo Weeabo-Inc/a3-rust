@@ -13,6 +13,7 @@
 mod animation;
 mod create;
 mod groups;
+mod handlers;
 mod markers;
 mod query;
 mod state;
@@ -23,6 +24,7 @@ use a3_sqf::{Handle, HandleKind, Host, Registry, Type, TypeSet, Value};
 use glam::DVec3;
 
 pub use groups::{group_arg, group_value, null_group};
+pub use handlers::{dispatch_events, raise_group_event, raise_mission_event, raise_object_event};
 
 use crate::{ClientId, ObjectRef, TypeBank, World};
 
@@ -39,6 +41,7 @@ pub fn register_world_commands<H: WorldHost>(r: &mut Registry<H>) {
     animation::register(r);
     create::register(r);
     groups::register(r);
+    handlers::register(r);
     markers::register(r);
     state::register(r);
     transform::register(r);

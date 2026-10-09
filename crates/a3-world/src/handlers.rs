@@ -115,11 +115,21 @@ impl Handlers {
         Self::remove_in(&mut self.groups, &target, event_type, id)
     }
 
-    /// `removeMissionEventHandler`.
+    /// `removeMissionEventHandler`. Removing the last handler of a type forgets the type, so a
+    /// further query reads `[]` rather than `[false, false, 0]`.
     pub fn remove_mission(&mut self, event_type: &str, id: usize) -> bool {
-        self.mission
+        let removed = self
+            .mission
             .get_mut(event_type)
-            .is_some_and(|list| list.remove(id))
+            .is_some_and(|list| list.remove(id));
+        if self
+            .mission
+            .get(event_type)
+            .is_some_and(|list| list.total() == 0)
+        {
+            self.mission.remove(event_type);
+        }
+        removed
     }
 
     /// `removeAllEventHandlers`: one event type, or every handler when `event_type` is empty.
@@ -208,15 +218,27 @@ impl Handlers {
             .add(handler)
     }
 
+    /// Removes one handler, forgetting a list that ran empty (its event type then reads as
+    /// absent, `[]` from `getEventHandlerInfo`).
     fn remove_in<K: std::hash::Hash + Eq>(
         map: &mut HashMap<K, HashMap<String, HandlerList>>,
         target: &K,
         event_type: &str,
         id: usize,
     ) -> bool {
-        map.get_mut(target)
-            .and_then(|types| types.get_mut(event_type))
-            .is_some_and(|list| list.remove(id))
+        let Some(types) = map.get_mut(target) else {
+            return false;
+        };
+        let removed = types
+            .get_mut(event_type)
+            .is_some_and(|list| list.remove(id));
+        if types.get(event_type).is_some_and(|list| list.total() == 0) {
+            types.remove(event_type);
+        }
+        if types.is_empty() {
+            map.remove(target);
+        }
+        removed
     }
 
     fn remove_all_in<K: std::hash::Hash + Eq>(

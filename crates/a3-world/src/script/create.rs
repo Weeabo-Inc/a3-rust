@@ -78,8 +78,15 @@ fn create<H: WorldHost>(
     if local_only {
         request = request.local_only();
     }
-    match ctx.host.world_mut().create(request) {
-        Ok(id) => object_value(ctx.host.world(), ObjectRef::Entity(id)),
+    let created = ctx.host.world_mut().create(request);
+    match created {
+        Ok(id) => {
+            let object = object_value(ctx.host.world(), ObjectRef::Entity(id));
+            // The Object now exists: the mission's `EntityCreated` handlers run before the
+            // command returns, as in the original.
+            super::handlers::dispatch_events_in(ctx);
+            object
+        }
         Err(e) => {
             ctx.host.diag_log(&e.to_string());
             null_object()
