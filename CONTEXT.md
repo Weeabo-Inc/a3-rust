@@ -450,6 +450,14 @@ _Avoid_: VisitorId, netId
 The behaviour class that drives an Entity type each frame, selected by the `simulation` config
 entry (e.g. `soldier`, `carx`, `tankx`, `helicopterrtd`, `airplanex`, `shipx`, `house`, `thing`).
 
+**Flight model**:
+How an aircraft turns its pilot's controls into forces and motion: the engine's basic helicopter
+model (rotor speed, collective lift over `envelope`, cyclic and tail-rotor torques) and the
+`airplanex` aero model (thrust, lift over `envelope` and angle of attack, control surfaces,
+stall). Configured by the `CfgVehicles` class, flown by `a3-flight`; see `docs/re/sim-air.md`.
+_Avoid_: FDM, advanced flight model (that is RotorLib, the licensed helicopter model we do not
+reimplement), physics (alone)
+
 **Hit point**:
 A named damageable location of an Entity type (`class HitPoints` in `CfgVehicles`): its armour,
 radius, `passThrough`, `minimalHit` and the `depends` expression that derives its damage from

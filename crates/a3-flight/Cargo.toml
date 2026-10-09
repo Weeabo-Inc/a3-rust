@@ -1,0 +1,19 @@
+[package]
+name = "a3-flight"
+description = "Flight models: the basic helicopter model and the airplanex aero model, from pilot input to forces and motion"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+a3-config.workspace = true
+a3-p3d.workspace = true
+a3-vehicles.workspace = true
+glam.workspace = true
+
+[dev-dependencies]
+a3-gamedata.workspace = true
+
+[lints]
+workspace = true
