@@ -211,7 +211,10 @@ WRP's static objects, so a building placed by its model pivot is not involved ei
 fix moves things: of eight 2D Missions checked with this rule, `boot_m02`, `boot_m03`,
 `b_m02_1`, `mp_coop_m04` and `showcase_helicopters` move 0–1 % of their entities (their stored
 heights already are the ground), while the two with the sweep's below-terrain counts move most of
-them — `c_in1.stratis` 136 of 149, `b_m02_2.stratis` 233 of 305.
+them — `c_in1.stratis` 136 of 149, `b_m02_2.stratis` 233 of 305. On the 3D side the entities that
+move are those with a negative `atlOffset`, and their count per Mission matches the sweep's:
+`exp_m05.tanoa` 12 (sweep 12), `exp_m01.tanoa` 12 (12), `showcase_future.altis` 6 (12),
+`orange_hub.altis` 4 (6); the 1–5 m ones add the remainder.
 
 ## What the engine refuses to create
 
