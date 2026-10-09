@@ -6,7 +6,7 @@
 
 use glam::DQuat;
 
-use crate::{ClassState, Entity};
+use crate::{ClassState, Entity, ManAi};
 
 use super::StepContext;
 
@@ -31,6 +31,8 @@ pub struct ManState {
     pub moves: MoveState,
     /// Which way he is turning, following [`Self::input`].
     pub turn: Turning,
+    /// What his group decided for him, and the orders scripts gave him alone (#129).
+    pub ai: ManAi,
 }
 
 pub(crate) fn simulate(entity: &mut Entity, ctx: &mut StepContext<'_>, dt: f64) {

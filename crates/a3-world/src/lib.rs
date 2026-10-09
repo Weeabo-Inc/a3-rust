@@ -85,6 +85,7 @@
 //!   ownership changes through [`World::set_locality`].
 //! - Test with SQF snippets against a synthetic World (`tests/script.rs`).
 
+mod ai;
 mod class;
 mod entity;
 mod groups;
@@ -99,6 +100,11 @@ mod terrain;
 mod types;
 mod world;
 
+pub use ai::{
+    ARRIVE_RADIUS, Behaviour, CombatMode, DEFAULT_COMPLETION_RADIUS, EYE_HEIGHT, FORGET_TIME,
+    FORMATION_SPACING, Formation, GroupAi, KNOWLEDGE_PER_SECOND, LoiterType, ManAi, SpeedMode,
+    TargetKnowledge, Targets, VIEW_RANGE, Waypoint, WaypointQueue, WaypointType, target_key,
+};
 pub use class::{EntityClass, SimulationClass};
 pub use entity::{Attachment, Entity, ListKind, Locality, VisualState};
 pub use groups::{ENEMY_THRESHOLD, Group, GroupId, Side, default_group_name, side_from_config};
@@ -147,6 +153,9 @@ pub enum Error {
     /// The unit is not in the group.
     #[error("{0:?} is not in the group")]
     NotInGroup(EntityId),
+    /// The group has no waypoint at this index.
+    #[error("group {group:?} has no waypoint {index}")]
+    NoSuchWaypoint { group: GroupId, index: usize },
     /// No Static object has this key.
     #[error("no static object {0:?}")]
     NoSuchStatic(StaticKey),

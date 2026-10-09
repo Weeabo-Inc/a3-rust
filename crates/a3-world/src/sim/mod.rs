@@ -18,7 +18,8 @@
 //!    at a time; the remainder goes through a separate per-frame path. We keep the invariant
 //!    that every simulated Entity covers exactly the frame time, with 0.025 s sub-steps.
 //! 4. Attached positions: every `attachTo`-ed Entity moves to its parent.
-//! 5. AI (none yet).
+//! 5. AI: every local group works its waypoints, updates its targets and fills the [`ManInput`]
+//!    of its units (#129).
 //! 6. Commands queued by steps (creations, deletions) are applied, then deletions take effect.
 //!
 //! A step runs for local and remote Entities alike; family modules do the authoritative parts
@@ -47,6 +48,9 @@ pub const SUB_STEP: f64 = 0.025;
 const EPSILON: f64 = 1e-6;
 
 /// Class-specific state of an Entity, one variant per simulation family.
+// One ClassState is stored inline in every Entity; the Man variant is by far the largest and
+// boxing it would put a pointer chase on every man's step for a few hundred kilobytes saved.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum ClassState {
     /// Entities without family behaviour yet (buildings, things, triggers, ...).
@@ -167,7 +171,9 @@ impl World {
         // 4. Attached positions.
         self.update_attached_positions();
 
-        // 5. AI: added with #129.
+        // 5. AI: a local group works its waypoints and fills its units' inputs (#129). A group
+        // owned elsewhere is driven there; #131 brings its state in.
+        self.perform_ai(dt);
 
         // 6.
         self.flush_deletions();
