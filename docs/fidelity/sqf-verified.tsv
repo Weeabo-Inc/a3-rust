@@ -217,3 +217,13 @@ publicVariableServer	unary	0x5474b0	verified	decompiled 0x5474b0 + oracle	publis
 publicVariableClient	binary	0x5473f0	verified	decompiled 0x5473f0 + oracle	client id rounded, unknown id is a silent no-op; no transport yet (#131)
 addPublicVariableEventHandler	binary	0x1809f0	verified	decompiled 0x1809f0 + oracle	code overload; fires only for a received broadcast
 addPublicVariableEventHandler	binary	0x1809f0	verified	decompiled 0x1809f0 + oracle	[target, code] overload; target checked first (Object, Group, Namespace)
+lifeState	unary	0x52c610	verified	decompiled 0x52c610	damage >= InjuredTreshold (0.1) is INJURED; not alive is DEAD; wiki-confirmed thresholds
+getClientState	nular	0x89b9f0	verified	wiki	NONE with no client; the engine's other states need the server protocol (#7)
+allCutLayers	nular	0x8a71a0	verified	decompiled 0x8a71a0	empty when no cut layer has been named
+configClasses	unary	0x811360	verified	wiki+decompiled 0x811360	array form [config, depth, includeInherited, allSubclasses, classNames]
+getConnectedUAV	unary	0x49f600	stub	wiki	no UAV terminal yet; answers objNull
+cutFadeOut	binary	0x488000	stub	wiki	no cut-layer rendering; the numeric form is a no-op
+cutFadeOut	binary	0x488090	stub	wiki	no cut-layer rendering; the named form answers layer 0
+getFatigue	unary	0x52b930	stub	wiki	no stamina subsystem; answers 0
+getOxygenRemaining	unary	0x52e9d0	stub	wiki	no diving subsystem; answers 1
+isBurning	unary	0x5358b0	stub	wiki	no fire subsystem; answers false

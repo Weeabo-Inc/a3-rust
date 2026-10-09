@@ -14,6 +14,7 @@ mod ai;
 mod animation;
 mod cargo_ops;
 mod create;
+mod general;
 mod groups;
 mod handlers;
 mod identity;
@@ -56,6 +57,7 @@ pub fn register_world_commands<H: WorldHost>(r: &mut Registry<H>) {
     ai::register(r);
     animation::register(r);
     create::register(r);
+    general::register(r);
     groups::register(r);
     handlers::register(r);
     markers::register(r);
