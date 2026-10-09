@@ -107,6 +107,8 @@ mod loadout;
 mod markers;
 mod moves;
 pub mod net;
+mod object_state;
+pub use object_state::{Cargo, ObjectState, UnitPos};
 mod object_ref;
 mod query;
 mod random;
