@@ -173,6 +173,10 @@ fn register_globals<H: WorldHost>(r: &mut Registry<H>) {
     // objects do not exist in our inventory (a container is a value inside `Gear`), so this gives
     // objNull _(stub)_.
     r.unary("uniformContainer", OBJ, OBJ, |_, _| Ok(null_object()));
+    // 0x8471c0: `unitBackpack unit` returns the backpack's container Object, with the same
+    // limitation as `uniformContainer`: a container is a value inside `Gear`, not an Object, so
+    // this gives objNull _(stub)_.
+    r.unary("unitBackpack", OBJ, OBJ, |_, _| Ok(null_object()));
     // 0xdfd850: `unit createDiaryRecord [subject, text]`. The record is kept; there is no diary
     // UI and no record handle table yet, so the returned handle is null _(stub)_.
     r.binary("createDiaryRecord", OBJ, ARR, DIARY, |ctx, a, b| {

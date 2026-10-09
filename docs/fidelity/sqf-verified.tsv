@@ -259,3 +259,11 @@ targetsQuery	binary	*	stub	wiki	no sensor model; the query answers nothing
 lockIdentity	unary	*	stub	wiki	no identity lock; answers false
 setViewDistance	unary	*	stub	wiki	view distance is a renderer setting, not a script one
 setLightBrightness	binary	*	stub	wiki	lamps come from Reflectors (#294); no script override yet
+unitBackpack	unary	0x8471c0	stub	wiki	containers are values inside Gear, not Objects; answers objNull like uniformContainer
+setLightAmbient	binary	*	stub	wiki	lamps take colour from Reflectors (#294); no script override
+setLightColor	binary	*	stub	wiki	no script override
+setLightIntensity	binary	*	stub	wiki	no script override
+setLightUseFlare	binary	*	stub	wiki	no script override
+setLightFlareSize	binary	*	stub	wiki	no script override
+setLightFlareMaxDistance	binary	*	stub	wiki	no script override
+setLightDayLight	binary	*	stub	wiki	no script override
