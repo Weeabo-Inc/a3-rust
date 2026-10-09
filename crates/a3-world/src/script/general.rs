@@ -256,4 +256,13 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     r.binary("setFlagTexture", OBJ, STR, NOTHING, |_, _, _| {
         Ok(Value::Nothing)
     });
+
+    // `enableWeaponDisassembly`: whether a unit can disassemble a static weapon. We have no
+    // disassembly system, so both forms store nothing (`stub`).
+    r.binary("enableWeaponDisassembly", OBJ, BOOL, NOTHING, |_, _, _| {
+        Ok(Value::Nothing)
+    });
+    r.unary("enableWeaponDisassembly", BOOL, NOTHING, |_, _| {
+        Ok(Value::Nothing)
+    });
 }

@@ -279,3 +279,6 @@ callExtension	binary	*	stub	wiki	no extension DLLs loaded; the engine's answer f
 enableVehicleCargo	binary	*	stub	wiki	no loadmaster or sling-load system
 removeFromRemainsCollector	unary	*	stub	wiki	no remains collector
 setFlagTexture	binary	*	stub	wiki	no flag rendering
+assignAsCargoIndex	binary	0x525320	verified	decompiled 0x525320	the same reservation as assignAsCargo with the seat named (used when the exact seat matters)
+assignAsCommander	binary	*	stub	wiki	our vehicles have driver, gunner and cargo seats only
+enableWeaponDisassembly	*	*	stub	wiki	no disassembly system
