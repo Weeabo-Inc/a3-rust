@@ -146,8 +146,10 @@ over a bridge or a floor works.
 - Search: **grid A\*** (not a triangle navmesh), with per-cell cost and an octile/euclidean
   heuristic, one search object with reusable scratch per unit (the engine's incremental
   `ProcessSearching` is the same idea: bounded work per frame over a persisting search state).
-- Cost grid: land cell sized, from land grid geography + heightmap slope + `CfgSurfaces` +
-  roads. Roads cheap. Water and steep cells impassable for men.
+- Cost grid: land cell sized, from land grid geography + heightmap slope + roads. Roads cheap.
+  Water and steep cells impassable for men. `CfgSurfaces` is **not** in the bake: no shipped
+  navigation behaviour was found to read the surface type, so a cell's cost is geography, slope
+  and roads only (ADR 0009).
 - Obstacles: the op field is baked from the terrain's objects; dynamic obstacles (vehicles,
   units) are not part of it and are handled by the movement/steering layer. Our grid bakes
   geography and can be patched from the physics colliders where they are loaded.
@@ -162,6 +164,9 @@ over a bridge or a floor works.
 - How `AIPathPlanner` schedules the incremental search (budget per frame, priority between
   units) and how a search is interrupted and resumed.
 - How `IPaths` positions and `PathAction`s are stored in the Paths LOD (its points, faces and
-  named selections) — reading that LOD would let us build a real house path mesh.
+  named selections) — reading that LOD would let us build a real house path mesh. (Read as far
+  as the mesh needs: `a3-nav`'s `PathMesh` takes the Paths LOD's triangles and adjacency by
+  shared edge, and all 60 `households` models the Altis test checks have one. Where a
+  `PathAction` sits — a named selection, an extra point attribute — is still unread.)
 - What `Clearance` and the cover field mean numerically for movement cost.
 - How the engine's `roadsConnectedTo` works on shapefile roads (`docs/re/roads.md`).
