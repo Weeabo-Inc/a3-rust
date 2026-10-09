@@ -39,7 +39,7 @@ pub mod vm;
 
 pub use code::{Code, Instr, compile_block, compile_source, compile_str};
 pub use error::{CompileError, ScriptError, SqfError};
-pub use host::{Host, NullHost};
+pub use host::{Host, NullHost, PublicTarget};
 pub use preprocess::{HostResolver, SqfEvaluator, preprocess_with_host};
 pub use registry::{Coverage, Registry};
 pub use scheduler::{DEFAULT_FRAME_BUDGET, FrameReport};
@@ -50,4 +50,4 @@ pub use types::{Type, TypeSet};
 pub use value::{
     Array, ForSpec, Handle, HandleKind, HashKey, HashMap, Namespace, ScriptHandle, Side, Value,
 };
-pub use vm::{Ctx, Flow, Invoke, Vm};
+pub use vm::{Ctx, Flow, Invoke, PublicHandler, Vm};

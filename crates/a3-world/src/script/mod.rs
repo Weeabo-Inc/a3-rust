@@ -29,7 +29,7 @@ mod terrain;
 mod transform;
 mod weapons;
 
-use a3_sqf::{Handle, HandleKind, Host, Registry, Type, TypeSet, Value};
+use a3_sqf::{Handle, HandleKind, Host, PublicTarget, Registry, Type, TypeSet, Value};
 use glam::DVec3;
 
 pub use groups::{group_arg, group_value, null_group};
@@ -231,11 +231,25 @@ pub(crate) fn is_server(world: &World) -> bool {
 pub struct ScriptWorld {
     pub world: World,
     pub types: TypeBank,
+    /// `publicVariable` and its family: what this host was asked to publish,
+    /// in order. There is no transport yet (#131), so this is the whole
+    /// effect of a publish; a network layer will send these to the clients
+    /// (`PublicVariable(name, target)` in the original).
+    published: Vec<(String, PublicTarget)>,
 }
 
 impl ScriptWorld {
     pub fn new(world: World, types: TypeBank) -> Self {
-        Self { world, types }
+        Self {
+            world,
+            types,
+            published: Vec::new(),
+        }
+    }
+
+    /// The variables published so far, with their target.
+    pub fn published_variables(&self) -> &[(String, PublicTarget)] {
+        &self.published
     }
 }
 
@@ -250,6 +264,10 @@ impl Host for ScriptWorld {
 
     fn format_handle(&self, handle: Handle) -> String {
         format_handle(&self.world, handle)
+    }
+
+    fn publish_variable(&mut self, name: &str, target: PublicTarget) {
+        self.published.push((name.to_string(), target));
     }
 }
 

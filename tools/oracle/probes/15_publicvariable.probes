@@ -1,0 +1,68 @@
+// publicVariable and its family on the dedicated server (issue #346).
+//
+// The publish step has no observable effect headless (no clients are
+// connected), so these probes record the argument contract, the errors, the
+// return value, and whether the event handler fires on the publishing
+// machine. `clientID publicVariableClient varName` and
+// `varName addPublicVariableEventHandler [target, code]` are binary forms.
+
+## pub.ok.defined_global
+a3ro_pv1 = 1; publicVariable "a3ro_pv1"; "ok"
+## pub.ok.mission_namespace
+missionNamespace setVariable ["a3ro_pv2", 1]; publicVariable "a3ro_pv2"; "ok"
+## pub.ok.undefined
+publicVariable "a3ro_pv_never_set"; "ok"
+## pub.ok.local_name
+private _pv = 1; publicVariable "_pv"; "ok"
+## pub.err.empty_name
+publicVariable ""; "ok"
+## pub.err.number
+publicVariable 1
+## pub.err.array
+publicVariable ["a3ro_pv1"]
+## pub.err.nil
+publicVariable nil
+## pub.ret.value
+a3ro_pv3 = 1; isNil {publicVariable "a3ro_pv3"}
+## srv.ok.defined
+a3ro_pvs = 1; publicVariableServer "a3ro_pvs"; "ok"
+## srv.ok.undefined
+publicVariableServer "a3ro_pv_never_set"; "ok"
+## srv.err.number
+publicVariableServer 1
+## srv.ret.value
+a3ro_pvs2 = 1; isNil {publicVariableServer "a3ro_pvs2"}
+## cli.ok.zero
+a3ro_pvc = 1; 0 publicVariableClient "a3ro_pvc"; "ok"
+## cli.ok.big_id
+a3ro_pvc = 1; 100000 publicVariableClient "a3ro_pvc"; "ok"
+## cli.ok.undefined
+0 publicVariableClient "a3ro_pv_never_set"; "ok"
+## cli.err.left
+"0" publicVariableClient "a3ro_pvc"
+## cli.err.right
+0 publicVariableClient 1
+## cli.err.nil_right
+0 publicVariableClient nil
+## cli.ret.value
+a3ro_pvc2 = 1; isNil {0 publicVariableClient "a3ro_pvc2"}
+## evh.code
+a3ro_hit = 0; "a3ro_ev" addPublicVariableEventHandler {a3ro_hit = a3ro_hit + 1}; a3ro_ev = 1; publicVariable "a3ro_ev"; a3ro_hit
+## evh.array_target_code
+a3ro_hit2 = 0; "a3ro_ev2" addPublicVariableEventHandler [objNull, {a3ro_hit2 = 1}]; a3ro_ev2 = 1; publicVariable "a3ro_ev2"; a3ro_hit2
+## evh.this_value
+a3ro_this = []; "a3ro_ev8" addPublicVariableEventHandler {a3ro_this = _this}; a3ro_ev8 = 5; publicVariable "a3ro_ev8"; a3ro_this
+## evh.err.right_type
+"a3ro_ev3" addPublicVariableEventHandler 5
+## evh.err.left_type
+1 addPublicVariableEventHandler {1}
+## evh.ret.value
+isNil {"a3ro_ev4" addPublicVariableEventHandler {1}}
+## evh.ok.undefined_name
+"a3ro_pv_never_set" addPublicVariableEventHandler {1}; "ok"
+## evh.ok.twice
+"a3ro_ev5" addPublicVariableEventHandler {1}; "a3ro_ev5" addPublicVariableEventHandler {2}; "ok"
+## evh.err.array_one_element
+"a3ro_ev6" addPublicVariableEventHandler [{1}]
+## evh.ret.array_form
+isNil {"a3ro_ev9" addPublicVariableEventHandler [objNull, {1}]}

@@ -212,3 +212,8 @@ enableStamina	binary	0x896820	stub	decompiled 0x896820	the flag is stored; there
 enableAttack	binary	0x1908e0	stub	decompiled 0x1908e0	the flag is stored; the AI does not read it yet
 createDiaryRecord	binary	0xdfd850	stub	decompiled 0xdfd850	the record is stored; no diary UI and no record handle table, so the handle is null
 uniformContainer	unary	0x847190	stub	decompiled 0x847190	container objects do not exist in our inventory; answers objNull
+publicVariable	unary	0x547370	verified	decompiled 0x547370 + oracle	publish is a host hook, no transport yet (#131); empty name logs Reserved variable
+publicVariableServer	unary	0x5474b0	verified	decompiled 0x5474b0 + oracle	publish is a host hook, no transport yet (#131)
+publicVariableClient	binary	0x5473f0	verified	decompiled 0x5473f0 + oracle	client id rounded, unknown id is a silent no-op; no transport yet (#131)
+addPublicVariableEventHandler	binary	0x1809f0	verified	decompiled 0x1809f0 + oracle	code overload; fires only for a received broadcast
+addPublicVariableEventHandler	binary	0x1809f0	verified	decompiled 0x1809f0 + oracle	[target, code] overload; target checked first (Object, Group, Namespace)

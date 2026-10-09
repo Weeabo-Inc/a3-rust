@@ -50,6 +50,9 @@ pub struct VmState<H: Host> {
     pub(crate) scheduler: crate::scheduler::Scheduler<H>,
     /// Scripted FSMs (`execFSM`), stepped once per scheduler frame.
     pub(crate) fsms: crate::fsm::FsmList,
+    /// `addPublicVariableEventHandler`: the handlers waiting for a broadcast
+    /// of a `missionNamespace` variable to arrive.
+    pub(crate) public_handlers: Vec<PublicHandler>,
 }
 
 impl<H: Host> Default for VmState<H> {
@@ -59,8 +62,29 @@ impl<H: Host> Default for VmState<H> {
             rng: Rng::new(0x5EED_1234_ABCD_0001),
             scheduler: crate::scheduler::Scheduler::default(),
             fsms: crate::fsm::FsmList::default(),
+            public_handlers: Vec::new(),
         }
     }
+}
+
+/// One `addPublicVariableEventHandler` registration
+/// (`FUN_1401809f0` registers it with the network manager).
+///
+/// The handler runs only for a broadcast this machine **receives**: the
+/// original does not fire it on the machine that published (server oracle,
+/// `evh.code`), and there is no transport yet (#131), so
+/// [`Vm::public_variable_received`] is the entry point a network layer will
+/// call.
+#[derive(Clone, Debug)]
+pub struct PublicHandler {
+    /// The variable name the handler is attached to (compared
+    /// case-insensitively, as variable names are).
+    pub name: Rc<str>,
+    /// The target the handler is for, or `None` for the whole-namespace form
+    /// (`"name" addPublicVariableEventHandler {code}`).
+    pub target: Option<Value>,
+    /// The code to run, with `_this = [name, value, target]`.
+    pub code: Code,
 }
 
 /// An SQF virtual machine with host `H`.
@@ -204,6 +228,61 @@ impl<H: Host> Vm<H> {
     pub fn set_global(&mut self, name: &str, value: Value) {
         self.namespace_mut(Namespace::Mission)
             .set(Sym::new(name), value);
+    }
+
+    /// `addPublicVariableEventHandler`: registers `code` for broadcasts of
+    /// `name` (`target` is the object/group of the array form, `None` for
+    /// the whole-namespace form). There is no way to remove one.
+    pub fn register_public_handler(&mut self, name: &str, target: Option<Value>, code: Code) {
+        self.state.public_handlers.push(PublicHandler {
+            name: Rc::from(name),
+            target,
+            code,
+        });
+    }
+
+    /// The registered `addPublicVariableEventHandler` handlers, in
+    /// registration order.
+    pub fn public_handlers(&self) -> &[PublicHandler] {
+        &self.state.public_handlers
+    }
+
+    /// A broadcast of `name` with `value` arrived from the network: runs
+    /// every handler registered for that name (and target) with
+    /// `_this = [name, value, target]`, as the engine does when a client
+    /// receives one. Returns how many handlers ran.
+    ///
+    /// The publishing machine does not run its own handlers, so this is
+    /// *not* called by `publicVariable`; a network layer calls it for a
+    /// broadcast that arrived from elsewhere.
+    pub fn public_variable_received(
+        &mut self,
+        name: &str,
+        value: Value,
+        target: Value,
+    ) -> Result<usize, Vec<ScriptError>> {
+        let handlers: Vec<PublicHandler> = self
+            .state
+            .public_handlers
+            .iter()
+            .filter(|h| h.name.eq_ignore_ascii_case(name))
+            .filter(|h| h.target.as_ref().is_none_or(|t| t.is_equal_to(&target)))
+            .cloned()
+            .collect();
+        let payload = Value::array([Value::string(name), value, target]);
+        let mut errors = Vec::new();
+        let mut ran = 0;
+        for handler in handlers {
+            match self.call(&handler.code, Some(payload.clone())) {
+                Ok(_) => ran += 1,
+                Err(e) => errors.push(e),
+            }
+        }
+        if errors.is_empty() {
+            Ok(ran)
+        } else {
+            Err(errors)
+        }
     }
 }
 
@@ -503,6 +582,16 @@ impl<H: Host> Ctx<'_, H> {
     /// Starts a scheduled script (`spawn`).
     pub fn spawn(&mut self, code: Code, this: Value, name: Option<Rc<str>>) -> ScriptHandle {
         self.vm.scheduler.spawn(code, this, name)
+    }
+
+    /// `addPublicVariableEventHandler`: registers `code` for broadcasts of
+    /// `name` that this machine receives.
+    pub fn register_public_handler(&mut self, name: &str, target: Option<Value>, code: Code) {
+        self.vm.public_handlers.push(PublicHandler {
+            name: Rc::from(name),
+            target,
+            code,
+        });
     }
 
     pub(crate) fn scheduler(&mut self) -> &mut crate::scheduler::Scheduler<H> {
