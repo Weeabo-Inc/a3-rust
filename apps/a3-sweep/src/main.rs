@@ -436,6 +436,13 @@ fn print_summary(sweep: &Sweep) {
     for s in summary::stub_ranking(&sweep.scenarios).iter().take(10) {
         println!("  {:<32} {:>4} {:>4}", s.name, s.scenarios, s.uses);
     }
+    println!("errors that ended a start-up script (scenarios / examples):");
+    for f in summary::failed_reason_ranking(&sweep.scenarios)
+        .iter()
+        .take(15)
+    {
+        println!("  {:>4}  {}", f.scenarios, f.reason);
+    }
     println!("top error signatures (scenarios / reports):");
     for s in summary::signature_ranking(&sweep.scenarios).iter().take(15) {
         println!("  {:>4} {:>6}  {}", s.scenarios, s.count, s.signature);

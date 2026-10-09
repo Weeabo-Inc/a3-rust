@@ -211,6 +211,12 @@ pub struct ScenarioResult {
     pub missing_models: Vec<String>,
     /// Start-up scripts that failed (`functions init`, `init of ...`, `init.sqf`).
     pub failed_scripts: Vec<String>,
+    /// Why each of those failed: `"<script>: <error>"`, the error being the one that *ended* the
+    /// script. A script reports only its first error (`docs/re/sqf-semantics.md`), which can be a
+    /// harmless one the engine logs and carries on from, so the name alone does not say what
+    /// stopped it.
+    #[serde(default)]
+    pub failed_script_errors: Vec<String>,
     /// Distinct script errors, most frequent first.
     pub errors: Vec<ErrorRecord>,
     /// Total script errors reported (sum of the records' counts).
@@ -253,6 +259,7 @@ impl ScenarioResult {
             misplaced_examples: Vec::new(),
             missing_models: Vec::new(),
             failed_scripts: Vec::new(),
+            failed_script_errors: Vec::new(),
             errors: Vec::new(),
             error_count: 0,
             unimplemented_runtime: Vec::new(),

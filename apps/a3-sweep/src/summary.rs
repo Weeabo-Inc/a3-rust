@@ -63,6 +63,83 @@ pub fn command_ranking(results: &[ScenarioResult]) -> Vec<CommandRank> {
     out
 }
 
+/// One reason a start-up script ended, over the whole sweep.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FailedReasonRank {
+    pub reason: String,
+    /// Scenarios whose start-up ended with it.
+    pub scenarios: usize,
+    /// A few of those scenarios (folder names).
+    pub examples: Vec<String>,
+}
+
+/// The errors that *ended* a start-up script, ranked by the scenarios they stopped.
+///
+/// This is the ranking to work from. A script reports only its **first** error, and the engine
+/// (and we) log it and carry on — so the first error is often harmless, and a list of script
+/// names or of first errors points at the wrong command. [`ScenarioResult::failed_script_errors`]
+/// carries the error that actually ended the script instead.
+pub fn failed_reason_ranking(results: &[ScenarioResult]) -> Vec<FailedReasonRank> {
+    let mut ranks: BTreeMap<String, FailedReasonRank> = BTreeMap::new();
+    for result in results {
+        // One script failing the same way twice in a scenario still counts it once.
+        let mut seen: Vec<String> = Vec::new();
+        for entry in &result.failed_script_errors {
+            let reason = abort_reason(entry);
+            if seen.contains(&reason) {
+                continue;
+            }
+            seen.push(reason.clone());
+            let rank = ranks
+                .entry(reason.clone())
+                .or_insert_with(|| FailedReasonRank {
+                    reason,
+                    scenarios: 0,
+                    examples: Vec::new(),
+                });
+            rank.scenarios += 1;
+            if rank.examples.len() < 3 {
+                rank.examples.push(result.scenario.name().to_owned());
+            }
+        }
+    }
+    let mut out: Vec<FailedReasonRank> = ranks.into_values().collect();
+    out.sort_by(|a, b| b.scenarios.cmp(&a.scenarios).then(a.reason.cmp(&b.reason)));
+    out
+}
+
+/// The line of a failed-script report that names the reason.
+///
+/// A report reads
+///
+/// ```text
+/// Error in expression <...>
+///   Error position: <...>
+///   Error Unimplemented command: publicVariable
+/// File A3\functions_f\initFunctions.sqf..., line 527
+/// ```
+///
+/// so the reason is the `Error ...` line that is neither the quoted expression (`in expression`)
+/// nor its position. Falls back to the first line when there is none.
+fn abort_reason(entry: &str) -> String {
+    let body = entry.split_once(": ").map_or(entry, |(_, rest)| rest);
+    for line in body.lines() {
+        let line = line.trim();
+        let Some(rest) = line.strip_prefix("Error ") else {
+            continue;
+        };
+        if rest.is_empty() || rest.starts_with("position:") || rest.starts_with("in expression") {
+            continue;
+        }
+        return rest.to_owned();
+    }
+    body.lines()
+        .map(str::trim)
+        .find(|l| !l.is_empty())
+        .unwrap_or("(no message)")
+        .to_owned()
+}
+
 /// One error signature over the whole sweep.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignatureRank {
@@ -371,6 +448,26 @@ pub fn markdown(sweep: &Sweep) -> String {
         }
         out.push('\n');
     }
+
+    out.push_str("## Errors that ended a start-up script\n\n");
+    out.push_str(
+        "Ranked by the scenarios each one stopped. This is the table to work from: a script \
+         reports only its **first** error and the engine logs it and carries on, so `## Top error \
+         signatures` above can name a harmless error while the script was actually ended by a \
+         later one.\n\n",
+    );
+    out.push_str("| # | reason | scenarios | examples |\n|--:|---|--:|---|\n");
+    for (i, f) in failed_reason_ranking(results).iter().take(TOP).enumerate() {
+        let _ = writeln!(
+            out,
+            "| {} | {} | {} | {} |",
+            i + 1,
+            cell(&f.reason),
+            f.scenarios,
+            cell(&f.examples.join(", "))
+        );
+    }
+    out.push('\n');
 
     out.push_str("## Top error signatures\n\n");
     out.push_str("| # | signature | scenarios | reports | examples |\n|--:|---|--:|--:|---|\n");
