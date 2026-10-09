@@ -30,7 +30,7 @@ class Mission
 				class Item0
 				{
 					id=7;
-					position[]={1000,2000,0};
+					position[]={1000,0,2000};
 					vehicle="B_Soldier_F";
 					leader=1;
 					text="boss";
@@ -39,7 +39,7 @@ class Mission
 				class Item1
 				{
 					id=3;
-					position[]={1010,2020,0};
+					position[]={1010,0,2020};
 					vehicle="B_soldier_AR_F";
 					player="PLAYER COMMANDER";
 					init="order = format [""%1|player"", order]; shooter = this;";
@@ -55,7 +55,7 @@ class Mission
 				class Item0
 				{
 					id=11;
-					position[]={3000,4000,0};
+					position[]={3000,0,4000};
 					vehicle="O_Soldier_F";
 					text="suspender";
 					init="waitUntil { false };";
@@ -68,7 +68,7 @@ class Mission
 		items=1;
 		class Item0
 		{
-			position[]={100,200,0};
+			position[]={100,0,200};
 			name="marker_start";
 			text="Start";
 			type="Empty";
@@ -269,7 +269,7 @@ class Mission
 				class Item0
 				{
 					id=1;
-					position[]={100,200,0};
+					position[]={100,0,200};
 					vehicle="B_Soldier_F";
 					init="this enableMimics false;";
 				};
@@ -346,4 +346,16 @@ fn config_handles_print_their_path_on_the_mission_vm() {
         "{printed}"
     );
     assert_eq!(printed.matches("<NULL-config>").count(), 2, "{printed}");
+}
+
+#[test]
+fn mission_name_is_the_folder_name_without_the_world() {
+    let (mut vm, _spawned, _report, _dir) = load_spawn_run();
+
+    let code = vm
+        .compile_file("probe.sqf", "name = missionName;")
+        .expect("compiles");
+    vm.call_in(&code, None, Namespace::Mission).expect("runs");
+    // FOLDER is `missions\test.altis`.
+    assert_eq!(text(&vm, "name"), "test");
 }

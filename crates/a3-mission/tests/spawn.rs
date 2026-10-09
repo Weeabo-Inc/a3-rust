@@ -22,7 +22,7 @@ class Mission
 				items=2;
 				class Item0
 				{
-					position[]={1000,2000,0};
+					position[]={1000,0,2000};
 					azimut=45;
 					id=7;
 					side="WEST";
@@ -67,7 +67,7 @@ class Mission
 		class Item0
 		{
 			id=32;
-			position[]={500,600,1.5};
+			position[]={500,1.5,600};
 			azimut=-90;
 			vehicle="Land_Cargo10_F";
 		};
@@ -77,7 +77,7 @@ class Mission
 		items=1;
 		class Item0
 		{
-			position[]={100,200,0};
+			position[]={100,0,200};
 			name="marker_start";
 			text="Start";
 			type="Empty";

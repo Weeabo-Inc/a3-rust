@@ -115,6 +115,10 @@ pub struct Sanity {
     pub non_finite_positions: usize,
     /// Entities more than 5 m below the terrain surface.
     pub below_terrain: usize,
+    /// Entities more than 2 km above the terrain surface (no shipped scenario places anything
+    /// that high; a swapped coordinate does).
+    #[serde(default)]
+    pub far_above_terrain: usize,
 }
 
 impl Sanity {
@@ -134,6 +138,9 @@ impl Sanity {
         }
         if self.below_terrain > 0 {
             out.push(format!("{} below terrain", self.below_terrain));
+        }
+        if self.far_above_terrain > 0 {
+            out.push(format!("{} far above terrain", self.far_above_terrain));
         }
         out
     }
@@ -172,6 +179,9 @@ pub struct ScenarioResult {
     pub timings: Timings,
     /// Units the mission places (present ones only).
     pub units_declared: usize,
+    /// `version` of `mission.sqm` (12: 2D editor, 53: 3D editor); 0 when it did not load.
+    #[serde(default)]
+    pub sqm_version: i32,
     pub units_spawned: usize,
     pub unspawned: Vec<Unspawned>,
     /// Model files the spawned Entity types name that the VFS does not have.
@@ -207,6 +217,7 @@ impl ScenarioResult {
             budget_exhausted: false,
             timings: Timings::default(),
             units_declared: 0,
+            sqm_version: 0,
             units_spawned: 0,
             unspawned: Vec::new(),
             missing_models: Vec::new(),

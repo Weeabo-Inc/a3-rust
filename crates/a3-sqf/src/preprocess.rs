@@ -94,19 +94,41 @@ pub fn preprocess_with_host<H: Host + ?Sized>(
 /// numbers and strings become their `str` text (Booleans `"true"`/`"false"`).
 pub struct SqfEvaluator<'a, H: Host> {
     vm: &'a mut Vm<H>,
+    lenient: bool,
 }
 
 impl<'a, H: Host> SqfEvaluator<'a, H> {
-    /// An evaluator running on `vm`.
+    /// An evaluator running on `vm`. A failing `__EXEC`/`__EVAL` is an error.
     pub fn new(vm: &'a mut Vm<H>) -> Self {
-        Self { vm }
+        Self { vm, lenient: false }
+    }
+
+    /// An evaluator running on `vm` the way the engine loads configs: a failing `__EXEC` or
+    /// `__EVAL` is reported to the host as a script error and preprocessing goes on, `__EVAL`
+    /// giving the empty string _(assumed: the engine's value for a failed `__EVAL` is not
+    /// known)_. The game loads configs whose `__EXEC` fails (Laws of War's menu scene runs the
+    /// campaign `description.inc`, which reads `_overviewLines` that only the campaign missions
+    /// define).
+    pub fn lenient(vm: &'a mut Vm<H>) -> Self {
+        Self { vm, lenient: true }
     }
 
     fn run(&mut self, name: &str, code: &str) -> Result<Value, String> {
-        let code = self
-            .vm
-            .compile_file(name, code)
-            .map_err(|e| e.message.clone())?;
+        let code = match self.vm.compile_file(name, code) {
+            Ok(code) => code,
+            Err(e) => {
+                if self.lenient {
+                    let source = crate::SourceFile::new(name, code);
+                    let error = crate::ScriptError::new(
+                        crate::SqfError::Generic(e.message.clone()),
+                        None,
+                        Some((&source, e.span.start as u32)),
+                    );
+                    self.vm.host.report_error(&error);
+                }
+                return Err(e.message);
+            }
+        };
         let locals: Vec<(Sym, Value)> = self
             .vm
             .namespace(Namespace::Parsing)
@@ -125,11 +147,19 @@ impl<'a, H: Host> SqfEvaluator<'a, H> {
 
 impl<H: Host> Evaluator for SqfEvaluator<'_, H> {
     fn exec(&mut self, code: &str) -> Result<(), String> {
-        self.run("__EXEC", code).map(|_| ())
+        match self.run("__EXEC", code) {
+            // Runtime errors were reported by the VM, compile errors by `run`.
+            Err(_) if self.lenient => Ok(()),
+            result => result.map(|_| ()),
+        }
     }
 
     fn eval(&mut self, expression: &str) -> Result<EvalValue, String> {
-        Ok(match self.run("__EVAL", expression)? {
+        let value = match self.run("__EVAL", expression) {
+            Err(_) if self.lenient => return Ok(EvalValue::String(String::new())),
+            result => result?,
+        };
+        Ok(match value {
             Value::Number(n) => EvalValue::Number(f64::from(n)),
             Value::String(s) => EvalValue::String(s.to_string()),
             other => EvalValue::String(other.to_sqf_string()),

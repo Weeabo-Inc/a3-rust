@@ -189,6 +189,7 @@ impl Runner {
         let host = &mut vm.host;
         let spawned = spawn_mission(&mut host.world, &mut host.types, &mission);
         result.units_declared = mission.units().filter(|u| !u.is_absent()).count();
+        result.sqm_version = mission.version;
         result.units_spawned = spawned.units.len();
         result.unspawned = spawned
             .unspawned
@@ -341,8 +342,13 @@ impl Runner {
             let p = entity.position();
             if !p.is_finite() {
                 sanity.non_finite_positions += 1;
-            } else if p.y < world.surface_height(p.x, p.z) - 5.0 {
+                continue;
+            }
+            let surface = world.surface_height(p.x, p.z);
+            if p.y < surface - 5.0 {
                 sanity.below_terrain += 1;
+            } else if p.y > surface + 2000.0 {
+                sanity.far_above_terrain += 1;
             }
         }
         result.sanity = sanity;

@@ -169,6 +169,26 @@ fn evaluator_converts_results() {
     );
 }
 
+/// The game loads configs whose `__EXEC` fails (Laws of War's menu scene runs the campaign's
+/// `description.inc`, whose `__EXEC` reads `_overviewLines`, which only the campaign missions
+/// define): the lenient evaluator reports the error to the host and the config goes on.
+#[test]
+fn a_lenient_evaluator_reports_errors_and_goes_on() {
+    let mut vm = vm();
+    let files = MemoryResolver::new();
+    let out = Preprocessor::new(&files)
+        .with_options(Options::config())
+        .with_evaluator(SqfEvaluator::lenient(&mut vm))
+        .preprocess_str(
+            "\\cfg\\description.ext",
+            "__EXEC(_t = \"\"; {_t = _t + _x} forEach _undefinedLines)\na = __EVAL(1 + \"x\");\n__EXEC(x = (;)\nb = __EVAL(2 + 3);",
+        )
+        .expect("the config goes on");
+    assert_eq!(out.text, "\na = \"\";\n\nb = 5;");
+    assert_eq!(vm.host.errors.len(), 3, "{:#?}", vm.host.errors);
+    assert!(vm.host.errors[0].contains("_undefinedlines"), "{}", vm.host.errors[0]);
+}
+
 #[test]
 fn evaluator_errors_are_messages() {
     let mut vm = vm();

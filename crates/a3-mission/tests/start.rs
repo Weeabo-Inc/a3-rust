@@ -28,7 +28,7 @@ class Mission
 				class Item0
 				{
 					id=1;
-					position[]={100,200,0};
+					position[]={100,0,200};
 					vehicle="B_Soldier_F";
 					player="PLAYER COMMANDER";
 					leader=1;
@@ -51,10 +51,12 @@ woke = true;
 const FUNCTIONS_INIT: &str = r#"order = ["functions"];
 this_was_nil = isNil "_this";
 [] spawn { post_init = true; };
+names = [missionName, worldName];
 "#;
 
 const GAME_CONFIG: &str = r#"
 class CfgFunctions { init = "fn\initFunctions.sqf"; };
+class CfgWorlds { class Altis {}; };
 "#;
 
 fn started(options: StartOptions) -> (Vm<MissionVmHost>, a3_mission::RunReport, tempfile::TempDir) {
@@ -141,4 +143,16 @@ fn init_sqf_is_spawned_but_not_waited_for() {
     assert!(vm.host.world.time() > 2.0);
     assert_eq!(vm.get_global("woke"), Value::Bool(true));
     assert!(vm.script_done(handle));
+}
+
+#[test]
+fn the_mission_and_world_names_are_set_before_the_function_library_starts() {
+    let (vm, report, _dir) = started(StartOptions { functions: true });
+
+    // FOLDER is `missions\start.altis`; config spells the world `Altis`.
+    assert_eq!(
+        strings(vm.get_global("names")),
+        ["start", "Altis"],
+        "{report:?}"
+    );
 }

@@ -21,7 +21,7 @@
 //!
 //! ```
 //! # use a3_mission::{Mission, parse_sqm};
-//! let sqm = b"version=12;\nclass Mission {\n  class Groups {\n    items=1;\n    class Item0 {\n      side=\"WEST\";\n      class Vehicles {\n        items=1;\n        class Item0 { id=1; vehicle=\"B_Soldier_F\"; position[]={100,200,0}; azimut=45; leader=1; text=\"boss\"; };\n      };\n    };\n  };\n};";
+//! let sqm = b"version=12;\nclass Mission {\n  class Groups {\n    items=1;\n    class Item0 {\n      side=\"WEST\";\n      class Vehicles {\n        items=1;\n        class Item0 { id=1; vehicle=\"B_Soldier_F\"; position[]={100,0,200}; azimut=45; leader=1; text=\"boss\"; };\n      };\n    };\n  };\n};";
 //! let mission = Mission::from_config(&parse_sqm(sqm).unwrap()).unwrap();
 //! assert_eq!(mission.units().count(), 1);
 //! assert_eq!(mission.unit(1).unwrap().class, "B_Soldier_F");
@@ -35,12 +35,12 @@ mod sqm;
 
 pub use load::{LoadError, install_mission_config, load_mission};
 pub use mission::{
-    Intel, Marker, Mission, MissionError, MissionGroup, MissionVariable, Sensor, Unit, Waypoint,
-    side_from_sqm,
+    AttributeValue, EntityAttribute, Intel, Marker, Mission, MissionError, MissionGroup,
+    MissionVariable, Sensor, Unit, Waypoint, side_from_sqm,
 };
 pub use run::{
-    MAX_INIT_FRAMES, MissionHost, MissionVmHost, RunReport, ScriptRun, StartOptions,
-    mission_registry, run_scripts, start_mission, step,
+    MAX_INIT_FRAMES, MissionHost, MissionState, MissionVmHost, RunReport, ScriptRun, StartOptions,
+    mission_registry, register_mission_commands, run_scripts, start_mission, step,
 };
 pub use spawn::{Spawned, SpawnedGroup, Unspawned, spawn_mission};
 pub use sqm::{SqmError, parse_sqm};

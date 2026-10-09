@@ -244,6 +244,16 @@ pub fn markdown(sweep: &Sweep) -> String {
     status_table(&mut out, "world", &by_world);
     out.push_str("### By package\n\n");
     status_table(&mut out, "package", &by_package);
+    let mut by_format: BTreeMap<String, Vec<&ScenarioResult>> = BTreeMap::new();
+    for r in results {
+        let format = match r.sqm_version {
+            0 => "not loaded".to_owned(),
+            v => format!("version {v}"),
+        };
+        by_format.entry(format).or_default().push(r);
+    }
+    out.push_str("### By `mission.sqm` format\n\n");
+    status_table(&mut out, "format", &by_format);
 
     out.push_str("## Unimplemented commands, by scenarios blocked\n\n");
     out.push_str("*Blocked*: scenarios in which the command stopped a script at runtime (\"Unimplemented command\"). *Used by*: scenarios whose own scripts (the `.sqf` files of the mission folder, init fields, trigger expressions) contain it.\n\n");

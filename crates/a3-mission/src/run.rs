@@ -22,7 +22,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use a3_gamedata::{ConfigHost, ConfigRoot, VfsHost, script_registry};
-use a3_sqf::{Code, FrameReport, Host, Namespace, Registry, ScriptHandle, Value, Vm};
+use a3_sqf::{
+    Code, FrameReport, Host, Namespace, Registry, ScriptHandle, Type, TypeSet, Value, Vm,
+};
 use a3_vfs::Vfs;
 use a3_world::ObjectRef;
 use a3_world::script::{
@@ -31,7 +33,7 @@ use a3_world::script::{
 use a3_world::{TypeBank, World};
 
 use crate::load::install_mission_config;
-use crate::mission::{Mission, MissionVariable};
+use crate::mission::{AttributeValue, Mission, MissionVariable};
 use crate::spawn::Spawned;
 
 /// Frames the `init.sqf` scheduler is stepped for before it is abandoned (at 15 Hz, 20 seconds).
@@ -45,6 +47,20 @@ pub trait MissionHost: WorldHost + ConfigHost {
     fn errors(&self) -> &[String];
     /// `diag_log` lines, in order.
     fn log(&self) -> &[String];
+    /// What the running mission is ([`MissionState`]); start-up fills it in.
+    fn mission_state(&self) -> &MissionState;
+    fn mission_state_mut(&mut self) -> &mut MissionState;
+}
+
+/// The running mission as the mission-information commands answer it. Empty before a mission
+/// starts.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct MissionState {
+    /// `missionName`: [`Mission::name`].
+    pub name: String,
+    /// `worldName`: the `CfgWorlds` class of the mission's terrain, as config spells it
+    /// (`Altis`, `VR`); empty when config has no class for the folder's world.
+    pub world: String,
 }
 
 /// A self-contained mission host: a [`World`], its [`TypeBank`] and [`VfsHost`] file services.
@@ -53,6 +69,7 @@ pub struct MissionVmHost {
     pub world: World,
     pub types: TypeBank,
     pub files: VfsHost,
+    pub mission: MissionState,
 }
 
 impl MissionVmHost {
@@ -61,6 +78,7 @@ impl MissionVmHost {
             world,
             types,
             files,
+            mission: MissionState::default(),
         }
     }
 
@@ -71,7 +89,9 @@ impl MissionVmHost {
 
     /// The VM a mission's scripts run on: this host with the mission command registry.
     pub fn vm(self) -> Vm<MissionVmHost> {
-        Vm::with_registry(self, Rc::new(mission_registry()))
+        let mut registry = mission_registry();
+        register_mission_commands(&mut registry);
+        Vm::with_registry(self, Rc::new(registry))
     }
 }
 
@@ -169,6 +189,14 @@ impl MissionHost for MissionVmHost {
     fn log(&self) -> &[String] {
         &self.files.log
     }
+
+    fn mission_state(&self) -> &MissionState {
+        &self.mission
+    }
+
+    fn mission_state_mut(&mut self) -> &mut MissionState {
+        &mut self.mission
+    }
 }
 
 /// The command registry a mission runs with: the game's commands (core, config, headless game
@@ -177,6 +205,42 @@ pub fn mission_registry<H: WorldHost + ConfigHost>() -> Registry<H> {
     let mut registry = script_registry::<H>();
     register_world_commands(&mut registry);
     registry
+}
+
+/// Registers the commands that answer from the running mission ([`MissionState`]):
+/// `missionName` and `worldName`.
+pub fn register_mission_commands<H: MissionHost>(r: &mut Registry<H>) {
+    // `missionName` returns a global string the engine sets when a mission loads (handler
+    // 0x8b0c00 copies DAT_14225ec48). Its content is the mission folder's name without the world
+    // extension _(assumed, from community documentation; the writers of the global were not
+    // traced)_.
+    r.nular("missionName", TypeSet::of(Type::String), |ctx| {
+        Ok(Value::from(ctx.host.mission_state().name.as_str()))
+    });
+    // The terrain's CfgWorlds class, as the server oracle shows (`"Stratis"`, `"VR"`, #286).
+    // Without a mission the headless answer (`""`) stands.
+    r.nular("worldName", TypeSet::of(Type::String), |ctx| {
+        Ok(Value::from(ctx.host.mission_state().world.as_str()))
+    });
+}
+
+/// Fills in the host's [`MissionState`] for `mission`.
+fn install_mission_state<H: MissionHost>(vm: &mut Vm<H>, mission: &Mission) {
+    let world = match &mission.terrain {
+        Some(terrain) => {
+            let config = Arc::clone(vm.host.configs().tree(ConfigRoot::Game));
+            let class = config.root().get("CfgWorlds").get(terrain);
+            if class.is_class() {
+                class.name().to_owned()
+            } else {
+                String::new()
+            }
+        }
+        None => String::new(),
+    };
+    let state = vm.host.mission_state_mut();
+    state.name = mission.name();
+    state.world = world;
 }
 
 /// One script the mission ran.
@@ -231,6 +295,7 @@ pub fn run_scripts<H: MissionHost>(
     install_mission_config(vm, mission);
     install_variables(vm, mission, spawned, &mut report);
     run_unit_inits(vm, mission, spawned, &mut report, &mut codes);
+    run_unit_attributes(vm, mission, spawned, &mut report, &mut codes);
     if let Some(handle) = spawn_init_sqf(vm, mission, &mut report, &mut codes) {
         report.frames = vm.run_until_idle(MAX_INIT_FRAMES, |host| {
             host.world_mut().simulate(1.0 / 15.0);
@@ -290,6 +355,7 @@ pub fn start_mission<H: MissionHost>(
         run_functions_init(vm, &mut report);
     }
     run_unit_inits(vm, mission, spawned, &mut report, &mut codes);
+    run_unit_attributes(vm, mission, spawned, &mut report, &mut codes);
     report.init_sqf = spawn_init_sqf(vm, mission, &mut report, &mut codes);
     report.missing_commands = merge_counts(a3_gamedata::unimplemented_usage_in(vm, &codes));
     finish(vm, &mut report, start, errors_before, log_before);
@@ -363,6 +429,7 @@ fn install_variables<H: MissionHost>(
     spawned: &Spawned,
     report: &mut RunReport,
 ) {
+    install_mission_state(vm, mission);
     for (name, variable) in mission.variables() {
         match variable {
             MissionVariable::Unit(id) => {
@@ -424,6 +491,78 @@ fn run_unit_inits<H: MissionHost>(
             ok: result.is_ok(),
             error: result.err().map(|e| e.report),
         });
+    }
+}
+
+/// Runs the 3D-editor attribute expressions of every spawned unit, unscheduled, with `_this` the
+/// unit and `_value` the attribute's value. One [`ScriptRun`] per unit with attributes; it fails
+/// with the first failing expression's error.
+fn run_unit_attributes<H: MissionHost>(
+    vm: &mut Vm<H>,
+    mission: &Mission,
+    spawned: &Spawned,
+    report: &mut RunReport,
+    codes: &mut Vec<Code>,
+) {
+    let source_path = format!("{}\\mission.sqm", mission.folder);
+    for unit in mission.units() {
+        if unit
+            .attributes
+            .iter()
+            .all(|a| a.expression.trim().is_empty())
+        {
+            continue;
+        }
+        let Some(&entity) = spawned.units.get(&unit.id) else {
+            continue;
+        };
+        let name = match &unit.text {
+            Some(text) => format!("attributes of {text}"),
+            None => format!("attributes of unit {}", unit.id),
+        };
+        let this = object_value(vm.host.world(), ObjectRef::Entity(entity));
+        let mut error = None;
+        for attribute in &unit.attributes {
+            if attribute.expression.trim().is_empty() {
+                continue;
+            }
+            let code = match vm.compile_file(&source_path, &attribute.expression) {
+                Ok(code) => code,
+                Err(e) => {
+                    error.get_or_insert(format!("{}: {}", attribute.property, e.message));
+                    continue;
+                }
+            };
+            codes.push(code.clone());
+            let locals = vec![
+                (a3_sqf::Sym::new("_this"), this.clone()),
+                (
+                    a3_sqf::Sym::new("_value"),
+                    attribute_value(&attribute.value),
+                ),
+            ];
+            if let (Err(e), _) = vm.call_with_locals(&code, Namespace::Mission, locals) {
+                error.get_or_insert(e.report);
+            }
+        }
+        report.scripts.push(ScriptRun {
+            name,
+            ok: error.is_none(),
+            error,
+        });
+    }
+}
+
+/// The SQF value of an attribute value.
+fn attribute_value(value: &AttributeValue) -> Value {
+    match value {
+        AttributeValue::Nil => Value::Nil,
+        AttributeValue::Bool(b) => Value::Bool(*b),
+        AttributeValue::Number(n) => Value::Number(*n as f32),
+        AttributeValue::String(s) => Value::from(s.as_str()),
+        AttributeValue::Array(items) => Value::Array(a3_sqf::Array::from_vec(
+            items.iter().map(attribute_value).collect(),
+        )),
     }
 }
 

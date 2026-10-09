@@ -1,4 +1,4 @@
-# How implemented SQF command overloads were verified; read by `a3-tools sqf coverage` for
+﻿# How implemented SQF command overloads were verified; read by `a3-tools sqf coverage` for
 # docs/fidelity/sqf-coverage.md. One record per overload (or `*` for every overload of a form).
 # Columns (tab-separated): name, form (nular|unary|binary), handler RVA from
 # docs/re/sqf-commands.tsv or `*`, status (verified|stub), source (`decompiled <addr>`, `oracle`,
@@ -177,3 +177,11 @@ skill	binary	0x532b10	verified	decompiled 0x532b10 + oracle
 skill	unary	0x8b6840	verified	decompiled 0x8b6840 + oracle	
 unitPos	unary	0x533390	verified	decompiled 0x533390 + oracle	
 weaponCargo	unary	0x847960	verified	decompiled 0x847960 + oracle	
+disableSerialization	nular	0x2d2bf0	verified	decompiled 0x2d2bf0	clears the script serializable flag; no saved games, so a no-op returning Nothing
+missionName	nular	0x8b0c00	stub	decompiled 0x8b0c00	returns the global mission name; its content (folder name without the world) is from the wiki, writers not traced
+startLoadingScreen	unary	0x51f050	stub	decompiled 0x51f050	headless: no loading screen to show
+progressLoadingScreen	unary	0x51f240	stub	wiki	headless: no loading screen to show
+endLoadingScreen	nular	0x8b0220	stub	wiki	headless: no loading screen to show
+createCenter	unary	0x18db90	verified	decompiled 0x18db90	ensures the side AI center exists, returns the side; the World needs no center object
+deleteCenter	unary	0x18dc60	stub	sqf-commands.tsv	returns nothing; no center object to delete
+worldName	nular	*	verified	oracle	the terrain CfgWorlds class (#286); a3-mission answers it from the running mission

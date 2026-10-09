@@ -194,6 +194,24 @@ fn headless_state_is_a_retail_main_menu() {
     assert_eq!(eval(&mut vm, "isNull findDisplay 46"), "true");
 }
 
+/// Mission start-up (`BIS_fnc_startLoadingScreen`, `BIS_fnc_progressLoadingScreen`) drives the
+/// loading screen; headless there is none to show, and the commands return nothing.
+#[test]
+fn loading_screen_commands_do_nothing_headless() {
+    let dir = tempfile::tempdir().unwrap();
+    game(dir.path());
+    let data = GameData::load(&LoadOptions::new(dir.path())).unwrap();
+    let mut vm = script_vm(&data);
+    assert_eq!(
+        eval(
+            &mut vm,
+            "startLoadingScreen [\"\"]; startLoadingScreen [\"x\", \"RscDisplayLoadMission\"]; \
+             progressLoadingScreen 0.5; endLoadingScreen; 1"
+        ),
+        "1"
+    );
+}
+
 #[test]
 fn init_functions_compiles_every_declared_function() {
     let dir = tempfile::tempdir().unwrap();

@@ -230,3 +230,15 @@ fn delete_group_takes_units_scheduled_for_deletion() {
     assert!(truth(&mut vm, "isNull g"));
     assert_eq!(eval(&mut vm, "count allGroups").as_number(), Some(0.0));
 }
+
+/// `createCenter` (handler 0x18db90) makes sure the side has an AI center and returns the side;
+/// the World's sides need no center object, so only the result shows. `deleteCenter` returns
+/// nothing. Mission start-up (`initFunctions.sqf`) calls `createCenter sideLogic`.
+#[test]
+fn create_center_returns_its_side() {
+    let mut vm = vm(ClientId::SERVER);
+    assert!(truth(&mut vm, "createCenter sideLogic isEqualTo sideLogic"));
+    assert!(truth(&mut vm, "createCenter west isEqualTo west"));
+    assert!(truth(&mut vm, "isNil {deleteCenter east}"));
+    assert!(truth(&mut vm, "allGroups isEqualTo []"));
+}

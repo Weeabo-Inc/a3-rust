@@ -24,7 +24,7 @@ class Mission
 				class Item0
 				{
 					id=1;
-					position[]={100,200,0};
+					position[]={100,0,200};
 					vehicle="B_Soldier_F";
 					text="player_unit";
 				};

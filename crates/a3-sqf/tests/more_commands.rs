@@ -190,3 +190,12 @@ fn try_with_arguments_and_misc() {
         "7"
     );
 }
+
+/// `disableSerialization` marks the running script as not saved with the game (handler
+/// 0x2d2bf0 clears a flag on the script and its scopes) and returns nothing; the VM has no save
+/// games, so only the return and the absence of an error are observable.
+#[test]
+fn disable_serialization_returns_nothing_and_the_script_goes_on() {
+    assert_eq!(s("disableSerialization; 1 + 1"), "2");
+    assert_eq!(s("isNil {disableSerialization}"), "true");
+}

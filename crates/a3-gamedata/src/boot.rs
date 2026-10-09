@@ -69,6 +69,23 @@ pub fn register_headless<H: Host>(r: &mut Registry<H>) {
     r.nular("displayNull", TypeSet::of(Type::Display), |_| {
         Ok(Value::Handle(Handle::null(HandleKind::Display)))
     });
+    // The loading screen (handlers 0x51f050, 0x51f240, 0x8b0220 hand the text and resource to
+    // the World's loading screen). Headless there is no screen to show.
+    r.unary(
+        "startLoadingScreen",
+        TypeSet::of(Type::Array),
+        TypeSet::of(Type::Nothing),
+        |_, _| Ok(Value::Nothing),
+    );
+    r.unary(
+        "progressLoadingScreen",
+        TypeSet::NUMBER,
+        TypeSet::of(Type::Nothing),
+        |_, _| Ok(Value::Nothing),
+    );
+    r.nular("endLoadingScreen", TypeSet::of(Type::Nothing), |_| {
+        Ok(Value::Nothing)
+    });
     // Development-build logging; does nothing in the retail game.
     r.unary(
         "textLogFormat",
