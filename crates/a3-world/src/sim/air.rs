@@ -38,6 +38,9 @@ pub struct HitIndices {
 }
 
 /// An aircraft's flight model and its state.
+// One per aircraft, stored inline in its AirState; boxing the larger variant would only add a
+// pointer chase per step.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Flight {
     Heli {

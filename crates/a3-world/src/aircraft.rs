@@ -19,6 +19,8 @@ use crate::sim::{AirState, Flight};
 use crate::{ClassState, EntityClass, EntityId, EntityType, World};
 
 /// Which flight model an aircraft type flies with, configured.
+// One per aircraft type, shared behind an `Arc`: the size difference costs nothing.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum FlightType {
     /// The basic helicopter model (`helicopterrtd`, `helicopter`).
