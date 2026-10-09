@@ -186,6 +186,60 @@ difficulty option `weaponInfo` = 0 the unit info is not drawn for a soldier on f
 - Alpha: difficulty `stanceIndicator` 0 → not drawn, 1 → fade with `t` = seconds since the
   last stance change (`InGameUI+0xb48`), 2 → 1. Only drawn on foot.
 
+## Hints (`DisplayHint`, `InGameUI::ShowHint`)
+
+- `InGameUI` builds `RscInGameUI >> RscHint` (IDD 301) into a `DisplayHint` in its
+  constructor (`InGameUI+0xb50`). Controls: 101 background, 102 structured text.
+- `hint` / `hintSilent` (`FUN_14055a3c0` / `FUN_14055ac40`) call `InGameUI` vtable `+0x220`
+  (string, `FUN_1411d1820`) or `+0x218` (structured text, `FUN_1411d1610`) with `sound` 1 / 0.
+  A string longer than 4096 bytes is cut to 4096.
+- `DisplayHint::SetHint` (`FUN_1411cf100`): resets the text control's attributes to its config
+  ones, sets the text, measures the text height (structured text `FUN_141486420`) and sets
+  `102.h = height`, `101.h = (101.h - 102.h) + height` (the background keeps its margin).
+- Timing: `InGameUI+0xb6c` (seconds left) = `CfgInGameUI >> Hint >> dimmEndTime` (35); every
+  simulation step subtracts the frame time (`FUN_1411d1bc0`). Draw (`FUN_1411e66a0`): skipped
+  when the text is empty or the time is negative; alpha 1 while more than
+  `dimmEndTime - dimmStartTime` (5 s) is left, else `left / (end - start)`.
+- Position: before drawing, both controls move vertically so the background's top is at
+  `InGameUI+0xb70` (`FUN_1411d1170`): each frame `CfgInGameUI >> PlayerInfo >> top`
+  (`0.177 + SafeZoneY`, `InGameUI+0x108c`), or just below an old-style unit info background
+  (IDC 124) when one is shown. So the config `y` of `RscHint` does not decide where it shows.
+- Sound: `CfgInGameUI >> Hint >> sound` (`InGameUI+0xb78`, volume `+0xb80`, frequency
+  `+0xb84`) for `hint` with non-empty text.
+- Structured text controls take their base size from `size` and their default alignment from
+  `class Attributes >> align` (a3-ui).
+
+## Chat area (`ChatList`, global `DAT_142221660`)
+
+- Constructed at start (`FUN_141394bc0`): border 0.008, visible, all channels shown, scroll
+  `-1`, default colours (system channel 0x10 `{1, 0.1, 0.1, 1}`, ...). Loaded from
+  `RscChatListDefault` at the main menu and `RscChatListMission` by `DisplayMission`
+  (`FUN_141398090`): `x`, `y`, `w`, `h` (row height), `rows` (integer), `font`, `size`,
+  `colorBackground`, `color<Channel>`, `color<Channel>PlayerBackground`,
+  `color<Channel>PlayerText` for Global, Side, Command, Group, Vehicle, Direct (slots 0–5),
+  `colorSystemChannel` (0x10) and `colorBattlEyeChannel` (0x11) only when present; custom
+  radio channels (6–15) and slots 0x1a–0x41 copy the global channel unless a custom channel
+  exists; `colorMessage`, `colorMessageProtocol`, `shadow`, `shadowPlayer`, `shadowColor`.
+- Messages (0x48 bytes, newest first): channel, sender name, text, real and game time, player
+  flag (`+0x40`), forced-visible flag (`+0x41`), type (`+0x44`: 0 chat, 1 protocol).
+  `systemChat` adds channel 0x10, no sender, protocol type _(medium: flag order)_.
+- Draw (`FUN_141398e40`), bottom row first at `y + (rows - 1) * h`:
+  - text = protocol ? text : `"` + text + `"`; prefix = `sender + ": "` when there is a sender;
+    the prefix takes at most 70 % of the inner width `w - 2 * border`;
+  - the text is wrapped to the rest by `FUN_1413974b0`: characters are measured one by one; on
+    overflow the line breaks after its last whitespace (or before the character) and the
+    width count restarts at zero;
+  - the prefix box is drawn at the message's top visible row, then the lines from the last up,
+    each a box `[x + prefixW, y, 2 * border + textW, h]` in `colorBackground` with the text at
+    `x + border + prefixW`, vertically centred (`(h - size) / 2`); when rows run out the top
+    line gets a `...` prefix;
+  - colours: prefix in the channel colour on `colorBackground` (player messages: player text
+    on player background); lines in `colorMessage` / `colorMessageProtocol`; a drop shadow
+    offset `(0.075 h, 0.1 h)` in `shadowColor` when `shadow` = 1 (prefix: unless a player
+    message with `shadowPlayer` != 1);
+  - age fade (not while scrolled): 25–30 s alpha `(30 - age) * 0.2`, gone after 30 s;
+  - the bottom row is also used by the voice indicator (who speaks) — not implemented.
+
 ## Difficulty options
 
 `CfgDifficultyPresets >> defaultPreset` (`Regular`) `>> Options`: `weaponInfo` and

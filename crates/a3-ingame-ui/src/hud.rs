@@ -9,7 +9,9 @@ use a3_ui::commands::{VmEval, fire_load_events};
 use a3_ui::{DisplayId, DrawList, Fonts, Screen, Ui, build_draw_list};
 use a3_vfs::Vfs;
 
+use crate::chat::{ChatConfig, ChatList, ChatMessage};
 use crate::colors::IguiColors;
+use crate::hint::{HintConfig, HintState, HintText, SoundRef};
 use crate::host::{IguiHost, igui_vm, init_profile_colors};
 use crate::idc;
 use crate::stance::{Stance, StanceAdjust, StanceState, StanceTextures};
@@ -113,6 +115,13 @@ pub struct InGameUi {
     stance: Option<DisplayId>,
     last_stance: Option<(Stance, StanceState, StanceAdjust)>,
     stance_changed: f64,
+    hint_config: HintConfig,
+    hint: HintState,
+    /// `CfgInGameUI >> PlayerInfo >> top`: where the hint box's top goes.
+    hint_top: f32,
+    /// UI time of the last update.
+    last_time: Option<f64>,
+    chat: ChatList,
 }
 
 impl std::fmt::Debug for InGameUi {
@@ -157,6 +166,106 @@ impl InGameUi {
             stance: None,
             last_stance: None,
             stance_changed: 0.0,
+            hint_config: HintConfig::from_config(&config),
+            hint: HintState::default(),
+            hint_top: 0.0,
+            last_time: None,
+            chat: ChatList::default(),
+        }
+        .with_chat_config()
+    }
+
+    /// Loads the in-mission chat list layout (`RscChatListMission`, as `DisplayMission` does)
+    /// for the current screen, keeping the messages.
+    fn with_chat_config(mut self) -> Self {
+        self.load_chat_config();
+        self
+    }
+
+    fn load_chat_config(&mut self) {
+        let config = Arc::clone(self.vm.host.config());
+        let class = config.root().get("RscChatListMission");
+        if class.is_class() {
+            self.chat.config = ChatConfig::from_class(&class, &mut VmEval { vm: &mut self.vm });
+        }
+    }
+
+    /// The chat list.
+    pub fn chat(&self) -> &ChatList {
+        &self.chat
+    }
+
+    /// Adds a `systemChat` line.
+    pub fn system_chat(&mut self, text: &str) {
+        let now = self.last_time.unwrap_or(0.0);
+        self.chat.add(ChatMessage::system(text, now));
+    }
+
+    /// Adds a chat message (its `time` is the UI time it arrived).
+    pub fn add_chat(&mut self, message: ChatMessage) {
+        self.chat.add(message);
+    }
+
+    /// Runs SQF on the in-game UI's VM (unscheduled) and shows the hints and chat lines it
+    /// produced.
+    pub fn exec(&mut self, code: &str) -> Result<(), String> {
+        let result = self.vm.eval(code).map(|_| ()).map_err(|e| e.report.clone());
+        for event in std::mem::take(&mut self.vm.host.script_ui) {
+            match event {
+                crate::host::ScriptUi::Hint { text, silent } => {
+                    self.show_hint(&HintText::Plain(text), !silent);
+                }
+                crate::host::ScriptUi::SystemChat(text) => self.system_chat(&text),
+            }
+        }
+        result
+    }
+
+    /// Shows `text` as the hint for `CfgInGameUI >> Hint >> dimmEndTime` seconds (`hint`,
+    /// or `hintSilent` with `sound` false). Returns the sound to play.
+    pub fn show_hint(&mut self, text: &HintText, sound: bool) -> Option<SoundRef> {
+        self.hint.markup = text.markup();
+        self.hint.dirty = true;
+        self.hint.remaining = self.hint_config.dimm_end;
+        if sound && !self.hint.markup.is_empty() {
+            self.hint_config.sound.clone()
+        } else {
+            None
+        }
+    }
+
+    /// The hint display, once built.
+    pub fn hint_display(&self) -> Option<DisplayId> {
+        self.hint.display
+    }
+
+    /// Builds the hint display and finds where it goes on this screen.
+    fn open_hint(&mut self) {
+        if self.hint.display.is_some() {
+            return;
+        }
+        let config = Arc::clone(self.vm.host.config());
+        let info = config.root().get("CfgInGameUI").get("PlayerInfo");
+        self.hint_top =
+            a3_ui::read_number(&info, "top", &mut VmEval { vm: &mut self.vm }).unwrap_or(0.0);
+        if let Some(d) = self.open("RscHint") {
+            self.hint.attach(&self.vm.host.ui, d);
+        }
+    }
+
+    fn update_hint(&mut self, dt: f32) {
+        self.open_hint();
+        self.hint.remaining -= dt;
+        let Some(d) = self.hint.display else { return };
+        let ui = &mut self.vm.host.ui;
+        self.hint.place(ui, self.hint_top);
+        let alpha = if self.hint.markup.is_empty() {
+            None
+        } else {
+            self.hint_config.alpha(self.hint.remaining)
+        };
+        if let Some(display) = ui.display_mut(d) {
+            display.alpha = alpha.unwrap_or(0.0);
         }
     }
 
@@ -200,7 +309,11 @@ impl InGameUi {
         if let Some(d) = self.stance.take() {
             self.vm.host.ui.remove_display(d);
         }
+        if let Some(d) = self.hint.display.take() {
+            self.vm.host.ui.remove_display(d);
+        }
         self.vm.host.ui.set_screen(screen);
+        self.load_chat_config();
     }
 
     /// Builds `RscInGameUI >> class` and runs its load handlers.
@@ -223,6 +336,8 @@ impl InGameUi {
 
     /// Brings the displays up to date with `info` at UI time `time` (seconds).
     pub fn update(&mut self, info: &UnitInfo, time: f64) {
+        let dt = self.last_time.map_or(0.0, |last| (time - last).max(0.0)) as f32;
+        self.last_time = Some(time);
         self.vm.host.ui.update(time);
         self.sync_unit_info(&info.unit_info_types);
         let unit_alpha = if self.options.weapon_info == 0 && info.on_foot {
@@ -241,6 +356,7 @@ impl InGameUi {
             }
         }
         self.update_stance(info, time);
+        self.update_hint(dt);
     }
 
     /// Keeps one display per `unitInfoType` entry: when the list changes, the displays are
@@ -298,7 +414,12 @@ impl InGameUi {
     }
 
     /// The quads of the layer, in drawing order.
-    pub fn draw(&self, fonts: &mut Fonts) -> DrawList {
-        build_draw_list(&self.vm.host.ui, fonts)
+    pub fn draw(&mut self, fonts: &mut Fonts) -> DrawList {
+        self.hint.layout(&mut self.vm.host.ui, fonts);
+        let mut list = build_draw_list(&self.vm.host.ui, fonts);
+        let ui = &self.vm.host.ui;
+        self.chat
+            .draw(&mut list, fonts, &ui.metrics, self.last_time.unwrap_or(0.0));
+        list
     }
 }

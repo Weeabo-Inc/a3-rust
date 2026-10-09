@@ -304,6 +304,8 @@ pub struct DebugScene {
     environment: Option<crate::environment::SceneEnvironment>,
     /// The player's in-game HUD, when playing over the game data.
     hud: Option<crate::hud::Hud>,
+    /// SQF the HUD runs when play starts (`--exec`).
+    pub hud_exec: Option<String>,
     sim_time: f64,
 }
 
@@ -326,6 +328,7 @@ impl DebugScene {
             orbit: None,
             environment: None,
             hud: None,
+            hud_exec: None,
             sim_time: 0.0,
         }
     }
@@ -410,6 +413,7 @@ impl DebugScene {
                 world.vfs.clone(),
                 strings,
                 crate::player::PLAYER_CLASS,
+                self.hud_exec.take(),
             ));
             if let Some(path) = &world.player_model {
                 log::info!("player Man model: {path}");

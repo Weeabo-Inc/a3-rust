@@ -46,8 +46,13 @@ pub trait Host: 'static {
     /// `systemChat`: a line in the chat area.
     fn system_chat(&mut self, _text: &str) {}
 
-    /// `hint` / `hintSilent`.
+    /// `hint`.
     fn hint(&mut self, _text: &str) {}
+
+    /// `hintSilent`: a hint without the hint sound. Defaults to [`Host::hint`].
+    fn hint_silent(&mut self, text: &str) {
+        self.hint(text);
+    }
 
     /// `copyToClipboard`.
     fn copy_to_clipboard(&mut self, _text: &str) {}

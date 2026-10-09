@@ -3,11 +3,12 @@
 use std::sync::Arc;
 
 use a3_config::{ConfigTree, parse_text};
+use a3_ingame_ui::HintText;
 use a3_ingame_ui::{
     InGameUi, LoadedMagazine, MagazineTimers, Side, Stance, ThrowableState, UnitInfo, WeaponState,
     driven_control, idc,
 };
-use a3_ui::{Control, DisplayId, Screen};
+use a3_ui::{Control, DisplayId, Fonts, Screen};
 
 const CONFIG: &str = r##"
 class RscText { type = 0; idc = -1; style = 0; x = 0; y = 0; w = 0.1; h = 0.03; text = ""; sizeEx = 0.03;
@@ -48,6 +49,12 @@ class RscInGameUI {
         controls[] = {"Panel", "Freefall"};
         class Freefall: RscText { idc = 380; };
     };
+    class RscHint {
+        idd = 301;
+        controls[] = {"Background", "Hint"};
+        class Background: RscText { idc = 101; x = 0.7; y = 0.24; w = 0.3; h = 0.32; colorBackground[] = {0, 0, 0, 0.7}; };
+        class Hint: RscText { type = 13; style = 16; idc = 102; x = 0.71; y = 0.252; w = 0.28; h = 0.288; size = 0.032; sizeEx = 0.027; };
+    };
     class RscStanceInfo {
         idd = 303;
         controls[] = {"StanceIndicator"};
@@ -55,11 +62,20 @@ class RscInGameUI {
     };
 };
 class CfgInGameUI {
-    class PlayerInfo { dimmStartTime = 5; dimmEndTime = 10; };
+    class PlayerInfo { dimmStartTime = 5; dimmEndTime = 10; top = 0.177; };
+    class Hint { dimmStartTime = 30; dimmEndTime = 35; sound[] = {"hint.ogg", 0.05, 1}; };
     class CfgWeaponModeTextures { default = "#(argb,8,8,3)color(0,0,0,0)"; semi = "mode_1.paa"; };
     class CfgStanceIndicatorTextures {
         class Normal { textureStand = "si_stand.paa"; textureCrouch = "si_crouch.paa"; };
     };
+};
+class RscChatListMission {
+    x = 0.1; y = 0.8; w = 0.5; h = 0.03; rows = 4; font = "Test"; size = 0.025;
+    colorBackground[] = {0, 0, 0, 0.3};
+    colorGlobalChannel[] = {0.8, 0.8, 0.8, 1};
+    colorMessage[] = {1, 1, 1, 1};
+    colorMessageProtocol[] = {0.65, 0.65, 0.65, 1};
+    shadow = 1; shadowPlayer = 0; shadowColor[] = {0, 0, 0, 0.5};
 };
 class CfgDifficultyPresets {
     defaultPreset = "Regular";
@@ -283,4 +299,100 @@ fn the_stance_indicator_fades_after_a_change() {
     info.on_foot = false;
     hud.update(&info, 12.1);
     assert_eq!(alpha(&hud), 0.0, "not in vehicles");
+}
+
+struct NoFonts;
+
+impl a3_ui::FontLoader for NoFonts {
+    fn load_font(&mut self, _: &str) -> Option<a3_fonts::Font> {
+        None
+    }
+}
+
+#[test]
+fn a_hint_fits_its_text_moves_to_the_player_info_top_and_fades() {
+    let mut hud = hud();
+    let mut fonts = Fonts::from_config(&ConfigTree::new(), Box::new(NoFonts));
+    let info = rifleman();
+    hud.update(&info, 0.0);
+    let d = hud.hint_display().expect("hint display");
+    let alpha = |hud: &InGameUi| hud.ui().display(d).unwrap().alpha;
+    assert_eq!(alpha(&hud), 0.0, "no hint yet");
+
+    let sound = hud.show_hint(
+        &HintText::Plain(
+            "Line one
+Line two"
+                .into(),
+        ),
+        true,
+    );
+    assert_eq!(sound.map(|s| s.path), Some("hint.ogg".to_owned()));
+    assert_eq!(
+        hud.show_hint(
+            &HintText::Plain(
+                "Line one
+Line two"
+                    .into()
+            ),
+            false
+        ),
+        None
+    );
+    hud.update(&info, 1.0);
+    hud.draw(&mut fonts);
+    let bg = control(&hud, d, 101).position;
+    let text = control(&hud, d, 102).position;
+    // Two lines of `size` 0.032; the background keeps its 0.032 margin below the text box.
+    assert!((text[3] - 0.064).abs() < 1e-6, "{text:?}");
+    assert!((bg[3] - (0.32 - 0.288 + 0.064)).abs() < 1e-6, "{bg:?}");
+    assert!((bg[1] - 0.177).abs() < 1e-6 && (text[1] - 0.189).abs() < 1e-6);
+    assert_eq!(
+        control(&hud, d, 102).text,
+        "Line one
+Line two"
+    );
+    assert_eq!(alpha(&hud), 1.0);
+    // Shown at 0 for 35 s: full until 5 s are left, then fading.
+    hud.update(&info, 32.5);
+    assert!((alpha(&hud) - 0.5).abs() < 1e-5, "{}", alpha(&hud));
+    hud.update(&info, 36.1);
+    assert_eq!(alpha(&hud), 0.0);
+}
+
+#[test]
+fn scripts_show_hints_and_system_chat() {
+    let mut hud = hud();
+    let mut fonts = Fonts::from_config(&ConfigTree::new(), Box::new(NoFonts));
+    let info = rifleman();
+    hud.update(&info, 0.0);
+    hud.exec("systemChat 'Game saved'; hintSilent 'Hello'")
+        .unwrap();
+    let chat = hud.chat().messages();
+    assert_eq!(chat.len(), 1);
+    assert_eq!(chat[0].text, "Game saved");
+    assert!(chat[0].protocol);
+    assert_eq!(hud.chat().config.rows, 4);
+    hud.update(&info, 1.0);
+    let list = hud.draw(&mut fonts);
+    let d = hud.hint_display().unwrap();
+    assert_eq!(control(&hud, d, 102).text, "Hello");
+    // The chat line's background: on the bottom row (y + 3 rows), 0.3 black.
+    let m = hud.ui().metrics;
+    let bottom = m.rect_to_px([0.0, 0.8 + 3.0 * 0.03, 0.0, 0.0])[1];
+    assert!(
+        list.quads.iter().any(|q| q.texture.is_none()
+            && q.color == [0.0, 0.0, 0.0, 0.3]
+            && (q.rect[1] - bottom).abs() < 0.01),
+        "no chat background at y {bottom}"
+    );
+    // Gone after 30 s.
+    hud.update(&info, 31.0);
+    let list = hud.draw(&mut fonts);
+    assert!(
+        !list
+            .quads
+            .iter()
+            .any(|q| (q.rect[1] - bottom).abs() < 0.01 && q.texture.is_none())
+    );
 }

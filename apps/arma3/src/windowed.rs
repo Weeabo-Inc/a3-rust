@@ -88,6 +88,7 @@ impl App for GameApp {
             self.keys_loading = Some(keys::load_in_background(self.engine.keys.clone()));
             self.keys_description = "LOADING...".to_owned();
         }
+        self.scene.hud_exec = self.engine.exec.clone();
         if let Some(world) = self.engine.load_world()? {
             let play = self.engine.play.then_some(self.engine.camera_mode);
             self.scene.load_world(
