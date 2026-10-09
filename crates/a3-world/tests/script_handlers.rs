@@ -366,3 +366,24 @@ fn a_completed_waypoint_runs_the_groups_waypoint_complete_handler() {
     assert_eq!(num(&mut vm, "count done"), 1.0);
     assert!(truth(&mut vm, "(done select 0) isEqualTo [g, 1]"));
 }
+
+#[test]
+fn a_destroyed_unit_runs_its_killed_handlers() {
+    let mut vm = vm();
+    eval(
+        &mut vm,
+        &format!(
+            r#"{UNIT}
+            killed = [];
+            a addEventHandler ["Killed", {{ killed = _this }}];
+            a setDamage 1;
+            "#
+        ),
+    );
+    dispatch_events(&mut vm);
+
+    assert!(truth(&mut vm, "(killed select 0) isEqualTo a"));
+    assert!(truth(&mut vm, "isNull (killed select 1)"));
+    assert!(truth(&mut vm, "isNull (killed select 2)"));
+    assert!(truth(&mut vm, "killed select 3"));
+}

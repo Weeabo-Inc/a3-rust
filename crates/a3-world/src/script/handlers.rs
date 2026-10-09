@@ -26,7 +26,7 @@ use a3_sqf::{Code, Namespace, Registry, Sym, Value, Vm};
 use super::groups::GRP;
 use super::{ARR, NOTHING, NUM, OBJ, STR, WorldHost, group_arg, object_arg, object_value};
 use crate::handlers::Handler;
-use crate::{GroupId, ObjectRef, World, WorldEvent};
+use crate::{EntityId, GroupId, ObjectRef, World, WorldEvent};
 
 pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     // `addEventHandler` and `addMPEventHandler` share the object's table; MP events are told
@@ -335,6 +335,35 @@ fn take_calls(world: &mut World) -> Vec<Call> {
                     this,
                 ));
             }
+            WorldEvent::Killed {
+                entity,
+                killer,
+                instigator,
+                use_effects,
+            } => {
+                // `[unit, killer, instigator, useEffects]`; an unknown killer is objNull.
+                let target = ObjectRef::Entity(entity);
+                let who = |id: Option<EntityId>| {
+                    id.map_or_else(super::null_object, |id| {
+                        object_value(world, ObjectRef::Entity(id))
+                    })
+                };
+                let this = Value::array([
+                    object_value(world, target),
+                    who(killer),
+                    who(instigator),
+                    Value::Bool(use_effects),
+                ]);
+                calls.extend(calls_of(
+                    world.handlers().object_list(target, "Killed"),
+                    "Killed",
+                    this,
+                ));
+            }
+            // `Dammaged` hands scripts the hit selection's name and the resulting damage level;
+            // the event carries the hit point index and the change. Mapping it is follow-up
+            // work (#256) together with the other engine-raised object events.
+            WorldEvent::Dammaged { .. } => {}
             WorldEvent::WaypointCompleted { group, index } => {
                 // `[group, waypointIndex]`, the index one-based as scripts address waypoints
                 // (the engine's implicit start waypoint is 0).

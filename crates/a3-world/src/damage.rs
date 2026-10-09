@@ -14,9 +14,10 @@
 //!   `DestructionEffects` becomes its ruin;
 //! - damage is applied by the Object's local owner.
 //!
-//! The World records [`WorldEvent::Dammaged`] and [`WorldEvent::Killed`] for scripts; the
-//! mission-framework event handler registry that will dispatch them (and register the SQF
-//! `HandleDamage` handler) is future work, so the seam is a trait a host installs.
+//! The World records [`WorldEvent::Dammaged`] and [`WorldEvent::Killed`] for scripts;
+//! [`crate::script::dispatch_events`] runs the object's `Killed` handlers (mapping `Dammaged` is
+//! follow-up work). Registering the SQF `HandleDamage` handler is future work, so that seam is a
+//! trait a host installs.
 
 use std::fmt;
 use std::sync::Arc;
