@@ -37,7 +37,11 @@ pub enum Value {
     /// `nil`: an undefined variable or the `nil` command. `typeName` is `ANY`.
     #[default]
     Nil,
-    /// The result of a command that returns nothing. `typeName` is `NOTHING`.
+    /// A value with no data at all: the result of a command that returns
+    /// nothing (`forEach`, `sort`, `if` without a matching branch), an
+    /// undefined array element (`resize` past the end, `deleteAt` out of
+    /// range) and a missing hash map key. It prints `<null>`, `isNil` is
+    /// true for it, and a command given one as an argument is skipped.
     Nothing,
     Bool(bool),
     Number(f32),
@@ -96,9 +100,11 @@ impl Value {
         }
     }
 
-    /// Whether this is `nil`.
+    /// Whether this is `nil` or the empty value: `isNil` is true for both,
+    /// and a command given either as an argument is skipped and yields nil
+    /// (`docs/re/sqf-semantics.md`, "Variables and nil"; server oracle).
     pub fn is_nil(&self) -> bool {
-        matches!(self, Value::Nil)
+        matches!(self, Value::Nil | Value::Nothing)
     }
 
     /// Builds a string value.
@@ -241,7 +247,9 @@ impl Value {
     fn write_sqf(&self, out: &mut String, quote: bool, fmt: &Format<'_>) {
         match self {
             Value::Nil => out.push_str("any"),
-            Value::Nothing => out.push_str("nothing"),
+            // A value with no data prints `<null>` (server oracle:
+            // `format ["%1", call {}]` is `"<null>"`).
+            Value::Nothing => out.push_str("<null>"),
             Value::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
             Value::Number(n) => match fmt.fixed {
                 Some(digits) => out.push_str(&crate::number::format_fixed(*n, usize::from(digits))),
@@ -301,7 +309,9 @@ impl Value {
                 out.push_str(c.source());
                 out.push('}');
             }
-            Value::Namespace(ns) => out.push_str(ns.name()),
+            // Every namespace prints `Namespace` (server oracle: `str
+            // missionNamespace` is `"Namespace"`).
+            Value::Namespace(_) => out.push_str("Namespace"),
             Value::Side(s) => out.push_str(s.name()),
             Value::Script(h) => {
                 if h.0 == 0 {
@@ -309,6 +319,12 @@ impl Value {
                 } else {
                     out.push_str(&format!("<script {}>", h.0));
                 }
+            }
+            // A null config has no host-side entry: it prints
+            // `<NULL-config>` (server oracle: `str configNull`, and `str
+            // inheritsFrom (configFile >> "CfgVehicles" >> "All")`).
+            Value::Handle(h) if h.kind == HandleKind::Config && h.is_null() => {
+                out.push_str("<NULL-config>")
             }
             Value::Handle(h) => out.push_str(&(fmt.handle)(*h)),
             Value::Text(t) => out.push_str(&t.plain()),
@@ -400,9 +416,9 @@ impl StructuredText {
         &self.0
     }
 
-    /// The text without markup (what `str` shows): tags dropped, `<br/>` as a
-    /// line break, entities decoded. _(uncertain: the engine's exact
-    /// conversion.)_
+    /// The text without markup (what `str` shows): every tag is dropped,
+    /// `<br/>` included (server oracle: `str parseText "a<br/>b"` is
+    /// `"ab"`, `str lineBreak` is `""`), and entities are decoded.
     pub fn plain(&self) -> String {
         let mut out = String::new();
         let mut rest: &str = &self.0;
@@ -412,10 +428,6 @@ impl StructuredText {
                 out.push_str(&unescape_xml(&rest[i..]));
                 return out;
             };
-            let tag = rest[i + 1..i + j].trim().to_ascii_lowercase();
-            if tag.starts_with("br") {
-                out.push('\n');
-            }
             rest = &rest[i + j + 1..];
         }
         out.push_str(&unescape_xml(rest));

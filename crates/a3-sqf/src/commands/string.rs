@@ -147,11 +147,17 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         let args = array(&b);
         let args = args.borrow();
         let u = Units::new(string(&a), unicode(ctx));
-        let start = index(args.first().map(num).unwrap_or(0.0)).max(0) as usize;
+        let start = index(args.first().map(num).unwrap_or(0.0));
+        // A negative start is empty (server oracle: `"hello" select [-2, 2]`
+        // is `""`).
+        if start < 0 {
+            return Ok(Value::from(""));
+        }
         let len = args
             .get(1)
             .map(|v| index(num(v)).max(0) as usize)
             .unwrap_or(usize::MAX);
+        let start = start as usize;
         Ok(Value::from(u.slice(start, start.saturating_add(len))))
     });
     r.binary("find", STR, STR, NUM, |ctx, a, b| {

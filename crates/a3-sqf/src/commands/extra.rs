@@ -8,6 +8,11 @@ use crate::lexer::{TokenKind, tokenize};
 use crate::vm::Ctx;
 
 fn vector(v: &Value) -> Result<[f32; 3], SqfError> {
+    Ok(vector_sized(v)?.0)
+}
+
+/// A vector with its declared size: 2 or 3 components, missing ones zero.
+fn vector_sized(v: &Value) -> Result<([f32; 3], usize), SqfError> {
     let arr = array(v);
     let items = arr.borrow();
     if items.len() < 2 || items.len() > 3 {
@@ -20,11 +25,16 @@ fn vector(v: &Value) -> Result<[f32; 3], SqfError> {
     for (i, item) in items.iter().enumerate() {
         out[i] = expect_num(item)?;
     }
-    Ok(out)
+    Ok((out, items.len()))
 }
 
 fn vec_value(v: [f32; 3]) -> Value {
     Value::array(v.into_iter().map(Value::Number))
+}
+
+/// A vector of `len` components (2D vectors stay 2D).
+fn vec_value_len(v: [f32; 3], len: usize) -> Value {
+    Value::array(v.into_iter().take(len).map(Value::Number))
 }
 
 fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
@@ -45,11 +55,15 @@ macro_rules! vec2 {
 }
 
 pub(super) fn register<H: Host>(r: &mut Registry<H>) {
-    vec2!(r, "vectorAdd", ARR, |a, b| vec_value([
-        a[0] + b[0],
-        a[1] + b[1],
-        a[2] + b[2]
-    ]));
+    // The result keeps the size of the longer vector: a 2D plus a 3D vector
+    // is 3D, 2D plus 2D stays 2D (server oracle).
+    r.binary("vectorAdd", ARR, ARR, ARR, |_, x, y| {
+        let ((a, la), (b, lb)) = (vector_sized(&x)?, vector_sized(&y)?);
+        Ok(vec_value_len(
+            [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
+            la.max(lb),
+        ))
+    });
     vec2!(r, "vectorDiff", ARR, |a, b| vec_value([
         a[0] - b[0],
         a[1] - b[1],
@@ -183,8 +197,15 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         Ok(weighted(ctx, &items, &weights))
     });
 
-    r.unary("parseSimpleArray", STR, ARR, |_, a| {
-        Ok(parse_simple_array(string(&a)).unwrap_or_else(|| Value::array([])))
+    // On bad input the engine reports an error and returns what it parsed so
+    // far (server oracle: `parseSimpleArray "[1, b]"` is `[1]`,
+    // `parseSimpleArray "[1, 2"` is `[1,2]`).
+    r.unary("parseSimpleArray", STR, ARR, |ctx, a| {
+        let (value, ok) = parse_simple_array(string(&a));
+        if !ok {
+            ctx.report(SqfError::generic("parseSimpleArray format error"));
+        }
+        Ok(value)
     });
 }
 
@@ -225,9 +246,12 @@ fn weighted<H: Host>(ctx: &mut Ctx<'_, H>, items: &[Value], weights: &[f32]) -> 
 }
 
 /// Parses an array literal of numbers, strings, booleans and nested arrays
-/// (no expressions), as `parseSimpleArray` does. `None` on any error.
-pub(crate) fn parse_simple_array(text: &str) -> Option<Value> {
-    let tokens = tokenize(text).ok()?;
+/// (no expressions), as `parseSimpleArray` does. Returns the value parsed so
+/// far and whether the text was a complete array.
+pub(crate) fn parse_simple_array(text: &str) -> (Value, bool) {
+    let Ok(tokens) = tokenize(text) else {
+        return (Value::array([]), false);
+    };
     let mut pos = 0;
     let src = text;
     fn item(tokens: &[crate::lexer::Token], pos: &mut usize, src: &str) -> Option<Value> {
@@ -251,30 +275,54 @@ pub(crate) fn parse_simple_array(text: &str) -> Option<Value> {
                 _ => None,
             },
             TokenKind::LBracket => {
-                let mut out = Vec::new();
-                if tokens.get(*pos)?.kind == TokenKind::RBracket {
-                    *pos += 1;
-                    return Some(Value::array(out));
-                }
-                loop {
-                    out.push(item(tokens, pos, src)?);
-                    let t = tokens.get(*pos)?;
-                    *pos += 1;
-                    match t.kind {
-                        TokenKind::Comma => {}
-                        TokenKind::RBracket => return Some(Value::array(out)),
-                        _ => return None,
-                    }
-                }
+                let (items, ok) = items(tokens, pos, src);
+                ok.then(|| Value::array(items))
             }
             _ => None,
         }
     }
-    if tokens.first()?.kind != TokenKind::LBracket {
-        return None;
+    /// The elements up to the closing `]`, and whether the array ended
+    /// properly. A trailing comma before `]` is accepted.
+    fn items(tokens: &[crate::lexer::Token], pos: &mut usize, src: &str) -> (Vec<Value>, bool) {
+        let mut out = Vec::new();
+        if tokens
+            .get(*pos)
+            .is_some_and(|t| t.kind == TokenKind::RBracket)
+        {
+            *pos += 1;
+            return (out, true);
+        }
+        loop {
+            let Some(v) = item(tokens, pos, src) else {
+                return (out, false);
+            };
+            out.push(v);
+            match tokens.get(*pos) {
+                Some(t) if t.kind == TokenKind::Comma => {
+                    *pos += 1;
+                    if tokens
+                        .get(*pos)
+                        .is_some_and(|t| t.kind == TokenKind::RBracket)
+                    {
+                        *pos += 1;
+                        return (out, true);
+                    }
+                }
+                Some(t) if t.kind == TokenKind::RBracket => {
+                    *pos += 1;
+                    return (out, true);
+                }
+                _ => return (out, false),
+            }
+        }
     }
-    let v = item(&tokens, &mut pos, src)?;
-    (tokens.get(pos)?.kind == TokenKind::Eof).then_some(v)
+    if tokens.first().map(|t| &t.kind) != Some(&TokenKind::LBracket) {
+        return (Value::array([]), false);
+    }
+    pos += 1;
+    let (items, closed) = items(&tokens, &mut pos, src);
+    let complete = closed && tokens.get(pos).is_some_and(|t| t.kind == TokenKind::Eof);
+    (Value::array(items), complete)
 }
 
 /// `cvttss2si`: truncates toward zero; NaN and out-of-range values give

@@ -55,8 +55,12 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
             let after = &rest[pos + 1..];
             let digits = after.bytes().take_while(u8::is_ascii_digit).count();
             if digits == 0 {
-                out.push('%');
-                rest = after;
+                if let Some(escaped) = after.strip_prefix('%') {
+                    out.push('%');
+                    rest = escaped;
+                } else {
+                    rest = after;
+                }
                 continue;
             }
             let n: usize = after[..digits].parse().unwrap_or(0);

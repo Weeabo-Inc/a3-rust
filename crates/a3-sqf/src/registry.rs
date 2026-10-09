@@ -295,23 +295,26 @@ impl<H: Host> Registry<H> {
     }
 
     /// Picks the unary overload for `arg`, or the error to raise. `None`
-    /// means the argument is `nil` and no overload takes `nil`: the engine
-    /// then skips the command and its result is `nil`.
+    /// means the argument is `nil` or the empty value and the command does
+    /// not take it: the engine then skips the command and its result is
+    /// `nil` (`docs/re/sqf-semantics.md`, "Variables and nil"; server oracle:
+    /// `typeName nil`, `str nil`, `str (call {})` and `_a pushBack nil` all
+    /// leave the command unrun).
     pub(crate) fn unary_impl(
         &self,
         id: CommandId,
         arg: &Value,
     ) -> Result<Option<&UnaryImpl<H>>, SqfError> {
         let overloads = &self.unary[id.0 as usize];
-        let ty = arg.ty();
-        if let Some(o) = overloads.iter().find(|o| o.right.contains(ty)) {
-            return Ok(Some(&o.imp));
-        }
         if overloads.is_empty() {
             return Err(SqfError::Unimplemented(self.table.get(id).name.clone()));
         }
         if arg.is_nil() {
             return Ok(None);
+        }
+        let ty = arg.ty();
+        if let Some(o) = overloads.iter().find(|o| o.right.contains(ty)) {
+            return Ok(Some(&o.imp));
         }
         let expected = overloads
             .iter()
@@ -320,8 +323,8 @@ impl<H: Host> Registry<H> {
     }
 
     /// Picks the binary overload for the arguments, or the error to raise.
-    /// `None` means an argument is `nil` and no overload takes it (the
-    /// result is `nil`).
+    /// `None` means an argument is `nil` or the empty value and no overload
+    /// takes it (the result is `nil`).
     pub(crate) fn binary_impl(
         &self,
         id: CommandId,
@@ -329,18 +332,18 @@ impl<H: Host> Registry<H> {
         right: &Value,
     ) -> Result<Option<&BinaryImpl<H>>, SqfError> {
         let overloads = &self.binary[id.0 as usize];
+        if overloads.is_empty() {
+            return Err(SqfError::Unimplemented(self.table.get(id).name.clone()));
+        }
+        if left.is_nil() || right.is_nil() {
+            return Ok(None);
+        }
         let (lt, rt) = (left.ty(), right.ty());
         if let Some(o) = overloads
             .iter()
             .find(|o| o.left.contains(lt) && o.right.contains(rt))
         {
             return Ok(Some(&o.imp));
-        }
-        if overloads.is_empty() {
-            return Err(SqfError::Unimplemented(self.table.get(id).name.clone()));
-        }
-        if left.is_nil() || right.is_nil() {
-            return Ok(None);
         }
         let left_ok: Vec<_> = overloads.iter().filter(|o| o.left.contains(lt)).collect();
         if left_ok.is_empty() {

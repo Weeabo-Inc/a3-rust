@@ -3,17 +3,34 @@
 
 mod common;
 
-use common::{err, s, vm};
+use common::{eval, s, vm};
 
 #[test]
-fn reading_an_undefined_variable_is_an_error() {
-    let report = err("_a = _undefined");
+fn reading_an_undefined_variable_is_logged_and_the_script_goes_on() {
+    // The read yields nil and the script runs to its end (server oracle).
+    let mut vm1 = vm();
+    let v = vm1.eval("a3ro_undefined_variable + 1").unwrap();
+    assert!(v.is_nil());
     assert!(
-        report.contains("Error Undefined variable in expression: _undefined"),
-        "{report}"
+        vm1.host.errors[0]
+            .contains("Error Undefined variable in expression: a3ro_undefined_variable"),
+        "{:?}",
+        vm1.host.errors
     );
-    assert!(err("_x = nil; _y = _x").contains("Undefined variable in expression: _x"));
-    assert!(err("hint str someGlobal").contains("Undefined variable in expression: someglobal"));
+    // No overload takes a String on the right of `+`: that one ends the
+    // script (the original logs "Generic error in expression").
+    assert!(
+        vm1.eval("_r = 1; _r = 1 + \"x\"; _r")
+            .unwrap_err()
+            .report
+            .contains("expected Number")
+    );
+    let mut vm = vm();
+    let v = vm.eval("_x = nil; _y = _x").unwrap();
+    assert!(v.is_nil());
+    assert!(vm.host.errors[0].contains("Undefined variable in expression: _x"));
+    // Only the first error of a script is logged.
+    assert_eq!(vm.host.errors.len(), 1);
 }
 
 #[test]
@@ -25,17 +42,29 @@ fn is_nil_code_reads_undefined_variables_without_error() {
 
 #[test]
 fn commands_skip_nil_arguments_and_return_nil() {
-    // `nil` itself is not a variable read: the command is skipped.
+    // `nil` itself is not a variable read: the command is skipped, and so is
+    // the empty value (server oracle: `typeName nil`, `str nil` and
+    // `str (call {})` all leave nothing behind).
     assert_eq!(s("isNil { nil + 1 }"), "true");
     assert_eq!(s("isNil { count nil }"), "true");
-    // Commands that accept anything still see nil.
-    assert_eq!(s("str nil"), "\"any\"");
-    assert_eq!(s("typeName nil"), "\"ANY\"");
+    assert!(eval("str nil").is_nil());
+    assert!(eval("typeName nil").is_nil());
+    assert!(eval("typeName (call {})").is_nil());
+    assert!(eval("nil isEqualTo nil").is_nil());
+    assert_eq!(s("isNil {nil isEqualTo nil}"), "true");
+    // An array element that is nil prints `any`; the empty value prints
+    // `<null>`.
+    assert_eq!(s("[nil, 1]"), "[any,1]");
+    assert_eq!(s("format [\"%1\", nil]"), "\"any\"");
+    assert_eq!(s("format [\"%1\", call {}]"), "\"<null>\"");
+    assert_eq!(s("_a = [1]; _a resize 3; _a"), "[1,<null>,<null>]");
 }
 
 #[test]
 fn nothing_and_numbers_print_like_the_engine() {
-    assert_eq!(s("str (if false then {1})"), "\"nothing\"");
+    // The result of `if` without a matching branch is the empty value.
+    assert!(eval("if false then {1}").is_nil());
+    assert_eq!(s("isNil {if false then {1}}"), "true");
     // UCRT printf: two-digit exponents, `inf`, and the NaN type for
     // non-finite numbers (server oracle).
     assert_eq!(s("str (1e30 * 1e30)"), "\"inf\"");

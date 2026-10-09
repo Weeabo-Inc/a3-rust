@@ -15,10 +15,14 @@
 //!
 //! # Errors
 //!
-//! A runtime error (type error, undefined variable in an expression, zero
-//! divisor, unimplemented command, ...) is reported to
-//! [`Host::report_error`] in the engine's format and aborts the whole
-//! script, including every calling scope, as the engine does.
+//! A runtime error is reported to [`Host::report_error`] in the engine's
+//! format. A command's own error (a bad index, a type check inside the
+//! handler, a regexp that does not compile, ...) is logged and the script
+//! goes on with the empty value, as the original does; only a failure the VM
+//! itself detects (no overload takes the arguments, an unimplemented
+//! command) ends the script. The code of `isNil {...}` runs in its own
+//! context: an error ends that block instead of the script. The first error
+//! of a script is logged, later ones are swallowed (server oracle).
 
 pub mod exec;
 pub mod flow;
@@ -146,10 +150,8 @@ impl<H: Host> Vm<H> {
         let result = match exec::run(host, registry, state, &mut script, None) {
             Outcome::Done(v) => Ok(v),
             Outcome::Terminated => Ok(Value::Nothing),
-            Outcome::Failed(e) => {
-                host.report_error(&e);
-                Err(e)
-            }
+            // A failed script was already reported by the run loop.
+            Outcome::Failed(e) => Err(e),
             Outcome::Suspended(_) | Outcome::OutOfTime => {
                 unreachable!("unscheduled scripts neither suspend nor run out of time")
             }
@@ -223,10 +225,8 @@ pub(crate) fn call_unscheduled<H: Host>(
     match exec::run(host, reg, state, &mut script, None) {
         Outcome::Done(v) => Ok(v),
         Outcome::Terminated => Ok(Value::Nothing),
-        Outcome::Failed(e) => {
-            host.report_error(&e);
-            Err(e)
-        }
+        // A failed script was already reported by the run loop.
+        Outcome::Failed(e) => Err(e),
         Outcome::Suspended(_) | Outcome::OutOfTime => {
             unreachable!("unscheduled scripts neither suspend nor run out of time")
         }
@@ -273,6 +273,12 @@ impl<H: Host> Ctx<'_, H> {
         self.script.set_private(name, value);
     }
 
+    /// Declares a private variable in the current scope (`private "name"`);
+    /// an existing variable keeps its value.
+    pub fn declare_private(&mut self, name: Sym) {
+        self.script.declare_private(name);
+    }
+
     /// A local of an enclosing scope, ignoring `privateAll` (`import`).
     pub fn get_local_through_barrier(&self, name: Sym) -> Option<Value> {
         self.script.get_local_through_barrier(name).cloned()
@@ -298,9 +304,9 @@ impl<H: Host> Ctx<'_, H> {
     }
 
     /// Whether the script runs in the scheduled environment
-    /// (`canSuspend`).
+    /// (`canSuspend`). The code of `isNil {...}` always runs unscheduled.
     pub fn is_scheduled(&self) -> bool {
-        self.script.scheduled
+        self.script.scheduled && !self.script.top_code().is_some_and(|cf| cf.unscheduled)
     }
 
     /// The running script's handle (`scriptNull` when unscheduled).
@@ -460,7 +466,13 @@ impl<H: Host> Ctx<'_, H> {
             pos.as_ref()
                 .map(|(code, off)| (code.source_file().as_ref(), *off)),
         );
-        self.host.report_error(&err);
+        exec::report_error(self.host, self.script, err);
+    }
+
+    /// Reports an already built script error, once per script (the engine
+    /// logs the first error of a script only).
+    pub fn report_script_error(&mut self, error: ScriptError) {
+        exec::report_error(self.host, self.script, error);
     }
 
     /// Like [`call_unscheduled`](Self::call_unscheduled), with extra
@@ -480,10 +492,8 @@ impl<H: Host> Ctx<'_, H> {
         match exec::run(self.host, self.reg, self.vm, &mut script, None) {
             Outcome::Done(v) => Ok(v),
             Outcome::Terminated => Ok(Value::Nothing),
-            Outcome::Failed(e) => {
-                self.host.report_error(&e);
-                Err(e)
-            }
+            // A failed script was already reported by the run loop.
+            Outcome::Failed(e) => Err(e),
             Outcome::Suspended(_) | Outcome::OutOfTime => {
                 unreachable!("unscheduled scripts neither suspend nor run out of time")
             }
