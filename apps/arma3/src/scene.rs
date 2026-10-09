@@ -349,6 +349,9 @@ impl DebugScene {
             world.sky_noise.as_ref(),
             environment,
         ));
+        if let Some(env) = &mut self.environment {
+            env.set_sky_texture(sky_texture(&world).as_ref());
+        }
         let terrain = TerrainRenderer::new(gpu, renderer, &world.landscape, Some(world.reader));
         if let Some(objects) = world.objects {
             self.models = Some(objects.attach(gpu, renderer));
@@ -881,6 +884,38 @@ impl DebugScene {
             );
         }
     }
+}
+
+/// The World's `skyTexture` (`CfgWorlds >> skyTexture`), decoded for the sky dome's ramp: the
+/// `Sky` textures the engine ships are 8x8 ramps, so only the first mip is read.
+///
+/// The channels come back in the layout the engine's shaders expect (`Swizzle::restore`): a
+/// `Sky` texture keeps its alpha in the inverted green channel and its green in the inverted
+/// alpha one (`docs/re/render-atmosphere.md` §4.1), so the raw mip's green is not the colour.
+fn sky_texture(world: &LoadedWorld) -> Option<TextureData> {
+    let class = world.config.root().get("CfgWorlds").get(&world.name);
+    let path = class.get("skyTexture");
+    if !path.is_text() {
+        return None;
+    }
+    let path = path.text();
+    let bytes = world.vfs.open(&path).ok()?;
+    let texture = a3_paa::Texture::read(&bytes)
+        .map_err(|e| log::warn!("sky texture {path}: {e}"))
+        .ok()?;
+    let mip = texture.mips.first()?;
+    let mut pixels = a3_paa::decode_rgba8(texture.format, mip)
+        .map_err(|e| log::warn!("sky texture {path}: {e}"))
+        .ok()?;
+    if let Some(swizzle) = texture.swizzle {
+        swizzle.restore(&mut pixels);
+    }
+    Some(TextureData {
+        format: a3_render::TextureFormat::Rgba8,
+        width: u32::from(texture.width()),
+        height: u32::from(texture.height()),
+        mips: vec![pixels],
+    })
 }
 
 /// RGBA8 checkerboard with a full box-filtered mip chain.

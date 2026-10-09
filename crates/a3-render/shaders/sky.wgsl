@@ -1,6 +1,9 @@
 // Sky dome: gradient from the lighting tables, sun and moon discs, stars and a cloud layer.
 // A full-screen triangle at the far plane (reversed-Z depth 0), drawn only where no geometry is.
 
+// Steps of the dome ramp, shared with `crates/a3-render/src/sky.rs`.
+const DOME_RAMP_STEPS: u32 = 32u;
+
 struct Frame {
     view_proj: mat4x4<f32>,
     inv_view_proj: mat4x4<f32>,
@@ -38,6 +41,9 @@ struct Sky {
     // xy: wind (m/s), z: star brightness.
     misc: vec4<f32>,
     star_rotation: mat3x3<f32>,
+    // The dome's ramp over elevation, one entry per 90 / (DOME_RAMP_STEPS - 1) degrees; all
+    // ones when the World has no `skyTexture`.
+    dome_ramp: array<vec4<f32>, DOME_RAMP_STEPS>,
 }
 
 @group(0) @binding(0) var<uniform> frame: Frame;
@@ -70,10 +76,27 @@ fn hash3(p: vec3<f32>) -> f32 {
     return fract((r.x + r.y) * r.z);
 }
 
+// The sky dome's elevation ramp from the World's `skyTexture`.
+//
+// The engine's dome shader (`PSHorizon`) shades `tint * texture + sunGlow`: the dome's own
+// gradient comes from its `Sky` texture, which stores the zenith first and the horizon last and
+// which the shipped dome (`obloha.p3d`) maps to elevation by its UV table
+// (docs/re/render-atmosphere.md §4). `sky.dome_ramp` is that texture over elevation, divided by
+// its value at the horizon, so this only ever scales the sky the lighting table gives us -- it
+// leaves the horizon alone and carries the texture's own ratio and hue towards the zenith.
+// One (no change) without a `skyTexture`.
+fn dome_ramp(up: f32) -> vec3<f32> {
+    let elevation = asin(clamp(up, 0.0, 1.0)) * (2.0 / 3.14159265);
+    let x = elevation * f32(DOME_RAMP_STEPS - 1u);
+    let i = min(u32(floor(x)), DOME_RAMP_STEPS - 2u);
+    return mix(sky.dome_ramp[i].rgb, sky.dome_ramp[i + 1u].rgb, x - floor(x));
+}
+
 // Sky gradient with the glow around the sun.
 fn gradient(dir: vec3<f32>) -> vec3<f32> {
     let up = saturate(dir.y);
     var color = mix(sky.horizon.rgb, sky.zenith.rgb, pow(up, 0.45));
+    color = color * dome_ramp(up);
     let sun_up = saturate(sky.sun.y * 4.0 + 0.5);
     let glow = pow(saturate(dot(dir, sky.sun.xyz) * 0.5 + 0.5), 8.0);
     color = mix(color, sky.around_sun.rgb, glow * 0.7 * sun_up * (1.0 - up * 0.5));
