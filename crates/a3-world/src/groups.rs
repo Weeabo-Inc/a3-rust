@@ -8,6 +8,7 @@ use std::collections::HashMap;
 
 pub use a3_sqf::Side;
 
+use crate::ai::GroupAi;
 use crate::{ClientId, EntityId, Error, Locality, NetworkId, World};
 
 /// Our handle to a group, with the same generational rule as [`EntityId`].
@@ -43,11 +44,8 @@ pub struct Group {
     pub(crate) units: Vec<EntityId>,
     pub(crate) leader: Option<EntityId>,
     pub(crate) delete_when_empty: bool,
-    /// `addWaypoint`'s list; index 0 is the first waypoint.
-    pub(crate) waypoints: Vec<crate::Waypoint>,
-    /// `currentWaypoint`: index of the waypoint the group moves to; `waypoints.len()` means the
-    /// group has run through its list.
-    pub(crate) current_waypoint: usize,
+    /// What the group is doing and what it knows: waypoints, modes and targets (#129).
+    pub(crate) ai: GroupAi,
 }
 
 impl Group {
@@ -240,8 +238,7 @@ impl World {
             units: Vec::new(),
             leader: None,
             delete_when_empty,
-            waypoints: Vec::new(),
-            current_waypoint: 0,
+            ai: GroupAi::default(),
         });
         groups.by_network_id.insert(network_id, id);
         id
@@ -251,7 +248,7 @@ impl World {
         self.groups().get(id)
     }
 
-    /// The group for commands that change it (waypoints, names, locality).
+    /// The group to change.
     pub fn group_mut(&mut self, id: GroupId) -> Option<&mut Group> {
         self.groups_mut().get_mut(id)
     }
@@ -351,7 +348,6 @@ impl World {
         slot.generation = slot.generation.wrapping_add(1);
         groups.free.push(id.index);
         groups.by_network_id.remove(&g.network_id);
-        self.handlers_mut().forget_group(id);
         Ok(())
     }
 

@@ -92,6 +92,7 @@
 //!   ownership changes through [`World::set_locality`].
 //! - Test with SQF snippets against a synthetic World (`tests/script.rs`).
 
+mod ai;
 mod class;
 mod entity;
 mod groups;
@@ -107,9 +108,13 @@ mod sim;
 mod statics;
 mod terrain;
 mod types;
-mod waypoints;
 mod world;
 
+pub use ai::{
+    ARRIVE_RADIUS, Behaviour, CombatMode, DEFAULT_COMPLETION_RADIUS, EYE_HEIGHT, FORGET_TIME,
+    FORMATION_SPACING, Formation, GroupAi, KNOWLEDGE_PER_SECOND, LoiterType, ManAi, SpeedMode,
+    TargetKnowledge, Targets, VIEW_RANGE, Waypoint, WaypointQueue, WaypointType, target_key,
+};
 pub use class::{EntityClass, SimulationClass};
 pub use entity::{Attachment, Entity, ListKind, Locality, VisualState};
 pub use groups::{ENEMY_THRESHOLD, Group, GroupId, Side, default_group_name, side_from_config};
@@ -129,7 +134,6 @@ pub use sim::{
 };
 pub use statics::{StaticKey, StaticObject};
 pub use types::{DEFAULT_SIMULATION_STEP, EntityType, Scope, TypeBank, TypeSource};
-pub use waypoints::Waypoint;
 pub use world::{Create, POSITION_MAX, POSITION_MIN, Placement, World, WorldEvent};
 
 /// Errors from World operations.
@@ -166,6 +170,9 @@ pub enum Error {
     /// The unit is not in the group.
     #[error("{0:?} is not in the group")]
     NotInGroup(EntityId),
+    /// The group has no waypoint at this index.
+    #[error("group {group:?} has no waypoint {index}")]
+    NoSuchWaypoint { group: GroupId, index: usize },
     /// No Object — Entity or Static object — has this Network object ID.
     #[error("no object with network id {0}")]
     NoSuchObject(NetworkId),

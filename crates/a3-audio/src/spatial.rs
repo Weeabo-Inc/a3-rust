@@ -7,8 +7,8 @@ use glam::{DVec3, Vec3};
 
 use crate::Curve;
 
-/// Speed of sound used for doppler, in m/s.
-pub const SPEED_OF_SOUND: f32 = 343.0;
+/// Speed of sound used for doppler, in m/s (the engine's X3DAudio setting).
+pub const SPEED_OF_SOUND: f32 = 343.5;
 
 /// The listener (usually the camera).
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -43,13 +43,13 @@ impl Listener {
     }
 }
 
-/// A distance low-pass: the cutoff frequency falls from open at `inner_range` to
-/// `min_cutoff_hz` at `range`.
+/// A distance low-pass (`CfgDistanceFilters`): the cutoff falls from the sample rate at
+/// `inner_range` to `min_cutoff_hz` at `range`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DistanceFilter {
     /// Cutoff at and beyond `range`, in Hz.
     pub min_cutoff_hz: f32,
-    /// Resonance of the filter.
+    /// `qFactor`, used as the filter's `1/Q`.
     pub q: f32,
     /// Distance up to which the filter is open, in metres.
     pub inner_range: f32,
@@ -59,20 +59,24 @@ pub struct DistanceFilter {
     pub power: f32,
 }
 
-/// The cutoff of an open filter, in Hz.
-pub const OPEN_CUTOFF_HZ: f32 = 20_000.0;
-
 impl DistanceFilter {
-    /// Cutoff frequency at `distance` metres.
-    ///
-    /// The cutoff interpolates exponentially (linearly in octaves) from [`OPEN_CUTOFF_HZ`] to
-    /// `min_cutoff_hz`, with the normalised distance shaped by `power`:
-    /// `t = ((d - inner) / (range - inner))^(1 / power)`.
-    pub fn cutoff_at(&self, distance: f32) -> f32 {
-        let span = (self.range - self.inner_range).max(1e-3);
-        let t = ((distance - self.inner_range) / span).clamp(0.0, 1.0);
-        let t = t.powf(1.0 / self.power.max(1e-3));
-        OPEN_CUTOFF_HZ * (self.min_cutoff_hz / OPEN_CUTOFF_HZ).powf(t)
+    /// Cutoff frequency at `distance` metres for a voice at `sample_rate`, as the engine
+    /// computes it: the sample rate inside `inner_range`, `min_cutoff_hz` beyond `range`, and in
+    /// between `fs + (min - fs) * t` with `t = ((d - inner) / (range - inner))^(1 / power)`.
+    pub fn cutoff_at(&self, distance: f32, sample_rate: f32) -> f32 {
+        if distance > self.range {
+            return self.min_cutoff_hz;
+        }
+        if distance < self.inner_range {
+            return sample_rate;
+        }
+        let span = self.range - self.inner_range;
+        let t = if span > 0.0 {
+            ((distance - self.inner_range) / span).powf(1.0 / self.power.max(1e-4))
+        } else {
+            1.0
+        };
+        sample_rate + (self.min_cutoff_hz - sample_rate) * t
     }
 }
 
@@ -85,8 +89,9 @@ pub struct Emitter {
     pub velocity: Vec3,
     /// Gain over distance in metres.
     pub attenuation: Curve,
-    /// Within this distance (metres) the sound spreads around the listener: panning fades to
-    /// the centre as the distance falls to 0.
+    /// Within this distance (metres) the sound surrounds the listener: panning fades to the
+    /// centre as the distance falls to 0 (the sound set's `spatialityRange`, X3DAudio's inner
+    /// radius).
     pub spread_radius: f32,
     /// Doppler strength: 0 off, 1 physical.
     pub doppler: f32,
@@ -106,7 +111,7 @@ impl Emitter {
             position,
             velocity: Vec3::ZERO,
             attenuation,
-            spread_radius: 1.0,
+            spread_radius: 0.5,
             doppler: 1.0,
             distance_filter: None,
             occlusion: 0.0,
@@ -124,6 +129,8 @@ pub struct Spatialized {
     pub pitch: f32,
     /// Low-pass cutoff to apply, if any.
     pub cutoff_hz: Option<f32>,
+    /// `1/Q` of that low-pass.
+    pub filter_q: f32,
     /// Distance between listener and emitter in metres.
     pub distance: f32,
 }
@@ -135,7 +142,7 @@ pub fn equal_power_pan(pan: f32) -> [f32; 2] {
 }
 
 /// Doppler pitch factor for a source seen along `direction` (unit, listener to source):
-/// `(c + v_listener . u) / (c + v_source . u)`, limited to 0.5..2.
+/// `(c + v_listener . u) / (c + v_source . u)`, limited to 0.5..2 as in the engine.
 pub fn doppler_factor(listener_velocity: Vec3, source_velocity: Vec3, direction: Vec3) -> f32 {
     let c = SPEED_OF_SOUND;
     let toward_source = listener_velocity.dot(direction);
@@ -143,15 +150,16 @@ pub fn doppler_factor(listener_velocity: Vec3, source_velocity: Vec3, direction:
     ((c + toward_source) / (c + away_from_listener).max(1.0)).clamp(0.5, 2.0)
 }
 
-/// Gain lost behind the listener's head (a crude stand-in for an HRTF's rear shadow).
+// Our own HRTF-less spatial cues (not from the engine, which leaves this to X3DAudio).
+/// Gain lost behind the listener's head.
 const REAR_GAIN: f32 = 0.8;
 /// Low-pass applied to sources directly behind the listener, in Hz.
-const REAR_CUTOFF_HZ: f32 = 8_000.0;
+const REAR_CUTOFF_HZ: f32 = 5_000.0;
 /// Low-pass at full occlusion, in Hz.
 const OCCLUDED_CUTOFF_HZ: f32 = 800.0;
 
-/// 3D processing of an emitter heard by a listener.
-pub fn spatialize(listener: &Listener, emitter: &Emitter) -> Spatialized {
+/// 3D processing of an emitter heard by a listener, for a voice mixed at `sample_rate`.
+pub fn spatialize(listener: &Listener, emitter: &Emitter, sample_rate: f32) -> Spatialized {
     let offset = (emitter.position - listener.position).as_vec3();
     let distance = offset.length();
     let direction = if distance > 1e-4 {
@@ -184,22 +192,26 @@ pub fn spatialize(listener: &Listener, emitter: &Emitter) -> Spatialized {
         1.0
     };
 
+    let open = sample_rate;
     let mut cutoff = emitter
         .distance_filter
-        .map(|f| f.cutoff_at(distance))
-        .unwrap_or(OPEN_CUTOFF_HZ);
+        .map_or(open, |f| f.cutoff_at(distance, sample_rate));
+    // Cues interpolate in octaves from fully open (a sixth of the rate, where the filter
+    // switches off) down to their cutoff.
+    let toward = |target: f32, amount: f32| (open / 6.0) * (target / (open / 6.0)).powf(amount);
     if behind > 0.0 {
-        cutoff = cutoff.min(OPEN_CUTOFF_HZ * (REAR_CUTOFF_HZ / OPEN_CUTOFF_HZ).powf(behind));
+        cutoff = cutoff.min(toward(REAR_CUTOFF_HZ, behind));
     }
     let occluded = (emitter.occlusion + 0.5 * emitter.obstruction).clamp(0.0, 1.0);
     if occluded > 0.0 {
-        cutoff = cutoff.min(OPEN_CUTOFF_HZ * (OCCLUDED_CUTOFF_HZ / OPEN_CUTOFF_HZ).powf(occluded));
+        cutoff = cutoff.min(toward(OCCLUDED_CUTOFF_HZ, occluded));
     }
 
     Spatialized {
         gains,
         pitch,
-        cutoff_hz: (cutoff < OPEN_CUTOFF_HZ * 0.999).then_some(cutoff),
+        cutoff_hz: (cutoff * 6.0 < sample_rate).then_some(cutoff),
+        filter_q: emitter.distance_filter.map_or(1.0, |f| f.q),
         distance,
     }
 }

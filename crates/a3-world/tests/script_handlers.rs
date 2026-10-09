@@ -342,3 +342,27 @@ fn the_local_event_fires_on_the_object_and_drains_once() {
     assert_eq!(num(&mut vm, "local_count"), 2.0);
     assert!(truth(&mut vm, "local_this select 1"));
 }
+
+#[test]
+fn a_completed_waypoint_runs_the_groups_waypoint_complete_handler() {
+    let mut vm = vm();
+    eval(
+        &mut vm,
+        &format!(
+            r#"{UNIT}
+            done = [];
+            g addEventHandler ["WaypointComplete", {{ done pushBack _this }}];
+            g addWaypoint [[0, 0, 0], 0];
+            "#
+        ),
+    );
+
+    // The leader stands on the waypoint, so the first AI steps complete it.
+    for _ in 0..10 {
+        vm.host.world.simulate(0.1);
+    }
+    dispatch_events(&mut vm);
+
+    assert_eq!(num(&mut vm, "count done"), 1.0);
+    assert!(truth(&mut vm, "(done select 0) isEqualTo [g, 1]"));
+}

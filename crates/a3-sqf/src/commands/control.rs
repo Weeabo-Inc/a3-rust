@@ -277,7 +277,7 @@ struct ForCode {
 impl ForCode {
     fn invoke(&self, code: &Code) -> Invoke {
         let mut inv = Invoke::new(code.clone());
-        inv.locals = self.scope.clone();
+        inv.locals = self.scope.iter().cloned().collect();
         inv.capture = true;
         inv
     }
@@ -285,12 +285,12 @@ impl ForCode {
     /// Takes the loop-scope values back from the block that just ended:
     /// every local of `init`/`cond`/`step`, only existing loop-scope names
     /// from the body.
-    fn absorb(&mut self, captured: Option<Vec<(Sym, Value)>>, all: bool) {
+    fn absorb(&mut self, captured: Option<crate::vm::Locals>, all: bool) {
         let Some(locals) = captured else {
             return;
         };
         if all {
-            self.scope = locals;
+            self.scope = locals.into_vec();
             return;
         }
         for (name, value) in locals {

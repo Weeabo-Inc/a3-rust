@@ -15,8 +15,8 @@ use crate::handlers::Handlers;
 use crate::markers::Markers;
 use crate::statics::StaticObjects;
 use crate::{
-    ClientId, Entity, EntityId, EntityType, Error, ListKind, Locality, NetworkId, ObjectRef, Scope,
-    StaticKey, net::SentStates,
+    ClientId, Entity, EntityId, EntityType, Error, GroupId, ListKind, Locality, NetworkId,
+    ObjectRef, Scope, StaticKey, net::SentStates,
 };
 
 /// The original clamps created positions to this box on every axis (`World_CreateVehicleImpl`).
@@ -80,6 +80,9 @@ pub enum WorldEvent {
     },
     /// This machine gained (`local: true`) or lost ownership (`Local` event handler).
     LocalityChanged { entity: EntityId, local: bool },
+    /// A group finished the waypoint at `index` and moved on (#129); a CYCLE waypoint reports
+    /// the waypoint it left, so a mission sees each completion once.
+    WaypointCompleted { group: GroupId, index: usize },
 }
 
 #[derive(Debug, Default)]
@@ -363,6 +366,12 @@ impl World {
     /// Takes the events recorded since the last call, oldest first.
     pub fn drain_events(&mut self) -> Vec<WorldEvent> {
         std::mem::take(&mut self.events)
+    }
+
+    /// Records an event for the next [`World::drain_events`]. For the simulation modules, which
+    /// cannot reach the private event list.
+    pub(crate) fn push_event(&mut self, event: WorldEvent) {
+        self.events.push(event);
     }
 
     /// Simulated time since the World was created, in seconds (`time`).

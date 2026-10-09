@@ -10,7 +10,7 @@ use a3_render::{
     Camera, ColorSpace, DrawList, FreeFlyController, FreeFlyInput, Gpu, MeshData, MeshDraw, MeshId,
     Renderer, TextureData, TextureFormat, TextureId,
 };
-use glam::{Affine3A, DAffine3, DQuat, DVec3, Vec3};
+use glam::{DAffine3, DQuat, DVec3, Vec3};
 
 use crate::man::ManAnimation;
 use crate::models::{ModelSpec, Orbit, stats_line};
@@ -126,6 +126,19 @@ struct SceneAssets {
     crate_texture: TextureId,
 }
 
+/// Raise `transform` by `lift` metres: where the Man stands, given the model's own ground offset.
+///
+/// The lift belongs to the placement, not to the Man's bones. A skinned bone's palette matrix is
+/// the rest→posed frame, which is rotated by the pose; folding the lift into it (`bone * up`)
+/// translates every posed bone along its own rotated up axis, dragging arms, head and hands up to
+/// `lift` metres sideways out of the body (issue #247). Lifting the instance moves the whole posed
+/// mesh uniformly instead, exactly as the unposed path has always done.
+fn lift_placement(transform: DAffine3, lift: f32) -> DAffine3 {
+    let mut transform = transform;
+    transform.translation.y += f64::from(lift);
+    transform
+}
+
 /// The player Man's own model renderer: `CfgVehicles >> B_Soldier_F >> model`, drawn at the
 /// player's transform in third person and hidden in first person, like the engine hides the
 /// body the eyes are in.
@@ -204,9 +217,10 @@ impl SoldierModel {
     /// (first person, or before the model is ready).
     ///
     /// The Man's mesh is stored below its model origin while his Move's translations are
-    /// ground-relative, so his bones are lifted by [`ground_lift`](crate::player::ground_lift):
-    /// his feet, not the crown of his head, land on the ground. Without an animation the whole
-    /// mesh is lifted and placed unposed, the same way.
+    /// ground-relative, so he is lifted by [`ground_lift`](crate::player::ground_lift): his
+    /// feet, not the crown of his head, land on the ground. The lift is part of the placement,
+    /// so it goes into the instance transform whether or not he is posed — never into the bone
+    /// palette (see [`lift_placement`]).
     fn place(&self, transform: Option<DAffine3>) {
         let mut m = self.feature.lock();
         m.clear_dynamic();
@@ -215,14 +229,13 @@ impl SoldierModel {
         let lift = m
             .model_box(self.model)
             .map_or(0.0, |(lowest, _)| ground_lift(lowest.as_dvec3()) as f32);
+        let transform = lift_placement(transform, lift);
         if let Some(man) = &self.man {
             let bones = match man.lock() {
                 Ok(man) => man.palette(),
                 Err(_) => None,
             };
             if let Some(bones) = bones {
-                let up = Affine3A::from_translation(Vec3::new(0.0, lift, 0.0));
-                let bones: Vec<Affine3A> = bones.into_iter().map(|b| b * up).collect();
                 m.add_skinned(
                     PlacedObject {
                         model: self.model,
@@ -233,8 +246,6 @@ impl SoldierModel {
                 return;
             }
         }
-        let mut transform = transform;
-        transform.translation.y += f64::from(lift);
         m.add_dynamic(PlacedObject {
             model: self.model,
             transform,
@@ -894,6 +905,7 @@ pub fn checker_bc1(size: u32) -> TextureData {
 mod tests {
     use super::*;
     use a3_input::Dik;
+    use glam::{Affine3A, Quat};
 
     #[test]
     fn generated_textures_are_valid() {
@@ -930,5 +942,46 @@ mod tests {
         }
         assert!((f.fps() - 60.0).abs() < 1e-6);
         assert!((f.frame_ms() - 16.666).abs() < 0.01);
+    }
+
+    /// The Man's ground lift must translate his whole posed mesh, not each bone along its own
+    /// rotated up axis (issue #247: a bone-relative lift tore the soldier into a spike-ball).
+    #[test]
+    fn the_ground_lift_moves_the_instance_not_the_bones() {
+        // The lift measured for B_Soldier_F: its mesh sits 1.852 m below the model origin.
+        let lift = 1.852_f32;
+        let spin = DAffine3::from_rotation_translation(
+            DQuat::from_rotation_y(0.4),
+            DVec3::new(15_000.0, 3.0, 15_000.0),
+        );
+        let placed = lift_placement(spin, lift);
+        assert_eq!(placed.translation.y, spin.translation.y + f64::from(lift));
+        assert_eq!(
+            placed.matrix3, spin.matrix3,
+            "the lift must not touch the placement's rotation or scale"
+        );
+
+        // A posed bone: rotated 90 deg, so its own up axis is the world -x axis.
+        let bone = Affine3A::from_rotation_translation(
+            Quat::from_rotation_z(std::f32::consts::FRAC_PI_2),
+            Vec3::new(0.3, 1.0, 0.1),
+        );
+        let vertex = Vec3::new(-0.2, 1.4, 0.05);
+        let local = DVec3::from(bone.transform_point3(vertex));
+        let rise =
+            lift_placement(spin, lift).transform_point3(local) - spin.transform_point3(local);
+        assert!(
+            (rise - DVec3::new(0.0, f64::from(lift), 0.0)).length() < 1e-6,
+            "every vertex must rise by exactly the lift, got {rise:?}"
+        );
+
+        // The old form folded the lift into each bone: `bone * up` maps the lift through the
+        // bone's rotation, so the same vertex moves sideways by the lift instead of upwards.
+        let up = Affine3A::from_translation(Vec3::new(0.0, lift, 0.0));
+        let per_bone = (bone * up).transform_point3(vertex) - bone.transform_point3(vertex);
+        assert!(
+            (per_bone - Vec3::new(-lift, 0.0, 0.0)).length() < 1e-4,
+            "a bone-relative lift is rotated by the bone, got {per_bone:?}"
+        );
     }
 }

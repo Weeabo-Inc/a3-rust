@@ -12,7 +12,7 @@
 
 use std::rc::Rc;
 
-use indexmap::IndexMap;
+use crate::value::HashMapEntries;
 
 use super::*;
 use crate::symbol::Sym;
@@ -52,7 +52,7 @@ fn pairs(decl: &Value) -> Result<Vec<(Value, Value)>, SqfError> {
 /// Merges a definition (and its bases) into `map`, `info` and `types`.
 fn resolve(
     decl: &Value,
-    map: &mut IndexMap<HashKey, Value>,
+    map: &mut HashMapEntries,
     info: &mut ObjectInfo,
     types: &mut Vec<Value>,
     depth: usize,
@@ -176,7 +176,7 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         let args = array(&a).borrow().clone();
         let decl = args.first().cloned().unwrap_or(Value::Nil);
         let this = args.get(1).cloned().unwrap_or(Value::Nothing);
-        let mut map = IndexMap::new();
+        let mut map = HashMapEntries::default();
         let mut info = ObjectInfo::default();
         let mut types = Vec::new();
         resolve(&decl, &mut map, &mut info, &mut types, 0)?;

@@ -335,6 +335,17 @@ fn take_calls(world: &mut World) -> Vec<Call> {
                     this,
                 ));
             }
+            WorldEvent::WaypointCompleted { group, index } => {
+                // `[group, waypointIndex]`, the index one-based as scripts address waypoints
+                // (the engine's implicit start waypoint is 0).
+                let this =
+                    Value::array([super::group_value(group), Value::Number((index + 1) as f32)]);
+                calls.extend(calls_of(
+                    world.handlers().group_list(group, "WaypointComplete"),
+                    "WaypointComplete",
+                    this,
+                ));
+            }
         }
     }
     calls

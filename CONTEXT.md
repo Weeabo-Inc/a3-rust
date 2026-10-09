@@ -325,9 +325,35 @@ The engine's legacy sound format: raw or delta-compressed PCM with a short heade
 **OGG**:
 Ogg Vorbis audio, the main sound format in Arma 3.
 
-**Sound shader / sound set**:
-Config-defined descriptions of how a sound is played (sample choice, volume curves, range) used
-by the modern sound system.
+**Sound shader**:
+A `CfgSoundShaders` class: the samples a sound is chosen from (each with a probability), its
+volume and frequency expressions, and its audible range.
+_Avoid_: sound definition (that is an old-style `sound[]` entry)
+
+**Sound set**:
+A `CfgSoundSets` class: the sound shaders played together, with the set-level volume, curve,
+randomisation and 3D parameters. What `playSound` and `say3D` name, and what a CfgEnvSounds
+class selects with `soundSetEnvironment`.
+_Avoid_: sound group
+
+**Sound curve**:
+A sound's gain as a function of a normalised distance (0..1 of the range it is scaled by),
+named in `CfgSoundCurves` or written inline as points.
+_Avoid_: falloff curve, attenuation table
+
+**Distance filter**:
+A `CfgDistanceFilters` class: the low-pass a spatial sound passes through as its distance from
+the listener grows.
+
+**Sound 3D processor**:
+A `CfgSound3DProcessors` class: whether a source is heard as a ring of channels around itself
+(emitter) or folded into a point that pans (panner).
+
+**Simple expression**:
+The small float expression language of sound controllers, evaluated per frame against named
+variables such as `forest`, `windy` or `distance`; an expression naming anything else fails to
+compile.
+_Avoid_: sound controller script
 
 ## Scripting
 
@@ -431,6 +457,54 @@ Script commands differ in whether their arguments must be local and whether thei
 global.
 _Avoid_: authority (alone), ownership (that is the Owner relation)
 
+## AI
+
+**Group**:
+A set of Entities under one leader, all of one Side, whose AI thinks as a unit: one waypoint
+queue, one set of modes, one body of knowledge.
+_Avoid_: squad (that is the map label), team (that is a UI grouping)
+
+**Side**:
+One of the world's opposing alignments (West, East, Resistance, Civilian); the unit of enmity —
+two Entities are enemies when their Sides are.
+
+**Waypoint**:
+One order in a Group's queue: a position, the modes it sets, and what it asks on arrival.
+_Avoid_: marker (that is a map symbol)
+
+**Waypoint queue**:
+A Group's ordered Waypoints plus the index of the one it is working on. The mission's
+`currentWaypoint` counts from one because index 0 is the group's start position, already done;
+the index equals the count once every waypoint is done.
+
+**Waypoint type**:
+What a Waypoint asks of the Group on arrival — walk there (MOVE), wait (HOLD), hunt (SAD), board
+(GETIN), start over (CYCLE) and so on.
+_Avoid_: waypoint mode (the modes are the behaviour, combat, speed and formation fields)
+
+**Group behaviour**:
+How a Group moves and how alert it is (CARELESS, SAFE, AWARE, COMBAT, STEALTH); while it says
+so, it overrides the combat mode and the formation.
+_Avoid_: alertness, stance
+
+**Combat mode**:
+A Group's rules of engagement (BLUE, GREEN, WHITE, YELLOW, RED): whether and how it acts on an
+enemy it knows about.
+_Avoid_: ROE, fire mode
+
+**Speed mode**:
+How fast a Group moves (LIMITED walking, NORMAL, FULL).
+_Avoid_: pace
+
+**Formation**:
+The shape a Group moves in (WEDGE, COLUMN, LINE, VEE, ...), expressed as each follower's slot
+around the leader.
+_Avoid_: pattern, arrangement
+
+**Target knowledge**:
+What a Group knows about one enemy: a certainty from 0 to 4 and where and when it was last
+seen. Shared by every unit of the Group, not kept per unit.
+
 ## Physics and collision
 
 **Collision world**:
@@ -468,7 +542,7 @@ _Avoid_: activation range, view distance
 The cell grid `a3-nav` searches a path over: one cell per land cell of the Landscape, each with
 a cost (0 = impassable, 100 = open ground, road 70, forest 130, built-up 140, shallow water
 200) baked from the geography flags, the heightmap slope and the roads
-(ADR 0009).
+(ADR 0011).
 _Avoid_: navmesh (that is the triangle kind we do not use), oper map (that is the engine's own
 field, which also carries cover)
 

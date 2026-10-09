@@ -4,7 +4,7 @@
 //! namespaces, config entries, or arrays of those; arrays are copied into
 //! the key. A map made read-only by `compileFinal` rejects changes.
 
-use indexmap::IndexMap;
+use crate::value::HashMapEntries;
 
 use super::*;
 use crate::value::{HashKey, HashMap};
@@ -41,7 +41,7 @@ fn writable(m: &HashMap) -> Result<(), SqfError> {
 }
 
 /// Refuses adding `k` to a sealed hash map object.
-fn may_add(m: &HashMap, entries: &IndexMap<HashKey, Value>, k: &HashKey) -> Result<(), SqfError> {
+fn may_add(m: &HashMap, entries: &HashMapEntries, k: &HashKey) -> Result<(), SqfError> {
     if m.is_sealed() && !entries.contains_key(k) {
         Err(SqfError::generic("Tried to add key to sealed HashMap"))
     } else {
@@ -73,7 +73,7 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         Ok(Value::HashMap(HashMap::new()))
     });
     r.unary("createHashMapFromArray", ARR, HASH, |_, a| {
-        let mut out = IndexMap::new();
+        let mut out = HashMapEntries::default();
         for pair in array(&a).borrow().iter() {
             let Value::Array(pair) = pair else {
                 return Err(SqfError::type_error(pair, ARR));
@@ -87,7 +87,7 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
     r.binary("createHashMapFromArray", ARR, ARR, HASH, |_, a, b| {
         let (keys, values) = (array(&a), array(&b));
         let (keys, values) = (keys.borrow(), values.borrow());
-        let mut out = IndexMap::new();
+        let mut out = HashMapEntries::default();
         for (i, k) in keys.iter().enumerate() {
             out.insert(key(k)?, values.get(i).cloned().unwrap_or(Value::Nil));
         }

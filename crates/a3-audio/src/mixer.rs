@@ -10,8 +10,6 @@ use crate::{Clip, Stream};
 const BLOCK: usize = 256;
 /// Below this summed gain a voice is inaudible and never takes a voice slot.
 const SILENT: f32 = 1e-5;
-/// Resonance of the distance and occlusion low-pass.
-const FILTER_Q: f32 = std::f32::consts::FRAC_1_SQRT_2;
 
 /// Identifies a voice; allocated by the caller (see [`crate::AudioEngine`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -153,6 +151,7 @@ struct Target {
     gains: [f32; 2],
     step: f64,
     cutoff: Option<f32>,
+    filter_q: f32,
 }
 
 /// Counters of the mixer.
@@ -286,13 +285,15 @@ impl Mixer {
                 gains: equal_power_pan(v.params.pan).map(|g| g * gain),
                 step: rate * pitch,
                 cutoff: None,
+                filter_q: 1.0,
             },
             Some(emitter) => {
-                let s = spatialize(&self.listener, emitter);
+                let s = spatialize(&self.listener, emitter, self.sample_rate as f32);
                 Target {
                     gains: s.gains.map(|g| g * gain),
                     step: rate * pitch * f64::from(s.pitch),
                     cutoff: s.cutoff_hz,
+                    filter_q: s.filter_q,
                 }
             }
         }
@@ -371,7 +372,7 @@ impl Voice {
     fn mix(&mut self, out: &mut [f32], frames: usize, target: Target, master: f32, rate: f32) {
         for filter in &mut self.filters {
             match target.cutoff {
-                Some(cutoff) => filter.set(cutoff, FILTER_Q, rate),
+                Some(cutoff) => filter.set(cutoff, target.filter_q, rate),
                 None if filter.is_active() => *filter = LowPass::default(),
                 None => {}
             }
