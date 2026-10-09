@@ -632,8 +632,9 @@ impl World {
                 let extra = (self.random.uniform() * f64::from(max.saturating_sub(n))) as u32;
                 n = (n + extra).min(max.saturating_sub(1)).max(mode_type.burst);
             }
-            if mode_type.multiplier > 0 {
-                n = n.min(rounds / mode_type.multiplier);
+            // §3.2: a burst never asks for more rounds than the magazine holds.
+            if let Some(per_shot) = rounds.checked_div(mode_type.multiplier) {
+                n = n.min(per_shot);
             }
             n
         } else {

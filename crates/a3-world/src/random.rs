@@ -73,11 +73,7 @@ impl CRandom {
     }
 
     pub(crate) fn uniform(&mut self) -> f64 {
-        self.state = self
-            .state
-            .wrapping_mul(1_103_515_245)
-            .wrapping_add(12_345)
-            & 0x7fff_ffff;
+        self.state = self.state.wrapping_mul(1_103_515_245).wrapping_add(12_345) & 0x7fff_ffff;
         f64::from(self.state) / f64::from(1u32 << 31)
     }
 }

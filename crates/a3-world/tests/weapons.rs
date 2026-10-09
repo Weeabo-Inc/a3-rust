@@ -463,9 +463,14 @@ fn the_shipped_weapons_config_loads() {
     let weapon = bank.weapon("arifle_MX_F").expect("the MX");
     let params = weapon.shot_params(None, None).expect("a muzzle and mode");
     assert_eq!(weapon.init_speed, 800.0);
-    let mag = bank.magazine("30Rnd_65x39_caseless_mag").expect("its magazine");
+    let mag = bank
+        .magazine("30Rnd_65x39_caseless_mag")
+        .expect("its magazine");
     assert_eq!(mag.ammo, "B_65x39_Caseless");
-    assert_eq!(params.init_speed(&mag, &bank.ammo(&mag.ammo).unwrap()), 800.0);
+    assert_eq!(
+        params.init_speed(&mag, &bank.ammo(&mag.ammo).unwrap()),
+        800.0
+    );
 
     let smg = bank.weapon("SMG_03_TR_BASE").expect("the 570x28 SMG");
     let params = smg.shot_params(None, None).expect("a muzzle and mode");

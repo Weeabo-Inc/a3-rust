@@ -226,7 +226,11 @@ fn a_mode_cannot_fire_again_before_its_reload_time() {
     // Two `fire` calls in one frame are one request: the engine keeps a single pending slot.
     eval(&mut vm, r#"a fire "rifle_F"; a fire "rifle_F";"#);
     run(&mut vm, 1, 0.001);
-    assert_eq!(num(&mut vm, r#"a ammo "rifle_F""#), 29.0, "one round, not two");
+    assert_eq!(
+        num(&mut vm, r#"a ammo "rifle_F""#),
+        29.0,
+        "one round, not two"
+    );
 
     // The round reload is `reloadTime · U(1 ± 0.1)` (0.09..0.11 s here): a request made inside
     // that window stays pending (`§3.3`) and goes once the weapon is ready.
@@ -270,7 +274,11 @@ fn an_empty_magazine_is_changed_after_the_magazine_reload_time() {
     // §3.4: the empty magazine is dropped, the 10-round spare goes in at once, and the muzzle
     // waits `magazineReloadTime · U(1 ± 0.2)` = 1.6..2.4 s before the next round.
     assert_eq!(num(&mut vm, r#"a ammo "rifle_F""#), 10.0);
-    assert_eq!(text(&mut vm, "magazines a"), "[]", "the spare is in the weapon");
+    assert_eq!(
+        text(&mut vm, "magazines a"),
+        "[]",
+        "the spare is in the weapon"
+    );
 
     eval(&mut vm, r#"a fire "rifle_F""#);
     run(&mut vm, 10, 0.1);

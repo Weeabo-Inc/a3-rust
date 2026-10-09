@@ -272,9 +272,7 @@ fn dispersion_follows_the_per_shot_seed() {
     let again = fire(&mut world, s, "rifle_acc_F", "Flat_Mag", DVec3::ZERO);
     assert_eq!(world.entity(again).unwrap().velocity(), v);
     let previous = world
-        .fire(
-            FireRequest::new(s, "rifle_acc_F", "Flat_Mag", DVec3::ZERO, DVec3::X).rounds(2),
-        )
+        .fire(FireRequest::new(s, "rifle_acc_F", "Flat_Mag", DVec3::ZERO, DVec3::X).rounds(2))
         .unwrap();
     let v = world.entity(previous).unwrap().velocity();
     assert!((v.y - -0.204_808_728_345_897_67).abs() < 1e-9, "{v:?}");
