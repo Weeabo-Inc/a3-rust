@@ -187,3 +187,28 @@ worldName	nular	*	verified	oracle	the terrain CfgWorlds class (#286); a3-world a
 compileFinal	unary	0x2ee170	verified	oracle	CODE|STRING yields final code: assignment over the variable is refused (#347)
 compileFinal	unary	0x81b540	verified	oracle	HASHMAP yields a read-only map: assignment over it is refused (#347)
 isFinal	unary	0x2d7de0	verified	oracle	final code true, plain code false (#347)
+direction	unary	0x52b330	verified	decompiled 0x52b330 + oracle	the OBJECT form; the LOCATION form (0xd05170) needs LOCATION values we do not have
+setOvercast	binary	0x5545b0	verified	decompiled 0x5545b0 + oracle	`time setOvercast overcast`; the value is applied at once, there is no weather ramp
+isSimpleObject	unary	0x518720	verified	decompiled 0x518720 + oracle	
+createSimpleObject	unary	0x5262d0	verified	decompiled 0x5262d0 + oracle	a class name or a model path creates a local Entity with no simulation, not the engine's render-only object
+action	binary	0x56e4d0	verified	decompiled 0x56e4d0 + oracle	a Man's action goes to the move state machine; anything else keeps its name
+action	unary	0x560420	verified	decompiled 0x560420 + oracle	the unit is the action array's second element
+animate	binary	0x8b6310	stub	decompiled 0x8b6310	the phase is stored per name; the engine keys it to the model's animations, which we do not read yet (probe wset.animation)
+animateSource	binary	0x8b6700	stub	decompiled 0x8b6700	as `animate` (probe wset.animation)
+animateDoor	binary	0x54faf0	stub	decompiled 0x54faf0	as `animate` (probe wset.animation)
+animationPhase	binary	0x8b6720	stub	decompiled 0x8b6720	0 without a stored phase; the engine's default comes from the model (probe wset.animation)
+animationSourcePhase	binary	0x8b67b0	stub	decompiled 0x8b67b0	0 without a stored phase; the engine reads 1 for a missing source (probe wset.animation)
+doorPhase	binary	0x4a0570	stub	decompiled 0x4a0570	0 without a stored phase; the engine reads -1 for a missing door (probe wset.animation)
+moveInDriver	binary	0x537df0	stub	decompiled 0x537df0	the seat is stored; the unit is not moved into the vehicle and `vehicle`/`driver`/`crew` are a later batch
+moveInGunner	binary	0x538060	stub	decompiled 0x538060	as `moveInDriver`
+moveInCargo	binary	0x5376a0	stub	decompiled 0x5376a0	as `moveInDriver`
+moveInCargo	binary	0x537680	stub	decompiled 0x537680	as `moveInDriver`, `[vehicle, index]`
+assignAsCargo	binary	0x5250e0	stub	decompiled 0x5250e0	as `moveInDriver`
+allowCrewInImmobile	binary	0x47e3b0	stub	decompiled 0x47e3b0	the flag is stored; nothing reads it (no immobile-crew behaviour)
+setVehicleAmmo	binary	0x56f960	stub	decompiled 0x56f960	the fraction is stored; nothing reads it
+fadeMusic	binary	0x553190	stub	decompiled 0x553190	the target volume is stored; the mixer has no music bus
+enableTeamSwitch	unary	0x55f850	stub	decompiled 0x55f850	the flag is stored; there is no team-switch UI
+enableStamina	binary	0x896820	stub	decompiled 0x896820	the flag is stored; there is no stamina model
+enableAttack	binary	0x1908e0	stub	decompiled 0x1908e0	the flag is stored; the AI does not read it yet
+createDiaryRecord	binary	0xdfd850	stub	decompiled 0xdfd850	the record is stored; no diary UI and no record handle table, so the handle is null
+uniformContainer	unary	0x847190	stub	decompiled 0x847190	container objects do not exist in our inventory; answers objNull
