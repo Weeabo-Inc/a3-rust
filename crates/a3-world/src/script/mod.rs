@@ -12,6 +12,7 @@
 
 mod ai;
 mod animation;
+mod audio_cmds;
 mod cargo_ops;
 mod create;
 mod general;
@@ -33,6 +34,7 @@ mod weapons;
 use a3_sqf::{Handle, HandleKind, Host, PublicTarget, Registry, Type, TypeSet, Value};
 use glam::DVec3;
 
+pub use audio_cmds::AudioHost;
 pub use groups::{group_arg, group_value, null_group};
 pub use handlers::{dispatch_events, raise_group_event, raise_mission_event, raise_object_event};
 pub use terrain::terrain_normal;
@@ -50,12 +52,20 @@ pub trait WorldHost: Host {
     fn mission_configs(&self) -> Vec<std::sync::Arc<a3_config::ConfigTree>> {
         Vec::new()
     }
+    /// The audio engine's buses, when this host has one: the sound commands (`fadeSound`,
+    /// `soundVolume`, `fadeMusic`, `playSound`, ...) drive it through [`AudioHost`]. `None` by
+    /// default, so a host with no audio engine (a headless tool, a test) keeps compiling and
+    /// those commands still run: they set no bus and answer the engine's defaults.
+    fn audio(&mut self) -> Option<&mut dyn AudioHost> {
+        None
+    }
 }
 
 /// Registers every world command implemented so far.
 pub fn register_world_commands<H: WorldHost>(r: &mut Registry<H>) {
     ai::register(r);
     animation::register(r);
+    audio_cmds::register(r);
     create::register(r);
     general::register(r);
     groups::register(r);

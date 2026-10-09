@@ -11,6 +11,7 @@ name = "arma3"
 path = "src/main.rs"
 
 [dependencies]
+a3-audio.workspace = true
 a3-config.workspace = true
 a3-core.workspace = true
 a3-environment.workspace = true

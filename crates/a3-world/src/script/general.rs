@@ -1,5 +1,6 @@
 //! Engine-wide state that belongs to no object: the client's network state, the cut layers
 //! (`cutRsc`, `cutText`, `cutFadeOut`), the title effects and the post-process effect family.
+//! The sound commands (`fadeSound`, `soundVolume`, ...) live in `audio_cmds`.
 
 use super::{ARR, BOOL, NOTHING, NUM, OBJ, STR, WorldHost, null_object};
 use a3_sqf::{Handle, HandleKind, Registry, TypeSet, Value};
@@ -17,10 +18,6 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
         Ok(Value::Nothing)
     });
 
-    // `fadeSound time, volume`: the engine's sound-fade bus, which no mixer bus is wired to yet
-    // (`stub`).
-    r.binary("fadeSound", NUM, NUM, NOTHING, |_, _, _| Ok(Value::Nothing));
-
     // `enableSaving`: there is no save system, so nothing changes (`stub`).
     r.unary("enableSaving", BOOL, NOTHING, |_, _| Ok(Value::Nothing));
     r.unary("enableSaving", ARR, NOTHING, |_, _| Ok(Value::Nothing));
@@ -34,12 +31,6 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     // (`stub`).
     r.unary("titleCut", ARR, NOTHING, |_, _| Ok(Value::Nothing));
     r.unary("titleText", ARR, NOTHING, |_, _| Ok(Value::Nothing));
-
-    // `soundVolume`: the master sound volume. No mixer bus is wired to it, so the getter answers
-    // full volume and the setters store nothing (`stub`).
-    r.nular("soundVolume", NUM, |_ctx| Ok(Value::Number(1.0)));
-    r.unary("soundVolume", NUM, NOTHING, |_, _| Ok(Value::Nothing));
-    r.unary("soundVolume", ARR, NOTHING, |_, _| Ok(Value::Nothing));
 
     // `enableMimics`: facial animation, which we do not drive (`stub`).
     r.binary("enableMimics", OBJ, BOOL, NOTHING, |_, _, _| {

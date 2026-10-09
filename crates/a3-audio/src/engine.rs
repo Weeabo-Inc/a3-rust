@@ -1,13 +1,14 @@
 //! The game-side handle: owns the output thread and sends commands to the mixer.
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
+use crate::volume::Bus;
 use crate::{Command, Emitter, Error, Listener, Mixer, PlayParams, Result, Source, VoiceId};
 
 /// Where the mix goes.
@@ -52,11 +53,29 @@ pub struct EngineStats {
     pub frames: u64,
 }
 
-#[derive(Default)]
+/// State published by the audio thread for the game thread to read.
 struct Shared {
     voices: AtomicUsize,
     audible: AtomicUsize,
     frames: AtomicU64,
+    /// The current bus gains, as `f32` bits (`soundVolume`, `musicVolume`, `radioVolume`).
+    sound_gain: AtomicU32,
+    music_gain: AtomicU32,
+    radio_gain: AtomicU32,
+}
+
+impl Default for Shared {
+    fn default() -> Self {
+        Self {
+            voices: AtomicUsize::new(0),
+            audible: AtomicUsize::new(0),
+            frames: AtomicU64::new(0),
+            // Every bus starts at full gain, before the first block is published.
+            sound_gain: AtomicU32::new(1.0f32.to_bits()),
+            music_gain: AtomicU32::new(1.0f32.to_bits()),
+            radio_gain: AtomicU32::new(1.0f32.to_bits()),
+        }
+    }
 }
 
 impl Shared {
@@ -65,6 +84,13 @@ impl Shared {
         self.voices.store(s.voices, Ordering::Relaxed);
         self.audible.store(s.audible, Ordering::Relaxed);
         self.frames.store(s.frames, Ordering::Relaxed);
+        let bus = mixer.buses();
+        self.sound_gain
+            .store(bus.gain(Bus::Sound).to_bits(), Ordering::Relaxed);
+        self.music_gain
+            .store(bus.gain(Bus::Music).to_bits(), Ordering::Relaxed);
+        self.radio_gain
+            .store(bus.gain(Bus::Radio).to_bits(), Ordering::Relaxed);
     }
 }
 
@@ -204,6 +230,64 @@ impl AudioEngine {
         self.send(Command::SetMasterGain(gain));
     }
 
+    /// The sound bus gain now (`soundVolume`).
+    pub fn sound_gain(&self) -> f32 {
+        f32::from_bits(self.shared.sound_gain.load(Ordering::Relaxed))
+    }
+
+    /// Sets the sound bus gain at once (`soundVolume`).
+    pub fn set_sound_gain(&self, gain: f32) {
+        self.send(Command::SetBusGain(Bus::Sound, gain));
+    }
+
+    /// Fades the sound bus to `gain` over `ticks` engine ticks (`time fadeSound volume`; the
+    /// SQF time is seconds, converted with [`crate::seconds_to_ticks`]).
+    pub fn fade_sound(&self, gain: f32, ticks: f32) {
+        self.send(Command::FadeBus {
+            bus: Bus::Sound,
+            target: gain,
+            ticks,
+        });
+    }
+
+    /// The music bus gain now (`musicVolume`).
+    pub fn music_gain(&self) -> f32 {
+        f32::from_bits(self.shared.music_gain.load(Ordering::Relaxed))
+    }
+
+    /// Sets the music bus gain at once (`musicVolume`).
+    pub fn set_music_gain(&self, gain: f32) {
+        self.send(Command::SetBusGain(Bus::Music, gain));
+    }
+
+    /// Fades the music bus to `gain` over `ticks` engine ticks (`time fadeMusic volume`).
+    pub fn fade_music(&self, gain: f32, ticks: f32) {
+        self.send(Command::FadeBus {
+            bus: Bus::Music,
+            target: gain,
+            ticks,
+        });
+    }
+
+    /// The radio bus gain now (`radioVolume`).
+    pub fn radio_gain(&self) -> f32 {
+        f32::from_bits(self.shared.radio_gain.load(Ordering::Relaxed))
+    }
+
+    /// Sets the radio bus gain at once (`radioVolume`).
+    pub fn set_radio_gain(&self, gain: f32) {
+        self.send(Command::SetBusGain(Bus::Radio, gain));
+    }
+
+    /// Fades the radio bus to `gain` over `ticks` engine ticks (`time fadeRadio volume`).
+    pub fn fade_radio(&self, gain: f32, ticks: f32) {
+        self.send(Command::FadeBus {
+            bus: Bus::Radio,
+            target: gain,
+            ticks,
+        });
+    }
+
     /// Stops every voice.
     pub fn stop_all(&self) {
         self.send(Command::StopAll);
@@ -339,6 +423,48 @@ fn write_interleaved<T: cpal::Sample + cpal::FromSample<f32>>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The scripted bus gains are published by the audio thread, so the game thread can answer
+    /// `soundVolume` while the mixer interpolates a fade.
+    #[test]
+    fn the_engine_publishes_the_scripted_bus_gains() {
+        let engine = AudioEngine::start(EngineConfig {
+            backend: Backend::Null,
+            ..EngineConfig::default()
+        })
+        .expect("the null backend always starts");
+        assert_eq!(engine.sound_gain(), 1.0);
+        assert_eq!(engine.music_gain(), 1.0);
+        engine.set_sound_gain(0.25);
+        // The audio thread publishes after each of its 10 ms blocks.
+        let set = wait_for(&engine, |gain| (gain - 0.25).abs() < 1e-6);
+        assert_eq!(set, Some(0.25), "the sound bus gain was never published");
+        // A 15-tick fade (1 s at 15 ticks per second) from 0.25 towards silence: the published
+        // gain moves below 0.25 instead of jumping to the target or staying put.
+        engine.fade_sound(0.0, 15.0);
+        let faded = wait_for(&engine, |gain| gain < 0.25);
+        assert!(
+            faded.is_some_and(|gain| (0.0..0.25).contains(&gain)),
+            "{:?}",
+            engine.sound_gain()
+        );
+    }
+
+    /// Waits up to five seconds for the audio thread to publish a bus gain `want` accepts,
+    /// returning the first gain it accepted.
+    fn wait_for(engine: &AudioEngine, want: impl Fn(f32) -> bool) -> Option<f32> {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            let gain = engine.sound_gain();
+            if want(gain) {
+                return Some(gain);
+            }
+            if Instant::now() >= deadline {
+                return None;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
 
     #[test]
     fn stereo_is_spread_over_device_channels() {
