@@ -217,6 +217,33 @@ impl<H: Host> Registry<H> {
         }
     }
 
+    /// The argument types of the implemented overloads of `name` in `form`, in registration
+    /// order (`left` empty for unary, both empty for nular). Empty when `name` has no
+    /// implementation of that form. Return types are not tracked (`ret` is empty).
+    pub fn overloads(&self, name: &str, form: Form) -> Vec<Signature> {
+        let Some(id) = self.table.lookup(name) else {
+            return Vec::new();
+        };
+        let i = id.0 as usize;
+        match form {
+            Form::Nular => self
+                .nular
+                .get(i)
+                .and_then(Option::as_ref)
+                .map(|_| Signature::nular(TypeSet::EMPTY))
+                .into_iter()
+                .collect(),
+            Form::Unary => self.unary[i]
+                .iter()
+                .map(|o| Signature::unary(o.right, TypeSet::EMPTY))
+                .collect(),
+            Form::Binary => self.binary[i]
+                .iter()
+                .map(|o| Signature::binary(o.left, o.right, TypeSet::EMPTY))
+                .collect(),
+        }
+    }
+
     /// Implementation coverage: `(implemented, declared)` overload counts
     /// per form, where an implemented name counts all its table overloads.
     pub fn coverage(&self) -> Coverage {

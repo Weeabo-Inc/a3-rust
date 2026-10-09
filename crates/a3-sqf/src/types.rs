@@ -256,6 +256,16 @@ impl TypeSet {
         self.0 == 0
     }
 
+    /// Whether the two sets share a type.
+    pub const fn intersects(self, other: TypeSet) -> bool {
+        self.0 & other.0 != 0
+    }
+
+    /// Whether every type of `other` is a member.
+    pub const fn covers(self, other: TypeSet) -> bool {
+        self.0 & other.0 == other.0
+    }
+
     /// The member types in declaration order.
     pub fn iter(self) -> impl Iterator<Item = Type> {
         Type::ALL.into_iter().filter(move |t| self.contains(*t))

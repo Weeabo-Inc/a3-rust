@@ -188,3 +188,26 @@ fn coverage_is_reported() {
         }
     }
 }
+
+#[test]
+fn overloads_list_the_implemented_argument_types() {
+    use a3_sqf::{Type, TypeSet, Value};
+    let mut reg = Registry::<NullHost>::new(CommandTable::new());
+    reg.unary("probe", TypeSet::NUMBER, TypeSet::ANYTHING, |_, v| Ok(v));
+    reg.unary(
+        "probe",
+        TypeSet::of(Type::String),
+        TypeSet::ANYTHING,
+        |_, v| Ok(v),
+    );
+    reg.nular("probe", TypeSet::ANYTHING, |_| Ok(Value::Nothing));
+    let unary = reg.overloads("PROBE", Form::Unary);
+    assert_eq!(unary.len(), 2);
+    assert!(unary[0].right.covers(TypeSet::of(Type::NaN)));
+    let string_or_array = TypeSet::parse("STRING|ARRAY").unwrap();
+    assert!(unary[1].right.intersects(string_or_array));
+    assert!(!unary[1].right.covers(string_or_array));
+    assert_eq!(reg.overloads("probe", Form::Nular).len(), 1);
+    assert!(reg.overloads("probe", Form::Binary).is_empty());
+    assert!(reg.overloads("nothing_here", Form::Unary).is_empty());
+}

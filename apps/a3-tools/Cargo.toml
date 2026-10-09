@@ -26,6 +26,7 @@ a3-wrp.workspace = true
 a3-landscape.workspace = true
 a3-mission.workspace = true
 a3-world.workspace = true
+a3-ui.workspace = true
 png.workspace = true
 tiff.workspace = true
 a3-signing.workspace = true

@@ -1,6 +1,7 @@
 //! Command-line tools for Arma 3 data formats (PBO, config, PAA, ...).
 
 mod config_cmd;
+mod coverage_cmd;
 mod font_cmd;
 mod input;
 mod mission_cmd;
