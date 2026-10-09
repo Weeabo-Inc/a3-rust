@@ -201,6 +201,16 @@ Open: the collision world's Roadway surfaces (a bridge deck, a house floor) are 
 "ground" (`CONTEXT.md` §Ground); `spawn.rs` uses the terrain, since a Mission is spawned before
 its land cells are streamed.
 
+The other candidate causes issue #349 listed are ruled out by the same probes: the engine's
+`getPosASL` keeps the file's `x`/`z` exactly, so nothing is swapped on the Y/Z axis (ADR 0003),
+and `Terrain::surface_height` matched the engine's `getTerrainHeightASL` to 0.000 m at every spot
+probed, so our WRP sampling is not at fault. The entities counted are Mission entities, not the
+WRP's static objects, so a building placed by its model pivot is not involved either. How far the
+fix moves things: of eight 2D Missions checked with this rule, `boot_m02`, `boot_m03`,
+`b_m02_1`, `mp_coop_m04` and `showcase_helicopters` move 0–1 % of their entities (their stored
+heights already are the ground), while the two with the sweep's below-terrain counts move most of
+them — `c_in1.stratis` 136 of 149, `b_m02_2.stratis` 233 of 305.
+
 ## What the engine refuses to create
 
 _(Verified against the Oracle.)_ Both kinds of unit the sweep reports as unspawned are refused by
