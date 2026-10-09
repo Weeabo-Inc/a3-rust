@@ -30,6 +30,10 @@ Commands:
 
 Everything the server touches lives under `.work/oracle/server/` (config, profile, RPT). The test
 mission is copied to `<A3_ROOT>/MPMissions/a3rust_oracle.<world>/` for the run and removed after.
+
+Both sides run each probe in the same environment: the `@world` of its probe file, or
+`DEFAULT_WORLD` (`VR`) for a world-independent probe. The server always has a mission on a world, so
+ours always runs in a world too — never in the bare main-menu VM, which knows no world commands.
 """
 
 from __future__ import annotations
@@ -681,7 +685,7 @@ def _read_rpt(profiles: Path) -> str:
     return rpts[-1].read_text(encoding="utf-8", errors="replace")
 
 
-def run_ours(args, probes: list[Probe], world: str | None) -> tuple[dict[str, Result], dict]:
+def run_ours(args, probes: list[Probe], world: str) -> tuple[dict[str, Result], dict]:
     root = game_dir(args)
     base = work_dir(args) / "oracle" / "ours"
     base.mkdir(parents=True, exist_ok=True)
@@ -689,10 +693,8 @@ def run_ours(args, probes: list[Probe], world: str | None) -> tuple[dict[str, Re
     script.write_text(driver_script(probes), encoding="utf-8")
     tool = args.a3_tools or _default_a3_tools()
     cmd = [str(tool), "sqf", "--game-dir", str(root), "exec", str(script), "--init-functions",
-           "--errors-in-log", "--frames", str(max(5000, len(probes) * 20))]
-    if world:
-        cmd += ["--world", world]
-    print(f"ours: {len(probes)} probes" + (f" on {world}" if world else ""), file=sys.stderr)
+           "--errors-in-log", "--frames", str(max(5000, len(probes) * 20)), "--world", world]
+    print(f"ours: {len(probes)} probes on {world}", file=sys.stderr)
     started = time.monotonic()
     try:
         proc = subprocess.run(cmd, capture_output=True, timeout=args.timeout, stdin=subprocess.DEVNULL)
@@ -739,10 +741,15 @@ def select(args) -> list[Probe]:
     return probes
 
 
-def by_world(probes: list[Probe]) -> dict[str | None, list[Probe]]:
-    groups: dict[str | None, list[Probe]] = {}
+def by_world(probes: list[Probe], default: str = DEFAULT_WORLD) -> dict[str, list[Probe]]:
+    """Groups probes by the world they run in, world-independent ones under `default`.
+
+    Both engines always run in a world: the server needs a mission, and ours needs `sqf exec
+    --world`, so a probe without `@world` shares `default`'s run on either side.
+    """
+    groups: dict[str, list[Probe]] = {}
     for p in probes:
-        groups.setdefault(p.world, []).append(p)
+        groups.setdefault(p.world or default, []).append(p)
     return groups
 
 
@@ -770,10 +777,7 @@ def cmd_oracle(args) -> None:
     results: dict[str, Result] = {}
     metas = {}
     # The server always runs a mission on some world; world-independent probes share VR's run.
-    groups: dict[str, list[Probe]] = {}
-    for p in select(args):
-        groups.setdefault(p.world or DEFAULT_WORLD, []).append(p)
-    for world, probes in groups.items():
+    for world, probes in by_world(select(args)).items():
         r, m = run_oracle(args, probes, world)
         results.update(r)
         metas[world] = m
@@ -784,10 +788,11 @@ def cmd_oracle(args) -> None:
 def cmd_ours(args) -> None:
     results: dict[str, Result] = {}
     metas = {}
+    # Same grouping as the oracle, so both sides run a probe in the same environment.
     for world, probes in by_world(select(args)).items():
         r, m = run_ours(args, probes, world)
         results.update(r)
-        metas[world or "-"] = m
+        metas[world] = m
         print(f"ours: {len(r)} results, done={m['done']} in {m['seconds']} s", file=sys.stderr)
     save(args, "ours", results, {"runs": metas, "date": _now()})
 
