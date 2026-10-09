@@ -240,7 +240,7 @@ scene errors that are now unmasked — the same ones #337 names:
 Ranked by visible effect. Each discrepancy has a `fidelity` issue that gives its metric, the RE
 reference and a hypothesis.
 
-1. **Ambient is sky-coloured** (#290, fixed). Shaded walls, rocks and tree trunks are blue, and terrain is
+1. **Ambient is sky-coloured** (#290, fixed in `0a8cdff`). Shaded walls, rocks and tree trunks are blue, and terrain is
    lavender. Ours lights ambient with the sky colours, not the lighting table's
    `ambient`/`ambientMid`/`groundReflection` (`render-materials.md` §3.1). Roads get almost no
    ambient and go black at low sun.
@@ -248,7 +248,7 @@ reference and a hypothesis.
    dark blue-grey water with wave normals, sky reflection and transparent shallows.
 3. **No ground clutter** (#292). Arma shows dense grass and weeds near the camera. Ours shows bare
    terrain.
-4. **Night exposure** (#293, fixed). Ours was 5.2× too dark under what the shot called a full moon.
+4. **Night exposure** (#293, fixed in `3719101`). Ours was 5.2× too dark under what the shot called a full moon.
    The engine's own sun and moon model puts a 70 %-lit moon 43° up at that date, so the ground is
    moonlit; we were using a real ephemeris, which has a new moon below the horizon. Luminance
    ratio 0.192 → 0.807. What is left is the blue cast and the missing lamps.
@@ -257,7 +257,7 @@ reference and a hypothesis.
    scene, tracked in #337.
 5. **No point lights** (#294, split). Street lamps light Kavala at dusk and at night in Arma. Ours
    has no lamps; the light list and the lamp discovery are a separate lighting path.
-6. **Sky colour** (#295, the gradient fixed). Our zenith was paler, more cyan and brighter.
+6. **Sky colour** (#295, the gradient fixed in `0a8cdff`). Our zenith was paler, more cyan and brighter.
    The sky now carries the shipped dome's own elevation ramp (`render-atmosphere.md` §4), which
    took `altis_building_close` 0.108 → 0.093 and `altis_vegetation_close` 0.139 → 0.120. What is
    left is the sky's overall level: the tint the engine multiplies the ramp by (`PSHorizon`'s
