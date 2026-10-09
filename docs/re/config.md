@@ -53,6 +53,67 @@ Observations:
 - Floats print with Rust's shortest round-trip form and keep a `.0` (`2.0`), so they re-parse as
   floats.
 
+## A config that cannot be loaded: a missing `#include` (_confirmed_, #348)
+
+`a3\missions_f_oldman\missions\repro_objectsimulationloadgame.tanoa\description.ext` includes two
+files that are nowhere in the install (`...\Systems\UI\Sleeping\RscTestControlTypes.inc` and
+`...\RscRestUI.inc`; that folder holds `CreateRestUI.sqf`, `RestTimeControl.sqf` and
+`RscDisplayOMRest.sqf`). Probe: `tools/oracle/probes/missing_include.py`, three one-mission servers
+on `arma3server_x64.exe` 2.22.0.154103 (`control`, `include`, `syntax`).
+
+- A missing include is a preprocessor error, engine **error 1**, and preprocessing stops at the
+  first one: the second missing include of the same file is never reported.
+- The **whole config fails**: nothing of it is installed, not even the entries before the failing
+  directive. `missionConfigFile >> "Header"` is not a class, and `loadConfig` returns `configNull`
+  for the shipped `description.ext`.
+- The **mission still loads and starts**. It runs with an empty mission config.
+- A config that fails to *parse* behaves the same (the `syntax` case), so a config failure of
+  either kind is survivable at the mission level.
+
+RPT, `include` case (timestamps cut; `12604` is that run's pid):
+
+```text
+Warning Message: Include file a3ro_probe\does_not_exist.inc not found.
+ ➥ Context: Preprocessing file: mpmissions\a3ro_probe_include_12604.VR\description.ext at 10
+Cannot include file \a3ro_probe\does_not_exist.inc
+Warning Message: Preprocessor failed on file 'mpmissions\a3ro_probe_include_12604.VR\description.ext' - error 1 (source '\a3ro_probe\does_not_exist.inc', line 0).
+Mission a3ro_probe_include_12604.VR: Missing 'description.ext::Header'
+Starting mission:
+ Mission file: a3ro_probe_include_12604
+ Mission world: VR
+ Mission directory: mpmissions\a3ro_probe_include_12604.VR\
+```
+
+The mission's `initServer.sqf` reads `missionConfigFile` after it has started:
+
+```text
+"A3RO header=false before=0 after=0"       nothing of the failed config is installed
+"A3RO shipped_null=true shipped_class=false shipped_idd=0"
+```
+
+The `control` case is the same `description.ext` without the `#include`, and the same driver:
+
+```text
+"A3RO header=true before=11 after=22"      the driver does read missionConfigFile
+```
+
+So the difference is the config, not the reader. `loadConfig` of the shipped file, in every case:
+
+```text
+Warning Message: Preprocessor failed on file 'a3\Missions_F_Oldman\Missions\REPRO_objectSimulationLoadGame.Tanoa\description.ext' - error 1 (source '\a3\Missions_F_Oldman\Systems\UI\Sleeping\RscTestControlTypes.inc', line 0).
+```
+
+The `syntax` case (an unterminated class) logs
+`Warning Message: File mpmissions\...\description.ext, line 12: /A3ROBroken/: Missing '}'`, leaves
+the mission config empty the same way, and starts the mission.
+
+Implemented as: [`load_text_config`](../crates/a3-gamedata) fails, as it did — our
+`ErrorKind::Include` is the engine's error 1, and we too stop at the first one — while
+`load_mission` now logs the failure and loads the mission with an empty mission config instead of
+failing the load. Our message text differs from the engine's (`cannot include \a3\...: file ... not
+found` for `Cannot include file \a3\...` plus `Preprocessor failed on file '<path>' - error 1`);
+log-text parity is not attempted here.
+
 ## Merging addon configs (configFile)
 
 Each `config.bin` in a PBO, including those in subfolders, is one addon config (1432 in 2.22).
