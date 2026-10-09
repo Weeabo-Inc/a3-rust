@@ -1,4 +1,4 @@
-//! Engine-wide state that belongs to no object: the client's network state and the named cut
+﻿//! Engine-wide state that belongs to no object: the client's network state and the named cut
 //! layers (`cutRsc`, `cutText`, `cutObj`, `cutFadeOut`).
 
 use super::{ARR, BOOL, NOTHING, NUM, OBJ, STR, WorldHost, null_object};
@@ -16,7 +16,6 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     r.unary("onTeamSwitch", TypeSet::ANYTHING, NOTHING, |_, _| {
         Ok(Value::Nothing)
     });
-    r.unary("enableTeamSwitch", BOOL, NOTHING, |_, _| Ok(Value::Nothing));
 
     // `fadeSound time, volume`: the engine's sound-fade bus, which no mixer bus is wired to yet
     // (`stub`).
@@ -105,7 +104,7 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
 
     // `layer cutFadeOut duration` / `"name" cutFadeOut duration`: hide a cut layer. We render no
     // cut layers yet, so hiding one does nothing and the named form still has to hand back a
-    // layer id — `0` is the engine's "no layer" id. Recorded as `stub`.
+    // layer id â€” `0` is the engine's "no layer" id. Recorded as `stub`.
     r.binary("cutFadeOut", NUM, NUM, NOTHING, |_, _, _| {
         Ok(Value::Nothing)
     });
@@ -120,7 +119,7 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     r.nular("getClientState", STR, |_ctx| Ok(Value::string("NONE")));
 
     // `allCutLayers`: every layer named by a cut command. We have no cut rendering yet, so the
-    // list is empty — the engine's answer when none has been used.
+    // list is empty â€” the engine's answer when none has been used.
     r.nular("allCutLayers", ARR, |_ctx| {
         Ok(Value::array(std::iter::empty()))
     });
