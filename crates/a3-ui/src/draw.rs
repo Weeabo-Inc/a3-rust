@@ -282,6 +282,10 @@ pub fn build_draw_list(ui: &Ui, fonts: &mut Fonts) -> DrawList {
     let mut list = DrawList::default();
     let m = ui.metrics;
     for &display in ui.stack() {
+        let display_alpha = ui.display(display).map_or(1.0, |d| d.alpha.clamp(0.0, 1.0));
+        if display_alpha <= 0.0 {
+            continue;
+        }
         for id in ui.controls_in_order(display) {
             if !ui.is_visible(id) {
                 continue;
@@ -289,7 +293,7 @@ pub fn build_draw_list(ui: &Ui, fonts: &mut Fonts) -> DrawList {
             let (Some(c), Some(pos)) = (ui.control(id), ui.absolute_position(id)) else {
                 continue;
             };
-            let alpha = ui.opacity(id);
+            let alpha = ui.opacity(id) * display_alpha;
             if alpha <= 0.0 {
                 continue;
             }
@@ -382,6 +386,15 @@ fn draw_control(
             let span = (c.range[1] - c.range[0]).max(f32::EPSILON);
             let t = ((c.value - c.range[0]) / span).clamp(0.0, 1.0);
             list.solid([rect[0], rect[1], rect[2] * t, rect[3]], text_color, clip);
+            let frame = with_alpha(c.color_border, alpha);
+            for r in [
+                [rect[0], rect[1], rect[2], 1.0],
+                [rect[0], rect[1] + rect[3] - 1.0, rect[2], 1.0],
+                [rect[0], rect[1], 1.0, rect[3]],
+                [rect[0] + rect[2] - 1.0, rect[1], 1.0, rect[3]],
+            ] {
+                list.solid(r, frame, clip);
+            }
         }
         ControlType::ListBox
         | ControlType::Combo

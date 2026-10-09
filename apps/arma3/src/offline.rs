@@ -97,8 +97,11 @@ pub fn screenshot(
         scene.update(&input, false, FRAME.as_secs_f64());
         draws.clear();
         scene.draw(&mut draws);
-        scene.overlay(&mut draws, &fps, &adapter, false, "BUILT-IN");
+        if !engine.hide_overlay {
+            scene.overlay(&mut draws, &fps, &adapter, false, "BUILT-IN");
+        }
         scene.prepare_render(&mut renderer, FRAME.as_secs_f32());
+        scene.update_hud((width, height), FRAME.as_secs_f64());
         let image = renderer.render_to_image(
             &gpu,
             width,

@@ -701,6 +701,18 @@ One frame of UI drawing: the Controls' quads in draw order, each a screen-space 
 colour, a texture path and an optional clip, plus the texture paths they name.
 _Avoid_: render list, command buffer
 
+**In-game UI**:
+The layer of Displays the engine draws over the 3D view during play — unit info, stance
+indicator, hints, action menu, cursor — and keeps up to date from the player's state each
+frame; the engine's `InGameUI`.
+_Avoid_: overlay (that is the client's debug text), HUD (fine in prose, not as a type name)
+
+**Unit info display**:
+An `RscInGameUI` Display named by the player's vehicle (`unitInfoType`; on foot
+`RscUnitInfoSoldier`) whose Controls the engine fills by IDC: weapon name, ammo, magazines,
+fire mode, throwables, speed, fuel.
+_Avoid_: weapon panel, ammo counter
+
 **Curator (Zeus)**:
 The real-time game-master mode in which a player places and commands entities during a running
 mission. The engine name is Curator; Zeus is the product name.

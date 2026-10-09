@@ -6,6 +6,7 @@
 
 mod engine;
 mod environment;
+mod hud;
 mod keys;
 mod man;
 mod models;
@@ -109,6 +110,9 @@ struct Cli {
     /// Fog view distance in metres: the linear fog ends there.
     #[arg(long, value_name = "METRES", requires = "world")]
     fog_distance: Option<f32>,
+    /// Leave out the debug text overlay, for frames to compare with the original game.
+    #[arg(long)]
+    no_overlay: bool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -147,6 +151,7 @@ fn main() -> anyhow::Result<()> {
             fog: cli.fog,
             fog_distance: cli.fog_distance,
         },
+        hide_overlay: cli.no_overlay,
     };
     log::info!(
         "a3-rust {} (targets Arma 3 {}), game dir: {:?}",
@@ -216,6 +221,12 @@ mod tests {
         .unwrap();
         assert!(cli.play);
         assert_eq!(cli.camera_mode, crate::player::CameraMode::ThirdPerson);
+        assert!(!cli.no_overlay);
+        assert!(
+            Cli::try_parse_from(["arma3", "--no-overlay"])
+                .unwrap()
+                .no_overlay
+        );
         assert!(Cli::try_parse_from(["arma3", "--world", "altis"]).is_ok());
         assert_eq!(
             Cli::try_parse_from(["arma3", "--world", "altis", "--play"])

@@ -29,6 +29,9 @@ pub struct EngineContext {
     pub model: Option<ModelSpec>,
     /// Date, time, weather and fog overrides over the World.
     pub environment: crate::environment::EnvironmentSpec,
+    /// Leave out the debug text overlay (FPS, position, keys), for frames to compare with the
+    /// original game.
+    pub hide_overlay: bool,
 }
 
 impl EngineContext {
