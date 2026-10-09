@@ -64,8 +64,8 @@ position, already completed — that is never stored:
 
 ### 2.2 The binary layout (high)
 
-From the `addWaypoint` handler (`0x1408f61b0`, VA `0x1408f61b0`) and the `deleteWaypoint`
-handler (`0x1408f6e80`):
+From the `addWaypoint` handler (RVA `0x8f61b0`, VA `0x1408f61b0`) and the `deleteWaypoint`
+handler (RVA `0x8f6e80`, VA `0x1408f6e80`):
 
 | offset | contents |
 |---|---|
