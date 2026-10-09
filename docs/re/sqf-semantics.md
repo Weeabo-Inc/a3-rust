@@ -323,6 +323,42 @@ this. Unverified in the binary.
   every tag dropped (`<br/>` included: `str lineBreak` is `""`). High confidence.
 
 
+## Public variables
+
+Confirmed on the original server (`tools/oracle/probes/15_publicvariable.probes`,
+30 probes) and in the handlers. High confidence.
+
+- The four handlers are thin wrappers over the network manager
+  (`FUN_140bc1ed0()`): `publicVariable` `FUN_140547370` and
+  `publicVariableServer` `FUN_1405474b0` hoist the name and call the
+  `+0x870` vtable slot with target 0 or 2; `publicVariableClient`
+  `FUN_1405473f0` rounds the id (`ROUND`), looks the client up through
+  `+0x380` and calls the same slot with the client's id **only when the
+  client exists**; `addPublicVariableEventHandler` `FUN_1401809f0` calls
+  slot `+0xd10` with the name and the code (or `[target, code]`) argument.
+  All four return `Nothing` (`GameValue` with a null data pointer).
+- A `nil` argument is not passed to the handler at all: `publicVariable nil`
+  and `0 publicVariableClient nil` leave the command unrun, as any command
+  with a nil argument does.
+- Publishing an **undefined** variable is not an error
+  (`publicVariable "never_set"` is a no-op): the manager resolves the name,
+  the command does not. An empty name is the error `Reserved variable in
+  expression` (BAD_VAR, logged, the script goes on).
+- An unknown client id is a silent no-op: `0 publicVariableClient "x"` and
+  `100000 publicVariableClient "x"` are both fine.
+- A wrong argument type is the usual VM type check, which ends the script:
+  `publicVariable 1` → `publicvariable: Type Number, expected String`,
+  `0 publicVariableClient 1` → `publicvariableclient: Type Number, expected
+  String`, `"name" addPublicVariableEventHandler 5` →
+  `addpublicvariableeventhandler: Type Number, expected Array,Code`.
+- `"name" addPublicVariableEventHandler [{1}]` logs
+  `Type code, expected Object, Group, Namespace` and goes on: the array form
+  is `[target, code]` and the target is checked first.
+- The handler **does not run on the machine that publishes**; it runs where
+  the broadcast arrives. Headless (no clients connected) a publish has no
+  observable effect at all. The handler's `_this` is
+  `[varName, value, target]`.
+
 ## Scheduler
 
 Wiki "Scheduler": scheduled scripts get 3 ms per frame in total (50 ms on a loading screen).

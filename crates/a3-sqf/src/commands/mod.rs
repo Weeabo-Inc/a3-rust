@@ -17,6 +17,7 @@ mod logic;
 mod math;
 mod misc;
 mod object;
+mod public;
 mod regex;
 mod string;
 mod text;
@@ -48,6 +49,7 @@ pub fn register_core<H: Host>(r: &mut Registry<H>) {
     text::register(r);
     json::register(r);
     object::register(r);
+    public::register(r);
     env::register(r);
     fsm::register(r);
 }

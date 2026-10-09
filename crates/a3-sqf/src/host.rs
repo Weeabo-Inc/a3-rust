@@ -17,6 +17,20 @@
 use crate::error::ScriptError;
 use crate::value::Handle;
 
+/// Where `publicVariable` and its family send a variable (`publicVariable`
+/// 0x547370, `publicVariableServer` 0x5474b0, `publicVariableClient`
+/// 0x5473f0: all three call the network manager's `PublicVariable(name,
+/// target)` vtable slot `+0x870`, with target 0, 2 or a client id).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum PublicTarget {
+    /// Every machine, the server and all clients (`publicVariable`).
+    All,
+    /// The server only (`publicVariableServer`).
+    Server,
+    /// One client, by the id `owner` returns (`publicVariableClient`).
+    Client(i32),
+}
+
 /// Engine services available to script commands.
 pub trait Host: 'static {
     /// Mission time in seconds (`time`). Drives `sleep`.
@@ -124,6 +138,24 @@ pub trait Host: 'static {
     /// only id 0 as null; a world host also reports deleted objects.
     fn is_null(&self, handle: Handle) -> bool {
         handle.is_null()
+    }
+
+    /// `publicVariable`, `publicVariableServer` and `publicVariableClient`:
+    /// hand the current value of the `missionNamespace` variable to the
+    /// network. The engine calls its network manager here
+    /// (`FUN_140547370`, `FUN_1405474b0`, `FUN_1405473f0` all end in the
+    /// `+0x870` vtable slot with the name and a target). There is no
+    /// transport yet (#131), so the default records nothing and sends
+    /// nothing: headless the original has no client to send to either, and
+    /// neither raises an error.
+    ///
+    /// The value is *not* looked up or validated here: the original's
+    /// manager resolves the name itself, which is why publishing an
+    /// undefined variable is not an error (server oracle,
+    /// `tools/oracle/probes/15_publicvariable.probes`). An empty name is
+    /// rejected by the command before this is called.
+    fn publish_variable(&mut self, name: &str, target: PublicTarget) {
+        let _ = (name, target);
     }
 }
 

@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use a3_config::{ConfigTree, parse_text};
-use a3_sqf::{Registry, Value, Vm};
+use a3_sqf::{PublicTarget, Registry, Value, Vm};
 use a3_world::script::{ScriptWorld, register_world_commands};
 use a3_world::{ClientId, EntityId, NetworkId, TypeBank, World};
 use a3_wrp::{TerrainBuilder, Transform};
@@ -502,4 +502,28 @@ fn move_commands_of_a_remote_man_do_nothing() {
     assert_eq!(state.current(), None);
     assert_eq!(state.queue().count(), 0);
     assert_eq!(text(&mut client, "animationState r"), "");
+}
+
+#[test]
+fn script_world_records_what_it_publishes() {
+    // `publicVariable` hands the name to the host; there is no transport yet
+    // (#131), so the record is the whole effect of a publish.
+    let mut client = vm(ClientId::SERVER);
+    eval(
+        &mut client,
+        r#"
+        myVar = 1;
+        publicVariable "myVar";
+        publicVariableServer "myVar";
+        3 publicVariableClient "myVar";
+        "#,
+    );
+    assert_eq!(
+        client.host.published_variables(),
+        &[
+            ("myVar".to_string(), PublicTarget::All),
+            ("myVar".to_string(), PublicTarget::Server),
+            ("myVar".to_string(), PublicTarget::Client(3)),
+        ]
+    );
 }
