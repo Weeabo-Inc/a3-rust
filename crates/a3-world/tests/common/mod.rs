@@ -171,6 +171,10 @@ pub fn at(x: f32, y: f32, z: f32) -> Transform {
 /// (`docs/re/p3d.md`).
 const ROADWAY: f32 = 3e15;
 
+/// The reserved LOD resolution of a ViewGeometry LOD: what blocks line of sight
+/// ([`a3_physics::CollisionWorld::visibility`]).
+const VIEW_GEOMETRY: f32 = 6e15;
+
 /// A Model of one LOD, as a synthetic P3D.
 pub fn model(lods: Vec<Lod>) -> Model {
     Model {
@@ -204,6 +208,25 @@ pub fn roadway_lod(min: [f32; 2], max: [f32; 2], y: f32) -> Lod {
             texture: Some(0),
             ..Default::default()
         }],
+        ..Default::default()
+    }
+}
+
+/// The ViewGeometry LOD of a wall: one vertical quad `half` metres either side of the model's
+/// x axis, at model depth `z`, `height` metres tall — a hut wall, a fence, a container.
+pub fn view_geometry_lod(half: f32, z: f32, height: f32) -> Lod {
+    Lod {
+        resolution: LodResolution(VIEW_GEOMETRY),
+        vertices: Vertices {
+            positions: vec![
+                Vec3::new(-half, 0.0, z),
+                Vec3::new(half, 0.0, z),
+                Vec3::new(half, height, z),
+                Vec3::new(-half, height, z),
+            ],
+            ..Default::default()
+        },
+        faces: vec![Face::quad(0, 1, 2, 3)],
         ..Default::default()
     }
 }
