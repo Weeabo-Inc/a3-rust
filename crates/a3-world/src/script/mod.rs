@@ -12,12 +12,15 @@
 
 mod ai;
 mod animation;
+mod cargo_ops;
 mod create;
 mod groups;
 mod handlers;
 mod identity;
 mod inventory;
 mod markers;
+mod object_animation;
+mod object_misc;
 mod object_state;
 mod positions;
 mod query;
@@ -59,6 +62,9 @@ pub fn register_world_commands<H: WorldHost>(r: &mut Registry<H>) {
     identity::register(r);
     inventory::register(r);
     object_state::register(r);
+    object_misc::register(r);
+    object_animation::register(r);
+    cargo_ops::register(r);
     state::register(r);
     transform::register(r);
     positions::register(r);

@@ -65,6 +65,10 @@ pub struct ScriptState {
     camera_on: Option<EntityId>,
     /// What scripts set on an Entity (`object_state.rs`), one entry per Entity changed.
     object_states: HashMap<EntityId, crate::object_state::ObjectState>,
+    /// `fadeMusic`'s target volume; `None` is 1.
+    music_volume: Option<f32>,
+    /// `enableTeamSwitch`.
+    team_switch: bool,
 }
 
 impl std::fmt::Debug for ScriptState {
@@ -201,6 +205,25 @@ impl World {
     /// The same, created on first change.
     pub fn object_state_mut(&mut self, id: EntityId) -> &mut crate::object_state::ObjectState {
         self.script.object_states.entry(id).or_default()
+    }
+
+    /// `fadeMusic`'s target volume, 1 by default. The mixer has no music bus yet, so only the
+    /// value is kept.
+    pub fn music_volume(&self) -> f32 {
+        self.script.music_volume.unwrap_or(1.0)
+    }
+
+    pub fn set_music_volume(&mut self, volume: f32) {
+        self.script.music_volume = Some(volume.clamp(0.0, 1.0));
+    }
+
+    /// `enableTeamSwitch`. No team-switch UI exists yet, so only the flag is kept.
+    pub fn team_switch(&self) -> bool {
+        self.script.team_switch
+    }
+
+    pub fn set_team_switch(&mut self, enabled: bool) {
+        self.script.team_switch = enabled;
     }
 
     pub fn set_dynamic_simulation(&mut self, id: EntityId, enabled: bool) {

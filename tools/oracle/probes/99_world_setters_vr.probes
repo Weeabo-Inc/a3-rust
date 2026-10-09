@@ -1,0 +1,19 @@
+// The world-command setters of #354: direction, setOvercast, the simple-object pair, the object
+// animation phases and the contract-only stubs. Crew seats are not probed: nothing in SQF reads
+// them back yet (`vehicle`, `driver`, `crew` are a later batch), so a probe could only show the
+// commands do not error.
+@world VR
+## wset.direction
+private _c = createVehicle ["B_MRAP_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; private _r = [direction _c, direction objNull]; _c setDir 90; _r pushBack direction _c; _c setDir 450; _r pushBack direction _c; deleteVehicle _c; _r
+## wset.overcast
+private _r = [0 setOvercast 0.7, 0 setOvercast 2]; _r pushBack 0; _r
+## wset.simple_object
+private _c = createVehicle ["B_MRAP_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; private _s = createSimpleObject ["Land_Barrel_empty", [200, 210, 0], false]; private _r = [isSimpleObject _c, isSimpleObject _s, isNull _s]; deleteVehicle _s; deleteVehicle _c; _r
+## wset.simple_object_shapes
+private _a = createSimpleObject ["Land_Barrel_empty", [200, 210, 0], false]; private _b = createSimpleObject ["Box_NATO_Ammo_F", [202, 210, 0], false]; private _d = createSimpleObject ["a3\structures_f\civ\market\crateswooden_f.p3d", [204, 210, 0], false]; private _r = [[isNull _a, isSimpleObject _a], [isNull _b, isSimpleObject _b], [isNull _d, isSimpleObject _d]]; deleteVehicle _a; deleteVehicle _b; deleteVehicle _d; _r
+## wset.simple_object_unknown
+private _r = [isNull (createSimpleObject ["NoSuchShape_F", [200, 210, 0], false]), isSimpleObject objNull]; _r
+## wset.animation
+private _c = createVehicle ["B_MRAP_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; private _r = [_c animationPhase "door_F", _c doorPhase "door_R", _c animationSourcePhase "gear"]; _c animate ["door_F", 0.5, 1]; _c animateDoor ["door_R", 0.75, 1]; _c animateSource ["gear", 0.25]; _r append [_c animationPhase "door_F", _c doorPhase "door_R", _c animationSourcePhase "gear"]; _c animate ["door_F", 2]; _r pushBack (_c animationPhase "door_F"); _r pushBack (_c animationPhase "NO_SUCH_SELECTION"); deleteVehicle _c; _r
+## wset.stubs
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; 2 fadeMusic 0.4; enableTeamSwitch true; _u enableStamina false; group _u enableAttack false; private _d = _u createDiaryRecord ["Diary", "Hello"]; private _r = [isNil "_d", typeName _d]; deleteVehicle _u; _r

@@ -124,6 +124,36 @@ pub struct ObjectState {
     pub materials: Vec<(usize, String)>,
     /// Cargo, created from the config on first use.
     pub cargo: Option<Cargo>,
+    /// `createSimpleObject`: a local object with no simulation and no network (the engine's simple
+    /// objects are a client-side render path; we keep an ordinary Entity that does not simulate).
+    pub simple: bool,
+    /// `enableStamina`: stored, nothing consumes it yet (there is no stamina model).
+    pub stamina: bool,
+    /// `enableAttack`: stored, nothing consumes it yet.
+    pub attack: bool,
+    /// `createDiaryRecord`: `[subject, text]` in the order added; no diary UI or handle table yet.
+    pub diary: Vec<(String, String)>,
+    /// `animate`: the phase of each selection animation, by name.
+    pub animations: Vec<(String, f32)>,
+    /// `animateSource`: the phase of each named animation source.
+    pub sources: Vec<(String, f32)>,
+    /// `animateDoor`: the phase of each door.
+    pub doors: Vec<(String, f32)>,
+    /// `action`: the action the object was told to play, when it is not a Man whose move state
+    /// machine plays it.
+    pub action: Option<String>,
+    /// `moveInDriver` / `moveInGunner`: the unit in the seat.
+    pub driver: Option<EntityId>,
+    pub gunner: Option<EntityId>,
+    /// `moveInCargo`: the unit in each cargo seat, by seat index.
+    pub cargo_seats: Vec<(i32, EntityId)>,
+    /// `assignAsCargo`: the seat a unit boards when he gets in.
+    pub assigned_cargo: Vec<(EntityId, i32)>,
+    /// `allowCrewInImmobile`: the whole crew, or (`_cargo`) the cargo seats only.
+    pub crew_in_immobile: bool,
+    pub crew_in_immobile_cargo: bool,
+    /// `setVehicleAmmo`: the ammo fraction, 0..1.
+    pub vehicle_ammo: Option<f32>,
 }
 
 impl ObjectState {
@@ -168,6 +198,23 @@ impl ObjectState {
         list.iter()
             .find(|(i, _)| *i == index)
             .map(|(_, v)| v.as_str())
+    }
+
+    /// `animate` (`Animation`), `animateSource` (`Source`) or `animateDoor` (`Door`): the phase of
+    /// a named animation, the last one set winning.
+    pub fn set_phase(list: &mut Vec<(String, f32)>, name: &str, phase: f32) {
+        match list.iter_mut().find(|(n, _)| n.eq_ignore_ascii_case(name)) {
+            Some(entry) => entry.1 = phase,
+            None => list.push((name.to_owned(), phase)),
+        }
+    }
+
+    /// The phase `animate`/`animateSource`/`animateDoor` set, 0 without one (`animationPhase`,
+    /// `animationSourcePhase`, `doorPhase`).
+    pub fn phase_at(list: &[(String, f32)], name: &str) -> f32 {
+        list.iter()
+            .find(|(n, _)| n.eq_ignore_ascii_case(name))
+            .map_or(0.0, |&(_, phase)| phase)
     }
 }
 
