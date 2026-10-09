@@ -63,6 +63,8 @@ pub struct ScriptState {
     dynamic_simulation_groups: HashSet<GroupId>,
     player: Option<EntityId>,
     camera_on: Option<EntityId>,
+    /// What scripts set on an Entity (`object_state.rs`), one entry per Entity changed.
+    object_states: HashMap<EntityId, crate::object_state::ObjectState>,
 }
 
 impl std::fmt::Debug for ScriptState {
@@ -83,6 +85,7 @@ impl ScriptState {
         self.identities.remove(&id);
         self.var_names.remove(&id);
         self.dynamic_simulation.remove(&id);
+        self.object_states.remove(&id);
         if let Some(links) = self.synced.remove(&id) {
             for other in links {
                 if let Some(list) = self.synced.get_mut(&other) {
@@ -186,6 +189,18 @@ impl World {
     /// Whether the dynamic simulation system manages the Entity (`enableDynamicSimulation`).
     pub fn dynamic_simulation(&self, id: EntityId) -> bool {
         self.script.dynamic_simulation.contains(&id)
+    }
+
+    /// What scripts have set on an Entity: captive, stance, AI switches, rank, skill, fuel and
+    /// supply cargo, locks, engine, texture overrides and cargo (`script/object_state.rs`).
+    /// `None` until a command changes one.
+    pub fn object_state(&self, id: EntityId) -> Option<&crate::object_state::ObjectState> {
+        self.script.object_states.get(&id)
+    }
+
+    /// The same, created on first change.
+    pub fn object_state_mut(&mut self, id: EntityId) -> &mut crate::object_state::ObjectState {
+        self.script.object_states.entry(id).or_default()
     }
 
     pub fn set_dynamic_simulation(&mut self, id: EntityId, enabled: bool) {

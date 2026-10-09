@@ -1,0 +1,55 @@
+// Unit and vehicle state set by scripts: captive, unit position, AI features, fleeing, fuel and
+// supply cargo, textures and materials, locks, engine, rank, skill; and vehicle cargo.
+@world VR
+## ost.captive
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = [captive _u, side _u]; _u setCaptive true; _r append [captive _u, side _u, side group _u, captiveNum _u]; _u setCaptive 5; _r append [captive _u, captiveNum _u]; _u setCaptive false; _r append [captive _u, side _u]; deleteVehicle _u; _r
+## ost.captive_vehicle
+private _c = createVehicle ["B_MRAP_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; _c setCaptive true; private _r = [captive _c, captive objNull]; deleteVehicle _c; _r
+## ost.unitpos
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = [unitPos _u]; {_u setUnitPos _x; _r pushBack unitPos _u} forEach ["UP", "down", "Middle", "AUTO", "bad"]; deleteVehicle _u; _r
+## ost.ai_features
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = [_u checkAIFeature "MOVE", _u checkAIFeature "PATH"]; _u disableAI "MOVE"; _u disableAI "path"; _u disableAI "ALL"; _r append [_u checkAIFeature "MOVE", _u checkAIFeature "PATH", _u checkAIFeature "TARGET"]; _u enableAI "ALL"; _r append [_u checkAIFeature "MOVE", _u checkAIFeature "TARGET"]; _u disableAI "NOSUCH"; _r pushBack (checkAIFeature "MOVE"); deleteVehicle _u; _r
+## ost.fleeing
+private _g = createGroup west; private _u = _g createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = [fleeing _u]; _u allowFleeing 0; _g allowFleeing 1; _r pushBack fleeing _u; deleteVehicle _u; _r
+## ost.fuel
+private _c = createVehicle ["B_MRAP_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; private _r = [fuel _c]; _c setFuel 0.3; _r pushBack fuel _c; _c setFuel 2; _r pushBack fuel _c; _c setFuel -1; _r pushBack fuel _c; _r append [fuel objNull, getFuelCargo _c, getAmmoCargo _c, getRepairCargo _c]; deleteVehicle _c; _r
+## ost.fuel_unit
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u setFuel 0.5; private _r = [fuel _u, getFuelCargo _u]; deleteVehicle _u; _r
+## ost.supply_cargo
+private _c = createVehicle ["B_Truck_01_fuel_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; private _r = [getFuelCargo _c, getAmmoCargo _c, getRepairCargo _c]; _c setFuelCargo 0.25; _c setAmmoCargo 0.5; _c setRepairCargo 2; _r append [getFuelCargo _c, getAmmoCargo _c, getRepairCargo _c]; deleteVehicle _c; _r
+## ost.textures
+private _c = createVehicle ["B_MRAP_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; private _r = [getObjectTextures _c]; _c setObjectTexture [0, "#(argb,8,8,3)color(1,0,0,1)"]; _c setObjectTextureGlobal [1, "a3\data_f\black_sum.paa"]; _r pushBack getObjectTextures _c; _c setObjectTexture [5, "x.paa"]; _r pushBack getObjectTextures _c; deleteVehicle _c; _r
+## ost.textures_selection
+private _c = createVehicle ["B_MRAP_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; _c setObjectTexture ["camo1", "x.paa"]; private _r = [getObjectTextures _c]; deleteVehicle _c; _r
+## ost.materials
+private _c = createVehicle ["B_MRAP_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; private _r = [getObjectMaterials _c]; _c setObjectMaterial [0, "a3\data_f\default.rvmat"]; _r pushBack getObjectMaterials _c; deleteVehicle _c; _r
+## ost.lock
+private _c = createVehicle ["B_MRAP_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; private _r = [locked _c]; _c lock true; _r pushBack locked _c; _c lock 3; _r pushBack locked _c; _c lock 0; _r pushBack locked _c; _c lock false; _r pushBack locked _c; _c setVehicleLock "LOCKEDPLAYER"; _r pushBack locked _c; _c setVehicleLock "unlocked"; _r pushBack locked _c; _c lock 7; _r pushBack locked _c; _r pushBack (locked objNull); deleteVehicle _c; _r
+## ost.lock_parts
+private _c = createVehicle ["B_MRAP_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; private _r = [lockedDriver _c, _c lockedCargo 0]; _c lockDriver true; _c lockCargo true; _r append [lockedDriver _c, _c lockedCargo 0, _c lockedCargo 1]; _c lockCargo [0, false]; _r pushBack (_c lockedCargo 0); deleteVehicle _c; _r
+## ost.engine
+private _c = createVehicle ["B_MRAP_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; private _r = [isEngineOn _c]; _c engineOn true; _r pushBack isEngineOn _c; _c setFuel 0; _c engineOn true; _r pushBack isEngineOn _c; deleteVehicle _c; _r
+## ost.rank
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = [rank _u, rankId _u]; _u setRank "captain"; _r append [rank _u, rankId _u]; _u setUnitRank "MAJOR"; _r append [rank _u, rankId _u]; _u setRank "bogus"; _r append [rank _u, rankId _u, rank objNull]; deleteVehicle _u; _r
+## ost.skill
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = [skill _u]; _u setSkill 0.3; _r append [skill _u, _u skill "aimingAccuracy"]; _u setSkill ["aimingAccuracy", 0.9]; _r append [skill _u, _u skill "aimingAccuracy", _u skill "spotTime", _u skill "general"]; _u setSkill 2; _r pushBack skill _u; _u setUnitAbility 0.5; _r pushBack skill _u; deleteVehicle _u; _r
+## ost.flyinheight
+private _h = createVehicle ["B_Heli_Light_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; _h flyInHeight 80; _h flyInHeight [50, true]; private _r = [typeOf _h]; deleteVehicle _h; _r
+## cargo.default
+private _c = createVehicle ["B_MRAP_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; private _r = [itemCargo _c, magazineCargo _c, weaponCargo _c, backpackCargo _c, getItemCargo _c, getMagazineCargo _c, getWeaponCargo _c, getBackpackCargo _c]; deleteVehicle _c; _r
+## cargo.clear
+private _c = createVehicle ["B_MRAP_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; clearItemCargo _c; clearMagazineCargoGlobal _c; clearWeaponCargo _c; clearBackpackCargoGlobal _c; private _r = [itemCargo _c, magazineCargo _c, weaponCargo _c, backpackCargo _c]; deleteVehicle _c; _r
+## cargo.add
+private _c = createVehicle ["B_MRAP_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; clearItemCargo _c; clearMagazineCargo _c; clearWeaponCargo _c; clearBackpackCargo _c; _c addItemCargo ["FirstAidKit", 2]; _c addItemCargoGlobal ["ItemGPS", 1]; _c addItemCargo ["FirstAidKit", 1]; _c addMagazineCargo ["30Rnd_65x39_caseless_mag", 3]; _c addWeaponCargoGlobal ["arifle_MX_F", 2]; _c addBackpackCargo ["B_AssaultPack_mcamo", 1]; private _r = [itemCargo _c, magazineCargo _c, weaponCargo _c, backpackCargo _c, getItemCargo _c, getMagazineCargo _c, getWeaponCargo _c, getBackpackCargo _c]; deleteVehicle _c; _r
+## cargo.add_kinds
+private _c = createVehicle ["B_MRAP_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; clearItemCargo _c; clearMagazineCargo _c; clearWeaponCargo _c; clearBackpackCargo _c; _c addItemCargo ["30Rnd_65x39_caseless_mag", 1]; _c addItemCargo ["arifle_MX_F", 1]; _c addItemCargo ["NoSuch", 1]; _c addMagazineCargo ["FirstAidKit", 1]; _c addWeaponCargo ["FirstAidKit", 1]; _c addItemCargo ["B_AssaultPack_mcamo", 1]; private _r = [itemCargo _c, magazineCargo _c, weaponCargo _c, backpackCargo _c]; deleteVehicle _c; _r
+## cargo.add_bad_args
+private _c = createVehicle ["B_MRAP_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; clearItemCargo _c; _c addItemCargo ["FirstAidKit", 0]; _c addItemCargo ["FirstAidKit", -1]; _c addItemCargo ["FirstAidKit", 1.6]; _c addItemCargo ["FirstAidKit"]; private _r = [itemCargo _c]; deleteVehicle _c; _r
+## cargo.capacity
+private _c = createVehicle ["Box_NATO_Ammo_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; clearItemCargo _c; clearMagazineCargo _c; clearWeaponCargo _c; clearBackpackCargo _c; _c addItemCargo ["ToolKit", 100]; private _r = [count itemCargo _c, load _c]; deleteVehicle _c; _r
+## cargo.box_default
+private _c = createVehicle ["Box_NATO_Ammo_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; private _r = [getItemCargo _c, getMagazineCargo _c, getWeaponCargo _c]; deleteVehicle _c; _r
+## cargo.unit
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = [itemCargo _u, magazineCargo _u, weaponCargo _u, getItemCargo _u]; clearItemCargo _u; _r pushBack (items _u); deleteVehicle _u; _r
+## cargo.null
+[itemCargo objNull, getItemCargo objNull, magazineCargo objNull, weaponCargo objNull, backpackCargo objNull]

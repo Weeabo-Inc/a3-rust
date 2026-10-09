@@ -199,6 +199,33 @@ fn worn_mass(config: &ConfigTree, gear: &Gear, loadout: &Loadout) -> f32 {
     gear.total_mass(mass) + equipped + attachments
 }
 
+/// What an Object carries, for `loadAbs` and `load`: a Man's worn gear, weapons and attachments;
+/// anything else its cargo (`itemCargo` & co.).
+fn carried_mass<H: WorldHost>(ctx: &mut Ctx<'_, H>, value: &Value, id: EntityId) -> f32 {
+    if man(ctx.host.world(), value).is_some() {
+        return unit_query(ctx, value, Value::Number(0.0), |c, g, l| {
+            Value::Number(worn_mass(c, g, l))
+        })
+        .as_number()
+        .unwrap_or(0.0);
+    }
+    let config = ctx.host.types().config_arc();
+    let state = ctx.host.world().object_state(id);
+    cargo_mass(&config, state)
+}
+
+/// The mass of a vehicle's or box's cargo (oracle: `load` of a box of 100 toolkits).
+fn cargo_mass(config: &ConfigTree, state: Option<&crate::object_state::ObjectState>) -> f32 {
+    let Some(cargo) = state.and_then(|s| s.cargo.as_ref()) else {
+        return 0.0;
+    };
+    let mass = |c: &str| classify(config, c).map_or(0.0, |i| i.mass);
+    cargo.items.iter().map(|c| mass(c)).sum::<f32>()
+        + cargo.magazines.iter().map(|m| m.mass).sum::<f32>()
+        + cargo.weapons.iter().map(|c| mass(c)).sum::<f32>()
+        + cargo.backpacks.iter().map(|c| mass(c)).sum::<f32>()
+}
+
 fn register_getters<H: WorldHost>(r: &mut Registry<H>) {
     // `weapons` and `primaryWeapon` are the Loadout's (`script::weapons`): the equipped weapons in
     // the order they were added, then the weapons stored in the containers.
@@ -336,7 +363,8 @@ fn register_getters<H: WorldHost>(r: &mut Registry<H>) {
             )
         }))
     });
-    // Loads: container contents over its capacity; the unit's total over its `maximumLoad`.
+    // Loads: container contents over its capacity; the unit's total over its `maximumLoad`; a
+    // vehicle's or box's cargo over its own.
     r.unary("loadUniform", OBJ, NUM, |ctx, a| {
         container_load(ctx, a, ContainerSlot::Uniform)
     });
@@ -347,39 +375,40 @@ fn register_getters<H: WorldHost>(r: &mut Registry<H>) {
         container_load(ctx, a, ContainerSlot::Backpack)
     });
     r.unary("loadAbs", OBJ, NUM, |ctx, a| {
-        Ok(unit_query(ctx, &a, Value::Number(0.0), |c, g, l| {
-            Value::Number(worn_mass(c, g, l))
-        }))
+        let Some(id) = object_arg(ctx.host.world(), &a).and_then(|o| match o {
+            ObjectRef::Entity(id) => Some(id),
+            ObjectRef::Static(_) => None,
+        }) else {
+            return Ok(Value::Number(0.0));
+        };
+        Ok(Value::Number(carried_mass(ctx, &a, id)))
     });
     r.unary("load", OBJ, NUM, |ctx, a| {
-        let max = match man(ctx.host.world(), &a) {
-            Some(id) => {
-                let type_name = ctx
-                    .host
-                    .world()
-                    .entity(id)
-                    .map(|e| e.type_name().to_owned());
-                let config = ctx.host.types().config_arc();
-                let class = config
-                    .root()
-                    .get("CfgVehicles")
-                    .get(&type_name.unwrap_or_default())
-                    .get("maximumLoad");
-                if class.is_number() {
-                    class.number()
-                } else {
-                    1000.0
-                }
-            }
-            None => 1000.0,
+        let Some(id) = object_arg(ctx.host.world(), &a).and_then(|o| match o {
+            ObjectRef::Entity(id) => Some(id),
+            ObjectRef::Static(_) => None,
+        }) else {
+            return Ok(Value::Number(0.0));
         };
-        Ok(unit_query(ctx, &a, Value::Number(0.0), |c, g, l| {
-            Value::Number(if max > 0.0 {
-                worn_mass(c, g, l) / max
-            } else {
-                0.0
-            })
-        }))
+        let type_name = ctx
+            .host
+            .world()
+            .entity(id)
+            .map(|e| e.type_name().to_owned())
+            .unwrap_or_default();
+        let config = ctx.host.types().config_arc();
+        let class = config
+            .root()
+            .get("CfgVehicles")
+            .get(&type_name)
+            .get("maximumLoad");
+        let max = if class.is_number() {
+            class.number()
+        } else {
+            1000.0
+        };
+        let mass = carried_mass(ctx, &a, id);
+        Ok(Value::Number(if max > 0.0 { mass / max } else { 0.0 }))
     });
 }
 

@@ -204,11 +204,15 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     });
     r.unary("side", OBJ, SIDE, |ctx, a| {
         let w = ctx.host.world();
-        Ok(Value::Side(
-            unit_arg(w, &a)
-                .and_then(|u| w.object_side(u))
-                .unwrap_or(Side::Unknown),
-        ))
+        let side = unit_arg(w, &a).and_then(|u| {
+            // A captive unit counts as civilian (`setCaptive`); its group keeps its side.
+            if w.captive(u) > 0 {
+                Some(Side::Civilian)
+            } else {
+                w.object_side(u)
+            }
+        });
+        Ok(Value::Side(side.unwrap_or(Side::Unknown)))
     });
     r.unary("side", GRP, SIDE, |ctx, a| {
         let w = ctx.host.world();

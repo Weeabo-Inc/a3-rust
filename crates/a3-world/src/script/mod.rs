@@ -18,6 +18,7 @@ mod handlers;
 mod identity;
 mod inventory;
 mod markers;
+mod object_state;
 mod positions;
 mod query;
 mod state;
@@ -57,6 +58,7 @@ pub fn register_world_commands<H: WorldHost>(r: &mut Registry<H>) {
     markers::register(r);
     identity::register(r);
     inventory::register(r);
+    object_state::register(r);
     state::register(r);
     transform::register(r);
     positions::register(r);
