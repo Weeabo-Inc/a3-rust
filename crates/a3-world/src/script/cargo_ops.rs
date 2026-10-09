@@ -124,6 +124,24 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
         }
         Ok(Value::Nothing)
     });
+    // `unit assignAsCargoIndex [vehicle, index]`: the same reservation as `assignAsCargo`, with
+    // the seat named instead of chosen.
+    r.binary("assignAsCargoIndex", OBJ, ARR, NOTHING, |ctx, a, b| {
+        let args = b.as_array().map(|x| x.borrow().clone()).unwrap_or_default();
+        let vehicle = args.first().cloned().unwrap_or(Value::Nil);
+        let index = args.get(1).and_then(|v| v.as_number()).unwrap_or(0.0) as i32;
+        if let Some((unit, vehicle)) = unit_and_vehicle(ctx.host.world(), &a, &vehicle) {
+            let state = ctx.host.world_mut().object_state_mut(vehicle);
+            state.assigned_cargo.retain(|(u, _)| *u != unit);
+            state.assigned_cargo.push((unit, index));
+        }
+        Ok(Value::Nothing)
+    });
+    // `unit assignAsCommander vehicle`: the commander's seat. Our vehicles have driver, gunner and
+    // cargo seats only, so this reserves nothing (`stub`).
+    r.binary("assignAsCommander", OBJ, OBJ, NOTHING, |_, _, _| {
+        Ok(Value::Nothing)
+    });
     // 0x47e3b0: `vehicle allowCrewInImmobile allow`, and `[allow, "CARGO"]` for the cargo seats.
     r.binary(
         "allowCrewInImmobile",
