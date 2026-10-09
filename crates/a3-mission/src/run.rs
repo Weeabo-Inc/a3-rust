@@ -11,12 +11,18 @@
 //! Named units (`text=` in the SQM) become `missionNamespace` variables, as do the markers'
 //! names _(`marker` values need a marker system the World does not have yet, so markers are
 //! reported, not created)_; the player unit becomes `player`.
+//!
+//! [`run_scripts`] runs start-up to the end of `init.sqf`. A game loop uses [`start_mission`]
+//! instead, which can also run the function library's mission start
+//! ([`StartOptions::functions`]) and returns once `init.sqf` is spawned; the loop then calls
+//! [`step`] once per frame.
 
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use a3_gamedata::{ConfigHost, VfsHost, script_registry};
-use a3_sqf::{Code, Host, Namespace, Registry, Value, Vm};
+use a3_gamedata::{ConfigHost, ConfigRoot, VfsHost, script_registry};
+use a3_sqf::{Code, FrameReport, Host, Namespace, Registry, ScriptHandle, Value, Vm};
 use a3_vfs::Vfs;
 use a3_world::ObjectRef;
 use a3_world::script::{
@@ -200,14 +206,18 @@ pub struct RunReport {
     pub missing_commands: Vec<(String, usize)>,
     /// `diag_log` lines the scripts produced.
     pub log_lines: usize,
-    /// Scheduler frames `init.sqf` ran for (0 when the mission has none).
+    /// Scheduler frames `init.sqf` ran for (0 when the mission has none, and after
+    /// [`start_mission`], which does not wait).
     pub frames: usize,
+    /// The scheduled `init.sqf`, when [`start_mission`] spawned one.
+    pub init_sqf: Option<ScriptHandle>,
     /// Wall-clock time of the run.
     pub elapsed: Duration,
 }
 
 /// Installs the mission's variables and runs its scripts: every spawned unit's `init` first
-/// (unscheduled, `this` = the unit), then `init.sqf` as a scheduled script.
+/// (unscheduled, `this` = the unit), then `init.sqf` as a scheduled script, stepping the World
+/// until `init.sqf` finishes or [`MAX_INIT_FRAMES`] frames have run.
 pub fn run_scripts<H: MissionHost>(
     vm: &mut Vm<H>,
     mission: &Mission,
@@ -221,23 +231,130 @@ pub fn run_scripts<H: MissionHost>(
     install_mission_config(vm, mission);
     install_variables(vm, mission, spawned, &mut report);
     run_unit_inits(vm, mission, spawned, &mut report, &mut codes);
-    run_init_sqf(vm, mission, &mut report, &mut codes);
+    if let Some(handle) = spawn_init_sqf(vm, mission, &mut report, &mut codes) {
+        report.frames = vm.run_until_idle(MAX_INIT_FRAMES, |host| {
+            host.world_mut().simulate(1.0 / 15.0);
+        });
+        let done = vm.script_done(handle);
+        report.scripts.push(ScriptRun {
+            name: "init.sqf".to_owned(),
+            ok: done,
+            error: (!done).then(|| format!("still running after {MAX_INIT_FRAMES} frames")),
+        });
+    }
     // What the mission's own scripts used (the codes just compiled), plus whatever the scripts
     // put into the mission namespace themselves.
-    let mut counts: std::collections::BTreeMap<String, usize> = Default::default();
-    for (name, count) in a3_gamedata::unimplemented_usage_in(vm, &codes)
+    let missing = a3_gamedata::unimplemented_usage_in(vm, &codes)
         .into_iter()
-        .chain(a3_gamedata::unimplemented_usage(vm, Namespace::Mission))
-    {
-        *counts.entry(name).or_default() += count;
+        .chain(a3_gamedata::unimplemented_usage(vm, Namespace::Mission));
+    report.missing_commands = merge_counts(missing);
+    finish(vm, &mut report, start, errors_before, log_before);
+    report
+}
+
+/// How [`start_mission`] starts a mission.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct StartOptions {
+    /// Run the function library's mission start first: the script `configFile >>
+    /// "CfgFunctions" >> "init"` names (`initFunctions.sqf`), unscheduled, `_this` undefined, in
+    /// missionNamespace (`docs/re/functions-init.md`). With the library already compiled at game
+    /// start, it compiles the campaign's and mission's functions, runs the `preInit` functions
+    /// and spawns the `postInit` sequence (`initServer.sqf`, `initPlayerLocal.sqf`, the
+    /// `postInit` functions).
+    pub functions: bool,
+}
+
+/// Starts a mission the way the engine does, without waiting for its scheduled scripts:
+/// mission config and variables, then (with [`StartOptions::functions`]) the function library's
+/// mission start, then every spawned unit's `init` (unscheduled, `this` = the unit), and last
+/// `init.sqf` spawned as a scheduled script ([`RunReport::init_sqf`]). Run the mission on with
+/// [`step`].
+///
+/// [`RunReport::missing_commands`] covers the code start-up compiled itself (the init fields and
+/// `init.sqf`), not the mission namespace, which after the library's start holds every library
+/// function.
+pub fn start_mission<H: MissionHost>(
+    vm: &mut Vm<H>,
+    mission: &Mission,
+    spawned: &Spawned,
+    options: StartOptions,
+) -> RunReport {
+    let start = Instant::now();
+    let errors_before = vm.host.errors().len();
+    let log_before = vm.host.log().len();
+    let mut report = RunReport::default();
+    let mut codes: Vec<Code> = Vec::new();
+    install_mission_config(vm, mission);
+    install_variables(vm, mission, spawned, &mut report);
+    if options.functions {
+        run_functions_init(vm, &mut report);
     }
-    let mut missing: Vec<(String, usize)> = counts.into_iter().collect();
-    missing.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
-    report.missing_commands = missing;
+    run_unit_inits(vm, mission, spawned, &mut report, &mut codes);
+    report.init_sqf = spawn_init_sqf(vm, mission, &mut report, &mut codes);
+    report.missing_commands = merge_counts(a3_gamedata::unimplemented_usage_in(vm, &codes));
+    finish(vm, &mut report, start, errors_before, log_before);
+    report
+}
+
+/// One frame of a running mission: the World advances by `dt` seconds, then the scheduled
+/// scripts run for at most `budget` of wall-clock time (the engine gives them about 3 ms,
+/// [`a3_sqf::DEFAULT_FRAME_BUDGET`]).
+pub fn step<H: MissionHost>(vm: &mut Vm<H>, dt: f64, budget: Duration) -> FrameReport {
+    vm.host.world_mut().simulate(dt);
+    vm.run_scheduled(budget)
+}
+
+/// Sums the counts of equal names; most used first, ties by name.
+fn merge_counts(counts: impl IntoIterator<Item = (String, usize)>) -> Vec<(String, usize)> {
+    let mut merged: std::collections::BTreeMap<String, usize> = Default::default();
+    for (name, count) in counts {
+        *merged.entry(name).or_default() += count;
+    }
+    let mut out: Vec<(String, usize)> = merged.into_iter().collect();
+    out.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    out
+}
+
+/// Fills in the report's errors, log line count and elapsed time.
+fn finish<H: MissionHost>(
+    vm: &Vm<H>,
+    report: &mut RunReport,
+    start: Instant,
+    errors_before: usize,
+    log_before: usize,
+) {
     report.errors = vm.host.errors()[errors_before..].to_vec();
     report.log_lines = vm.host.log().len() - log_before;
     report.elapsed = start.elapsed();
-    report
+}
+
+/// Runs `configFile >> "CfgFunctions" >> "init"` unscheduled in missionNamespace with `_this`
+/// undefined. Nothing runs when the config names no script.
+fn run_functions_init<H: MissionHost>(vm: &mut Vm<H>, report: &mut RunReport) {
+    let path = {
+        let config = Arc::clone(vm.host.configs().tree(ConfigRoot::Game));
+        let cfg = config.root() >> "CfgFunctions";
+        (&cfg >> "init").text()
+    };
+    if path.is_empty() {
+        return;
+    }
+    // Outside an init field `this` is undefined.
+    vm.set_global("this", Value::Nil);
+    let result = vm
+        .host
+        .preprocess_file(&path, true)
+        .and_then(|text| vm.compile_file(&path, &text).map_err(|e| e.message))
+        .and_then(|code| {
+            vm.call_in(&code, None, Namespace::Mission)
+                .map(|_| ())
+                .map_err(|e| e.report)
+        });
+    report.scripts.push(ScriptRun {
+        name: "functions init".to_owned(),
+        ok: result.is_ok(),
+        error: result.err(),
+    });
 }
 
 fn install_variables<H: MissionHost>(
@@ -310,23 +427,24 @@ fn run_unit_inits<H: MissionHost>(
     }
 }
 
-fn run_init_sqf<H: MissionHost>(
+/// Compiles `init.sqf` and spawns it as a scheduled script. A compile failure is a failed
+/// [`ScriptRun`]; a mission without `init.sqf` spawns nothing.
+fn spawn_init_sqf<H: MissionHost>(
     vm: &mut Vm<H>,
     mission: &Mission,
     report: &mut RunReport,
     codes: &mut Vec<Code>,
-) {
+) -> Option<ScriptHandle> {
     if mission.folder.is_empty() {
-        return;
+        return None;
     }
     let path = format!("{}\\init.sqf", mission.folder);
     if !vm.host.file_exists(&path) {
-        return;
+        return None;
     }
     // Outside an init field `this` is undefined, as it is in the engine; only the init fields
     // above set it.
     vm.set_global("this", Value::Nil);
-    let name = "init.sqf".to_owned();
     let code: Code = match vm
         .host
         .preprocess_file(&path, true)
@@ -335,22 +453,13 @@ fn run_init_sqf<H: MissionHost>(
         Ok(code) => code,
         Err(message) => {
             report.scripts.push(ScriptRun {
-                name,
+                name: "init.sqf".to_owned(),
                 ok: false,
                 error: Some(message),
             });
-            return;
+            return None;
         }
     };
     codes.push(code.clone());
-    let handle = vm.spawn(&code, Value::Nil);
-    report.frames = vm.run_until_idle(MAX_INIT_FRAMES, |host| {
-        host.world_mut().simulate(1.0 / 15.0);
-    });
-    let done = vm.script_done(handle);
-    report.scripts.push(ScriptRun {
-        name,
-        ok: done,
-        error: (!done).then(|| format!("still running after {MAX_INIT_FRAMES} frames")),
-    });
+    Some(vm.spawn(&code, Value::Nil))
 }

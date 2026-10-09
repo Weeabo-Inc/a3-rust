@@ -125,6 +125,62 @@ fn unquoted_text_falls_back_to_a_string() {
     );
 }
 
+/// Shipped campaign descriptions (Apex, Laws of War, Contact) write `lost = ;` and `cutscene = ;`,
+/// and the game loads them: an empty value is the empty string.
+#[test]
+fn an_empty_value_is_the_empty_string() {
+    let config = parse("class Missions { cutscene = ; end1 =  ;\n lost = ; firstMission = A; };");
+    let missions = match &config.root.get("Missions").expect("class").kind {
+        EntryKind::Class(class) => class.clone(),
+        other => panic!("not a class: {other:?}"),
+    };
+    for name in ["cutscene", "end1", "lost"] {
+        match &missions.get(name).expect(name).kind {
+            EntryKind::Value(v) => assert_eq!(*v, Value::String(String::new()), "{name}"),
+            other => panic!("{name}: {other:?}"),
+        }
+    }
+    assert_eq!(root_value("a = ;", "a"), Value::String(String::new()));
+}
+
+/// The 3D editor saves multi-line text (an init field, a trigger's activation) as quoted lines
+/// joined by `\n` tokens: `"line 1" \n "line 2"` is one string with a line break.
+#[test]
+fn quoted_lines_joined_by_newline_tokens_are_one_string() {
+    assert_eq!(
+        root_value("a=\"x = 1; \" \\n \"y = 2;\";", "a"),
+        Value::String("x = 1; \ny = 2;".into())
+    );
+    assert_eq!(
+        root_value("a=\"one\" \\n \"\" \\n \"three\";", "a"),
+        Value::String("one\n\nthree".into())
+    );
+    // Inside an array too.
+    assert_eq!(
+        root_value("a[]={\"p\" \\n \"q\", \"r\"};", "a"),
+        Value::Array(vec![
+            Value::String("p\nq".into()),
+            Value::String("r".into())
+        ])
+    );
+}
+
+/// East Wind's campaign description has `add[] = { {...}, {...}; };`: a `;` where a `,` or the
+/// closing `}` belongs. The game loads it; the parser takes the `;` as a separator.
+#[test]
+fn a_semicolon_inside_an_array_separates_items() {
+    let config = parse("class C { add[] = {\n{\"a\", 1},\n{\"b\", 2};\n};\n}; class D {};");
+    let c = match &config.root.get("C").expect("C").kind {
+        EntryKind::Class(class) => class.clone(),
+        other => panic!("{other:?}"),
+    };
+    match &c.get("add").expect("add").kind {
+        EntryKind::Value(Value::Array(items)) => assert_eq!(items.len(), 2),
+        other => panic!("{other:?}"),
+    }
+    assert!(config.root.get("D").is_some(), "D stays at the root");
+}
+
 #[test]
 fn quoted_strings_unescape_doubled_quotes() {
     assert_eq!(

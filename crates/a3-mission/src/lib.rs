@@ -39,8 +39,8 @@ pub use mission::{
     side_from_sqm,
 };
 pub use run::{
-    MAX_INIT_FRAMES, MissionHost, MissionVmHost, RunReport, ScriptRun, mission_registry,
-    run_scripts,
+    MAX_INIT_FRAMES, MissionHost, MissionVmHost, RunReport, ScriptRun, StartOptions,
+    mission_registry, run_scripts, start_mission, step,
 };
 pub use spawn::{Spawned, SpawnedGroup, Unspawned, spawn_mission};
 pub use sqm::{SqmError, parse_sqm};

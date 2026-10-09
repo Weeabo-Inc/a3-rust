@@ -412,6 +412,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-sweep"
+version = "0.1.0"
+dependencies = [
+ "a3-config",
+ "a3-gamedata",
+ "a3-landscape",
+ "a3-mission",
+ "a3-pbo",
+ "a3-sqf",
+ "a3-stringtable",
+ "a3-vfs",
+ "a3-world",
+ "a3-wrp",
+ "anyhow",
+ "chrono",
+ "clap",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "a3-tools"
 version = "0.1.0"
 dependencies = [
