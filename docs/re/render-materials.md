@@ -230,6 +230,33 @@ ptD += MatDiffuse.rgb * L2.rgb * max(N·Ldir, 0) * att;  ptA += L3.rgb * att
 ptS += MatSpecular.rgb * L2.rgb * spec(N·Hl) * reflectivity * att
 ```
 
+**Where a light comes from (`CfgVehicles >> <class> >> Reflectors`, high).** A lamp is an
+ordinary Static object whose class carries a `Reflectors` sub-class, one child per light. Street
+lamps (Altis' `Land_LampStreet_F`, `_LampHarbour_F`, `_LampShabby_F`, ...) inherit
+`Lamps_base_F`, which adds nothing but the category. `Land_LampStreet_F >> Reflectors >>
+Light_1`:
+
+| config | value | maps to |
+|---|---|---|
+| `color[]` | `{1200, 600, 300}` | `L2.rgb` |
+| `ambient[]` | `{12, 6, 3}` | `L3.rgb` |
+| `intensity` | 7 | scales the colour |
+| `innerAngle` / `outerAngle` | 100 / 180 degrees | `L1.w` / `L2.w` (180 degrees is a hemisphere, so a lamp is nearly a point light) |
+| `coneFadeCoef` | 2 | `L3.w` |
+| `position` | `"Light_1_pos"` | the light's position, a memory point of the p3d |
+| `direction` | `"Light_1_dir"` | `L1.xyz` |
+| `selection` | `"Light_1_hide"` | the hidden/shown lamp head |
+| `Attenuation.start/constant/linear/quadratic` | 0 / 0 / 0 / 0.3 | `L4` exactly |
+| `Attenuation.hardLimitStart/hardLimitEnd` | 40 / 60 | `L5.x`, `L5.y = 1/(end − start)` |
+| `useFlare`, `flareSize`, `flareMaxDistance` | 1, 2, 220 | the flare sprite, not the light |
+
+Nothing in the config says *when* a lamp is on: `Lamps_base_F` has no `dayLight`/`nightLight`
+entry, so the engine switches them (the light and the `Light_1_hide` selection) with the sun's
+elevation, and the p3d's memory points are the only place the positions live. The WRP stores a
+model *path* per placed object, not a class, so discovery is: scan `CfgVehicles` for classes
+with `Reflectors` keyed by their `model`, then match the terrain's placed objects against it.
+
+
 ## 4. Per-shader stage meanings (shader; texture suffixes as used in the data)
 
 UV notation: `s0` means stage 0's UV, and so on.
