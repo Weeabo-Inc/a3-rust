@@ -256,3 +256,6 @@ enableEnvironment	*	*	stub	wiki	no ambient life or wind sound; the switch stores
 enableSentences	unary	*	stub	wiki	no sentence playback
 loadStatus	binary	0x8b6f60	stub	wiki	sources load with the model, so anything that exists is loaded
 targetsQuery	binary	*	stub	wiki	no sensor model; the query answers nothing
+lockIdentity	unary	*	stub	wiki	no identity lock; answers false
+setViewDistance	unary	*	stub	wiki	view distance is a renderer setting, not a script one
+setLightBrightness	binary	*	stub	wiki	lamps come from Reflectors (#294); no script override yet
