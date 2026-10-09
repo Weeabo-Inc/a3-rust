@@ -739,3 +739,21 @@ mission. The engine name is Curator; Zeus is the product name.
 
 **3DEN (Eden editor)**:
 The in-engine 3D mission editor that produces mission.sqm files.
+
+## Fidelity testing
+
+**Oracle**:
+The original game binary (2.22.0.154103) from the user's install, run locally as the reference
+whose behaviour ours must match. The server oracle is `arma3server_x64.exe` driven by
+`tools/oracle/oracle.py`.
+_Avoid_: reference implementation, ground truth (that is `docs/re/` plus the binary)
+
+**Probe**:
+One SQF snippet with an id (`<area>.<name>`), run on the Oracle and on ours; its result is its
+`typeName`, its `str`, and for numbers the exact float32. Probes live in `tools/oracle/probes/`.
+_Avoid_: test case (alone), check
+
+**Mismatch**:
+A Probe whose result differs between the Oracle and ours; each one is tracked by a `fidelity`
+issue.
+_Avoid_: regression (it may never have matched)

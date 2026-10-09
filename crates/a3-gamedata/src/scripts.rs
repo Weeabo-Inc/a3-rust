@@ -82,6 +82,9 @@ pub struct VfsHost {
     pub log: Vec<String>,
     /// Reported script errors.
     pub errors: Vec<String>,
+    /// Also write each script error into [`VfsHost::log`], in order with the `diag_log` lines,
+    /// as the engine writes both to its RPT log.
+    pub errors_in_log: bool,
     /// The configs the config commands read (`configFile`, `missionConfigFile`, ...).
     pub configs: SqfConfigs,
 }
@@ -94,6 +97,7 @@ impl VfsHost {
             localizer: None,
             log: Vec::new(),
             errors: Vec::new(),
+            errors_in_log: false,
             configs: SqfConfigs::default(),
         }
     }
@@ -104,6 +108,18 @@ impl VfsHost {
         host.localizer = game.localizer.clone();
         host.configs = SqfConfigs::new(game.config.clone());
         host
+    }
+}
+
+/// A host that keeps the script errors reported to it, in order.
+pub trait ErrorLog {
+    /// The script errors reported so far.
+    fn error_log(&self) -> &[String];
+}
+
+impl ErrorLog for VfsHost {
+    fn error_log(&self) -> &[String] {
+        &self.errors
     }
 }
 
@@ -138,6 +154,9 @@ impl Host for VfsHost {
     }
 
     fn report_error(&mut self, error: &ScriptError) {
+        if self.errors_in_log {
+            self.log.extend(error.report.lines().map(str::to_owned));
+        }
         self.errors.push(error.report.clone());
     }
 

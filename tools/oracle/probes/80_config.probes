@@ -1,0 +1,153 @@
+// Config commands on vanilla classes, localize.
+## cfg.getnumber_cost
+getNumber (configFile >> "CfgVehicles" >> "B_Soldier_F" >> "cost")
+## cfg.getnumber_side
+getNumber (configFile >> "CfgVehicles" >> "B_Soldier_F" >> "side")
+## cfg.gettext_displayname
+getText (configFile >> "CfgVehicles" >> "B_Soldier_F" >> "displayName")
+## cfg.gettext_model
+getText (configFile >> "CfgVehicles" >> "B_Soldier_F" >> "model")
+## cfg.gettextraw_displayname
+getTextRaw (configFile >> "CfgVehicles" >> "B_Soldier_F" >> "displayName")
+## cfg.gettext_number_entry
+getText (configFile >> "CfgVehicles" >> "B_Soldier_F" >> "cost")
+## cfg.getnumber_text_entry
+getNumber (configFile >> "CfgVehicles" >> "B_Soldier_F" >> "displayName")
+## cfg.getnumber_missing
+getNumber (configFile >> "CfgVehicles" >> "B_Soldier_F" >> "a3ro_missing")
+## cfg.gettext_missing
+getText (configFile >> "CfgVehicles" >> "a3ro_missing" >> "x")
+## cfg.getarray_weapons
+getArray (configFile >> "CfgVehicles" >> "B_Soldier_F" >> "weapons")
+## cfg.getarray_missing
+getArray (configFile >> "CfgVehicles" >> "B_Soldier_F" >> "a3ro_missing")
+## cfg.getarray_modes
+getArray (configFile >> "CfgWeapons" >> "arifle_MX_F" >> "modes")
+## cfg.getnumber_magazine_count
+getNumber (configFile >> "CfgMagazines" >> "30Rnd_65x39_caseless_mag" >> "count")
+## cfg.getnumber_ammo_hit
+getNumber (configFile >> "CfgAmmo" >> "B_65x39_Caseless" >> "hit")
+## cfg.getnumber_ammo_typicalspeed
+getNumber (configFile >> "CfgAmmo" >> "B_65x39_Caseless" >> "typicalSpeed")
+## cfg.getnumber_world_size
+getNumber (configFile >> "CfgWorlds" >> "Stratis" >> "mapSize")
+## cfg.gettext_world_description
+getText (configFile >> "CfgWorlds" >> "Stratis" >> "description")
+## cfg.getarray_world_center
+getArray (configFile >> "CfgWorlds" >> "Stratis" >> "centerPosition")
+## cfg.isclass
+[isClass (configFile >> "CfgVehicles" >> "B_Soldier_F"), isClass (configFile >> "CfgVehicles" >> "a3ro_missing")]
+## cfg.isnumber_istext_isarray
+private _c = configFile >> "CfgVehicles" >> "B_Soldier_F"; [isNumber (_c >> "cost"), isText (_c >> "displayName"), isArray (_c >> "weapons"), isText (_c >> "cost")]
+## cfg.configname
+configName (configFile >> "CfgVehicles" >> "b_soldier_f")
+## cfg.configname_root
+configName configFile
+## cfg.inheritsfrom
+configName inheritsFrom (configFile >> "CfgVehicles" >> "B_Soldier_F")
+## cfg.inheritsfrom_root
+str inheritsFrom (configFile >> "CfgVehicles" >> "All")
+## cfg.hierarchy
+(configHierarchy (configFile >> "CfgVehicles" >> "B_Soldier_F")) apply {configName _x}
+## cfg.hierarchy_str
+str configHierarchy (configFile >> "CfgWeapons" >> "arifle_MX_F")
+## cfg.parents
+[(configFile >> "CfgVehicles" >> "B_Soldier_F"), true] call BIS_fnc_returnParents
+## cfg.iskindof_config
+"B_Soldier_F" isKindOf "CAManBase"
+## cfg.iskindof_config_case
+"b_soldier_f" isKindOf "caManBase"
+## cfg.iskindof_config_cfgweapons
+"arifle_MX_F" isKindOf ["Rifle_Base_F", configFile >> "CfgWeapons"]
+## cfg.iskindof_unknown
+"a3ro_missing" isKindOf "All"
+## cfg.configclasses_count
+count ("true" configClasses (configFile >> "CfgVehicles" >> "B_Soldier_F"))
+## cfg.configclasses_names
+("true" configClasses (configFile >> "CfgWeapons" >> "arifle_MX_F")) apply {configName _x}
+## cfg.configclasses_condition
+count ("getNumber (_x >> 'scope') == 2 && {_x isKindOf 'Rifle_Base_F' || true}" configClasses (configFile >> "CfgWeapons"))
+## cfg.configproperties_names
+(configProperties [configFile >> "CfgMagazines" >> "30Rnd_65x39_caseless_mag", "true", false]) apply {configName _x}
+## cfg.configproperties_inherit_count
+count configProperties [configFile >> "CfgMagazines" >> "30Rnd_65x39_caseless_mag", "true", true]
+## cfg.configproperties_default
+count configProperties [configFile >> "CfgMagazines" >> "30Rnd_65x39_caseless_mag"]
+## cfg.count_entries
+count (configFile >> "CfgMagazines" >> "30Rnd_65x39_caseless_mag")
+## cfg.select_entry
+configName ((configFile >> "CfgMagazines" >> "30Rnd_65x39_caseless_mag") select 0)
+## cfg.cfgpatches_count
+count ("true" configClasses (configFile >> "CfgPatches"))
+## cfg.cfgvehicles_count
+count ("true" configClasses (configFile >> "CfgVehicles"))
+## cfg.cfgweapons_count
+count ("true" configClasses (configFile >> "CfgWeapons"))
+## cfg.cfgfunctions_count
+count ("true" configClasses (configFile >> "CfgFunctions"))
+## cfg.sourcemod
+configSourceMod (configFile >> "CfgVehicles" >> "B_Soldier_F")
+## cfg.sourceaddonlist
+configSourceAddonList (configFile >> "CfgVehicles" >> "B_Soldier_F")
+## cfg.getnumber_expression_entry
+getNumber (configFile >> "CfgVehicles" >> "B_MRAP_01_F" >> "maxSpeed")
+## cfg.getnumber_armor
+getNumber (configFile >> "CfgVehicles" >> "B_MRAP_01_F" >> "armor")
+## cfg.gettext_vehicleclass
+getText (configFile >> "CfgVehicles" >> "B_MRAP_01_F" >> "vehicleClass")
+## cfg.gettext_faction
+getText (configFile >> "CfgVehicles" >> "B_MRAP_01_F" >> "faction")
+## cfg.getarray_hiddenselections
+getArray (configFile >> "CfgVehicles" >> "B_MRAP_01_F" >> "hiddenSelections")
+## cfg.getnumber_hex_like
+getNumber (configFile >> "CfgVehicles" >> "Man" >> "accuracy")
+## cfg.getnumber_eval_float
+getNumber (configFile >> "CfgVehicles" >> "B_Soldier_F" >> "camouflage")
+## cfg.getarray_nested
+getArray (configFile >> "CfgVehicles" >> "B_Soldier_F" >> "threat")
+## cfg.getnumber_bool_text
+getNumber (configFile >> "CfgVehicles" >> "B_Soldier_F" >> "scope")
+## cfg.campaignconfigfile
+str campaignConfigFile
+## cfg.gettext_cfgfactionclasses
+getText (configFile >> "CfgFactionClasses" >> "BLU_F" >> "displayName")
+## cfg.getnumber_cfgfactionclasses_side
+getNumber (configFile >> "CfgFactionClasses" >> "BLU_F" >> "side")
+## cfg.configof_type
+typeName (configFile >> "CfgVehicles")
+## cfg.path_case_insensitive
+(configFile >> "cfgvehicles" >> "b_soldier_f") isEqualTo (configFile >> "CfgVehicles" >> "B_Soldier_F")
+## cfg.confignull_from_missing
+isNull (configFile >> "a3ro_missing")
+## cfg.configfile_str_path
+str (configFile >> "CfgWeapons" >> "arifle_MX_F" >> "Single")
+## cfg.text_vs_number_array
+getArray (configFile >> "CfgWeapons" >> "arifle_MX_F" >> "magazines")
+## cfg.gettext_picture
+getText (configFile >> "CfgWeapons" >> "arifle_MX_F" >> "picture")
+## cfg.getnumber_reloadtime
+getNumber (configFile >> "CfgWeapons" >> "arifle_MX_F" >> "Single" >> "reloadTime")
+## cfg.getnumber_dispersion
+getNumber (configFile >> "CfgWeapons" >> "arifle_MX_F" >> "Single" >> "dispersion")
+## cfg.getnumber_initspeed
+getNumber (configFile >> "CfgMagazines" >> "30Rnd_65x39_caseless_mag" >> "initSpeed")
+## cfg.getnumber_mass
+getNumber (configFile >> "CfgWeapons" >> "arifle_MX_F" >> "WeaponSlotsInfo" >> "mass")
+## loc.str_disp_ok
+localize "STR_DISP_OK"
+## loc.str_disp_cancel
+localize "str_disp_cancel"
+## loc.missing
+localize "STR_A3RO_MISSING"
+## loc.no_prefix
+localize "DISP_OK"
+## loc.dollar
+localize "$STR_DISP_OK"
+## loc.islocalized
+isLocalized "STR_DISP_OK"
+## loc.islocalized_missing
+isLocalized "STR_A3RO_MISSING"
+## loc.language
+language
+## loc.format_localized
+format [localize "STR_A3_BIS_fnc_respawnTickets_left", 5]

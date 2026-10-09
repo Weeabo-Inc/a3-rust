@@ -23,7 +23,7 @@ use a3_sqf::{
 use a3_vfs::Vfs;
 
 use crate::GameData;
-use crate::scripts::{VfsHost, VfsResolver, read_text};
+use crate::scripts::{ErrorLog, VfsHost, VfsResolver, read_text};
 use crate::sqf_config::{ConfigHost, ConfigRoot, register_config_commands};
 
 /// The command table game scripts compile against: a3-sqf's builtin table, which holds the
@@ -112,10 +112,10 @@ pub struct FunctionsReport {
 }
 
 /// Runs the function-library initialisation the engine performs at game start.
-pub fn init_functions(vm: &mut Vm<VfsHost>) -> FunctionsReport {
+pub fn init_functions<H: ConfigHost + ErrorLog>(vm: &mut Vm<H>) -> FunctionsReport {
     let start = Instant::now();
     let mut report = FunctionsReport::default();
-    let errors_before = vm.host.errors.len();
+    let errors_before = vm.host.error_log().len();
     let mut declared = std::collections::BTreeSet::new();
     {
         let config = std::sync::Arc::clone(vm.host.configs().tree(ConfigRoot::Game));
@@ -155,7 +155,7 @@ pub fn init_functions(vm: &mut Vm<VfsHost>) -> FunctionsReport {
     }
     report
         .errors
-        .extend(vm.host.errors[errors_before..].iter().cloned());
+        .extend(vm.host.error_log()[errors_before..].iter().cloned());
     let ui = vm.namespace(Namespace::Ui);
     report.compiled = ui
         .iter()

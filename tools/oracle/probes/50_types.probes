@@ -1,0 +1,169 @@
+// Types, nil, equality and str of every value type.
+## type.typename_nil
+typeName nil
+## type.typename_nothing_call
+typeName (call {})
+## type.str_nil
+str nil
+## type.isnil_string
+isNil "a3ro_undefined_variable"
+## type.isnil_code
+isNil {nil}
+## type.isnil_code_value
+isNil {1}
+## type.typename_number
+typeName 1
+## type.typename_bool
+typeName true
+## type.typename_string
+typeName ""
+## type.typename_array
+typeName []
+## type.typename_code
+typeName {}
+## type.typename_side
+typeName west
+## type.typename_group
+typeName grpNull
+## type.typename_object
+typeName objNull
+## type.typename_config
+typeName configFile
+## type.typename_namespace
+typeName missionNamespace
+## type.typename_script
+typeName scriptNull
+## type.typename_control
+typeName controlNull
+## type.typename_display
+typeName displayNull
+## type.typename_location
+typeName locationNull
+## type.typename_task
+typeName taskNull
+## type.typename_team
+typeName teamMemberNull
+## type.typename_diaryrecord
+typeName diaryRecordNull
+## type.str_code
+str {a = 1; b}
+## type.str_code_spaces
+str {  hint   "x"  }
+## type.str_code_newline
+str {
+a = 1;
+}
+## type.str_code_comment_stripped
+str compile "1 // c"
+## type.str_true
+str true
+## type.str_side_west
+str west
+## type.str_side_east
+str east
+## type.str_side_resistance
+str resistance
+## type.str_side_civilian
+str civilian
+## type.str_side_logic
+str sideLogic
+## type.str_side_unknown
+str sideUnknown
+## type.str_side_enemy
+str sideEnemy
+## type.str_side_friendly
+str sideFriendly
+## type.str_side_ambient
+str sideAmbientLife
+## type.str_side_empty
+str sideEmpty
+## type.str_objnull
+str objNull
+## type.str_grpnull
+str grpNull
+## type.str_controlnull
+str controlNull
+## type.str_displaynull
+str displayNull
+## type.str_locationnull
+str locationNull
+## type.str_scriptnull
+str scriptNull
+## type.str_tasknull
+str taskNull
+## type.str_namespace
+str missionNamespace
+## type.str_uinamespace
+str uiNamespace
+## type.str_profilenamespace
+str profileNamespace
+## type.str_config_root
+str configFile
+## type.str_config_class
+str (configFile >> "CfgVehicles" >> "Man")
+## type.str_config_null
+str configNull
+## type.isequalto_types
+1 isEqualTo "1"
+## type.isequalto_nil
+isNil {nil isEqualTo nil}
+## type.isequaltype
+[1 isEqualType 0, "" isEqualType 0, [] isEqualType []]
+## type.isequalto_code
+{a} isEqualTo {a}
+## type.isequalto_code_spaces
+{a} isEqualTo { a }
+## type.isequalto_side
+west isEqualTo blufor
+## type.eq_side
+west == blufor
+## type.eq_bool_error
+true == true
+## type.isequalto_bool
+true isEqualTo true
+## type.isequalto_objnull
+objNull isEqualTo objNull
+## type.eq_objnull
+objNull == objNull
+## type.isnull_objnull
+isNull objNull
+## type.isnull_grpnull
+isNull grpNull
+## type.isnull_confignull
+isNull configNull
+## type.not_number_error
+!1
+## type.and_lazy
+false && {1 + "a"}
+## type.or_lazy
+true || {1 + "a"}
+## type.and_eager
+[true and false, true or false]
+## type.compile_str
+call compile "1 + 2"
+## type.compile_empty
+typeName compile ""
+## type.str_compile_empty
+str compile ""
+## type.call_args
+[1, 2] call {_this select 1}
+## type.call_nil_args
+typeName (call {_this})
+## type.this_in_spawned
+isNil "_this"
+## type.private_scope
+private _a = 1; call {private _a = 2}; _a
+## type.nonprivate_scope
+private _a = 1; call {_a = 2}; _a
+## type.private_array
+private ["_x1"]; _x1 = 5; _x1
+## type.global_var
+a3ro_g = 5; private _r = a3ro_g; a3ro_g = nil; _r
+## type.setvariable_get
+missionNamespace setVariable ["a3ro_v", 3]; private _r = missionNamespace getVariable "a3ro_v"; missionNamespace setVariable ["a3ro_v", nil]; _r
+## type.getvariable_default
+missionNamespace getVariable ["a3ro_undefined_variable", "def"]
+## type.getvariable_case
+missionNamespace setVariable ["A3RO_Case", 1]; private _r = missionNamespace getVariable "a3ro_case"; A3RO_Case = nil; _r
+## type.allvariables_case
+a3ro_mixedCase = 1; private _r = "a3ro_mixedcase" in allVariables missionNamespace; a3ro_mixedCase = nil; _r

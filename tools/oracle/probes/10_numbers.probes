@@ -1,0 +1,223 @@
+// Number formatting (str, toFixed, format) and float32 arithmetic.
+## num.str_1e6
+str 1e6
+## num.str_999999
+str 999999
+## num.str_1234567
+str 1234567
+## num.str_0_1
+str 0.1
+## num.str_1_0
+str 1.0
+## num.str_neg_half
+str -0.5
+## num.str_1e_minus5
+str 0.00001
+## num.str_1e_minus4
+str 0.0001
+## num.str_123456_7
+str 123456.7
+## num.str_1_23456789
+str 1.23456789
+## num.str_1e38
+str 1e38
+## num.str_1e39_inf
+str 1e39
+## num.str_neg_inf
+str -1e39
+## num.str_nan
+str (sqrt -1)
+## num.str_third
+str (1/3)
+## num.str_two_thirds
+str (2/3)
+## num.str_100000
+str 100000
+## num.str_large_int
+str 16777217
+## num.str_neg_zero
+str -0
+## num.str_hex
+str 0xFF
+## num.str_hex_dollar
+str $FF
+## num.str_sci_lower
+str 2.5e-3
+## num.add_floats
+0.1 + 0.2
+## num.sub_floats
+1 - 0.9
+## num.mul_float
+0.1 * 3
+## num.div_by_zero
+1 / 0
+## num.mod_neg
+-7 % 3
+## num.mod_float
+5.5 % 2
+## num.mod_cmd
+-7 mod 3
+## num.pow
+2 ^ 10
+## num.pow_neg_frac
+(-8) ^ (1/3)
+## num.pow_zero_zero
+0 ^ 0
+## num.int_overflow_add
+16777216 + 1
+## num.precedence_neg
+-2 ^ 2
+## num.precedence_mul_add
+2 + 3 * 4
+## num.round_half
+round 0.5
+## num.round_1_5
+round 1.5
+## num.round_2_5
+round 2.5
+## num.round_neg_half
+round -0.5
+## num.round_neg_1_5
+round -1.5
+## num.round_neg_2_5
+round -2.5
+## num.floor_neg
+floor -1.5
+## num.ceil_neg
+ceil -1.5
+## num.floor_neg_int
+floor -2
+## num.abs_neg
+abs -3.25
+## num.sqrt_2
+sqrt 2
+## num.exp_1
+exp 1
+## num.ln_10
+ln 10
+## num.log_1000
+log 1000
+## num.sin_90
+sin 90
+## num.cos_90
+cos 90
+## num.tan_45
+tan 45
+## num.asin_1
+asin 1
+## num.acos_neg1
+acos -1
+## num.atan_1
+atan 1
+## num.atan2_neg
+atan2 [-1, -1]
+## num.atan2_cmd
+-1 atan2 -1
+## num.rad_180
+rad 180
+## num.deg_pi
+deg pi
+## num.pi
+pi
+## num.min_max
+[1 min 2, 1 max 2, -0 min 0]
+## num.clamp
+[5 max 0 min 3, -5 max 0 min 3]
+## num.finite_inf
+finite (1/0)
+## num.finite_nan
+finite (sqrt -1)
+## num.nan_eq
+(sqrt -1) == (sqrt -1)
+## num.tofixed_0
+1.5 toFixed 0
+## num.tofixed_2_5
+2.5 toFixed 0
+## num.tofixed_3
+3.14159 toFixed 3
+## num.tofixed_neg
+-0.001 toFixed 2
+## num.tofixed_20
+0.1 toFixed 20
+## num.tofixed_25
+1 toFixed 25
+## num.tofixed_negdigits
+1.5 toFixed -1
+## num.tofixed_big
+1e10 toFixed 2
+## num.tofixed_global
+toFixed 2; private _s = str 1.23456; toFixed -1; _s
+## num.tofixed_global_reset
+toFixed 3; toFixed -1; str 1.23456
+## num.format_number
+format ["%1", 1e6]
+## num.format_small
+format ["%1", 0.000123]
+## num.format_array_nums
+format ["%1", [0.1, 1e7, -0]]
+## num.str_array_nums
+str [1, 2.5, 1e-7]
+## num.bitand
+13 bitAnd 7
+## num.bitor
+8 bitOr 3
+## num.bitxor
+6 bitXor 3
+## num.bitnot
+bitNot 0
+## num.bitshl
+1 bitShiftLeft 4
+## num.bitshr
+256 bitShiftRight 4
+## num.bitand_float
+13.9 bitAnd 7.9
+## num.bitand_neg
+-1 bitAnd 255
+## num.str_int_24bit
+str 8388608
+## num.str_7_digits
+str 1234567.8
+## num.str_0_000001
+str 0.000001
+## num.neg_mod_zero
+5 % 0
+## num.compare_eq_float
+(0.1 + 0.2) == 0.3
+## num.compare_lt
+[1 < 2, 2 <= 2, 3 > 4, 4 >= 4, 1 != 1]
+## num.not_number
+!(1 > 2)
+## num.parse_int
+parseNumber "42"
+## num.parse_float
+parseNumber "3.14"
+## num.parse_leading_ws
+parseNumber "   42 yes"
+## num.parse_hex
+parseNumber "0x1F"
+## num.parse_exp
+parseNumber "1e3"
+## num.parse_junk
+parseNumber "abc"
+## num.parse_empty
+parseNumber ""
+## num.parse_neg
+parseNumber "-7.5"
+## num.parse_plus
+parseNumber "+5"
+## num.parse_leading_dot
+parseNumber ".5"
+## num.parse_zeros
+parseNumber "0050"
+## num.parse_bool_true
+parseNumber true
+## num.parse_bool_false
+parseNumber false
+## num.parse_inf
+parseNumber "1e40"
+## num.parse_comma
+parseNumber "1,5"
+## num.parse_array
+parseNumber ["1", "2.5", "x"]
+## num.parse_simple_math
+parseNumber "512 + 0x2F"

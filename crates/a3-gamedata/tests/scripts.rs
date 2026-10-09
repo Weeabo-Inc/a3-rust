@@ -194,3 +194,21 @@ fn vfs_host_runs_preprocessed_scripts() {
     );
     assert!(vm.host.errors.is_empty(), "{:?}", vm.host.errors);
 }
+
+#[test]
+fn errors_in_log_puts_script_errors_between_the_diag_log_lines() {
+    let mut host = VfsHost::new(a3_vfs::Vfs::new());
+    host.errors_in_log = true;
+    let mut vm = Vm::new(host);
+    vm.eval("diag_log text \"before\"").unwrap();
+    assert!(vm.eval("1 + \"a\"").is_err());
+    vm.eval("diag_log text \"after\"").unwrap();
+    let log = &vm.host.log;
+    assert_eq!(log.first().map(String::as_str), Some("before"));
+    assert_eq!(log.last().map(String::as_str), Some("after"));
+    assert!(
+        log[1].starts_with("Error in expression"),
+        "the error sits between: {log:?}"
+    );
+    assert_eq!(vm.host.errors.len(), 1, "errors are still collected");
+}

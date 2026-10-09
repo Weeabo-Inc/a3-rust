@@ -132,6 +132,12 @@ impl ConfigHost for MissionVmHost {
     }
 }
 
+impl a3_gamedata::ErrorLog for MissionVmHost {
+    fn error_log(&self) -> &[String] {
+        &self.files.errors
+    }
+}
+
 impl MissionHost for MissionVmHost {
     fn vfs(&self) -> &Vfs {
         &self.files.vfs
