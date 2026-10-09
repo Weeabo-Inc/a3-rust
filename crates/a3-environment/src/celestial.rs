@@ -162,6 +162,16 @@ pub fn moon_position(observer: &Observer, dt: &DateTime) -> Horizontal {
     h
 }
 
+/// The rotation from equatorial coordinates (x towards right ascension 0h, y towards 6h, z
+/// the north celestial pole) to world axes (x east, y up, z north) at this time: for drawing
+/// the stars.
+pub fn star_rotation(observer: &Observer, dt: &DateTime) -> glam::Mat3 {
+    let (jd, t) = centuries(observer, dt);
+    let lst = sidereal_time(jd, t) + observer.longitude;
+    let column = |ra: f64, dec: f64| horizontal(observer.latitude, dec, lst - ra).direction();
+    glam::Mat3::from_cols(column(0.0, 0.0), column(90.0, 0.0), column(0.0, 90.0))
+}
+
 /// The engine's `moonPhase`: the sun-moon elongation over 180°, 0 at new moon and 1 at full
 /// moon. `sun` and `moon` are unit directions towards them.
 pub fn moon_phase(sun: Vec3, moon: Vec3) -> f32 {

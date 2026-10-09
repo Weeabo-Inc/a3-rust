@@ -72,6 +72,11 @@ linearly, textures by blend factor. **medium** (interpolation not traced).
   for fog value `v` (clamped to 0..1). The fog parameter block (`0x12677c0`) stores
   `beta0 · e^(decay · base)` and the decay, i.e. height fog
   `beta(h) = beta0 · e^(−decay · (h − base))`. **high**
+- In the shaders (`render-atmosphere.md` §2) this fog is `PSC_HazePars` (base, density, decay),
+  integrated along the in-air part of the view ray; `PSC_PhysicalFog` (source not traced) and a
+  linear `fogStart`/`fogEnd` fog come on top. `a3-render` implements the height fog analytically
+  (`RenderSettings::fog_density`/`fog_decay`), the linear fog (`fog_start`/`fog_end`) and a
+  colour haze (`haze`) in the post atmosphere pass.
 - Distance haze is trueSKY's (Rayleigh/Mie in `SimulWeather` keyframes and the lighting
   table's `rayleigh`/`mie`, per km). We use the table's `(rayleigh + mie) / 1000` per metre. **low**
 

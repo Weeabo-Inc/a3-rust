@@ -25,6 +25,7 @@ mod post;
 mod renderer;
 pub mod roads;
 pub mod shadow;
+pub mod sky;
 pub mod texture;
 
 pub use camera::{Camera, Fov, FreeFlyController, FreeFlyInput};
@@ -34,7 +35,7 @@ pub use frustum::Frustum;
 pub use gpu::{Gpu, RenderError, WindowSurface};
 pub use mesh::{Mesh, MeshData, Vertex};
 pub use post::{AntiAliasing, BloomSettings, FilmicCurve, HdrSettings, Tonemap};
-pub use renderer::{ExposureReadout, RenderSettings, Renderer};
+pub use renderer::{ExposureReadout, HemisphereAmbient, RenderSettings, Renderer};
 pub use shadow::ShadowSettings;
 pub use texture::{ColorSpace, GpuTexture, TextureData, TextureError, TextureFormat};
 

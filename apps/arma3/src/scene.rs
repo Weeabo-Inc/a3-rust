@@ -123,6 +123,7 @@ pub struct DebugScene {
     /// Placed objects of the World, or the model viewer's model.
     models: Option<ModelFeature>,
     orbit: Option<Orbit>,
+    environment: Option<crate::environment::SceneEnvironment>,
     sim_time: f64,
 }
 
@@ -141,6 +142,7 @@ impl DebugScene {
             world: None,
             models: None,
             orbit: None,
+            environment: None,
             sim_time: 0.0,
         }
     }
@@ -153,7 +155,15 @@ impl DebugScene {
         renderer: &mut Renderer,
         world: LoadedWorld,
         spec: Option<CameraSpec>,
+        environment: &crate::environment::EnvironmentSpec,
     ) {
+        self.environment = Some(crate::environment::SceneEnvironment::new(
+            gpu,
+            renderer,
+            world.environment.clone(),
+            world.sky_noise.as_ref(),
+            environment,
+        ));
         let terrain = TerrainRenderer::new(gpu, renderer, &world.landscape, Some(world.reader));
         if let Some(objects) = world.objects {
             self.models = Some(objects.attach(gpu, renderer));
@@ -211,6 +221,13 @@ impl DebugScene {
     /// Model renderer statistics of the last frame.
     pub fn model_stats(&self) -> Option<ModelStats> {
         self.models.as_ref().map(|m| m.lock().stats())
+    }
+
+    /// Update the renderer's lighting, fog and sky from the World's environment.
+    pub fn prepare_render(&mut self, renderer: &mut Renderer, dt: f32) {
+        if let Some(env) = &mut self.environment {
+            env.apply(renderer, self.camera.position.y as f32, dt);
+        }
     }
 
     /// Terrain statistics of the loaded World.
