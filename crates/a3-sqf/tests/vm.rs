@@ -19,9 +19,9 @@ fn arithmetic_and_precedence() {
 
 #[test]
 fn numbers_are_single_precision() {
-    assert_eq!(s("16777216 + 1"), "1.67772e+007");
+    assert_eq!(s("16777216 + 1"), "1.67772e+07");
     assert_eq!(s("0.1 + 0.2"), "0.3");
-    assert_eq!(s("1e6"), "1e+006");
+    assert_eq!(s("1e6"), "1e+06");
 }
 
 #[test]

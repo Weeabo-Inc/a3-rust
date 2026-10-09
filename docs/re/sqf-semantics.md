@@ -62,17 +62,44 @@ numbers come from the table initializer, messages from the shipped stringtable).
 
 ## Numbers
 
-- Numbers are `float`. `str` formats with `"%g"` (`FUN_1402da290`) through the UCRT
-  `common_vsprintf` with legacy options, which gives three-digit exponents. The wiki's
-  `str (pi/100000)` gives `"3.14159e-005"`, and infinity prints `1.#INF` (wiki: `for`,
-  `setUnitAbility`). Unary `toFixed` switches this to `"%0.Nf"` (setting at context
-  `+0x4c8`). High confidence.
-- NaN prints with the same legacy format (`-1.#IND`). Medium confidence: inferred from the
-  legacy flags, not observed.
-- `GameDataNaN` (typeName `"NaN"`) is created only by the type factory (`FUN_1402d0750`, called
-  from the type registry), never by arithmetic. A scalar holding NaN or infinity has typeName
-  `"SCALAR"`. The wiki's `typeName 1e39 // NaN` comes from older engines. High confidence for
-  arithmetic; the parser's handling of overflowing literals is unverified.
+Confirmed on the original server with the oracle (`tools/oracle/probes/10_numbers.probes`,
+`11_numbers_edge.probes`) and in the handlers below. High confidence unless noted.
+
+- Numbers are `float`. `str` (`FUN_1402da290`) prints `"%g"` of the float widened to double
+  through the statically linked UCRT `common_vsprintf` (options `*__local_stdio_printf_options()
+  | 2`, a 127-byte buffer). The options do **not** select the legacy formats: exponents have
+  two digits (`1e+06`, `1e-05`), infinities print `inf`/`-inf`, the FPU's default NaN
+  (sign set, quiet bit only) prints `-nan(ind)`, any other NaN `nan` or `-nan`. The
+  wiki's `"3.14159e-005"` and `1.#INF` come from older builds.
+- A scalar that is infinite or NaN has the type **NaN** (`typeName (1/0)` is `"NaN"`,
+  `(1/0) isEqualType 0` is false; the scalar's hash uses the NaN type when `_finite` fails,
+  `FUN_1402d8380`). Commands whose signature lists `SCALAR` without `NaN` reject such values
+  in the type check, e.g. `(1/0) toFixed 2` and `5 random (sqrt -1)` fail.
+- The engine runs with the SSE flush-to-zero and denormals-are-zero modes: subnormal literals,
+  results and `parseNumber` values are zero (`str 1e-38` is `"0"`, `str -1e-39` is `"-0"`,
+  `1e-39 == 0` is true).
+- `toFixed` binary (`FUN_140492b60`): digits are the right operand rounded with `cvtss2si`
+  (ties to even) and clamped to 0..20, then `"%0.<n>f"` of the double: the exact decimal
+  value, rounded ties-to-even (`0.5 toFixed 0` is `"0"`, `2.5 toFixed 0` is `"2"`,
+  `123.456 toFixed 20` is `"123.45600128173828125000"`).
+- `toFixed` unary (`FUN_140492c70`): rounds like the binary form, stores -1 (off) for values
+  below -1 and at most 20 in the **script context** (`+0x4c8`), so the setting outlives the
+  scope that set it (`call {toFixed 2}; str 1.5` is `"1.50"`). `str` reads the context of the
+  running script.
+- `round` (`FUN_1402e9b60`) is `floor(x + 0.5)` in single precision: halves go up
+  (`round -2.5` is -2, `round -0.5` is 0) and `round 0.49999997` is 1.
+- `parseNumber` (`FUN_1402e7b30`) is `(float)atof(s)`: whitespace, sign, decimal or hex
+  (`"0x10"` is 16), `inf`, `nan`; the longest valid prefix, else 0.
+- `min`/`max` are `a < b ? a : b` and `a > b ? a : b`: with a NaN operand the right one wins.
+- `linearConversion` (`FUN_1405151c0`): when `|max - min| < 1e-6` the result is `minTo`
+  itself; otherwise `(maxTo - minTo) * (v - min) / (max - min) + minTo`, clamped to the
+  target range when the sixth element is true.
+- `seed random x` (`FUN_140547ca0`): `seed` truncated to int (`cvttss2si`), hashed by
+  `FUN_14030e340` (`u = ((p ^ 0x3d0000) >> 16 ^ p) * 9; u = (u >> 4 ^ u) * 0x27d4eb2d;
+  (u >> 15 ^ u) & 0x7fff`, arithmetic shifts) and multiplied by the float `0x38000100`
+  (1/32767), then by `x`. `seed random [x, y]` hashes the bit interleaving
+  (`FUN_14030e120`) of `(int)(x * 100 + seed)` and `(int)(y * 100 + seed)`; another element
+  count raises DIM and gives 0.
 
 ## Arrays
 

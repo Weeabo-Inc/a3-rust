@@ -63,13 +63,14 @@ fn json() {
 }
 
 #[test]
-fn to_fixed_lasts_until_the_scope_ends() {
+fn to_fixed_lasts_until_the_script_ends() {
     assert_eq!(s("1 toFixed 2"), "\"1.00\"");
     assert_eq!(
         s(
             "_r = []; call { toFixed 2; _r pushBack str 1.5; call { _r pushBack str pi } }; _r pushBack str 1.5; _r"
         ),
-        "[\"1.50\",\"3.14\",\"1.5\"]"
+        // The setting belongs to the script, not the scope (server oracle).
+        "[\"1.50\",\"3.14\",\"1.50\"]"
     );
     assert_eq!(s("toFixed 1; toFixed -1; str 0.25"), "\"0.25\"");
 }

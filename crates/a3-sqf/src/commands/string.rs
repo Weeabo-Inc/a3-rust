@@ -106,51 +106,6 @@ fn trim_units(s: &str, set: &str, mode: i32, unicode: bool) -> String {
     u.slice(start, end)
 }
 
-/// C `strtod`-style prefix parse: leading whitespace, optional sign,
-/// digits, fraction, exponent. Returns 0 when nothing parses.
-pub(crate) fn parse_number_prefix(s: &str) -> f32 {
-    let t = s.trim_start();
-    let b = t.as_bytes();
-    let mut i = 0;
-    if i < b.len() && (b[i] == b'+' || b[i] == b'-') {
-        i += 1;
-    }
-    if b.len() > i + 1 && b[i] == b'0' && (b[i + 1] == b'x' || b[i + 1] == b'X') {
-        let digits = &t[i + 2..];
-        let end = digits
-            .find(|c: char| !c.is_ascii_hexdigit())
-            .unwrap_or(digits.len());
-        let v = u64::from_str_radix(&digits[..end], 16).unwrap_or(0) as f32;
-        return if b[0] == b'-' { -v } else { v };
-    }
-    let digits_start = i;
-    while i < b.len() && b[i].is_ascii_digit() {
-        i += 1;
-    }
-    if i < b.len() && b[i] == b'.' {
-        i += 1;
-        while i < b.len() && b[i].is_ascii_digit() {
-            i += 1;
-        }
-    }
-    if i == digits_start || (i == digits_start + 1 && b[digits_start] == b'.') {
-        return 0.0;
-    }
-    if i < b.len() && (b[i] == b'e' || b[i] == b'E') {
-        let mut j = i + 1;
-        if j < b.len() && (b[j] == b'+' || b[j] == b'-') {
-            j += 1;
-        }
-        if j < b.len() && b[j].is_ascii_digit() {
-            while j < b.len() && b[j].is_ascii_digit() {
-                j += 1;
-            }
-            i = j;
-        }
-    }
-    t[..i].parse::<f64>().map(|v| v as f32).unwrap_or(0.0)
-}
-
 const WHITESPACE: &str = " \t\r\n";
 
 pub(super) fn register<H: Host>(r: &mut Registry<H>) {
@@ -240,7 +195,7 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         ))
     });
     r.unary("parseNumber", STR, NUM, |_, a| {
-        Ok(Value::Number(parse_number_prefix(string(&a))))
+        Ok(Value::Number(crate::number::parse_prefix(string(&a))))
     });
     r.unary("parseNumber", BOOL, NUM, |_, a| {
         Ok(Value::Number(if boolean(&a) { 1.0 } else { 0.0 }))

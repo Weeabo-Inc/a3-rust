@@ -15,15 +15,11 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         }
         Ok(Value::from(ctx.to_sqf_string(&a)))
     });
-    // `toFixed n`: fixed-point numbers in str/format until the scope ends;
-    // -1 resets.
+    // `toFixed n`: fixed-point numbers in str/format for the rest of the
+    // script, also after the scope that set it ends; a negative n resets.
     r.unary("toFixed", NUM, NOTHING, |ctx, a| {
-        let n = num(&a);
-        ctx.set_fixed_digits(if n < 0.0 {
-            None
-        } else {
-            Some(n.min(20.0) as u8)
-        });
+        let n = super::math::round_half_even(num(&a));
+        ctx.set_fixed_digits(if n < 0 { None } else { Some(n.min(20) as u8) });
         Ok(Value::Nothing)
     });
     r.unary("format", ARR, STR, |ctx, a| {

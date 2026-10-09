@@ -51,6 +51,7 @@ pub fn register_core<H: Host>(r: &mut Registry<H>) {
 }
 
 pub(crate) const NUM: TypeSet = TypeSet::NUMBER;
+pub(crate) const SCALAR: TypeSet = TypeSet::SCALAR;
 pub(crate) const BOOL: TypeSet = TypeSet::of(Type::Bool);
 pub(crate) const STR: TypeSet = TypeSet::of(Type::String);
 pub(crate) const ARR: TypeSet = TypeSet::of(Type::Array);
