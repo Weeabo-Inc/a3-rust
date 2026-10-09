@@ -77,16 +77,31 @@ impl World {
         out
     }
 
-    /// Makes a Static object an Entity so its state can change, using its config type when the
-    /// caller has one and otherwise a plain type named after the model (`Plain`, not simulated).
+    /// Makes a Static object an Entity so its state can change. The World's model type resolver
+    /// ([`set_model_type_resolver`](World::set_model_type_resolver)) gives the type of its config
+    /// class when there is one; without a resolver, or for a model no config class uses, it
+    /// becomes the plain type named after its model (`Plain`, not simulated).
     pub fn promote_static_with_model_type(&mut self, key: StaticKey) -> Result<EntityId, Error> {
         if let Some(&id) = self.promoted().get(&key) {
             return Ok(id);
         }
-        let name = self
+        let model = self
             .static_model(key)
-            .and_then(|m| m.file_name().map(|n| n.trim_end_matches(".p3d").to_owned()))
+            .map(|m| m.as_str().to_owned())
             .unwrap_or_default();
+        if let Some(ty) = self
+            .model_type_resolver
+            .as_mut()
+            .and_then(|resolver| resolver.resolve(&model))
+        {
+            return self.promote_static(key, ty);
+        }
+        let name = model
+            .rsplit(['\\', '/'])
+            .next()
+            .unwrap_or(&model)
+            .trim_end_matches(".p3d")
+            .to_owned();
         self.promote_static(key, Arc::new(EntityType::new(name, SimulationClass::Plain)))
     }
 

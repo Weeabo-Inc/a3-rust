@@ -30,7 +30,7 @@ mod ground;
 mod man;
 mod projectile;
 
-use crate::{Create, EntityClass, EntityId, ListKind, SimulationClass, World};
+use crate::{Create, DamageHit, EntityClass, EntityId, ListKind, SimulationClass, World};
 
 pub use air::AirState;
 pub use ground::GroundState;
@@ -103,6 +103,9 @@ impl Family {
 pub(crate) enum Command {
     Create(Create),
     Delete(EntityId),
+    /// A hit on another Entity (a projectile's impact, an explosion). Applied after the phase,
+    /// when every Entity is back in its slot, so the damage path sees the whole World.
+    Damage(EntityId, Box<DamageHit>),
 }
 
 /// What a family step sees besides its own Entity: the rest of the World (read-only; the
@@ -133,6 +136,12 @@ impl StepContext<'_> {
     /// Deletes an Entity after this phase.
     pub(crate) fn delete(&mut self, id: EntityId) {
         self.commands.push(Command::Delete(id));
+    }
+
+    /// Damages an Entity after this phase (`apply_damage_to`; the target may be any Entity,
+    /// including the stepping one, once the phase is over).
+    pub(crate) fn damage(&mut self, id: EntityId, hit: DamageHit) {
+        self.commands.push(Command::Damage(id, Box::new(hit)));
     }
 }
 
@@ -245,6 +254,9 @@ impl World {
                 }
                 Command::Delete(id) => {
                     self.delete(id);
+                }
+                Command::Damage(id, hit) => {
+                    self.apply_damage_to(id, *hit);
                 }
             }
         }

@@ -424,6 +424,38 @@ _Avoid_: VisitorId, netId
 The behaviour class that drives an Entity type each frame, selected by the `simulation` config
 entry (e.g. `soldier`, `carx`, `tankx`, `helicopterrtd`, `airplanex`, `shipx`, `house`, `thing`).
 
+**Hit point**:
+A named damageable location of an Entity type (`class HitPoints` in `CfgVehicles`): its armour,
+radius, `passThrough`, `minimalHit` and the `depends` expression that derives its damage from
+other hit points (`HitBody` is the worst of the four torso hit points). Hit point damage is 0..1
+and separate from the total damage; hit points are addressed by config name
+(`HitHead`) or by model selection (`head`). See the hit-point tables in `docs/re/sim-damage.md`.
+_Avoid_: hit zone, damage part, hit location
+
+**Total damage**:
+An Object's damage value, 0 (intact) to 1 (destroyed): `damage`, `setDamage` and `Killed` speak
+of it, and it is not the sum of the hit points — a hit adds to both through its `passThrough`
+factor.
+_Avoid_: health, hit points, HP
+
+**Damage model**:
+What an Entity type says about taking damage: its hit points, class `armor`, `armorStructural`,
+`explosionShielding`, `minTotalDamageThreshold` and its `DestructionEffects`. Parsed once per
+type and shared; the running damage values live on the Entity.
+_Avoid_: damage type, armour model
+
+**Destruction**:
+The state of an Object that is no longer alive: total damage reached 1, or a fatal hit point of
+its class was depleted (a Man's `HitHead`/`HitBody`). Destruction effects then run where the
+Object is local — what is left in its place is a Ruin.
+_Avoid_: death (a Man's animation state), kill (the event)
+
+**Ruin**:
+The Object created in place of a destroyed one, named by a `simulation = "ruin"` entry of its
+`DestructionEffects` (a model path). A ruin is an ordinary Object of its own type standing where
+the destroyed one was; a destroyed Static object is replaced by it.
+_Avoid_: debris, wreck (a vehicle's destroyed model, `DestructWreck`)
+
 **Locality**:
 Whether an Object is _local_ (its Owner is this machine, which simulates it and is authoritative
 for its state) or _remote_ (another machine owns it; this machine only receives its updates).

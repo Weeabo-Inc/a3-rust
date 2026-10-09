@@ -267,7 +267,8 @@ Then:
 ## 8. Open points
 
 - Missile thrust and guidance; submunitions and deploy timing.
-- Hit-point dependencies: total damage from hit points, `depends`, the fatal Man hit points.
+- Hit-point dependencies: total damage from hit points, `depends`, the fatal Man hit points —
+  now traced, see `sim-damage.md`.
 - `g` in §7.2, `shotCoef`, and the type component behind `vfunc +0x640` (`+0x2a4`, `+0x2a8`).
 - Which surface field feeds the ricochet coefficient; the meaning of the penetration component
   flags.
