@@ -244,6 +244,24 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
         }
         Ok(Value::Nothing)
     });
+    // The engine's overload takes OBJECT as well as GROUP (`docs/re/sqf-commands.tsv`:
+    // `OBJECT|GROUP · ARRAY`), and a unit names the group it belongs to. The function library
+    // calls it that way, and without this overload the call ended the script in 23 scenarios.
+    r.binary("setGroupId", OBJ, ARR, NOTHING, |ctx, g, a| {
+        let name = a.as_array().and_then(|x| {
+            x.borrow()
+                .first()
+                .and_then(|v| v.as_str().map(str::to_owned))
+        });
+        let group = {
+            let w = ctx.host.world();
+            unit_arg(w, &g).and_then(|u| w.group_of(u))
+        };
+        if let (Some(group), Some(name)) = (group, name) {
+            let _ = ctx.host.world_mut().set_group_name(group, name);
+        }
+        Ok(Value::Nothing)
+    });
     // AL EG. Only empty groups are deleted.
     r.unary("deleteGroup", GRP, NOTHING, |ctx, a| {
         let w = ctx.host.world_mut();
