@@ -75,6 +75,8 @@ impl Value {
             Value::Nil => Type::Any,
             Value::Nothing => Type::Nothing,
             Value::Bool(_) => Type::Bool,
+            // Infinities and NaN have the engine's "Not a Number" type.
+            Value::Number(n) if !n.is_finite() => Type::NaN,
             Value::Number(_) => Type::Number,
             Value::String(_) => Type::String,
             Value::Array(_) => Type::Array,
@@ -242,7 +244,7 @@ impl Value {
             Value::Nothing => out.push_str("nothing"),
             Value::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
             Value::Number(n) => match fmt.fixed {
-                Some(digits) => out.push_str(&format!("{:.*}", usize::from(digits), f64::from(*n))),
+                Some(digits) => out.push_str(&crate::number::format_fixed(*n, usize::from(digits))),
                 None => out.push_str(&format_number(*n)),
             },
             Value::String(s) => {
@@ -445,45 +447,11 @@ fn unescape_xml(s: &str) -> String {
         .replace("&amp;", "&")
 }
 
-/// Formats a number as the engine does: C `printf("%g")` of the float
-/// widened to double, with the three-digit exponent of the MSVC runtime
-/// (`str 1e6` is `"1e+006"`).
-///
-/// Infinities print `1.#INF`/`-1.#INF` and NaN `-1.#IND`, the legacy MSVC
-/// spellings the engine's printf options produce (`docs/re/sqf-semantics.md`).
+/// Formats a number as `str` does: C `printf("%g")` of the float widened
+/// to double (`str 1e6` is `"1e+06"`, `str (1/0)` is `"inf"`). See
+/// [`crate::number::format_g`].
 pub fn format_number(n: f32) -> String {
-    format_g(f64::from(n), 6)
-}
-
-fn format_g(v: f64, precision: usize) -> String {
-    if v.is_nan() {
-        return "-1.#IND".to_string();
-    }
-    if v.is_infinite() {
-        return if v > 0.0 { "1.#INF" } else { "-1.#INF" }.to_string();
-    }
-    if v == 0.0 {
-        return if v.is_sign_negative() { "-0" } else { "0" }.to_string();
-    }
-    let sci = format!("{:.*e}", precision - 1, v);
-    let (mantissa, exp) = sci.split_once('e').expect("exponent format");
-    let exp: i32 = exp.parse().expect("exponent digits");
-    if exp < -4 || exp >= precision as i32 {
-        let mantissa = strip_fraction_zeros(mantissa);
-        let sign = if exp < 0 { '-' } else { '+' };
-        format!("{mantissa}e{sign}{:03}", exp.unsigned_abs())
-    } else {
-        let decimals = (precision as i32 - 1 - exp).max(0) as usize;
-        strip_fraction_zeros(&format!("{v:.decimals$}")).to_string()
-    }
-}
-
-fn strip_fraction_zeros(s: &str) -> &str {
-    if s.contains('.') {
-        s.trim_end_matches('0').trim_end_matches('.')
-    } else {
-        s
-    }
+    crate::number::format_g(n)
 }
 
 /// A shared, mutable SQF array.
@@ -944,10 +912,10 @@ mod tests {
         assert_eq!(format_number(0.1), "0.1");
         assert_eq!(format_number(-2.5), "-2.5");
         assert_eq!(format_number(123456.0), "123456");
-        assert_eq!(format_number(1234567.0), "1.23457e+006");
-        assert_eq!(format_number(1e6), "1e+006");
+        assert_eq!(format_number(1234567.0), "1.23457e+06");
+        assert_eq!(format_number(1e6), "1e+06");
         assert_eq!(format_number(0.0001), "0.0001");
-        assert_eq!(format_number(0.00001), "1e-005");
+        assert_eq!(format_number(0.00001), "1e-05");
         assert_eq!(format_number(1.0 / 3.0), "0.333333");
     }
 

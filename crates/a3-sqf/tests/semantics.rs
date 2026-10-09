@@ -36,9 +36,13 @@ fn commands_skip_nil_arguments_and_return_nil() {
 #[test]
 fn nothing_and_numbers_print_like_the_engine() {
     assert_eq!(s("str (if false then {1})"), "\"nothing\"");
-    assert_eq!(s("str (1e30 * 1e30)"), "\"1.#INF\"");
-    assert_eq!(s("typeName (1e30 * 1e30)"), "\"SCALAR\"");
-    assert_eq!(s("str (pi / 100000)"), "\"3.14159e-005\"");
+    // UCRT printf: two-digit exponents, `inf`, and the NaN type for
+    // non-finite numbers (server oracle).
+    assert_eq!(s("str (1e30 * 1e30)"), "\"inf\"");
+    assert_eq!(s("typeName (1e30 * 1e30)"), "\"NaN\"");
+    assert_eq!(s("str (pi / 100000)"), "\"3.14159e-05\"");
+    assert_eq!(s("str (sqrt -1)"), "\"-nan(ind)\"");
+    assert_eq!(s("str 1e-39"), "\"0\"");
 }
 
 #[test]
@@ -97,4 +101,49 @@ fn strings_are_bytes_unless_force_unicode() {
     assert_eq!(s("\"aéb\" find \"b\""), "3");
     assert_eq!(s("forceUnicode 1; \"aéb\" find \"b\""), "2");
     assert_eq!(s("forceUnicode 0; \"aéb\" select [1, 1]"), "\"é\"");
+}
+
+#[test]
+fn number_commands_match_the_server_oracle() {
+    // round is floor(x + 0.5): halves go up.
+    assert_eq!(
+        s("[round -0.5, round -1.5, round -2.5, round 2.5, round 0.49999997]"),
+        "[0,-1,-2,3,1]"
+    );
+    // toFixed rounds ties to even and prints the exact value.
+    assert_eq!(
+        s("[0.5 toFixed 0, 2.5 toFixed 0, 0.125 toFixed 2, 1 toFixed 25, 1 toFixed -1]"),
+        "[\"0\",\"2\",\"0.12\",\"1.00000000000000000000\",\"1\"]"
+    );
+    // A degenerate source range gives minTo.
+    assert_eq!(
+        s("[linearConversion [5,5,5,0,1], linearConversion [5,5,7,2,1,true]]"),
+        "[0,2]"
+    );
+    // min/max with NaN return the right operand.
+    assert_eq!(
+        s("[str ((sqrt -1) max 3), str (3 max (sqrt -1)), str ((sqrt -1) min 3)]"),
+        "[\"3\",\"-nan(ind)\",\"3\"]"
+    );
+    // parseNumber is atof.
+    assert_eq!(
+        s(
+            "[parseNumber \"0x10\", parseNumber \"  12abc\", parseNumber \"-.5e1\", str parseNumber \"inf\"]"
+        ),
+        "[16,12,-5,\"inf\"]"
+    );
+    assert_eq!(
+        s("[typeName (parseNumber \"1e40\"), 1e39 isEqualType 0]"),
+        "[\"NaN\",false]"
+    );
+    // Subnormal literals and results are zero (flush-to-zero).
+    assert_eq!(
+        s("[1e-39 == 0, str (1e-30 * 1e-10), str -1e-39]"),
+        "[true,\"0\",\"-0\"]"
+    );
+    // Seeded random hashes the truncated seed.
+    assert_eq!(
+        s("[12345 random 100, 1.5 random 1, 0 random 1, 5 random [1, 2]]"),
+        "[84.4356,0.348552,0.573565,0.31312]"
+    );
 }

@@ -54,6 +54,7 @@ PROBES_DIR = HERE / "probes"
 MISSION_PREFIX = "a3rust_oracle"
 SERVER_NAME = "a3rust_oracle"
 DEFAULT_WORLD = "VR"
+STALE_MISSION_SECONDS = 4 * 3600
 
 # Protocol line prefixes.
 _LINE = re.compile(r"^(A3RO_BEGIN|A3RO_END|A3RO_DONE|A3RO_TIMEOUT|A3RO|A3RE|A3RV|A3RL|A3RN)(\|.*)?$")
@@ -449,7 +450,8 @@ def game_dir(args) -> Path:
 
 
 def work_dir(args) -> Path:
-    return Path(args.work_dir) if args.work_dir else REPO_WORK
+    # Absolute: the server runs with the game folder as its working directory.
+    return Path(args.work_dir).resolve() if args.work_dir else REPO_WORK
 
 
 def _find_repo_work() -> Path:
@@ -598,12 +600,15 @@ def run_oracle(args, probes: list[Probe], world: str) -> tuple[dict[str, Result]
     profiles.mkdir(parents=True)
     base.mkdir(parents=True, exist_ok=True)
 
-    mission = f"{MISSION_PREFIX}.{world}"
+    # One mission folder per run (the process id in the name), so concurrent runs from several
+    # worktrees do not delete each other's mission.
+    mission = f"{MISSION_PREFIX}_{os.getpid()}.{world}"
     mission_dir = root / "MPMissions" / mission
-    # Leftovers of an interrupted run: only our own, clearly named mission folders.
-    for stale in (root / "MPMissions").glob(f"{MISSION_PREFIX}.*"):
-        if stale.is_dir():
-            shutil.rmtree(stale)
+    # Leftovers of an interrupted run: only our own, clearly named mission folders that are
+    # older than any run could take.
+    for stale in (root / "MPMissions").glob(f"{MISSION_PREFIX}*.*"):
+        if stale.is_dir() and time.time() - stale.stat().st_mtime > STALE_MISSION_SECONDS:
+            shutil.rmtree(stale, ignore_errors=True)
     password, admin, command = (secrets.token_hex(12) for _ in range(3))
     (base / "server.cfg").write_text(server_cfg(mission, password, admin, command), encoding="utf-8")
     (base / "basic.cfg").write_text(BASIC_CFG, encoding="utf-8")
@@ -727,7 +732,7 @@ def results_dir(args) -> Path:
 
 
 def select(args) -> list[Probe]:
-    probes = load_corpus()
+    probes = load_corpus(Path(args.probes_dir) if args.probes_dir else PROBES_DIR)
     if args.filter:
         rx = re.compile(args.filter)
         probes = [p for p in probes if rx.search(p.id)]
@@ -850,6 +855,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--work-dir", help="scratch folder (default: the repo's .work)")
     parser.add_argument("--a3-tools", help="our a3-tools binary (default: target/release)")
     parser.add_argument("--filter", help="regex on probe ids")
+    parser.add_argument("--probes-dir", help="probe corpus folder (default: tools/oracle/probes)")
     parser.add_argument("--timeout", type=float, default=900.0, help="seconds per engine run")
     parser.add_argument("--skip-oracle", action="store_true", help="run: reuse the last oracle results")
     parser.add_argument("-v", "--verbose", action="store_true")

@@ -428,16 +428,14 @@ impl<H: Host> Ctx<'_, H> {
             .collect()
     }
 
-    /// The current scope's `toFixed` digits.
+    /// The script's `toFixed` digits.
     pub fn fixed_digits(&self) -> Option<u8> {
-        self.script.top_code().and_then(|cf| cf.fixed)
+        self.script.fixed
     }
 
-    /// Sets `toFixed` for the current scope (`None` resets).
+    /// Sets `toFixed` for the rest of the script (`None` resets).
     pub fn set_fixed_digits(&mut self, digits: Option<u8>) {
-        if let Some(cf) = self.script.top_code_mut() {
-            cf.fixed = digits;
-        }
+        self.script.fixed = digits;
     }
 
     /// Runs code unscheduled to completion right now, in a fresh script
