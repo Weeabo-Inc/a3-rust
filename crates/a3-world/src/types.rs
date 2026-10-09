@@ -3,11 +3,12 @@
 //! its `simulation` value (`docs/re/world-object-model.md`).
 
 use std::collections::HashMap;
+use std::fmt;
 use std::sync::Arc;
 
 use a3_config::{ConfigRef, ConfigTree, NodeId};
 
-use crate::{Error, SimulationClass};
+use crate::{DamageModel, Error, SimulationClass};
 
 /// The step an Entity simulates at unless its class changes it: the original's `Entity`
 /// constructor sets 1/15 s (`+0x1bc`); classes adjust it at run time.
@@ -77,6 +78,7 @@ pub struct EntityType {
     display_name: String,
     simulation_step: f32,
     config_path: Vec<NodeId>,
+    damage: DamageModel,
 }
 
 impl EntityType {
@@ -93,7 +95,15 @@ impl EntityType {
             display_name: String::new(),
             simulation_step: DEFAULT_SIMULATION_STEP,
             config_path: Vec::new(),
+            damage: DamageModel::new(),
         }
+    }
+
+    /// The same type with another model path, for a type the engine makes up (a ruin built from
+    /// a `DestructionEffects` entry).
+    pub fn with_model(mut self, model: impl Into<String>) -> Self {
+        self.model = model.into();
+        self
     }
 
     fn from_config(source: TypeSource, cfg: &ConfigRef<'_>) -> Result<Self, Error> {
@@ -122,6 +132,7 @@ impl EntityType {
             display_name: cfg.get("displayName").text(),
             simulation_step,
             config_path: cfg.node_path().to_vec(),
+            damage: DamageModel::from_config(cfg, class),
         })
     }
 
@@ -168,6 +179,11 @@ impl EntityType {
         self.simulation_step
     }
 
+    /// What the type's config says about taking damage: hit points, armor and ruins.
+    pub fn damage(&self) -> &DamageModel {
+        &self.damage
+    }
+
     /// The type's config class, for the parameters a family module reads itself. Null for types
     /// made with [`EntityType::new`].
     pub fn config<'a>(&self, tree: &'a ConfigTree) -> ConfigRef<'a> {
@@ -175,11 +191,22 @@ impl EntityType {
     }
 }
 
+/// A model path in the form the index compares: lower case, `\` separators, no leading
+/// separator.
+fn normalize_model(model: &str) -> String {
+    model
+        .replace('/', "\\")
+        .trim_start_matches('\\')
+        .to_ascii_lowercase()
+}
+
 /// Builds and caches [`EntityType`]s from the merged config, one per class name.
 #[derive(Debug)]
 pub struct TypeBank {
     config: Arc<ConfigTree>,
     cache: HashMap<String, Arc<EntityType>>,
+    /// `CfgVehicles` classes by normalised model path, built on first use.
+    by_model: Option<HashMap<String, String>>,
 }
 
 impl TypeBank {
@@ -187,6 +214,7 @@ impl TypeBank {
         Self {
             config,
             cache: HashMap::new(),
+            by_model: None,
         }
     }
 
@@ -230,4 +258,70 @@ impl TypeBank {
         self.cache.insert(key, ty.clone());
         Ok(ty)
     }
+
+    /// The name of the config class whose `model` is this model path, or `None`.
+    ///
+    /// The original resolves a model path back to its class (that is how a `DestructionEffects`
+    /// ruin `type`, a model path, finds its class, `docs/re/sim-damage.md` §7.2). Searched in the
+    /// same order as [`get`](Self::get) (CfgVehicles, CfgAmmo, CfgNonAIVehicles), matching
+    /// case-insensitively and ignoring `/` versus `\` and a leading separator; where several
+    /// classes share a model the first in config order wins. The index is built on first use.
+    pub fn class_of_model(&mut self, model: &str) -> Option<String> {
+        if self.by_model.is_none() {
+            let mut index = HashMap::new();
+            for source in TypeSource::ALL {
+                for entry in self.config.root().get(source.root_name()).entries() {
+                    let model = entry.get("model").text();
+                    if !model.is_empty() {
+                        index
+                            .entry(normalize_model(&model))
+                            .or_insert_with(|| entry.name().to_owned());
+                    }
+                }
+            }
+            self.by_model = Some(index);
+        }
+        self.by_model
+            .as_ref()
+            .and_then(|index| index.get(&normalize_model(model)))
+            .cloned()
+    }
+
+    /// The type of the class whose `model` is this model path, if the config knows it and its
+    /// class has a known simulation.
+    pub fn for_model(&mut self, model: &str) -> Option<Arc<EntityType>> {
+        let name = self.class_of_model(model)?;
+        self.get(&name).ok()
+    }
+
+    /// A [`ModelTypeResolver`] over the same config, for the host's one-line wiring:
+    ///
+    /// ```ignore
+    /// world.set_model_type_resolver(Some(types.resolver()));
+    /// ```
+    ///
+    /// A `World` owns no config, so the resolver is a second bank over the same `Arc<ConfigTree>`
+    /// (its own cache; the config itself is shared, not copied).
+    pub fn resolver(&self) -> Box<dyn ModelTypeResolver> {
+        Box::new(Self::new(self.config.clone()))
+    }
+}
+
+impl ModelTypeResolver for TypeBank {
+    fn resolve(&mut self, model: &str) -> Option<Arc<EntityType>> {
+        self.for_model(model)
+    }
+}
+
+/// The model path → [`EntityType`] lookup a Static object's model is resolved with: a hit on a
+/// Static object promotes it with the type of its config class (so a house gets its hit points,
+/// its armor and its ruin), and a destroyed building's ruin `type` finds its class with it
+/// (`docs/re/sim-damage.md` §7.2). `World` owns no config, so a host that does installs one with
+/// [`World::set_model_type_resolver`](crate::World::set_model_type_resolver); without one an
+/// object is promoted as the plain type named after its model.
+///
+/// [`TypeBank`] implements it (`TypeBank::for_model`).
+pub trait ModelTypeResolver: fmt::Debug + Send {
+    /// The type of the config class whose `model` is this path, or `None`.
+    fn resolve(&mut self, model: &str) -> Option<Arc<EntityType>>;
 }

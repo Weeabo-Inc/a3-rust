@@ -95,7 +95,7 @@ impl Entity {
             position: self.position,
             orientation: self.orientation,
             velocity: self.velocity,
-            damage: self.damage,
+            damage: self.damage(),
             hidden: self.hidden,
         }
     }

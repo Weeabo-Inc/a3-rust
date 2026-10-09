@@ -94,6 +94,7 @@
 
 mod ai;
 mod class;
+mod damage;
 mod entity;
 mod groups;
 mod id;
@@ -114,6 +115,11 @@ pub use ai::{
     TargetKnowledge, Targets, VIEW_RANGE, Waypoint, WaypointQueue, WaypointType, target_key,
 };
 pub use class::{EntityClass, SimulationClass};
+pub use damage::{
+    AllHitPointsDamage, DamageContext, DamageHandler, DamageHit, DamageMode, DamageModel,
+    DamageOrigin, DamageOutcome, DamageReply, DamageRequest, DamageState, Depends, DestructionType,
+    FatalHitPoint, HitPoint, Ruin,
+};
 pub use entity::{Attachment, Entity, ListKind, Locality, VisualState};
 pub use groups::{ENEMY_THRESHOLD, Group, GroupId, Side, default_group_name, side_from_config};
 pub use id::{ClientId, EntityId, NetworkId, ParseNetworkIdError};
@@ -129,7 +135,9 @@ pub use sim::{
     Motion, MoveState, ProjectileState, SUB_STEP,
 };
 pub use statics::{StaticKey, StaticObject};
-pub use types::{DEFAULT_SIMULATION_STEP, EntityType, Scope, TypeBank, TypeSource};
+pub use types::{
+    DEFAULT_SIMULATION_STEP, EntityType, ModelTypeResolver, Scope, TypeBank, TypeSource,
+};
 pub use world::{Create, POSITION_MAX, POSITION_MIN, Placement, World, WorldEvent};
 
 /// Errors from World operations.
