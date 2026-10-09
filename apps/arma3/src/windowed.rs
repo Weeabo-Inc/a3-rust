@@ -99,8 +99,8 @@ impl App for GameApp {
                 play,
             );
         }
-        if let Some((vfs, spec)) = self.engine.load_model_vfs()? {
-            self.scene.load_model(&gpu, &mut renderer, vfs, spec);
+        if let Some((vfs, spec, moves)) = self.engine.load_model_vfs()? {
+            self.scene.load_model(&gpu, &mut renderer, vfs, spec, moves);
         }
         self.graphics = Some(Graphics {
             gpu,

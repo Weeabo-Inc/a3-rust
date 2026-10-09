@@ -35,8 +35,12 @@ pub struct ModelSpec {
     /// Camera heading and pitch in degrees.
     pub yaw: f32,
     pub pitch: f32,
+    /// Camera distance in model radii.
+    pub zoom: f32,
     /// Draw this Resolution LOD instead of choosing one.
     pub lod: Option<usize>,
+    /// Pose the model as a Man in this Move (`CfgMovesMaleSdr` class) at this phase.
+    pub pose: Option<(String, f32)>,
 }
 
 /// A terrain's placed objects, loaded with the World.
@@ -171,9 +175,21 @@ pub struct Orbit {
     zoom: f32,
     radius: f32,
     lods: usize,
+    /// The Man animation posing the model (`ModelSpec::pose`), if any.
+    man: Option<crate::man::ManAnimation>,
 }
 
+/// How far below the orbit centre a posed Man's ground point goes: about his hip height, so the
+/// camera circles his middle.
+const POSED_CENTRE_HEIGHT: f64 = 0.9;
+
 impl Orbit {
+    /// Pose the model with `man` (already switched into its Move).
+    pub fn with_man(mut self, man: crate::man::ManAnimation) -> Orbit {
+        self.man = Some(man);
+        self
+    }
+
     /// Load `spec` into `models` and look at it from around `centre`.
     pub fn new(models: &ModelFeature, spec: ModelSpec, centre: DVec3) -> Orbit {
         let mut m = models.lock();
@@ -185,10 +201,11 @@ impl Orbit {
             centre,
             yaw: spec.yaw.to_radians(),
             pitch: spec.pitch.to_radians(),
-            zoom: 1.9,
+            zoom: spec.zoom.clamp(0.3, 20.0),
             radius: 2.0,
             lods: 0,
             spec,
+            man: None,
         }
     }
 
@@ -219,10 +236,28 @@ impl Orbit {
     pub fn draw(&self, draws: &mut DrawList, models: &ModelFeature) {
         let mut m = models.lock();
         m.clear_dynamic();
-        m.add_dynamic(PlacedObject {
-            model: self.model,
-            transform: DAffine3::from_translation(self.centre),
-        });
+        m.clear_skinned();
+        match self
+            .man
+            .as_ref()
+            .and_then(|man| Some((man.palette()?, man.ground())))
+        {
+            Some((bones, ground)) => {
+                let feet = self.centre - DVec3::new(0.0, POSED_CENTRE_HEIGHT, 0.0);
+                let transform = DAffine3::from_translation(feet - ground.as_dvec3());
+                m.add_skinned(
+                    PlacedObject {
+                        model: self.model,
+                        transform,
+                    },
+                    &bones,
+                );
+            }
+            None => m.add_dynamic(PlacedObject {
+                model: self.model,
+                transform: DAffine3::from_translation(self.centre),
+            }),
+        }
         let r = f64::from(self.radius);
         draws.lines.axes(self.centre, r * 0.5);
         draws.lines.grid(
@@ -242,8 +277,13 @@ impl Orbit {
                 self.spec.path.to_uppercase()
             );
         }
+        let move_ = self
+            .man
+            .as_ref()
+            .map(|man| format!("  MOVE {}", man.move_name()))
+            .unwrap_or_default();
         format!(
-            "{}  RADIUS {:.2} M  {} LODS",
+            "{}  RADIUS {:.2} M  {} LODS{move_}",
             self.spec.path.to_uppercase().replace('\\', "/"),
             self.radius,
             self.lods

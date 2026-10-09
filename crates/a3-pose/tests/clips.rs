@@ -170,7 +170,8 @@ fn a_blend_of_move_ids_poses_like_the_same_moves_sampled() {
     let rig = rig();
 
     // The previous move at phase 0.25 poses the head at z 0.25, the current at phase 0.75 at
-    // z 1.5 (each file's own keyframes); a blend of 0.5 lerps the joints to z 0.875.
+    // z 1.5 (each file's own keyframes, reversed into the model's -z); a blend of 0.5 lerps
+    // the joints to z 0.875.
     let head = |blend| {
         let state = MoveBlend {
             previous: stand,
@@ -185,9 +186,9 @@ fn a_blend_of_move_ids_poses_like_the_same_moves_sampled() {
         assert_eq!(state.phase, blend);
         rig.pose(&state).bones[2].translation
     };
-    assert_eq!(head(0.0), Vec3::new(0.0, 0.0, 0.25));
-    assert_eq!(head(0.5), Vec3::new(0.0, 0.0, 0.875));
-    assert_eq!(head(1.0), Vec3::new(0.0, 0.0, 1.5));
+    assert_eq!(head(0.0), Vec3::new(0.0, 0.0, -0.25));
+    assert_eq!(head(0.5), Vec3::new(0.0, 0.0, -0.875));
+    assert_eq!(head(1.0), Vec3::new(0.0, 0.0, -1.5));
 
     // A blend naming a move whose RTM is not loaded is nothing to pose.
     let missing = MoveBlend {

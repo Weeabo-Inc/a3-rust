@@ -242,7 +242,13 @@ _Avoid_: controller, input
 
 **Pose**:
 The model-space transform of every Skeleton bone at one moment, from Model animations and/or
-an RTM; skinning applies it to the vertices bound to each bone.
+an RTM; skinning applies it to the vertices bound to each bone. An RTM gives each bone a frame
+relative to its parent; the Pose composes them down the Skeleton from the root.
+
+**Reversed record**:
+An RTM record turned a half turn about Y into the model's space (x and z negated in both the
+rotation and the translation), as every shipped record must be before it poses a model.
+_Avoid_: mirrored, flipped
 
 **Skinning**:
 Posing a model's geometry through its Skeleton: each vertex is bound to up to four bones with

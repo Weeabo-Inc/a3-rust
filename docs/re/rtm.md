@@ -118,6 +118,7 @@ interpolation normalises its result.
 
 - Meaning of the header byte, the 0/1 flag and the always-empty name list; the keystone type
   numbering (the name-to-type table).
-- Whether transforms are relative to the skeleton's bind pose or absolute in model space, and the
-  bone order mapping onto a CfgSkeletons skeleton. Needed for Phase 4 animation.
+- ~~Whether transforms are relative to the skeleton's bind pose or absolute~~: answered in
+  `model-animations.md` ("RTM skeletal poses"): each record is the bone's frame relative to its
+  parent, stored a half turn about Y from the model space, bound by name.
 - How the engine samples between keyframes (linear vs. slerp, looping past the last phase).

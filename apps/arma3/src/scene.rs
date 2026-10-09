@@ -139,6 +139,13 @@ fn lift_placement(transform: DAffine3, lift: f32) -> DAffine3 {
     transform
 }
 
+/// `transform` with the model-space point `ground` moved onto its origin: where a posed Man's
+/// model goes so the ground under his feet is at the entity's position. Like the lift, a
+/// placement offset, applied in the model's frame so it turns with the Man.
+fn ground_placement(transform: DAffine3, ground: Vec3) -> DAffine3 {
+    transform * DAffine3::from_translation(-ground.as_dvec3())
+}
+
 /// The player Man's own model renderer: `CfgVehicles >> B_Soldier_F >> model`, drawn at the
 /// player's transform in third person and hidden in first person, like the engine hides the
 /// body the eyes are in.
@@ -216,36 +223,36 @@ impl SoldierModel {
     /// Put the Man at `transform` for this frame, or take him out of the frame with `None`
     /// (first person, or before the model is ready).
     ///
-    /// The Man's mesh is stored below its model origin while his Move's translations are
-    /// ground-relative, so he is lifted by [`ground_lift`](crate::player::ground_lift): his
-    /// feet, not the crown of his head, land on the ground. The lift is part of the placement,
-    /// so it goes into the instance transform whether or not he is posed — never into the bone
-    /// palette (see [`lift_placement`]).
+    /// Posed, the Man's palette keeps his mesh in the model's own space with the ground under
+    /// his feet at [`ManAnimation::ground`]; that point goes on `transform`
+    /// ([`ground_placement`]). Unposed, his rest mesh is stored below its model origin, so he is
+    /// lifted by [`ground_lift`](crate::player::ground_lift) instead. Either offset is part of
+    /// the placement, never of the bone palette (see [`lift_placement`]).
     fn place(&self, transform: Option<DAffine3>) {
         let mut m = self.feature.lock();
         m.clear_dynamic();
         m.clear_skinned();
         let Some(transform) = transform else { return };
-        let lift = m
-            .model_box(self.model)
-            .map_or(0.0, |(lowest, _)| ground_lift(lowest.as_dvec3()) as f32);
-        let transform = lift_placement(transform, lift);
         if let Some(man) = &self.man {
-            let bones = match man.lock() {
-                Ok(man) => man.palette(),
+            let posed = match man.lock() {
+                Ok(man) => man.palette().map(|bones| (bones, man.ground())),
                 Err(_) => None,
             };
-            if let Some(bones) = bones {
+            if let Some((bones, ground)) = posed {
                 m.add_skinned(
                     PlacedObject {
                         model: self.model,
-                        transform,
+                        transform: ground_placement(transform, ground),
                     },
                     &bones,
                 );
                 return;
             }
         }
+        let lift = m
+            .model_box(self.model)
+            .map_or(0.0, |(lowest, _)| ground_lift(lowest.as_dvec3()) as f32);
+        let transform = lift_placement(transform, lift);
         m.add_dynamic(PlacedObject {
             model: self.model,
             transform,
@@ -413,16 +420,39 @@ impl DebugScene {
         self.world = Some(view);
     }
 
-    /// Show one model with an orbit camera (the model viewer).
+    /// Show one model with an orbit camera (the model viewer), posed as a Man in
+    /// `ModelSpec::pose` when `moves` (the Moves type) is given.
     pub fn load_model(
         &mut self,
         gpu: &Gpu,
         renderer: &mut Renderer,
         vfs: a3_vfs::Vfs,
         spec: ModelSpec,
+        moves: Option<Moves>,
     ) {
+        let man = match (&spec.pose, moves) {
+            (Some((name, phase)), Some(moves)) => {
+                match ManAnimation::load(&vfs, moves, &spec.path) {
+                    Some(mut man) => {
+                        if !man.switch_move(name, *phase) {
+                            log::warn!("no Move {name} in CfgMovesMaleSdr; the Man stands idle");
+                        }
+                        Some(man)
+                    }
+                    None => {
+                        log::warn!("{} cannot be posed as a Man; drawn unposed", spec.path);
+                        None
+                    }
+                }
+            }
+            _ => None,
+        };
         let models = crate::models::model_feature(gpu, renderer, vfs, 4096);
-        self.orbit = Some(Orbit::new(&models, spec, WORLD_CENTRE));
+        let mut orbit = Orbit::new(&models, spec, WORLD_CENTRE);
+        if let Some(man) = man {
+            orbit = orbit.with_man(man);
+        }
+        self.orbit = Some(orbit);
         self.models = Some(models);
     }
 
@@ -942,6 +972,21 @@ mod tests {
         }
         assert!((f.fps() - 60.0).abs() < 1e-6);
         assert!((f.frame_ms() - 16.666).abs() < 0.01);
+    }
+
+    /// A posed Man's ground point lands on the entity's position, turned with him.
+    #[test]
+    fn the_ground_point_lands_on_the_placement() {
+        let spin = DAffine3::from_rotation_translation(
+            DQuat::from_rotation_y(0.4),
+            DVec3::new(15_000.0, 3.0, 15_000.0),
+        );
+        // B_Soldier_F's bounding centre: the ground is at minus it in model space.
+        let ground = -Vec3::new(0.305, 0.836, -0.401);
+        let placed = ground_placement(spin, ground);
+        let at = placed.transform_point3(ground.as_dvec3());
+        assert!((at - spin.translation).length() < 1e-9, "{at:?}");
+        assert_eq!(placed.matrix3, spin.matrix3);
     }
 
     /// The Man's ground lift must translate his whole posed mesh, not each bone along its own

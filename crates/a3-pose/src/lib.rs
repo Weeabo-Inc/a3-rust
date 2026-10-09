@@ -3,28 +3,30 @@
 //! A move state is the move a Man is leaving and the one it is entering, each with a position
 //! (phase) in its own cycle, plus the blend phase between them. A [`ManRig`] — a Skeleton with
 //! its joint pivots — turns that into a [`ManPose`]: one frame per bone of the Man skeleton,
-//! ready to skin a model (`ManPose::to_anim_pose` then [`a3_anim::Pose::skinning`]).
+//! relative to its parent bone. [`ManRig::skinning_pose`] composes it down the Skeleton into the
+//! model-space pose that skins the Man's model ([`a3_anim::Pose::skinning`]).
 //!
 //! The conventions follow the engine (`docs/re/model-animations.md`, "RTM skeletal poses"):
 //!
-//! - A stored rotation quaternion `q` is used as the matrix of `q`'s conjugate (the engine's
-//!   decoder writes the rows of the usual quaternion matrix into its columns).
+//! - A record is first [reversed](a3_anim::reversed) — turned a half turn about Y into the
+//!   decoded model space — and its quaternion `q` is then used as the matrix of `q`'s conjugate
+//!   (the engine's decoder writes the rows of the usual quaternion matrix into its columns).
 //! - A bone's joint is `R * pivot + t` over the bone's rest pivot `Q` (the raw `t` for the
-//!   `weaponBone`); that is the quantity the engine's blend averages and its frame is emitted
-//!   from. Measured against the shipped soldier it reads as a rigid joint along the trunk and
-//!   the legs only — see "Pose coherence" in `docs/re/model-animations.md` for the numbers, the
-//!   root's own record and the arm chains.
+//!   `weaponBone`, which is empty for the shipped Man skeleton); that is the quantity the
+//!   engine's blend averages and its frame is emitted from.
 //! - Poses blend by slerping rotations and lerping joints, both between the keyframes of one
 //!   move and between the previous and the current move.
 //! - The emitted bone frame is `[M | T - M * Q]` with `M` the blend's matrix, `T` the blended
-//!   joint and `Q` the rest pivot: it maps the bone's rest pivot onto its posed joint, which is
-//!   what [`a3_anim::Pose::from_rtm_frames`] and skinning expect. Unblended it reduces to
-//!   `[R | t]`, the file's own record. The stored quaternions are f16-quantized and are not
-//!   renormalized, as in the engine, so a frame is orthonormal to about 1e-4.
+//!   joint and `Q` the rest pivot: it maps the bone's rest pivot onto its posed joint in its
+//!   parent's frame. Unblended it reduces to `[R | t]`, the file's own record. The stored
+//!   quaternions are f16-quantized and are not renormalized, as in the engine, so a frame is
+//!   orthonormal to about 1e-4.
+//! - A bone's model-space matrix is its parent's times its own frame, down from the root (the
+//!   engine's skeleton walk), so a child follows every parent above it.
 //!
-//! The pose is in the engine's animation space; how the pose is placed on the entity (the root
-//! offset) is not settled, so the caller applies the entity transform. The move's own advance
-//! is [`MoveSample::step`], not a bone translation.
+//! The composed pose is in the pivots model's space, where the root record lifts the pelvis to
+//! its hip height so the feet stand on `y = 0`: the entity's position is that ground point.
+//! The move's own advance is [`MoveSample::step`], not a bone translation.
 //!
 //! A moves type (`a3-moves`) names each move's RTM by path and plays it to a phase: [`MoveClips`]
 //! holds the animations themselves, keyed by that path, and [`MoveBlend`] is a blend state in the
@@ -93,7 +95,7 @@ impl<'a> MoveState<'a> {
     }
 }
 
-/// One bone of a pose, in the space its move's animation is in.
+/// One bone of a pose: its frame relative to its parent bone, in the model's space.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BonePose {
     /// The bone's orientation.
@@ -120,9 +122,8 @@ impl BonePose {
         Affine3A::from_rotation_translation(self.rotation, self.translation)
     }
 
-    /// Where `rest` lands under this frame, `R * rest + t`: the bone's joint as the engine's load
-    /// conversion defines it, the quantity the blend lerps. Whether it holds as a joint of the
-    /// whole body depends on the data — see the crate docs.
+    /// Where `rest` lands under this frame, `R * rest + t`: the bone's joint in its parent's
+    /// frame, as the engine's load conversion defines it — the quantity the blend lerps.
     pub fn posed_pivot(self, rest: Vec3) -> Vec3 {
         self.translation + self.matrix() * rest
     }
@@ -143,18 +144,9 @@ impl ManPose {
         }
     }
 
-    /// The bone frames as affine matrices.
+    /// The bone frames as affine matrices, each relative to its parent bone.
     pub fn to_affines(&self) -> Vec<Affine3A> {
         self.bones.iter().map(|b| b.to_affine()).collect()
-    }
-
-    /// As an [`a3_anim::Pose`] (nothing hidden), for [`a3_anim::Pose::skinning`] and
-    /// [`a3_anim::skin`].
-    pub fn to_anim_pose(&self) -> a3_anim::Pose {
-        a3_anim::Pose {
-            bones: self.to_affines(),
-            hidden: vec![false; self.bones.len()],
-        }
     }
 }
 
@@ -162,6 +154,7 @@ impl ManPose {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ManRig {
     names: Vec<String>,
+    parents: Vec<Option<usize>>,
     pivots: SkeletonPivots,
     root: Option<usize>,
 }
@@ -181,6 +174,7 @@ impl ManRig {
     pub fn with_pivots(skeleton: &Skeleton, pivots: SkeletonPivots) -> Self {
         Self {
             names: skeleton.bones.iter().map(|b| b.name.clone()).collect(),
+            parents: skeleton.bones.iter().map(|b| b.parent).collect(),
             pivots,
             root: skeleton.bones.iter().position(|b| b.parent.is_none()),
         }
@@ -237,6 +231,46 @@ impl ManRig {
         ManPose { bones }
     }
 
+    /// The parent of every bone, in skeleton order (`None` for the root).
+    pub fn parents(&self) -> &[Option<usize>] {
+        &self.parents
+    }
+
+    /// The model-space pose of `pose`: every bone's frame composed with its parents' down from
+    /// the root, in the pivots model's space.
+    pub fn compose(&self, pose: &ManPose) -> Vec<Affine3A> {
+        a3_anim::compose_hierarchy(&pose.to_affines(), &self.parents)
+    }
+
+    /// `pose` as the [`a3_anim::Pose`] that skins the Man's model (nothing hidden), for
+    /// [`a3_anim::Pose::skinning`] and a renderer's bone palette. `model_offset` is where the
+    /// model's origin sits in the pivots model's space: an ODOL model's vertices are stored
+    /// relative to its `bounding_center`, so pass that. Each matrix is
+    /// `translate(-offset) * composed * translate(offset)`: it takes a rest vertex of the model
+    /// into pivot space, poses it there and brings it back, so the posed mesh stays in the
+    /// model's space and the ground under the posed Man is at `y = -offset.y`
+    /// ([`ManRig::ground_offset`]).
+    pub fn skinning_pose(&self, pose: &ManPose, model_offset: Vec3) -> a3_anim::Pose {
+        let to_pivot = Affine3A::from_translation(model_offset);
+        let back = Affine3A::from_translation(-model_offset);
+        let bones: Vec<Affine3A> = self
+            .compose(pose)
+            .into_iter()
+            .map(|m| back * m * to_pivot)
+            .collect();
+        a3_anim::Pose {
+            hidden: vec![false; bones.len()],
+            bones,
+        }
+    }
+
+    /// Where the ground under a posed Man is in the space of a model whose vertices sit at
+    /// `model_offset` from the pivots model's origin (see [`ManRig::skinning_pose`]): the
+    /// point to put on the entity's position.
+    pub fn ground_offset(model_offset: Vec3) -> Vec3 {
+        -model_offset
+    }
+
     fn rest_pivot(&self, bone: usize) -> Vec3 {
         self.pivots
             .positions
@@ -283,6 +317,7 @@ fn sample_bone(
         else {
             return rest_sample;
         };
+        let t = a3_anim::reversed(*t);
         let rotation = t.rotation.conjugate();
         let joint = if pivots.weapon_bone == Some(bone) {
             // The load conversion skips the weapon bone: `t` stays an offset.

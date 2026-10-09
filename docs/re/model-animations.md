@@ -119,48 +119,27 @@ animation object carries its attach bone at `+0x90` (`int`) and that bone's blen
   `OFP2_ManSkeleton`: `A3\anims_f\data\skeleton\SkeletonPivots.p3d`, not autocentred, pelvis at
   the origin). Each bone's pivot is the memory point named like the bone; without one it takes
   the parent's pivot, else the origin. `weaponBone` (same class) names one bone the conversion
-  below skips.
+  below skips; it is **empty** for `OFP2_ManSkeleton` in the shipped config (`ragdoll =
+  "Soldier"` is the class's other entry), so every bone is converted.
+- **Reversed records** (high for the data, medium for where the engine does it): RTM records are
+  stored a half turn about Y away from the decoded ODOL model space. Converting a record to model
+  space conjugates it with `S = diag(-1, 1, -1)`: the quaternion's x and z and the translation's
+  x and z change sign (`a3_anim::reversed`). The engine's plain-RTM loader `0x1250490` does
+  exactly this to every 12-float matrix when its "reversed" flag is set (it negates elements 1, 3,
+  5, 7, 9, 11 of the column-major `Matrix4`, i.e. `S * M * S`). The flag comes from the animation
+  key (`FUN_14124a0a0` passes `key+0x10`) and is stored at `anim+0x10c`; for BMTR files the
+  serialiser `0x12557a0` overwrites it with the header byte, which is 1 in every shipped file. No
+  sign flip was found on the BMTR record path (`0x1255e50` reads the 14-byte records raw), yet the
+  shipped binarized records only fit the shipped soldier after the conversion: unconverted, the
+  rotation centres of the arm and finger records land on the mirror image (`x -> -x`) of their
+  joints and no composition keeps the arms together (issue #247's eight readings); converted,
+  every joint of the idle and the walk keeps its rest distance to 2..5 mm (below). Where the
+  engine reconciles the BMTR records with the model (a reversed Shape on load is the likely
+  place) is open; the rule itself is settled by the data.
 - **Load conversion** (high): after reading a keyframe, every bound bone except the weapon bone
   gets its translation replaced by `R * pivot + t` (written back as half floats). A loaded record
   is therefore `[R | R * pivot + t]`: it maps the bone's rest pivot onto the **posed position of
-  the joint**. How far that reading holds on real data is measured under *Pose coherence* below.
-- **Pose coherence** (measured, `crates/a3-pose/tests/real_data.rs`): reading the emitted frame as
-  `[M | T - M*Q]` over the rest pivots, the shipped `OFP2_ManSkeleton` keeps 31 of the 102
-  parent/child rest distances within 5 cm (`idle`; 34 for `walk`). It holds along the trunk above
-  the spine (`spine1`, `spine3`, `neck`, `head` within 1 cm of rest) and down the legs (knee,
-  foot, toe within 2..5 cm) — the idle stands nearly at its rest pose — and it fails in three
-  groups:
-  - **Records that carry a position, not a correction.** Almost every bone's `t` is a small
-    correction to its pivot (a few cm; the whole trunk), but the root's `y` is the hip height
-    (`0.9116` at frame 0 of both moves, while `pivotsModel` has the pelvis at the origin with the
-    feet at `-0.889`), which alone puts the pelvis 0.912 m out of the trunk's space and both
-    uplegs 0.85..0.88 m out of it; `face_hub` carries `t = (-0.29, -0.82, 0.17)` in the idle and
-    drags every `face_*` and eye bone with it (0.64..0.88 m).
-  - **Pivots that are not joints.** `weapon` and `launcher` are `(-1, 0, 0)` and `(1, 0, 0)`, and
-    `camera` is `(0, -0.61, 0.007)` — attachment points, not bone positions (the `weaponBone` is
-    also the one the load conversion skips, so its `t` stays a raw offset).
-  - **The arm chain**, where the error accumulates outward: shoulder 0.06 m, arm roll 0.33, forearm
-    0.43..0.89, hand 1.20, finger tips 1.77. The pivots model's arms are a T-pose (hand at
-    `x = 0.59`), the idle's arms hang at the hip (hand `y = -0.88`), and the file's arm rotations
-    are large there — the signature of a rest pose other than the pivots model's. No single-rule
-    reading fixes them: raw `t`, `t + Q`, `Q + t - t_root`, `M*Q + t - t_root` and `R*Q` alone
-    were all measured, and none keeps the chain rigid.
-  None of this contradicts the emitted matrices — an unblended frame's translation is exactly the
-  file's `t` (the `M*Q` term only appears while blending), and `a3-pose` reproduces `a3-anim`'s
-  frames to 1e-4 — but the arm records are evidently not a complete Man pose on their own.
-- **Measured on the mesh** (issue #247): with the drawn triangles of `B_Soldier_01`'s visual LODs,
-  the rest mesh is a `1.45 x 1.83 x 0.34` m box and the flat `idle` palette inflates it to
-  `2.02 x 3.34 x 2.15` m **with no lift of any kind**, the worst drawn vertex (a right-hand one)
-  2.53 m from its rest position. Per bone, `pelvis` goes `(0, 0, 0) -> (0, 0.912, 0)` while
-  `spine1`..`head` move at most 1 cm; `launcher` moves 2.92 m through 149.9 deg, `camera` 1.45 m,
-  `face_hub` 0.88 m. All eight readings tried (flat vs. hierarchical composition, conjugate vs. raw
-  quaternion, `T = R*Q + t` vs. `T = t` vs. no `t`, child `t` by parent or own rotation) give a box
-  1.95..3.88 m wide: **no composition rule of these records alone makes a Man**, which is the same
-  conclusion the rest-distance measurements reach by a different route.
-- **Placement** (implementation rule): the pose is in the pivots model's space, so a caller that
-  has to lift the mesh (the app lifts the rest mesh's `y = -1.852` so the feet meet the ground) must
-  lift the **instance transform**. Folding the lift into each bone (`bone * up`) multiplies it by
-  the bone's own rotation, dragging posed bones sideways by up to the lift.
+  the joint in its parent's frame** (see *Skeleton walk*).
 - **Blending** (high): a layer's two record buffers — two keyframes of one RTM, or an animation
   layer's two sources — are blended in `0x12102c0` by **slerping the quaternions** (`0x35d140`)
   and **lerping the converted translations** by `phase`. With one buffer present the record is
@@ -178,35 +157,59 @@ animation object carries its attach bone at `+0x90` (`int`) and that bone's blen
 - **Pose output** (high): `0x12105b0` builds `M` from the accumulated quaternion (after the
   decoder's row/column swap, so it is the matrix of the conjugate) and emits
   `translation = T - M * Q`, with `T` the blended posed joint and `Q` the bone's rest pivot
-  (`*(float3*)(*(skeleton+0x78) + 0xc*bone)`). The emitted matrix maps the rest pivot onto the
-  posed joint. Where nothing is blended (`T = R * Q + t`) its translation is exactly the file's
-  `t` — the pivot term only shows up while blending.
-- **Parent composition** (high, narrow): every bone is emitted flat except the one whose parent
-  index equals the animation's attach bone (`*(int*)(anim+0x90)`, the CfgSkeletonParameters
-  `weaponBone` for a Man); for that bone the parent's pose is composed in (a quaternion product)
-  and blended by the animation's weight at `+0x94`. There is no general parent walk in this
-  path — a child's rest offset is carried by the pivots, not by composing bone matrices.
-- **Skinning** (high): `a3-anim`'s `frame * translate(-pivot)` composes to exactly this emitted
-  `[M | T - M*Q]`, so `a3_anim::Pose::from_rtm_frames` plus `a3_anim::skin` is the engine's
-  transform for these poses.
+  (`*(float3*)(*(skeleton+0x78) + 0xc*bone)`). The emitted matrix is the bone's frame **relative
+  to its parent**: it maps the rest pivot onto the posed joint in the parent's frame. Where
+  nothing is blended (`T = R * Q + t`) its translation is exactly the file's `t` — the pivot term
+  only shows up while blending.
+- **Attach bone** (high, narrow): inside `0x12105b0`, the one bone whose parent index equals the
+  animation's attach bone (`*(int*)(anim+0x90)`) gets the parent's accumulated quaternion composed
+  into its own and slerped by the animation's weight at `+0x94`. Which animations set `+0x90` is
+  not traced.
+- **Skeleton walk** (high): the palette is built by a depth-first walk over the skeleton tree
+  (`0x12547f0` -> `0x12499f0` (recursive, child counts per node at `skeleton+0xc0`) ->
+  `0x124b550`): each node's matrix is `parent * own`, with `own` the `0x12105b0` output and the
+  root's parent the identity (`0x208be18`); the result is copied to every LOD bone that maps to
+  the skeleton bone (`lod+0xa8`, `lod+0xd8`). `0x1211190` (a bone's model matrix: walk up through
+  `*(skeleton+0x40)+0x78`, multiplying on the left) and `0x1211390` (a point on a bone, used for
+  memory points) compose the same way. So a child follows every parent above it; the earlier
+  reading of a flat palette was wrong.
+- **Pose coherence** (measured, `crates/a3-pose/tests/real_data.rs`, `crates/a3-anim/tests/
+  real_data.rs`): reversed, converted and composed down the skeleton, every parent/child joint
+  distance of the shipped soldier holds to **2 mm in the idle and 5 mm in the walk** over every
+  keyframe (f16 precision), the toes of the idle stand at `y = 0.010` and the walk's lowest toe
+  stays within `0.005..0.056` m of `y = 0`, the hands of the rifle idle are in front of the chest,
+  and the posed drawn mesh is a `0.62 x 1.49 x 1.11` m box (no head: it is a proxy). Three bones
+  are not joints of the body: `weapon` (`(-1, 0, 0)`), `launcher` (`(1, 0, 0)`) and `camera`
+  (`(0, -0.61, 0.007)`) are attachment points.
+- **Face rig** (measured): in the move RTMs, `face_hub`'s record is the inverse of the head's
+  composed frame (its children land on their rest positions in model space), so the face rig does
+  not follow the head through the base move. No vertex of the body model binds to a face bone;
+  the face belongs to the head proxy model, posed by its own path (not traced).
+- **Pose space and placement** (high for the data): the composed pose is in the pivots model's
+  space, where the root record (the pelvis's `t.y = 0.912`) puts the feet on `y = 0`. An ODOL
+  model's vertices are stored relative to its `bounding_center` (`autocenter`), so a vertex goes
+  to pivot space by adding it: for `B_Soldier_01` (`bounding_center = (0.305, 0.836, -0.401)`)
+  the rest mesh plus the centre lands on the pivots (hands at `x = +-0.62`, toes at `y = -0.97`).
+  The skinning matrix in the model's own space is `translate(-c) * composed * translate(c)`, and
+  the ground under the posed Man is the model-space point `-c`, which goes on the entity's
+  position. Like any offset it belongs to the placement: folding a lift into each bone
+  (`bone * up`) multiplies it by the bone's rotation (issue #247).
+- **Facing**: the posed Man faces `-Z` in model space, like the rest mesh (`p3d-odol.md`: a raw
+  model's front is `-Z`).
+- **Skinning** (high): `a3-anim`'s `frame * translate(-pivot)` is exactly this emitted
+  `[M | T - M*Q]`; `a3_anim::Pose::from_rtm_frames` composes it down the skeleton
+  (`a3_anim::compose_hierarchy`), and `a3_pose::ManRig::skinning_pose` does the same for a move
+  state.
 
 ## Open questions
 
 - The order in which several animations act on one bone in the model.cfg (non-skeletal) path.
-- The origin of the pose space: the pivots model has the pelvis at the origin and the feet at
-  `y = -0.889`, while the root bone's own record carries `y = 0.912` on every frame, so the
-  emitted pose mixes two origins (see *Pose coherence*). How the pose is placed on the entity
-  (the exact root offset) was not traced. `a3-pose` returns the pose in the engine's animation
-  space and leaves the offset to the caller.
-- What completes the arm chains (see *Pose coherence*): the base move's arm rotations are large
-  where the trunk's are near identity, and the error grows along the chain, so the leading
-  suspect is a rest pose other than `skeletonpivots.p3d`'s T-pose arms — either another pivots
-  set (`CfgSkeletonParameters` per skeleton) or a further pose-builder layer (`0x1211710` /
-  `0x1211d90`, e.g. a weapon hold) that re-poses them. The layer route is the concrete one now:
-  `FUN_14069c8c0` is the layer's bone-table lookup (see *Blending*), so a layer carries some bones
-  with a weight and skips the rest — what is left is to see which layers a Man's animation holder
-  actually holds, and whether the arm and face bones are carried by them rather than by the base
-  move alone.
+- Where the engine applies the half-turn conversion to binarized (BMTR) records, or reverses the
+  model instead (see *Reversed records*).
+- Which layers a Man's animation holder carries on top of the base move (`+0x3a0`, `+0x740`):
+  gestures, aiming, the weapon's `handAnim`, and how hand IK and the head/look direction act on
+  the composed pose.
+- How the head proxy's face rig is posed (see *Face rig*).
 - Hunter `wheel_*_destruct_unhide`: `hide` with `minValue..maxValue = -1..0`, so with
   `hitlfwheel` in `0..1` the bone stays hidden; the hit sources may feed negative values.
 - `animPeriod` / `initPhase` use by time-driven sources.
