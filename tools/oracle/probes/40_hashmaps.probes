@@ -1,0 +1,91 @@
+// HashMaps: creation, keys, get/set, case sensitivity, key types, iteration order.
+## hash.create_empty
+str createHashMap
+## hash.typename
+typeName createHashMap
+## hash.from_array
+private _h = createHashMapFromArray [["a", 1], ["b", 2]]; [_h get "a", _h get "b", count _h]
+## hash.from_two_arrays
+private _h = ["a", "b"] createHashMapFromArray [1, 2]; [_h get "a", _h get "b"]
+## hash.from_two_arrays_short
+private _h = ["a", "b", "c"] createHashMapFromArray [1]; [count _h, _h get "c"]
+## hash.key_case
+private _h = createHashMap; _h set ["Key", 1]; [_h get "key", "key" in _h, "Key" in _h]
+## hash.number_key
+private _h = createHashMap; _h set [1, "one"]; [_h get 1, _h get 1.0, _h get "1"]
+## hash.array_key
+private _h = createHashMap; _h set [[1, 2], "x"]; _h get [1, 2]
+## hash.bool_key
+private _h = createHashMap; _h set [true, 1]; _h get true
+## hash.side_key
+private _h = createHashMap; _h set [west, 1]; _h get west
+## hash.get_missing
+private _h = createHashMap; isNil {_h get "x"}
+## hash.get_default
+private _h = createHashMap; _h getOrDefault ["x", 5]
+## hash.get_default_set
+private _h = createHashMap; _h getOrDefault ["x", 5, true]; _h get "x"
+## hash.getordefaultcall
+private _h = createHashMap; [_h getOrDefaultCall ["x", {7}, true], _h get "x"]
+## hash.set_returns
+private _h = createHashMap; typeName (_h set ["a", 1])
+## hash.set_insert_only
+private _h = createHashMap; _h set ["a", 1]; [_h set ["a", 2, true], _h get "a"]
+## hash.deleteat
+private _h = createHashMapFromArray [["a", 1]]; [_h deleteAt "a", count _h, _h deleteAt "a"]
+## hash.keys_sorted
+private _h = createHashMapFromArray [["b", 1], ["a", 2], ["c", 3]]; private _k = keys _h; _k sort true; _k
+## hash.values_sorted
+private _h = createHashMapFromArray [["b", 1], ["a", 2], ["c", 3]]; private _v = values _h; _v sort true; _v
+## hash.keys_order
+keys createHashMapFromArray [["b", 1], ["a", 2], ["c", 3], ["d", 4], ["e", 5]]
+## hash.str_order
+str createHashMapFromArray [["x", 1], ["y", 2], ["z", 3]]
+## hash.str_one
+str createHashMapFromArray [["k", [1, "v"]]]
+## hash.foreach_vars
+private _r = []; {_r pushBack [_x, _y]} forEach createHashMapFromArray [["a", 1]]; _r
+## hash.count_code
+{_y > 1} count createHashMapFromArray [["a", 1], ["b", 2], ["c", 3]]
+## hash.merge
+private _h = createHashMapFromArray [["a", 1]]; _h merge createHashMapFromArray [["a", 9], ["b", 2]]; [_h get "a", _h get "b"]
+## hash.merge_overwrite
+private _h = createHashMapFromArray [["a", 1]]; _h merge [createHashMapFromArray [["a", 9]], true]; _h get "a"
+## hash.copy_plus
+private _h = createHashMapFromArray [["a", [1]]]; private _c = +_h; (_c get "a") pushBack 2; _h get "a"
+## hash.reference
+private _h = createHashMap; private _g = _h; _g set ["a", 1]; count _h
+## hash.isequalto
+(createHashMapFromArray [["a", 1]]) isEqualTo (createHashMapFromArray [["a", 1]])
+## hash.in_hash
+"a" in (createHashMapFromArray [["a", nil]])
+## hash.nil_value
+private _h = createHashMapFromArray [["a", nil]]; [count _h, isNil {_h get "a"}]
+## hash.toarray
+private _h = createHashMapFromArray [["a", 1]]; toArray _h
+## hash.apply
+private _h = createHashMapFromArray [["a", 1], ["b", 2]]; private _r = _h apply {_y * 10}; _r sort true; _r
+## hash.select_code
+private _h = createHashMapFromArray [["a", 1], ["b", 2]]; typeName (_h select {true})
+## hash.float_key_precision
+private _h = createHashMap; _h set [0.1 + 0.2, 1]; _h get 0.3
+## hash.dup_keys_from_array
+private _h = createHashMapFromArray [["a", 1], ["a", 2]]; [count _h, _h get "a"]
+## hash.code_key_error
+private _h = createHashMap; _h set [{1}, 1]; count _h
+## hash.object_key
+private _h = createHashMap; _h set [objNull, 1]; count _h
+## hash.typename_value
+typeName ((createHashMapFromArray [["a", "s"]]) get "a")
+## hash.hashvalue_string
+hashValue "abc"
+## hash.hashvalue_number
+hashValue 1
+## hash.hashvalue_array
+hashValue [1, "a"]
+## hash.hashmap_object
+private _o = createHashMapObject [[["#type", "Probe"], ["get", {_self get "v"}], ["v", 5]]]; _o call ["get"]
+## hash.hashmap_object_create
+private _o = createHashMapObject [[["#create", {_self set ["v", 9]}]]]; _o get "v"
+## hash.hashmap_object_str
+private _o = createHashMapObject [[["#type", "Probe"]]]; str _o

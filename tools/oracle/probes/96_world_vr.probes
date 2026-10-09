@@ -1,0 +1,52 @@
+// World probes on VR: the flat test terrain.
+@world VR
+## wvr.worldname
+worldName
+## wvr.worldsize
+worldSize
+## wvr.height_center
+getTerrainHeightASL [4096, 4096]
+## wvr.height_origin
+getTerrainHeightASL [0, 0]
+## wvr.height_points
+[[100, 100], [1000, 2000], [5000, 300], [8000, 8000]] apply {getTerrainHeightASL _x}
+## wvr.water
+surfaceIsWater [4096, 4096]
+## wvr.surfacetype
+surfaceType [4096, 4096]
+## wvr.create_box_atl
+private _v = createVehicle ["Land_CargoBox_V1_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = [getPosATL _v, getPosASL _v, getPos _v]; deleteVehicle _v; _r
+## wvr.create_box_none
+private _v = createVehicle ["Land_CargoBox_V1_F", [100, 100, 0], [], 0, "NONE"]; private _r = getPosATL _v; deleteVehicle _v; _r
+## wvr.create_two_none_collide
+private _a = createVehicle ["Land_CargoBox_V1_F", [200, 200, 0], [], 0, "NONE"]; private _b = createVehicle ["Land_CargoBox_V1_F", [200, 200, 0], [], 0, "NONE"]; private _r = [getPosATL _a, (getPosATL _b) distance2D (getPosATL _a) > 0.5]; deleteVehicle _a; deleteVehicle _b; _r
+## wvr.nearestobjects_created
+private _a = createVehicle ["Land_CargoBox_V1_F", [300, 300, 0], [], 0, "CAN_COLLIDE"]; private _b = createVehicle ["Land_CargoBox_V1_F", [305, 300, 0], [], 0, "CAN_COLLIDE"]; private _c = createVehicle ["B_MRAP_01_F", [302, 300, 0], [], 0, "CAN_COLLIDE"]; private _r = (nearestObjects [[300, 300, 0], [], 10]) apply {typeOf _x}; {deleteVehicle _x} forEach [_a, _b, _c]; _r
+## wvr.nearestobjects_filter
+private _a = createVehicle ["Land_CargoBox_V1_F", [300, 300, 0], [], 0, "CAN_COLLIDE"]; private _c = createVehicle ["B_MRAP_01_F", [302, 300, 0], [], 0, "CAN_COLLIDE"]; private _r = (nearestObjects [[300, 300, 0], ["Car"], 10]) apply {typeOf _x}; {deleteVehicle _x} forEach [_a, _c]; _r
+## wvr.nearestobjects_tie
+private _a = createVehicle ["Land_CargoBox_V1_F", [400, 405, 0], [], 0, "CAN_COLLIDE"]; private _b = createVehicle ["Land_CargoBox_V1_F", [405, 400, 0], [], 0, "CAN_COLLIDE"]; private _r = (nearestObjects [[400, 400, 0], [], 10]) apply {getPosATL _x}; {deleteVehicle _x} forEach [_a, _b]; _r
+## wvr.nearestobject
+private _a = createVehicle ["Land_CargoBox_V1_F", [500, 500, 0], [], 0, "CAN_COLLIDE"]; private _r = typeOf nearestObject [501, 501, 0]; deleteVehicle _a; _r
+## wvr.lis_ground
+private _h = lineIntersectsSurfaces [[100, 100, 100], [100, 100, -10]]; if (count _h == 0) then {[]} else {(_h select 0) select 0}
+## wvr.lis_box
+private _v = createVehicle ["Land_CargoBox_V1_F", [600, 600, 0], [], 0, "CAN_COLLIDE"]; private _h = lineIntersectsSurfaces [[600, 600, 100], [600, 600, -10]]; private _r = if (count _h == 0) then {[]} else {[(_h select 0) select 0, (_h select 0) select 2 == _v]}; deleteVehicle _v; _r
+## wvr.setposatl_float
+private _v = createVehicle ["Land_CargoBox_V1_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _v setPosATL [100.123, 200.456, 0.789]; private _r = getPosATL _v; deleteVehicle _v; _r
+## wvr.getpos_vs_atl_on_object
+private _a = createVehicle ["Land_CargoBox_V1_F", [700, 700, 0], [], 0, "CAN_COLLIDE"]; private _b = createVehicle ["Land_CargoBox_V1_F", [700, 700, 5], [], 0, "CAN_COLLIDE"]; private _r = [getPos _b, getPosATL _b]; deleteVehicle _a; deleteVehicle _b; _r
+## wvr.man_create_pos
+private _g = createGroup west; private _u = _g createUnit ["B_Soldier_F", [800, 800, 0], [], 0, "CAN_COLLIDE"]; private _r = [getPosATL _u, getDir _u]; deleteVehicle _u; deleteGroup _g; _r
+## wvr.man_create_form
+private _g = createGroup west; private _u = _g createUnit ["B_Soldier_F", [800, 800, 0], [], 0, "FORM"]; private _r = getPosATL _u; deleteVehicle _u; deleteGroup _g; _r
+## wvr.group_two_units
+private _g = createGroup west; private _a = _g createUnit ["B_Soldier_F", [800, 800, 0], [], 0, "CAN_COLLIDE"]; private _b = _g createUnit ["B_Soldier_F", [805, 800, 0], [], 0, "CAN_COLLIDE"]; private _r = [count units _g, leader _g == _a, (units _g) find _b]; {deleteVehicle _x} forEach [_a, _b]; deleteGroup _g; _r
+## wvr.group_formation
+private _g = createGroup west; private _r = [formation _g, behaviour leader _g, combatMode _g, speedMode _g]; deleteGroup _g; _r
+## wvr.group_unit_behaviour
+private _g = createGroup west; private _u = _g createUnit ["B_Soldier_F", [800, 800, 0], [], 0, "CAN_COLLIDE"]; private _r = [formation _g, behaviour _u, combatMode _g, speedMode _g]; deleteVehicle _u; deleteGroup _g; _r
+## wvr.side_of_objnull
+side objNull
+## wvr.side_grpnull
+side grpNull

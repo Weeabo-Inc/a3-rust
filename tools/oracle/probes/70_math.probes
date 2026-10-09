@@ -1,0 +1,117 @@
+// Vectors, linearConversion, seeded random, regex.
+## vec.add
+[1, 2, 3] vectorAdd [0.5, -2, 10]
+## vec.add_2d
+[1, 2] vectorAdd [3, 4]
+## vec.add_mixed_len
+[1, 2, 3] vectorAdd [1, 1]
+## vec.diff
+[5, 5, 5] vectorDiff [1, 2, 3]
+## vec.dot
+[1, 2, 3] vectorDotProduct [4, 5, 6]
+## vec.cross
+[1, 0, 0] vectorCrossProduct [0, 1, 0]
+## vec.magnitude
+vectorMagnitude [3, 4, 0]
+## vec.magnitude_sqr
+vectorMagnitudeSqr [1, 2, 2]
+## vec.normalized
+vectorNormalized [3, 0, 4]
+## vec.normalized_zero
+vectorNormalized [0, 0, 0]
+## vec.multiply
+[1, 2, 3] vectorMultiply 2.5
+## vec.distance
+[0, 0, 0] vectorDistance [1, 2, 2]
+## vec.distance_sqr
+[0, 0, 0] vectorDistanceSqr [1, 2, 2]
+## vec.distance_2d
+[0, 0, 5] vectorDistance [3, 4, 0]
+## vec.cos
+[1, 0, 0] vectorCos [1, 1, 0]
+## vec.fromto
+[0, 0, 0] vectorFromTo [0, 3, 4]
+## vec.linear_conversion
+linearConversion [0, 10, 5, 0, 100]
+## vec.linear_conversion_out
+linearConversion [0, 10, 15, 0, 100]
+## vec.linear_conversion_clamp
+linearConversion [0, 10, 15, 0, 100, true]
+## vec.linear_conversion_reverse
+linearConversion [10, 0, 2, 0, 1]
+## vec.linear_conversion_degenerate
+linearConversion [5, 5, 5, 0, 1]
+## vec.linear_conversion_float
+linearConversion [0, 1, 0.3, 0, 7]
+## vec.vectormodeltoworld_like
+[[1, 0, 0], [0, 1, 0], [0, 0, 1]] matrixMultiply [[2], [3], [4]]
+## vec.matrix_transpose
+matrixTranspose [[1, 2], [3, 4]]
+## vec.dir_to
+[0, 0, 0] getDir [1, 1, 0]
+## vec.dir_to_neg
+[0, 0, 0] getDir [-1, 0, 0]
+## vec.distance2d_arrays
+[0, 0, 0] distance2D [3, 4, 100]
+## vec.distance_arrays
+[0, 0, 0] distance [3, 4, 0]
+## vec.distancesqr_arrays
+[0, 0, 0] distanceSqr [3, 4, 0]
+## vec.getpos_relative
+[0, 0, 0] getPos [10, 90]
+## vec.getpos_relative_45
+[100, 100, 5] getPos [10, 45]
+## vec.inarea_circle
+[1, 1, 0] inArea [[0, 0, 0], 2, 2, 0, false]
+## vec.inarea_rect_rot
+[3, 0, 0] inArea [[0, 0, 0], 2, 4, 90, true]
+## vec.inpolygon
+[1, 1, 0] inPolygon [[0, 0, 0], [2, 0, 0], [2, 2, 0], [0, 2, 0]]
+## rnd.seeded_basic
+12345 random 100
+## rnd.seeded_same
+[42 random 1, 42 random 1]
+## rnd.seeded_zero
+0 random 1
+## rnd.seeded_neg
+-5 random 10
+## rnd.seeded_float_seed
+1.5 random 1
+## rnd.seeded_array
+[1, 2] random 1
+## rnd.seeded_noise
+[3, 4, 5] random 1
+## rnd.seeded_series
+private _r = []; for "_i" from 0 to 4 do {_r pushBack (_i random 1)}; _r
+## rnd.seeded_big
+1000000 random 1
+## rex.match_true
+"abc123" regexMatch "[a-z]+[0-9]+"
+## rex.match_partial
+"abc123" regexMatch "[a-z]+"
+## rex.match_case
+"ABC" regexMatch "abc"
+## rex.match_icase
+"ABC" regexMatch "abc/i"
+## rex.find
+"one 2 three 45" regexFind ["[0-9]+"]
+## rex.find_offset
+"one 2 three 45" regexFind ["[0-9]+", 6]
+## rex.find_groups
+"key=value; a=b" regexFind ["(\w+)=(\w+)"]
+## rex.find_none
+"abc" regexFind ["[0-9]"]
+## rex.replace_global
+"wookie boOkie cookie" regexReplace [".oo/gio", "[$&]"]
+## rex.replace_first
+"aaa" regexReplace ["a", "b"]
+## rex.replace_all
+"aaa" regexReplace ["a/g", "b"]
+## rex.replace_group
+"2024-06-01" regexReplace ["(\d+)-(\d+)-(\d+)/g", "$3.$2.$1"]
+## rex.bad_pattern
+"abc" regexMatch "("
+## rex.utf8
+"héllo" regexReplace ["é/g", "e"]
+## rex.find_unicode_offsets
+"éa1" regexFind ["[0-9]"]

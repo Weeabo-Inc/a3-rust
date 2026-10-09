@@ -40,6 +40,10 @@ jobs:
       - name: cargo fmt
         run: cargo fmt --all --check
 
+      - name: Oracle harness tests
+        shell: bash
+        run: $(command -v python3 || command -v python) -m unittest discover -s tools/oracle
+
       - name: cargo clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 

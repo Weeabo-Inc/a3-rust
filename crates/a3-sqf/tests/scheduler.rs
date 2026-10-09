@@ -81,6 +81,26 @@ fn script_done_and_terminate() {
 }
 
 #[test]
+fn script_done_sees_scripts_that_wait_their_turn_in_the_running_frame() {
+    // A script waiting on a child it spawned: in the next frame the waiting script runs first,
+    // and the child has not run yet. The original keeps `scriptDone` false until the child ends
+    // (seen with the server oracle, issue #265).
+    let mut vm = vm();
+    vm.eval(
+        "0 spawn { order = []; private _h = 0 spawn { order pushBack \"child\" }; \
+         waitUntil { scriptDone _h }; order pushBack \"parent\" }",
+    )
+    .unwrap();
+    for _ in 0..4 {
+        vm.run_scheduled(FRAME);
+    }
+    assert_eq!(
+        vm.get_global("order").to_sqf_string(),
+        "[\"child\",\"parent\"]"
+    );
+}
+
+#[test]
 fn scripts_can_terminate_themselves() {
     let mut vm = vm();
     vm.eval("0 spawn { a1 = 1; terminate _thisScript; a1 = 2 }")

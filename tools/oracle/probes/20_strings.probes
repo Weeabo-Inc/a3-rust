@@ -1,0 +1,163 @@
+// String commands: comparison, case, search, slicing, splitting, joining, format.
+## str.eq_case
+"ABC" == "abc"
+## str.isequalto_case
+"ABC" isEqualTo "abc"
+## str.neq_case
+"ABC" != "abc"
+## str.lt_strings
+"a" < "b"
+## str.in_case
+"b" in "ABC"
+## str.in_exact
+"B" in "ABC"
+## str.in_empty
+"" in "abc"
+## str.find
+"hello world" find "o"
+## str.find_case
+"Hello" find "h"
+## str.find_empty
+"abc" find ""
+## str.find_start
+"banana" find ["a", 2]
+## str.find_missing
+"abc" find "z"
+## str.select_range
+"hello world" select [6, 5]
+## str.select_range_over
+"hello" select [3, 100]
+## str.select_start_only
+"hello" select [2]
+## str.select_neg_start
+"hello" select [-2, 2]
+## str.select_start_past
+"hello" select [10, 2]
+## str.count
+count "hello"
+## str.count_utf8
+count "héllo"
+## str.toupper
+toUpper "abc Äö"
+## str.tolower
+toLower "ABC ÄÖ"
+## str.toupperansi
+toUpperANSI "abc äö"
+## str.concat
+"a" + "b" + "c"
+## str.str_of_string
+str "a""b"
+## str.str_of_str
+str str "x"
+## str.quote_double
+"say ""hi"""
+## str.single_quote_literal
+'it''s'
+## str.split_basic
+"a,b,,c" splitString ","
+## str.split_multi_delim
+"- This, is a sample string." splitString "-,. "
+## str.split_empty_delim
+"abc" splitString ""
+## str.split_empty_string
+"" splitString ","
+## str.split_keep_empty
+"a,b,,c" splitString [",", true]
+## str.split_backslash
+"\A3\ui_f\data" splitString "\"
+## str.join
+["a", 1, true, nil, [2]] joinString "-"
+## str.join_empty
+[] joinString ","
+## str.join_strings_quotes
+["x", "y"] joinString ""
+## str.toarray
+toArray "AZ"
+## str.toarray_utf8
+toArray "é"
+## str.tostring_codes
+toString [72, 105]
+## str.tostring_code
+toString {a + b}
+## str.trim
+trim "  a b \t "
+## str.trim_chars
+"xxhixx" trim ["x", 0]
+## str.trim_left
+"xxhixx" trim ["x", 1]
+## str.trim_right
+"xxhixx" trim ["x", 2]
+## str.insert
+"abcdef" insert [2, "XY"]
+## str.insert_end
+"abc" insert [-1, "Z"]
+## str.reverse_string
+reverse "abc"
+## str.format_basic
+format ["%1-%2", 1, "two"]
+## str.format_missing_arg
+format ["%1 %2 %3", 1]
+## str.format_percent
+format ["100%"]
+## str.format_double_percent
+format ["%1%%", 5]
+## str.format_reorder
+format ["%2 %1", "a", "b"]
+## str.format_no_args
+format ["plain"]
+## str.format_nil
+format ["%1", nil]
+## str.format_array
+format ["%1", [1, "s", [true]]]
+## str.format_string_arg
+format ["%1", "text"]
+## str.format_bool
+format ["%1 %2", true, false]
+## str.format_10
+format ["%10 %1", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+## str.format_code
+format ["%1", {hint "x"}]
+## str.format_side
+format ["%1", west]
+## str.format_objnull
+format ["%1", objNull]
+## str.formattext_typename
+typeName formatText ["%1", 1]
+## str.formattext_str
+str formatText ["a%1b", 2]
+## str.text_typename
+typeName text "x"
+## str.str_text
+str text "x"
+## str.composetext
+str composeText ["a", "b"]
+## str.lineBreak
+str lineBreak
+## str.endl
+endl == toString [13, 10]
+## str.select_index
+"abc" select 1
+## str.isequalto_strings
+"a" isEqualTo "a"
+## str.sum_types
+"a" + str 1
+## str.parsesimplearray
+parseSimpleArray "[1, ""a"", [true, false], 2.5]"
+## str.parsesimplearray_bad
+parseSimpleArray "[1, b]"
+## str.parsesimplearray_single_quote
+parseSimpleArray "['a']"
+## str.toJSON_like
+str [1, "a""b", [true]]
+## str.forceunicode
+forceUnicode 0; count "é"
+## str.encodeURIComponent
+encodeURIComponent "a b&c=d/é"
+## str.keyname_letter
+keyName 30
+## str.str_unicode_select
+"héllo" select [1, 2]
+## str.count_find_case_ins
+[("ABCabc" find "c"), ("ABCabc" find "C")]
+## str.compare_cmp
+"apple" < "banana"

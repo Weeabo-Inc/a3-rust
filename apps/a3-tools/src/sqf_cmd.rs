@@ -36,6 +36,14 @@ pub enum SqfCommand {
         /// Maximum scheduler frames to run after the script.
         #[arg(long, default_value_t = 1000)]
         frames: usize,
+        /// Run in a World on this `CfgWorlds` terrain (e.g. `VR`, `Stratis`), with the World's
+        /// script commands, instead of the main-menu VM.
+        #[arg(long, value_name = "WORLD")]
+        world: Option<String>,
+        /// Print script errors in order with the `diag_log` lines, as the engine's RPT log
+        /// has them (they are still listed on stderr at the end).
+        #[arg(long)]
+        errors_in_log: bool,
     },
     /// Write the command coverage ledger: every engine command overload, which crate implements
     /// it, how it was verified, and its usage in shipped `.sqf`, `.fsm` and config code.
@@ -83,9 +91,19 @@ pub fn run(args: SqfArgs) -> anyhow::Result<()> {
             ref script,
             init_functions,
             frames,
+            ref world,
+            errors_in_log,
         } => {
             let data = load(&args)?;
-            let out = exec(&data, script, init_functions, frames)?;
+            let options = ExecOptions {
+                init_functions,
+                frames,
+                errors_in_log,
+            };
+            let out = match world {
+                Some(world) => exec_in_world(&data, world, script, &options)?,
+                None => exec_with(&data, script, &options)?,
+            };
             for line in &out.boot {
                 eprintln!("{line}");
             }
@@ -197,24 +215,108 @@ impl IncludeResolver for DiskThenVfs<'_> {
     }
 }
 
-/// Runs `script` (a disk file or a VFS path) on a VM over `data`.
-pub fn exec(
+/// How [`exec_with`] and [`exec_in_world`] run a script.
+#[derive(Debug, Clone)]
+pub struct ExecOptions {
+    /// Initialise the function library first (`initFunctions.sqf`, as at game start).
+    pub init_functions: bool,
+    /// Maximum scheduler frames to run after the script.
+    pub frames: usize,
+    /// Script errors also go into the log, in order with the `diag_log` lines.
+    pub errors_in_log: bool,
+}
+
+/// Runs `script` (a disk file or a VFS path) on the main-menu VM over `data`.
+pub fn exec_with(
     data: &GameData,
     script: &str,
-    init_functions: bool,
-    frames: usize,
+    options: &ExecOptions,
 ) -> anyhow::Result<ExecOutput> {
-    let mut out = ExecOutput::default();
     let mut vm = script_vm(data);
-    if init_functions {
-        let report = a3_gamedata::init_functions(&mut vm);
+    let errors_in_log = options.errors_in_log;
+    let mut out = exec_on(
+        &mut vm,
+        data,
+        script,
+        options,
+        |host| {
+            host.errors.clear();
+            host.errors_in_log = errors_in_log;
+        },
+        |_| {},
+    )?;
+    out.log.append(&mut vm.host.log);
+    out.errors.append(&mut vm.host.errors);
+    Ok(out)
+}
+
+/// The simulation step between scheduler frames of [`exec_in_world`]: a 50 Hz server frame.
+const WORLD_STEP: f64 = 1.0 / 50.0;
+
+/// Runs `script` server-side in a World holding the terrain of `CfgWorlds >> world`, with the
+/// World's script commands. The World is simulated between scheduler frames.
+pub fn exec_in_world(
+    data: &GameData,
+    world: &str,
+    script: &str,
+    options: &ExecOptions,
+) -> anyhow::Result<ExecOutput> {
+    let config = a3_landscape::WorldConfig::load(&data.config, world)
+        .with_context(|| format!("no world `{world}` in CfgWorlds"))?;
+    let wrp = config.wrp.as_str();
+    let bytes = data
+        .vfs
+        .open(wrp)
+        .with_context(|| format!("cannot open {wrp}"))?;
+    let terrain = a3_wrp::Terrain::parse(&bytes).with_context(|| format!("cannot parse {wrp}"))?;
+    drop(bytes);
+    let mut world = a3_world::World::new(a3_world::ClientId::SERVER);
+    world
+        .load_terrain(std::sync::Arc::new(terrain))
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    let types = a3_world::TypeBank::new(data.config.clone());
+    let mut vm = a3_mission::MissionVmHost::for_game(world, types, data).vm();
+    let errors_in_log = options.errors_in_log;
+    let mut out = exec_on(
+        &mut vm,
+        data,
+        script,
+        options,
+        |host| {
+            host.files.errors.clear();
+            host.files.errors_in_log = errors_in_log;
+        },
+        |host| host.world.simulate(WORLD_STEP),
+    )?;
+    out.log.append(&mut vm.host.files.log);
+    out.errors.append(&mut vm.host.files.errors);
+    Ok(out)
+}
+
+/// Runs `script` on `vm`: the function library first if asked, then `after_init`, the script
+/// itself unscheduled, and the scheduler with `between` after each frame. The caller collects
+/// the host's log and errors.
+fn exec_on<H>(
+    vm: &mut a3_sqf::Vm<H>,
+    data: &GameData,
+    script: &str,
+    options: &ExecOptions,
+    after_init: impl FnOnce(&mut H),
+    between: impl FnMut(&mut H),
+) -> anyhow::Result<ExecOutput>
+where
+    H: a3_sqf::Host + a3_gamedata::ConfigHost + a3_gamedata::ErrorLog,
+{
+    let mut out = ExecOutput::default();
+    if options.init_functions {
+        let report = a3_gamedata::init_functions(vm);
         out.boot.push(format!(
             "{}: {} of {} functions compiled in {:.2?}",
             report.init_script, report.compiled, report.declared, report.elapsed
         ));
         out.errors.extend(report.errors);
-        vm.host.errors.clear();
     }
+    after_init(&mut vm.host);
     let disk = Path::new(script);
     let (name, text) = if disk.is_file() {
         let bytes = std::fs::read(disk).with_context(|| format!("reading {script}"))?;
@@ -242,13 +344,11 @@ pub fn exec(
                 out.result =
                     Some(value.to_sqf_string_with(&|h| a3_sqf::Host::format_handle(&vm.host, h)));
             }
-            vm.run_until_idle(frames, |_| {});
+            vm.run_until_idle(options.frames, between);
         }
         Err(e) => out
             .errors
             .push(e.render(&a3_sqf::SourceFile::new(name.as_str(), text.as_str()))),
     }
-    out.log.append(&mut vm.host.log);
-    out.errors.append(&mut vm.host.errors);
     Ok(out)
 }

@@ -1,0 +1,177 @@
+// Array commands: select, find, in, set, resize, append, delete, set operations, sort.
+## arr.select_index
+[1, 2, 3] select 1
+## arr.select_float_index
+[10, 20, 30] select 1.5
+## arr.select_float_index_low
+[10, 20, 30] select 0.5
+## arr.select_out_of_range_end
+[1, 2, 3] select 3
+## arr.select_out_of_range_far
+[1, 2, 3] select 4
+## arr.select_bool
+[1, 2] select true
+## arr.select_range
+[1, 2, 3, 4, 5] select [1, 2]
+## arr.select_range_over
+[1, 2, 3] select [2, 10]
+## arr.select_neg_start
+[1, 2, 3, 4] select [-1, 2]
+## arr.select_code
+[1, 2, 3, 4] select {_x > 2}
+## arr.hash_select
+[10, 20, 30] # 1
+## arr.hash_out_of_range
+[10, 20, 30] # 5
+## arr.hash_neg
+[10, 20, 30] # -1
+## arr.find
+[1, 2, 3, 2] find 2
+## arr.find_string_case
+["A", "b"] find "a"
+## arr.find_nested
+[[1], [2]] find [2]
+## arr.in_case
+"a" in ["A", "B"]
+## arr.in_nested
+[1, 2] in [[1, 2], [3]]
+## arr.findif
+[1, 5, 10] findIf {_x > 3}
+## arr.findif_none
+[1, 2] findIf {_x > 3}
+## arr.findany
+[0, 1, 2, 3, 4] findAny [8, 6, 4, 2]
+## arr.count
+count [1, nil, 3]
+## arr.count_code
+{_x > 1} count [1, 2, 3]
+## arr.set
+private _a = [1, 2, 3]; _a set [5, 9]; _a
+## arr.set_neg
+private _a = [1, 2, 3]; _a set [-1, 9]; _a
+## arr.resize_grow
+private _a = [1]; _a resize 3; _a
+## arr.resize_shrink
+private _a = [1, 2, 3, 4]; _a resize 2; _a
+## arr.resize_alt
+private _a = [1]; _a resize [3, 0]; _a
+## arr.pushback
+private _a = [1]; [_a pushBack 2, _a]
+## arr.pushbackunique
+private _a = [1, 2]; [_a pushBackUnique 2, _a pushBackUnique 3, _a]
+## arr.append
+private _a = [1]; _a append [2, [3]]; _a
+## arr.plus
+[1, 2] + [3]
+## arr.minus
+[1, 2, 2, 3, [4]] - [2, [4]]
+## arr.minus_nested
+[[1, 2], [3]] - [[1, 2]]
+## arr.deleteat
+private _a = [1, 2, 3]; [_a deleteAt 1, _a]
+## arr.deleteat_out
+private _a = [1, 2, 3]; [_a deleteAt 5, _a]
+## arr.deleteat_neg
+private _a = [1, 2, 3]; [_a deleteAt -1, _a]
+## arr.deleterange
+private _a = [1, 2, 3, 4, 5]; _a deleteRange [1, 2]; _a
+## arr.insert
+private _a = [1, 4]; _a insert [1, [2, 3]]; _a
+## arr.insert_unique
+private _a = [1, 2]; _a insert [-1, [2, 3], true]; _a
+## arr.intersect
+[1, 2, 2, 3] arrayIntersect [2, 3, 4]
+## arr.intersect_self
+[3, 1, 3, 2, 1] arrayIntersect [3, 1, 3, 2, 1]
+## arr.reverse
+private _a = [1, 2, 3]; reverse _a; _a
+## arr.apply
+[1, 2, 3] apply {_x * 2}
+## arr.apply_index
+[5, 6] apply {_forEachIndex}
+## arr.foreach_return
+{_x} forEach [1, 2, 3]
+## arr.foreach_index
+private _r = []; {_r pushBack _forEachIndex} forEach [7, 8]; _r
+## arr.isequalto_nested
+[1, [2, "a"]] isEqualTo [1, [2, "a"]]
+## arr.isequalto_case
+["a"] isEqualTo ["A"]
+## arr.eq_arrays
+[1] isEqualTo [1.0]
+## arr.isequaltype_all
+[1, 2, 3] isEqualTypeAll 0
+## arr.isequaltypearray
+[1, "a"] isEqualTypeArray [0, ""]
+## arr.isequaltypeparams
+[1, "a", true] isEqualTypeParams [0, ""]
+## arr.copy_reference
+private _a = [1]; private _b = _a; _b pushBack 2; _a
+## arr.copy_plus
+private _a = [1]; private _b = +_a; _b pushBack 2; _a
+## arr.str_nested
+str [[], [[]], ""]
+## arr.str_nil_element
+str [nil, 1]
+## arr.sort_numbers
+private _a = [3, 1, 2]; _a sort true; _a
+## arr.sort_desc
+private _a = [3, 1, 2]; _a sort false; _a
+## arr.sort_strings_case
+private _a = ["b", "A", "a", "B"]; _a sort true; _a
+## arr.sort_mixed
+private _a = [2, "b", 1, "a"]; _a sort true; _a
+## arr.sort_subarrays
+private _a = [["b", 2], ["a", 3], ["a", 1]]; _a sort true; _a
+## arr.sort_stability
+private _a = [[1, "x"], [0, "y"], [1, "a"], [0, "b"]]; _a sort true; _a
+## arr.sort_subarray_ignore_bool
+private _a = [[1, true], [1, false], [0, true]]; _a sort true; _a
+## arr.sort_floats_neg
+private _a = [-1, 0.5, -0.5, 1e10, -1e10]; _a sort true; _a
+## arr.sort_unicode
+private _a = ["é", "e", "f", "E"]; _a sort true; _a
+## arr.sort_return
+typeName ([2, 1] sort true)
+## arr.selectmax
+selectMax [1, 5, 3]
+## arr.selectmin
+selectMin [4, 2, 8]
+## arr.selectmax_mixed
+selectMax [1, true, 3]
+## arr.selectmax_empty
+selectMax []
+## arr.selectrandom_one
+selectRandom [7]
+## arr.flatten
+flatten [1, [2, [3, [4]]]]
+## arr.range_param
+[1, 2, 3] param [1, 0]
+## arr.param_default
+[1] param [5, "def"]
+## arr.param_nil
+[nil] param [0, "def"]
+## arr.arrayintersect_strings
+["a", "A"] arrayIntersect ["A"]
+## arr.str_bool
+str [true, false]
+## arr.toarray_nested_copy
+private _a = [[1]]; private _b = +_a; (_b select 0) pushBack 2; _a
+## arr.max_count
+count (allVariables missionNamespace select {false})
+## arr.sum_via_foreach
+private _s = 0; {_s = _s + _x} forEach [0.1, 0.2, 0.3]; _s
+## arr.vectorAdd_strs
+[1, 2, 3] vectorAdd [1, 1, 1]
+## arr.compare_arrays_eq_error
+[1] == [1]
+## arr.select_nested
+[[1, 2], [3, 4]] select 1 select 0
+## arr.empty_select_range
+[] select [0, 5]
+## arr.count_nested
+count [[1, 2], 3]
+## arr.in_number_float
+0.3 in [0.1 + 0.2]
+## arr.find_float
+[0.1 + 0.2] find 0.3

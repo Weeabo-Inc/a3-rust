@@ -32,7 +32,7 @@ pub use boot::{
     init_functions, register_headless, script_registry, script_vm, unimplemented_usage,
     unimplemented_usage_in,
 };
-pub use scripts::{VfsHost, VfsResolver, decode_text, load_text_config, read_text};
+pub use scripts::{ErrorLog, VfsHost, VfsResolver, decode_text, load_text_config, read_text};
 pub use sqf_config::{ConfigHost, ConfigRoot, SqfConfigs, register_config_commands};
 pub use usage::{CommandUsage, UsageSource, command_usage, fsm_code, is_code_entry};
 

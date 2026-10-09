@@ -47,6 +47,8 @@ pub struct Scheduler<H: Host> {
     /// Scripts spawned while the scheduler is running a frame.
     spawned: Vec<Scheduled<H>>,
     running: Option<ScriptHandle>,
+    /// Every script not finished yet, wherever it sits during a frame (`scriptDone`).
+    live: HashSet<ScriptHandle>,
     terminate: HashSet<ScriptHandle>,
     next_id: u32,
     frame: u64,
@@ -58,6 +60,7 @@ impl<H: Host> Default for Scheduler<H> {
             scripts: Vec::new(),
             spawned: Vec::new(),
             running: None,
+            live: HashSet::new(),
             terminate: HashSet::new(),
             next_id: 1,
             frame: 0,
@@ -85,6 +88,7 @@ impl<H: Host> Scheduler<H> {
         self.next_id += 1;
         let mut state = ScriptState::new(code, Some(this), true, handle, Namespace::Mission);
         state.name = name;
+        self.live.insert(handle);
         self.spawned.push(Scheduled {
             state,
             wake: Wake::Ready,
@@ -95,17 +99,7 @@ impl<H: Host> Scheduler<H> {
     /// Whether the script has finished (`scriptDone`). `scriptNull` counts
     /// as done.
     pub fn is_done(&self, handle: ScriptHandle) -> bool {
-        if handle.0 == 0 {
-            return true;
-        }
-        if self.running == Some(handle) {
-            return false;
-        }
-        !self
-            .scripts
-            .iter()
-            .chain(self.spawned.iter())
-            .any(|s| s.state.handle == handle)
+        handle.0 == 0 || !self.live.contains(&handle)
     }
 
     /// Requests that a script stop (`terminate`). It is removed before it
@@ -146,6 +140,7 @@ impl<H: Host> Scheduler<H> {
         let term = std::mem::take(&mut self.terminate);
         self.scripts.retain(|s| !term.contains(&s.state.handle));
         self.spawned.retain(|s| !term.contains(&s.state.handle));
+        self.live.retain(|h| !term.contains(h));
         before - self.scripts.len() - self.spawned.len()
     }
 }
@@ -212,6 +207,7 @@ fn run_frame<H: Host>(
     let mut iter = list.drain(..);
     while let Some(mut script) = iter.next() {
         if state.scheduler.terminate.remove(&script.state.handle) {
+            state.scheduler.live.remove(&script.state.handle);
             report.finished += 1;
             continue;
         }
@@ -235,6 +231,9 @@ fn run_frame<H: Host>(
         state.scheduler.running = Some(script.state.handle);
         let outcome = exec::run(host, reg, state, &mut script.state, Some(deadline));
         state.scheduler.running = None;
+        if !matches!(outcome, Outcome::Suspended(_) | Outcome::OutOfTime) {
+            state.scheduler.live.remove(&script.state.handle);
+        }
         match outcome {
             Outcome::Done(_) | Outcome::Terminated => report.finished += 1,
             Outcome::Failed(e) => {

@@ -1,0 +1,176 @@
+// World probes on Stratis: terrain heights, water, surfaces, object placement and queries.
+@world Stratis
+## wstr.worldname
+worldName
+## wstr.worldsize
+worldSize
+## wstr.height_center
+getTerrainHeightASL [4096, 4096]
+## wstr.height_agia_marina
+getTerrainHeightASL [2950, 6050]
+## wstr.height_airfield
+getTerrainHeightASL [1900, 5700]
+## wstr.height_mike26
+getTerrainHeightASL [4300, 3800]
+## wstr.height_kamino
+getTerrainHeightASL [6250, 5300]
+## wstr.height_girna
+getTerrainHeightASL [2000, 2700]
+## wstr.height_hill
+getTerrainHeightASL [3500, 4500]
+## wstr.height_fraction
+getTerrainHeightASL [3501.37, 4499.81]
+## wstr.height_cell_corner
+getTerrainHeightASL [3500, 4496]
+## wstr.height_cell_mid
+getTerrainHeightASL [3502, 4498]
+## wstr.height_sea
+getTerrainHeightASL [500, 500]
+## wstr.height_outside_neg
+getTerrainHeightASL [-100, -100]
+## wstr.height_outside_far
+getTerrainHeightASL [9000, 9000]
+## wstr.height_3d_arg
+getTerrainHeightASL [3500, 4500, 1000]
+## wstr.height_grid
+private _r = []; for "_x" from 1000 to 7000 step 1500 do { for "_y" from 1000 to 7000 step 1500 do { _r pushBack (getTerrainHeightASL [_x, _y]) } }; _r
+## wstr.height_grid_fine
+private _r = []; for "_i" from 0 to 15 do { _r pushBack (getTerrainHeightASL [3000 + _i * 0.7, 6000 + _i * 1.3]) }; _r
+## wstr.water_sea
+surfaceIsWater [500, 500]
+## wstr.water_land
+surfaceIsWater [4300, 3800]
+## wstr.water_shore_grid
+private _r = []; for "_x" from 1500 to 2500 step 100 do { _r pushBack (surfaceIsWater [_x, 5000]) }; _r
+## wstr.surfacetype_land
+surfaceType [4300, 3800]
+## wstr.surfacetype_sea
+surfaceType [500, 500]
+## wstr.surfacetype_town
+surfaceType [2950, 6050]
+## wstr.surfacenormal
+surfaceNormal [3500, 4500]
+## wstr.asl_to_agl
+ASLToAGL [3500, 4500, 300]
+## wstr.agl_to_asl
+AGLToASL [3500, 4500, 0]
+## wstr.atl_to_asl
+ATLToASL [3500, 4500, 2]
+## wstr.asl_to_atl
+ASLToATL [3500, 4500, 300]
+## wstr.create_box_atl
+private _v = createVehicle ["Land_CargoBox_V1_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; private _r = getPosATL _v; deleteVehicle _v; _r
+## wstr.create_box_asl
+private _v = createVehicle ["Land_CargoBox_V1_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; private _r = getPosASL _v; deleteVehicle _v; _r
+## wstr.create_box_getpos
+private _v = createVehicle ["Land_CargoBox_V1_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; private _r = getPos _v; deleteVehicle _v; _r
+## wstr.create_box_height_param
+private _v = createVehicle ["Land_CargoBox_V1_F", [3500, 4500, 5], [], 0, "CAN_COLLIDE"]; private _r = getPosATL _v; deleteVehicle _v; _r
+## wstr.create_box_none
+private _v = createVehicle ["Land_CargoBox_V1_F", [3500, 4500, 0], [], 0, "NONE"]; private _r = getPosATL _v; deleteVehicle _v; _r
+// getPos over the sea follows the waves, so it is left out.
+## wstr.create_box_sea
+private _v = createVehicle ["Land_CargoBox_V1_F", [500, 500, 0], [], 0, "CAN_COLLIDE"]; private _r = [getPosATL _v, getPosASL _v]; deleteVehicle _v; _r
+## wstr.create_old_syntax
+private _v = "Land_CargoBox_V1_F" createVehicle [3600, 4600, 0]; private _r = getPosATL _v; deleteVehicle _v; _r
+## wstr.create_car_atl
+private _v = createVehicle ["B_MRAP_01_F", [4300, 3800, 0], [], 0, "CAN_COLLIDE"]; private _r = getPosATL _v; deleteVehicle _v; _r
+## wstr.create_car_dir_default
+private _v = createVehicle ["B_MRAP_01_F", [4300, 3800, 0], [], 0, "CAN_COLLIDE"]; private _r = getDir _v; deleteVehicle _v; _r
+## wstr.typeof
+private _v = createVehicle ["B_MRAP_01_F", [4300, 3800, 0], [], 0, "CAN_COLLIDE"]; private _r = typeOf _v; deleteVehicle _v; _r
+## wstr.iskindof_object
+private _v = createVehicle ["B_MRAP_01_F", [4300, 3800, 0], [], 0, "CAN_COLLIDE"]; private _r = [_v isKindOf "Car", _v isKindOf "LandVehicle", _v isKindOf "Tank", _v isKindOf "MRAP_01_base_F"]; deleteVehicle _v; _r
+## wstr.setdir_wrap
+private _v = createVehicle ["Land_CargoBox_V1_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; _v setDir 370; private _r = getDir _v; deleteVehicle _v; _r
+## wstr.setdir_neg
+private _v = createVehicle ["Land_CargoBox_V1_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; _v setDir -90; private _r = getDir _v; deleteVehicle _v; _r
+## wstr.setdir_vectordir
+private _v = createVehicle ["Land_CargoBox_V1_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; _v setDir 90; private _r = vectorDir _v; deleteVehicle _v; _r
+## wstr.setdir_vectorup
+private _v = createVehicle ["Land_CargoBox_V1_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; _v setDir 45; private _r = vectorUp _v; deleteVehicle _v; _r
+## wstr.setposatl_getposasl
+private _v = createVehicle ["Land_CargoBox_V1_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; _v setPosATL [3510, 4510, 3]; private _r = getPosASL _v; deleteVehicle _v; _r
+## wstr.setposasl_getposatl
+private _v = createVehicle ["Land_CargoBox_V1_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; _v setPosASL [3510, 4510, 200]; private _r = getPosATL _v; deleteVehicle _v; _r
+## wstr.setpos_getpos
+private _v = createVehicle ["Land_CargoBox_V1_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; _v setPos [3510, 4510, 1]; private _r = [getPos _v, getPosATL _v]; deleteVehicle _v; _r
+## wstr.getdir_between
+private _a = createVehicle ["Land_CargoBox_V1_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; private _b = createVehicle ["Land_CargoBox_V1_F", [3510, 4490, 0], [], 0, "CAN_COLLIDE"]; private _r = [_a getDir _b, _a distance _b, _a distance2D _b]; deleteVehicle _a; deleteVehicle _b; _r
+## wstr.modeltoworld
+private _v = createVehicle ["Land_CargoBox_V1_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; _v setDir 90; private _r = _v modelToWorld [1, 2, 0]; deleteVehicle _v; _r
+## wstr.worldtomodel
+private _v = createVehicle ["Land_CargoBox_V1_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; _v setDir 90; private _r = _v worldToModel [3501, 4502, 0]; deleteVehicle _v; _r
+## wstr.nearestobjects_types
+(nearestObjects [[2950, 6050, 0], ["House"], 40]) apply {typeOf _x}
+## wstr.nearestobjects_count
+count nearestObjects [[2950, 6050, 0], [], 60]
+## wstr.nearestobjects_order_dist
+private _p = [2950, 6050, 0]; (nearestObjects [_p, ["House"], 60]) apply {round (_x distance2D _p)}
+## wstr.nearestobjects_2d
+count nearestObjects [[2950, 6050, 0], ["House"], 60, true]
+## wstr.nearobjects_count
+count ([2950, 6050, 0] nearObjects 50)
+## wstr.nearestobject_type
+typeOf nearestObject [2950, 6050, 0]
+## wstr.nearestterrainobjects_tree
+count nearestTerrainObjects [[3500, 4500, 0], ["TREE"], 50]
+## wstr.nearestterrainobjects_house
+count nearestTerrainObjects [[2950, 6050, 0], ["HOUSE"], 60]
+## wstr.nearestterrainobjects_all
+count nearestTerrainObjects [[2950, 6050, 0], [], 30]
+## wstr.nearestbuilding
+typeOf nearestBuilding [2950, 6050, 0]
+## wstr.lis_ground
+private _h = lineIntersectsSurfaces [[3500, 4500, 1000], [3500, 4500, -100]]; if (count _h == 0) then {[]} else {(_h select 0) select 0}
+## wstr.lis_ground_normal
+private _h = lineIntersectsSurfaces [[3500, 4500, 1000], [3500, 4500, -100]]; if (count _h == 0) then {[]} else {(_h select 0) select 1}
+## wstr.lis_count_town
+count lineIntersectsSurfaces [[2950, 6050, 500], [2950, 6050, -10], objNull, objNull, true, -1]
+## wstr.lis_sea
+private _h = lineIntersectsSurfaces [[500, 500, 100], [500, 500, -500]]; if (count _h == 0) then {[]} else {(_h select 0) select 0}
+## wstr.terrainintersect
+terrainIntersect [[3400, 4400, 300], [3600, 4600, 300]]
+## wstr.terrainintersectasl
+terrainIntersectASL [[3400, 4400, 300], [3600, 4600, 300]]
+## wstr.lineintersects
+lineIntersects [[3500, 4500, 500], [3500, 4500, 400]]
+## wstr.creategroup_side
+private _g = createGroup west; private _r = [side _g, str side _g, count units _g]; deleteGroup _g; _r
+## wstr.creategroup_id
+private _g = createGroup east; private _r = typeName groupId _g; deleteGroup _g; _r
+## wstr.createunit_side
+private _g = createGroup west; private _u = _g createUnit ["B_Soldier_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; private _r = [side _u, side group _u, typeOf _u, count units _g, leader _g == _u]; deleteVehicle _u; deleteGroup _g; _r
+## wstr.createunit_pos
+private _g = createGroup west; private _u = _g createUnit ["B_Soldier_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; private _r = getPosATL _u; deleteVehicle _u; deleteGroup _g; _r
+## wstr.createunit_east_in_west
+private _g = createGroup west; private _u = _g createUnit ["O_Soldier_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; private _r = [side _u, side group _u]; deleteVehicle _u; deleteGroup _g; _r
+## wstr.empty_vehicle_side
+private _v = createVehicle ["B_MRAP_01_F", [4300, 3800, 0], [], 0, "CAN_COLLIDE"]; private _r = [side _v, str side _v]; deleteVehicle _v; _r
+## wstr.getfriend
+[west getFriend east, west getFriend resistance, resistance getFriend west, civilian getFriend west, west getFriend west]
+## wstr.alive_damage
+private _v = createVehicle ["Land_CargoBox_V1_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; private _r = [alive _v, damage _v]; deleteVehicle _v; _r
+## wstr.deleted_isnull
+private _v = createVehicle ["Land_CargoBox_V1_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; deleteVehicle _v; isNull _v
+## wstr.allgroups_empty
+count allGroups
+## wstr.allunits_empty
+count allUnits
+## wstr.boundingbox_box
+private _v = createVehicle ["Land_CargoBox_V1_F", [3500, 4500, 0], [], 0, "CAN_COLLIDE"]; private _r = boundingBoxReal _v; deleteVehicle _v; _r
+## wstr.sizeof
+sizeOf "B_MRAP_01_F"
+// The oracle mission starts 2035-06-24 12:00; ours has no mission date, so only `date` itself is probed.
+## wstr.date
+date
+## wstr.overcast
+overcast
+## wstr.fog
+fog
+## wstr.sunormoon
+sunOrMoon
+## wstr.isserver
+isServer
+## wstr.player_null
+isNull player
