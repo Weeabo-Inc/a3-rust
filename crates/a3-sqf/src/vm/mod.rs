@@ -44,6 +44,8 @@ pub struct VmState<H: Host> {
     pub(crate) namespaces: Namespaces,
     pub(crate) rng: Rng,
     pub(crate) scheduler: crate::scheduler::Scheduler<H>,
+    /// Scripted FSMs (`execFSM`), stepped once per scheduler frame.
+    pub(crate) fsms: crate::fsm::FsmList,
 }
 
 impl<H: Host> Default for VmState<H> {
@@ -52,6 +54,7 @@ impl<H: Host> Default for VmState<H> {
             namespaces: Namespaces::default(),
             rng: Rng::new(0x5EED_1234_ABCD_0001),
             scheduler: crate::scheduler::Scheduler::default(),
+            fsms: crate::fsm::FsmList::default(),
         }
     }
 }

@@ -375,8 +375,24 @@ commands operating on dynamically typed values.
 The older, line-based scripting language from Operation Flashpoint, still supported.
 
 **FSM**:
-A finite-state-machine script (`.fsm`) whose states and conditions contain SQF; used for AI
-behaviour and mission logic.
+A finite state machine of states and prioritised links, used for AI behaviour and mission
+logic. It is one of two kinds, a scripted FSM or a native FSM, with the same graph shape.
+
+**Scripted FSM**:
+An FSM loaded from a `.fsm` file (config syntax, written by the FSM Editor): every state `init`,
+link condition and link action is SQF. `execFSM` runs one as a mission FSM; a unit's
+`fsmFormation`/`fsmDanger` may name one.
+_Avoid_: FSM script
+
+**Native FSM**:
+An FSM defined by a `CfgFSMs` class: every condition and action names an engine function with
+numeric parameters (`behaviourCombat`, `searchPath`), and a condition holds when its value
+reaches a threshold slot. The soldiers' formation FSM (`Formation`) is one.
+_Avoid_: entity FSM, config FSM
+
+**Threshold slot**:
+One number of a running native FSM that its conditions compare with; actions redraw slots at
+random (`thresholds[] = {{slot, min, max}}`), which makes a native FSM's choices random.
 
 **Script command**:
 A named engine primitive callable from SQF, in one of three forms: nullary, unary, or binary.

@@ -42,6 +42,7 @@ a3-physics = { path = "crates/a3-physics" }
 a3-vehicles = { path = "crates/a3-vehicles" }
 a3-flight = { path = "crates/a3-flight" }
 a3-nav = { path = "crates/a3-nav" }
+a3-fsm = { path = "crates/a3-fsm" }
 
 # Physics (ADR 0001, ADR 0008)
 rapier3d-f64 = "0.36"

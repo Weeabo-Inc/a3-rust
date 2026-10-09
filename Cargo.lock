@@ -92,6 +92,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-fsm"
+version = "0.1.0"
+dependencies = [
+ "a3-config",
+ "a3-gamedata",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "a3-gamedata"
 version = "0.1.0"
 dependencies = [
@@ -356,6 +365,7 @@ dependencies = [
 name = "a3-sqf"
 version = "0.1.0"
 dependencies = [
+ "a3-fsm",
  "a3-preproc",
  "a3-vfs",
  "criterion",
