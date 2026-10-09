@@ -43,6 +43,11 @@ pub struct Group {
     pub(crate) units: Vec<EntityId>,
     pub(crate) leader: Option<EntityId>,
     pub(crate) delete_when_empty: bool,
+    /// `addWaypoint`'s list; index 0 is the first waypoint.
+    pub(crate) waypoints: Vec<crate::Waypoint>,
+    /// `currentWaypoint`: index of the waypoint the group moves to; `waypoints.len()` means the
+    /// group has run through its list.
+    pub(crate) current_waypoint: usize,
 }
 
 impl Group {
@@ -235,6 +240,8 @@ impl World {
             units: Vec::new(),
             leader: None,
             delete_when_empty,
+            waypoints: Vec::new(),
+            current_waypoint: 0,
         });
         groups.by_network_id.insert(network_id, id);
         id
@@ -242,6 +249,11 @@ impl World {
 
     pub fn group(&self, id: GroupId) -> Option<&Group> {
         self.groups().get(id)
+    }
+
+    /// The group for commands that change it (waypoints, names, locality).
+    pub fn group_mut(&mut self, id: GroupId) -> Option<&mut Group> {
+        self.groups_mut().get_mut(id)
     }
 
     /// Every group, in arena order (`allGroups`).
@@ -339,6 +351,7 @@ impl World {
         slot.generation = slot.generation.wrapping_add(1);
         groups.free.push(id.index);
         groups.by_network_id.remove(&g.network_id);
+        self.handlers_mut().forget_group(id);
         Ok(())
     }
 

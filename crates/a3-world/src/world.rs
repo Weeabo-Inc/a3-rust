@@ -4,12 +4,15 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use a3_environment::{EnvironmentState, Observer};
 use a3_moves::Moves;
 use a3_physics::CollisionWorld;
 use a3_wrp::Terrain;
 use glam::DVec3;
 
 use crate::groups::Groups;
+use crate::handlers::Handlers;
+use crate::markers::Markers;
 use crate::statics::StaticObjects;
 use crate::{
     ClientId, Entity, EntityId, EntityType, Error, ListKind, Locality, NetworkId, ObjectRef, Scope,
@@ -111,6 +114,19 @@ pub struct World {
     events: Vec<WorldEvent>,
     time: f64,
     groups: Groups,
+    /// The map markers (`createMarker` and the `marker*` commands).
+    pub(crate) markers: Markers,
+    /// The event handlers scripts installed (`addEventHandler`, `addMissionEventHandler`).
+    pub(crate) handlers: Handlers,
+    /// Date, weather and wind (`setDate`, `setOvercast`, `setWind`, ...).
+    environment: EnvironmentState,
+    /// Where the world is on Earth, for the sun and the moon; `None` until the caller installs
+    /// the world config's observer, and `moonPhase` is 0 then.
+    observer: Option<Observer>,
+    /// `accTime`: how fast simulated time runs against real time.
+    acc_time: f64,
+    /// `timeMultiplier`: the mission's time scale.
+    time_multiplier: f64,
 }
 
 impl World {
@@ -134,6 +150,12 @@ impl World {
             events: Vec::new(),
             time: 0.0,
             groups: Groups::default(),
+            markers: Markers::default(),
+            handlers: Handlers::default(),
+            environment: EnvironmentState::default(),
+            observer: None,
+            acc_time: 1.0,
+            time_multiplier: 1.0,
         }
     }
 
@@ -300,6 +322,7 @@ impl World {
                     self.statics.remove(key);
                 }
             }
+            self.handlers.forget_object(ObjectRef::Entity(id));
             self.events.push(WorldEvent::EntityDeleted {
                 entity: id,
                 network_id: entity.network_id,
@@ -347,8 +370,54 @@ impl World {
         self.time
     }
 
+    /// Advances the clock by `dt` real seconds of a step, scaled by `accTime`, `timeMultiplier`
+    /// and the mission's simulated time: both `time` and the environment's date and time move.
     pub(crate) fn advance_time(&mut self, dt: f64) {
-        self.time += dt;
+        let game = dt * self.acc_time * self.time_multiplier;
+        self.time += game;
+        if game > 0.0 {
+            self.environment.advance(game / 3600.0);
+        }
+    }
+
+    /// The environment state (`setDate`, `setOvercast`, `setFog`, `setWind`, ...).
+    pub fn environment(&self) -> &EnvironmentState {
+        &self.environment
+    }
+
+    pub fn environment_mut(&mut self) -> &mut EnvironmentState {
+        &mut self.environment
+    }
+
+    /// Installs the world's observer (from `CfgWorlds >> W`), which the sun, the moon and
+    /// `moonPhase` need.
+    pub fn set_observer(&mut self, observer: Observer) {
+        self.observer = Some(observer);
+    }
+
+    pub fn observer(&self) -> Option<&Observer> {
+        self.observer.as_ref()
+    }
+
+    /// `accTime`.
+    pub fn acc_time(&self) -> f64 {
+        self.acc_time
+    }
+
+    /// `setAccTime`: multiplied with `timeMultiplier` to scale simulated time. Clamped to the
+    /// range the engine accepts (0.01 .. 100).
+    pub fn set_acc_time(&mut self, acc_time: f64) {
+        self.acc_time = acc_time.clamp(0.01, 100.0);
+    }
+
+    /// `timeMultiplier`.
+    pub fn time_multiplier(&self) -> f64 {
+        self.time_multiplier
+    }
+
+    /// `setTimeMultiplier`: the mission's time scale (0.01 .. 100 in the engine).
+    pub fn set_time_multiplier(&mut self, multiplier: f64) {
+        self.time_multiplier = multiplier.clamp(0.01, 100.0);
     }
 
     pub(crate) fn slots_mut(&mut self) -> impl Iterator<Item = &mut Option<Entity>> {

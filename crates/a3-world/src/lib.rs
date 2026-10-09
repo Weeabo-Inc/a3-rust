@@ -95,7 +95,9 @@
 mod class;
 mod entity;
 mod groups;
+mod handlers;
 mod id;
+mod markers;
 mod moves;
 pub mod net;
 mod object_ref;
@@ -105,12 +107,15 @@ mod sim;
 mod statics;
 mod terrain;
 mod types;
+mod waypoints;
 mod world;
 
 pub use class::{EntityClass, SimulationClass};
 pub use entity::{Attachment, Entity, ListKind, Locality, VisualState};
 pub use groups::{ENEMY_THRESHOLD, Group, GroupId, Side, default_group_name, side_from_config};
+pub use handlers::{Handler, Handlers};
 pub use id::{ClientId, EntityId, NetworkId, ParseNetworkIdError};
+pub use markers::{Marker, Markers};
 pub use net::{
     DAMAGE_ERROR_SCALE, JipObject, OwedUpdate, RemoteCreate, RemoteUpdate, ReplicatedState,
     STATE_FLAG_ERROR, TRANSFORM_ERROR_PER_METRE, TRANSFORM_ERROR_PER_MPS,
@@ -124,6 +129,7 @@ pub use sim::{
 };
 pub use statics::{StaticKey, StaticObject};
 pub use types::{DEFAULT_SIMULATION_STEP, EntityType, Scope, TypeBank, TypeSource};
+pub use waypoints::Waypoint;
 pub use world::{Create, POSITION_MAX, POSITION_MIN, Placement, World, WorldEvent};
 
 /// Errors from World operations.

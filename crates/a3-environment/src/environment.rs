@@ -10,7 +10,12 @@ use crate::{
     star_rotation, sun_position,
 };
 
-/// The environment as scripts change it (`setDate`, `skipTime`, `setOvercast`, `setFog`).
+/// The wind speed `windStr` 1 stands for, in m/s. The script-facing wind commands
+/// (`setWindStr`, `windStr`, `setWindDir`, `windDir`) work in this scale.
+pub const MAX_WIND_SPEED: f32 = 10.0;
+
+/// The environment as scripts change it (`setDate`, `skipTime`, `setOvercast`, `setFog`,
+/// `setWind`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EnvironmentState {
     /// Local date and time.
@@ -23,6 +28,36 @@ pub struct EnvironmentState {
     pub rain: f32,
     /// Wave height 0..1; `None` follows the overcast.
     pub waves: Option<f32>,
+    /// `wind`: horizontal wind velocity in m/s, `x` east and `y` north (`z` is always 0). How
+    /// fast the air moves, where the vector points where the wind blows towards.
+    pub wind: Vec3,
+    /// `setWind [x, y, true]`: the wind is locked and does not drift with the gusts.
+    pub wind_forced: bool,
+    /// `windForce`/`setWindForce`: 0..1, how much the gusts may vary the wind.
+    pub wind_force: f32,
+    /// `gusts`/`setGusts`: 0..1.
+    pub gusts: f32,
+    /// `humidity`/`setHumidity`: 0..1.
+    pub humidity: f32,
+}
+
+impl Default for EnvironmentState {
+    /// What the engine starts with before a world config is read: 24 June 2035, noon, clear
+    /// sky, no wind.
+    fn default() -> Self {
+        EnvironmentState {
+            date_time: DateTime::new(2035, 6, 24, 12.0),
+            overcast: 0.0,
+            fog: Fog::default(),
+            rain: 0.0,
+            waves: None,
+            wind: Vec3::new(0.0, 0.0, 0.0),
+            wind_forced: false,
+            wind_force: 0.0,
+            gusts: 0.0,
+            humidity: 0.0,
+        }
+    }
 }
 
 impl EnvironmentState {
@@ -37,6 +72,17 @@ impl EnvironmentState {
         self.date_time.skip_hours(hours);
     }
 
+    /// Advances the clock by `hours` of in-game time (the mission clock times the
+    /// `timeMultiplier`).
+    pub fn advance(&mut self, hours: f64) {
+        self.date_time.skip_hours(hours);
+    }
+
+    /// `dayTime`: hours 0..24 of the current day.
+    pub fn day_time(&self) -> f64 {
+        self.date_time.hours
+    }
+
     /// `setOvercast value` (applied at once).
     pub fn set_overcast(&mut self, overcast: f32) {
         self.overcast = overcast.clamp(0.0, 1.0);
@@ -48,6 +94,72 @@ impl EnvironmentState {
             value: fog.value.clamp(0.0, 1.0),
             ..fog
         };
+    }
+
+    /// `setRain value` (applied at once).
+    pub fn set_rain(&mut self, rain: f32) {
+        self.rain = rain.clamp(0.0, 1.0);
+    }
+
+    /// `setWaves value`; `None` again follows the overcast.
+    pub fn set_waves(&mut self, waves: Option<f32>) {
+        self.waves = waves.map(|w| w.clamp(0.0, 1.0));
+    }
+
+    /// `setHumidity value`.
+    pub fn set_humidity(&mut self, humidity: f32) {
+        self.humidity = humidity.clamp(0.0, 1.0);
+    }
+
+    /// `setGusts value`.
+    pub fn set_gusts(&mut self, gusts: f32) {
+        self.gusts = gusts.clamp(0.0, 1.0);
+    }
+
+    /// `setWindForce value`.
+    pub fn set_wind_force(&mut self, force: f32) {
+        self.wind_force = force.clamp(0.0, 1.0);
+    }
+
+    /// `setWind [x, y, forced]`: the horizontal wind vector in m/s.
+    pub fn set_wind(&mut self, x: f32, y: f32, forced: bool) {
+        self.wind = Vec3::new(x, y, 0.0);
+        self.wind_forced = forced;
+    }
+
+    /// `windStr`: the wind speed in 0..1, where 1 is [`MAX_WIND_SPEED`] m/s.
+    pub fn wind_str(&self) -> f32 {
+        (self.wind.length() / MAX_WIND_SPEED).clamp(0.0, 1.0)
+    }
+
+    /// `time setWindStr value`: keeps the direction, changes the speed.
+    pub fn set_wind_str(&mut self, value: f32) {
+        let speed = value.clamp(0.0, 1.0) * MAX_WIND_SPEED;
+        self.point_wind(self.wind_dir(), speed);
+    }
+
+    /// `windDir`: the azimuth in degrees the wind blows towards.
+    pub fn wind_dir(&self) -> f64 {
+        f64::from(self.wind.x)
+            .atan2(f64::from(self.wind.y))
+            .to_degrees()
+            .rem_euclid(360.0)
+    }
+
+    /// `time setWindDir azimuth`: keeps the speed, points the wind along `azimuth`.
+    pub fn set_wind_dir(&mut self, azimuth: f64) {
+        let speed = self.wind.length();
+        self.point_wind(azimuth, speed);
+    }
+
+    /// The wind vector of a speed (m/s) along `azimuth` degrees.
+    fn point_wind(&mut self, azimuth: f64, speed: f32) {
+        let radians = azimuth.to_radians();
+        self.wind = Vec3::new(
+            (radians.sin() as f32) * speed,
+            (radians.cos() as f32) * speed,
+            0.0,
+        );
     }
 }
 
@@ -142,6 +254,11 @@ impl WorldEnvironment {
                 },
                 rain: 0.0,
                 waves: None,
+                wind: Vec3::new(0.0, 0.0, 0.0),
+                wind_forced: false,
+                wind_force: 0.0,
+                gusts: 0.0,
+                humidity: number_or(world, "startHumidity", 0.0),
             },
             lighting: LightingTable::from_config(&weather.get("LightingNew")),
             overcast: OvercastTable::from_config(&weather.get("Overcast")),
