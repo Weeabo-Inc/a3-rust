@@ -231,3 +231,22 @@ fn written_text_parses_back_to_the_same_config() {
     let config = parse(src);
     assert_eq!(parse(&write_text(&config)), config);
 }
+
+#[test]
+fn backslash_n_between_strings_joins_them_with_a_line_break() {
+    // FSM Editor output: multi-line code as quoted lines joined by `\n`, inside editor comments.
+    let src = "init = /*%FSM<STATEINIT\"\"\">*/\"a = 1;\" \\n\n   \"b = 2;\" \\n \"\"/*%FSM</STATEINIT\"\"\">*/;";
+    assert_eq!(
+        root_value(src, "init"),
+        Value::String("a = 1;\nb = 2;\n".into())
+    );
+    // In an array too; a string without a continuation stays as it is.
+    let src = "a[] = {\"x\" \\n \"y\", \"z\"};";
+    assert_eq!(
+        root_value(src, "a"),
+        Value::Array(vec![
+            Value::String("x\ny".into()),
+            Value::String("z".into())
+        ])
+    );
+}

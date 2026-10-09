@@ -8,6 +8,9 @@
 //!   becomes a number; anything else becomes a string, as the engine tolerates.
 //! - Number literals: decimal integers become `Int` when they fit in i32 and `Int64` when they fit
 //!   in i64; `0x` hex integers become `Int`; anything with a `.` or exponent becomes `Float`.
+//! - `"a" \n "b"` (a backslash-n between two quoted strings, line breaks allowed around it) is
+//!   one string with a line break, `a` + line break + `b`: FSM Editor output (`.fsm`) writes
+//!   multi-line code this way.
 //! - Lines starting with `#` (preprocessor line markers) are skipped. The semicolon after a class
 //!   body is optional.
 
@@ -356,7 +359,12 @@ impl Parser {
     fn scalar(&mut self, stops: &[char]) -> Result<Value, ParseError> {
         self.skip_trivia();
         if let Some(q @ ('"' | '\'')) = self.peek() {
-            return Ok(Value::String(self.quoted(q)?));
+            let mut s = self.quoted(q)?;
+            while let Some(q) = self.newline_continuation() {
+                s.push('\n');
+                s.push_str(&self.quoted(q)?);
+            }
+            return Ok(Value::String(s));
         }
         let start = self.pos;
         while self
@@ -371,6 +379,31 @@ impl Parser {
             return Err(self.error(format!("expected a value, found {}", self.describe())));
         }
         Ok(parse_number(raw).unwrap_or_else(|| Value::String(raw.to_owned())))
+    }
+
+    /// After a quoted string: `\n` and then another quoted string continue the string with a
+    /// line break, whatever whitespace and line breaks surround the `\n` (nothing else may
+    /// follow a string there, so this reads no valid text differently). The FSM Editor writes
+    /// multi-line code this way
+    /// (`"a" \n "b"` is `a`, a line break, `b`). Leaves the parser on the next string's quote
+    /// and returns it, or leaves the position alone when no continuation follows.
+    fn newline_continuation(&mut self) -> Option<char> {
+        let mut n = 0;
+        while self.peek_at(n).is_some_and(char::is_whitespace) {
+            n += 1;
+        }
+        if self.peek_at(n) != Some('\\') || self.peek_at(n + 1) != Some('n') {
+            return None;
+        }
+        n += 2;
+        while self.peek_at(n).is_some_and(char::is_whitespace) {
+            n += 1;
+        }
+        let quote = self.peek_at(n).filter(|c| matches!(c, '"' | '\''))?;
+        for _ in 0..n {
+            self.bump();
+        }
+        Some(quote)
     }
 
     fn quoted(&mut self, quote: char) -> Result<String, ParseError> {
