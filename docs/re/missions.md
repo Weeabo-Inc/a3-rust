@@ -199,7 +199,9 @@ What `a3-mission` does with that (`crates/a3-mission/src/spawn.rs`):
 
 Open: the collision world's Roadway surfaces (a bridge deck, a house floor) are the engine's real
 "ground" (`CONTEXT.md` §Ground); `spawn.rs` uses the terrain, since a Mission is spawned before
-its land cells are streamed.
+its land cells are streamed. Whether the script paths (`createVehicle`, `createUnit`,
+`crates/a3-world/src/script/`) clamp to the sea surface the same way is unmeasured: they still
+add the terrain height to the script's own z (`Placement::OnSurface`).
 
 The other candidate causes issue #349 listed are ruled out by the same probes: the engine's
 `getPosASL` keeps the file's `x`/`z` exactly, so nothing is swapped on the Y/Z axis (ADR 0003),
