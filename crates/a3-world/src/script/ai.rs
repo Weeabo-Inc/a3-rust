@@ -9,7 +9,7 @@
 //! nothing. The command set and the deviations are in `docs/re/ai.md`.
 //!
 //! Which machine runs a command does not matter yet: locality gates the AI itself in
-//! [`World::perform_ai`], not the script layer (#131 carries the effects over the network).
+//! [`World::perform_ai`], not the script layer, and what a script does is not replicated yet.
 
 use a3_sqf::vm::Ctx;
 use a3_sqf::{Registry, Type, TypeSet, Value};

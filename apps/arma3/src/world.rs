@@ -22,12 +22,23 @@ pub struct LoadedWorld {
     pub landscape: Landscape,
     /// VFS access for streaming satellite tiles.
     pub reader: FileReader,
+    /// The mounted game data, for loading models outside the terrain.
+    pub vfs: a3_vfs::Vfs,
     /// `centerPosition` in world space (x east, z north; y is 0).
     pub centre: DVec3,
     /// The placed objects, when they should be drawn.
     pub objects: Option<WorldObjects>,
     /// The roads, when the World has a readable roads shapefile.
     pub roads: Option<crate::roads::LoadedRoads>,
+    /// Date, sun, lighting tables, weather and fog of the World.
+    pub environment: a3_environment::WorldEnvironment,
+    /// The cloud noise texture (`SimulWeather >> noiseTexture`), decoded.
+    pub sky_noise: Option<a3_render::TextureData>,
+    /// `CfgVehicles >> B_Soldier_F >> model`: the Man the player is.
+    pub player_model: Option<String>,
+    /// The merged game config, for the Moves type and other data the player needs after the
+    /// load.
+    pub config: Arc<a3_config::ConfigTree>,
 }
 
 /// Mount the game at `game_dir`, find `CfgWorlds >> world` and load its terrain, and its
@@ -100,15 +111,61 @@ pub fn load(
         parsed - mounted,
         start.elapsed() - parsed
     );
+    let environment = a3_environment::WorldEnvironment::from_config(&class);
+    let noise_path = class.get("SimulWeather").get("noiseTexture");
+    let sky_noise = if noise_path.is_text() {
+        decode_paa_rgba8(&data.vfs, &noise_path.text())
+    } else {
+        None
+    };
     let reader: FileReader = Arc::new(move |p| vfs.open(p.as_str()).ok().map(|b| b.to_vec()));
+    let player_model = player_model(&data.config);
     Ok(LoadedWorld {
         name: config.class,
         landscape,
         reader,
+        vfs: data.vfs.clone(),
         centre,
         objects,
         roads,
+        environment,
+        sky_noise,
+        player_model,
+        config: data.config.clone(),
     })
+}
+
+/// Decodes a PAA with all its mipmaps to RGBA8.
+fn decode_paa_rgba8(vfs: &a3_vfs::Vfs, path: &str) -> Option<a3_render::TextureData> {
+    let bytes = vfs.open(path).ok()?;
+    let texture = a3_paa::Texture::read(&bytes)
+        .map_err(|e| log::warn!("cannot read {path}: {e}"))
+        .ok()?;
+    let mips = texture
+        .mips
+        .iter()
+        .map(|m| a3_paa::decode_rgba8(texture.format, m))
+        .collect::<Result<Vec<_>, _>>()
+        .ok()?;
+    Some(a3_render::TextureData {
+        format: a3_render::TextureFormat::Rgba8,
+        width: u32::from(texture.width()),
+        height: u32::from(texture.height()),
+        mips,
+    })
+}
+
+/// `CfgVehicles >> B_Soldier_F >> model`, the P3D of the Man the player is, when the class
+/// names one. `None` when the game data has no such class or model (the client then draws its
+/// stand-in Man).
+pub fn player_model(config: &a3_config::ConfigTree) -> Option<String> {
+    let path = config
+        .root()
+        .get("CfgVehicles")
+        .get(crate::player::PLAYER_CLASS)
+        .get("model")
+        .text();
+    (!path.is_empty()).then(|| path.to_owned())
 }
 
 /// A camera placement given on the command line: `east,north,altitude,heading,pitch` with
@@ -149,6 +206,55 @@ impl std::str::FromStr for CameraSpec {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_player_model_is_the_soldier_class_model() {
+        let config = a3_config::parse_text(
+            r#"
+class CfgVehicles {
+    class B_Soldier_F {
+        model = "\A3\characters_F\BLUFOR\b_soldier_01.p3d";
+    };
+};
+"#,
+        )
+        .expect("config parses");
+        let tree = a3_config::ConfigTree::from_config(&config);
+        assert_eq!(
+            player_model(&tree).as_deref(),
+            Some(r"\A3\characters_F\BLUFOR\b_soldier_01.p3d")
+        );
+    }
+
+    #[test]
+    fn a_class_without_a_model_gives_no_player_model() {
+        // A base class inherits `model` from its parent, so prove the lookup follows the chain.
+        let config = a3_config::parse_text(
+            r#"
+class CfgVehicles {
+    class Soldier_Base {
+        model = "\inherited.p3d";
+    };
+    class B_Soldier_F : Soldier_Base {};
+    class Car {
+        displayName = "no model here";
+    };
+};
+"#,
+        )
+        .expect("config parses");
+        let tree = a3_config::ConfigTree::from_config(&config);
+        assert_eq!(player_model(&tree).as_deref(), Some(r"\inherited.p3d"));
+    }
+
+    #[test]
+    fn a_game_without_the_soldier_class_has_no_player_model() {
+        let config =
+            a3_config::parse_text(r#"class CfgVehicles { class Car { model = "x.p3d"; }; };"#)
+                .expect("config parses");
+        let tree = a3_config::ConfigTree::from_config(&config);
+        assert_eq!(player_model(&tree), None);
+    }
 
     #[test]
     fn camera_spec_parses_full_and_short_forms() {

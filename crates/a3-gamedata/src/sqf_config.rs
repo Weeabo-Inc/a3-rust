@@ -409,20 +409,18 @@ pub fn register_config_commands<H: ConfigHost>(r: &mut Registry<H>) {
     });
     r.unary("count", CONFIG, NUM, |ctx, a| {
         Ok(Value::Number(
-            with_entry(ctx, &a, |e| e.map_or(0, |(_, e)| e.entries().len())) as f32,
+            with_entry(ctx, &a, |e| e.map_or(0, |(_, e)| e.entry_count())) as f32,
         ))
     });
     r.binary("select", CONFIG, NUM, CONFIG, |ctx, a, b| {
         let n = b.as_number().unwrap_or(0.0);
-        let i = (n - 0.5).ceil();
+        // Rounded like array select (half to even).
+        let i = n.round_ties_even();
         Ok(related_one(ctx, &a, |e| {
             if i < 0.0 {
                 return Vec::new();
             }
-            e.entries()
-                .get(i as usize)
-                .map(|c| c.node_path().to_vec())
-                .unwrap_or_default()
+            e.entry_at(i as usize).node_path().to_vec()
         }))
     });
     r.binary_flow("configClasses", STR, CONFIG, ARR, |ctx, a, b| {

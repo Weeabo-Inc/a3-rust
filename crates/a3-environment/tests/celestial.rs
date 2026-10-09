@@ -113,3 +113,31 @@ fn the_moon_stays_within_its_declination_band() {
         "{highest}"
     );
 }
+
+#[test]
+fn the_star_sphere_turns_about_the_celestial_pole() {
+    use a3_environment::star_rotation;
+    use glam::Vec3;
+    let o = altis();
+    let lat = 35.152f32.to_radians();
+    let pole = Vec3::new(0.0, lat.sin(), lat.cos());
+    for hour in [0.0, 6.0, 13.5] {
+        let r = star_rotation(&o, &DateTime::new(2035, 6, 24, hour));
+        // Equatorial z is the north celestial pole.
+        assert!((r * Vec3::Z - pole).length() < 1e-3, "{hour}");
+        // A rotation: orthonormal columns.
+        assert!((r.x_axis.length() - 1.0).abs() < 1e-4);
+        assert!(r.x_axis.dot(r.y_axis).abs() < 1e-4);
+    }
+    // The celestial equator crosses the meridian due south at elevation 90 - latitude.
+    let r = star_rotation(&o, &DateTime::new(2035, 6, 24, 0.0));
+    let highest = (0..360)
+        .map(|deg| {
+            let a = (deg as f32).to_radians();
+            r * Vec3::new(a.cos(), a.sin(), 0.0)
+        })
+        .max_by(|a, b| a.y.total_cmp(&b.y))
+        .unwrap();
+    assert!((highest.y.asin().to_degrees() - (90.0 - 35.152)).abs() < 1.0);
+    assert!(highest.z < 0.0 && highest.x.abs() < 0.05, "{highest:?}");
+}

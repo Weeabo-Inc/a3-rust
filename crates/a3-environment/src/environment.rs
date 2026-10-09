@@ -7,7 +7,7 @@ use crate::cfg::{array_n, number, number_or, text_or_empty};
 use crate::weather::{Fog, FogLimits, OvercastSample, OvercastTable};
 use crate::{
     DateTime, LightingEntry, LightingTable, Observer, moon_illumination, moon_phase, moon_position,
-    sun_position,
+    star_rotation, sun_position,
 };
 
 /// The environment as scripts change it (`setDate`, `skipTime`, `setOvercast`, `setFog`).
@@ -109,6 +109,11 @@ pub struct EnvironmentFrame {
     pub haze: Vec3,
     /// Star brightness (0 by day).
     pub stars: f32,
+    /// Rotation from equatorial coordinates to world axes, for the stars.
+    pub star_rotation: glam::Mat3,
+    /// Sun colour for the sky (the engine's `max(diffuse, skyAroundSun)` per channel, with the
+    /// clear-sky diffuse).
+    pub sun_color_for_sky: Vec3,
 }
 
 impl WorldEnvironment {
@@ -206,6 +211,8 @@ impl WorldEnvironment {
             fog_sea_level,
             fog_decay: fog.decay,
             stars,
+            star_rotation: star_rotation(&self.observer, &state.date_time),
+            sun_color_for_sky: raw.diffuse.max(raw.sky_around_sun),
         }
     }
 }

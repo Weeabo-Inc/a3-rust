@@ -3,7 +3,7 @@
 //!
 //! Phase 5 of [`World::simulate`]. Only groups whose [`Locality`](crate::Locality) is local think
 //! here — a group owned by another machine is driven there, and its units on this machine only
-//! replay the state that arrives over the network (#131). Nothing in this module reads a clock:
+//! replay the state that arrives over the network. Nothing in this module reads a clock:
 //! the tick uses `dt` of World time, so a mission replays the same way at any frame rate.
 //!
 //! The design, the constants and how sure we are of each: `docs/re/ai.md`.

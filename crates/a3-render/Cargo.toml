@@ -7,12 +7,16 @@ rust-version.workspace = true
 description = "wgpu renderer core: device, camera, textures, meshes, debug drawing, passes"
 
 [dependencies]
+a3-paa.workspace = true
 bytemuck.workspace = true
 glam.workspace = true
 log.workspace = true
 pollster.workspace = true
 thiserror.workspace = true
 wgpu.workspace = true
+
+[dev-dependencies]
+a3-vfs.workspace = true
 
 [lints]
 workspace = true

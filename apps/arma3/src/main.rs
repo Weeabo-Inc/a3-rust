@@ -5,9 +5,12 @@
 //! mode for checking rendering changes.
 
 mod engine;
+mod environment;
 mod keys;
+mod man;
 mod models;
 mod offline;
+mod player;
 mod roads;
 mod scene;
 mod windowed;
@@ -58,12 +61,17 @@ struct Cli {
     #[arg(long, value_name = "NAME")]
     world: Option<String>,
     /// Camera placement over the world: `east,north[,altitude,heading,pitch]` (metres above
-    /// the terrain, degrees).
+    /// the terrain, degrees). With `--play` this is the player's spawn instead, altitude
+    /// ignored.
     #[arg(long, value_name = "SPEC", requires = "world")]
     camera: Option<world::CameraSpec>,
-    /// Distance fog density per metre (default 8e-5, Altis' `hazeBaseBeta0`).
-    #[arg(long, value_name = "DENSITY")]
-    fog: Option<f32>,
+    /// Play as a Man on the terrain: WASD walks it, the mouse looks, Numpad Enter switches
+    /// first and third person, C/Z/X crouch, go prone and stand (SHIFT sprints, CTRL walks).
+    #[arg(long, requires = "world")]
+    play: bool,
+    /// Camera `--play` starts in: `first` (`fp`) or `third` (`tp`).
+    #[arg(long, value_name = "MODE", requires = "play", default_value = "first")]
+    camera_mode: player::CameraMode,
     /// Objects quality (`VeryLow`, `Low`, `High`, `VeryHigh`, `Ultra`, `Extreme`): LOD
     /// coefficients and how far small objects stay visible.
     #[arg(long, default_value = "High")]
@@ -86,6 +94,21 @@ struct Cli {
     /// `--screenshot`: after loading, time this many frames and print the average.
     #[arg(long, default_value_t = 0)]
     bench_frames: u64,
+    /// Date over the world, `year-month-day` (default: the world's `startDate`).
+    #[arg(long, value_name = "DATE", value_parser = environment::parse_date, requires = "world")]
+    date: Option<(i32, u32, u32)>,
+    /// Local time over the world, `hh:mm` (default: the world's `startTime`).
+    #[arg(long, value_name = "TIME", value_parser = environment::parse_time, requires = "world")]
+    time: Option<f64>,
+    /// Overcast 0..1, as `setOvercast` (default: the world's `startWeather`).
+    #[arg(long, value_name = "VALUE", requires = "world")]
+    overcast: Option<f32>,
+    /// Fog as `setFog`: `value[,decay[,base]]` (default: the world's `startFog*`).
+    #[arg(long, value_name = "FOG", requires = "world")]
+    fog: Option<environment::FogSpec>,
+    /// Fog view distance in metres: the linear fog ends there.
+    #[arg(long, value_name = "METRES", requires = "world")]
+    fog_distance: Option<f32>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -105,7 +128,8 @@ fn main() -> anyhow::Result<()> {
         },
         world: cli.world.clone(),
         camera: cli.camera,
-        fog: cli.fog,
+        play: cli.play,
+        camera_mode: cli.camera_mode,
         objects: models::ObjectOptions {
             quality: cli.objects_quality,
             view_distance: cli.view_distance,
@@ -116,6 +140,13 @@ fn main() -> anyhow::Result<()> {
             pitch: cli.view_pitch,
             lod: cli.lod,
         }),
+        environment: environment::EnvironmentSpec {
+            date: cli.date,
+            time: cli.time,
+            overcast: cli.overcast,
+            fog: cli.fog,
+            fog_distance: cli.fog_distance,
+        },
     };
     log::info!(
         "a3-rust {} (targets Arma 3 {}), game dir: {:?}",
@@ -171,11 +202,77 @@ mod tests {
     }
 
     #[test]
+    fn play_and_camera_mode_flags_are_parsed() {
+        let cli = Cli::try_parse_from([
+            "arma3",
+            "--world",
+            "altis",
+            "--play",
+            "--camera-mode",
+            "third",
+            "--camera",
+            "3600,13000",
+        ])
+        .unwrap();
+        assert!(cli.play);
+        assert_eq!(cli.camera_mode, crate::player::CameraMode::ThirdPerson);
+        assert!(Cli::try_parse_from(["arma3", "--world", "altis"]).is_ok());
+        assert_eq!(
+            Cli::try_parse_from(["arma3", "--world", "altis", "--play"])
+                .unwrap()
+                .camera_mode,
+            crate::player::CameraMode::FirstPerson,
+            "the game starts in first person"
+        );
+        assert!(
+            Cli::try_parse_from(["arma3", "--play"]).is_err(),
+            "--play needs a world"
+        );
+        assert!(
+            Cli::try_parse_from(["arma3", "--camera-mode", "third"]).is_err(),
+            "--camera-mode needs --play"
+        );
+        assert!(Cli::try_parse_from(["arma3", "--world", "altis", "--camera-mode", "2d"]).is_err());
+    }
+
+    #[test]
     fn world_and_camera_flags_are_parsed() {
         let cli = Cli::try_parse_from(["arma3", "--world", "altis", "--camera", "3600,13000,200"])
             .unwrap();
         assert_eq!(cli.world.as_deref(), Some("altis"));
         assert_eq!(cli.camera.map(|c| c.altitude), Some(200.0));
         assert!(Cli::try_parse_from(["arma3", "--camera", "1,2"]).is_err());
+    }
+
+    #[test]
+    fn environment_flags_are_parsed() {
+        let cli = Cli::try_parse_from([
+            "arma3",
+            "--world",
+            "altis",
+            "--date",
+            "2035-06-24",
+            "--time",
+            "05:30",
+            "--overcast",
+            "0.4",
+            "--fog",
+            "0.2,0.05,0",
+            "--fog-distance",
+            "3000",
+        ])
+        .unwrap();
+        assert_eq!(cli.date, Some((2035, 6, 24)));
+        assert_eq!(cli.time, Some(5.5));
+        assert_eq!(cli.overcast, Some(0.4));
+        assert_eq!(cli.fog_distance, Some(3000.0));
+        assert_eq!(
+            cli.fog,
+            Some(environment::FogSpec {
+                value: 0.2,
+                decay: Some(0.05),
+                base: Some(0.0),
+            })
+        );
     }
 }

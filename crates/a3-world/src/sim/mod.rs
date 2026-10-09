@@ -172,7 +172,7 @@ impl World {
         self.update_attached_positions();
 
         // 5. AI: a local group works its waypoints and fills its units' inputs (#129). A group
-        // owned elsewhere is driven there; #131 brings its state in.
+        // owned elsewhere is driven there; the network layer brings its state in.
         self.perform_ai(dt);
 
         // 6.

@@ -510,6 +510,53 @@ An area around an Entity, the camera or a script query that streaming keeps load
 object colliders outside every Interest are unloaded after a while.
 _Avoid_: activation range, view distance
 
+## Navigation
+
+**Navigation grid**:
+The cell grid `a3-nav` searches a path over: one cell per land cell of the Landscape, each with
+a cost (0 = impassable, 100 = open ground, road 70, forest 130, built-up 140, shallow water
+200) baked from the geography flags, the heightmap slope and the roads
+(ADR 0009).
+_Avoid_: navmesh (that is the triangle kind we do not use), oper map (that is the engine's own
+field, which also carries cover)
+
+**Nav cell**:
+One square of the Navigation grid, named `(x, z)` like the land cell it comes from; the unit a
+cost, an obstacle patch and a path node are addressed by.
+_Avoid_: tile, square
+
+**Oper map**:
+The engine's own name for the per-cell AI field it plans over (`OperMap`, `OperField`, built by
+`OperMap::CreateFields` per AI type and combat mode, with cover and clearance layers). We keep
+the word for the engine concept; our Navigation grid is the path layer of it.
+_Avoid_: cost map (that is the engine's developer display of the oper map)
+
+**Oper position**:
+A position on an AI path as the engine stores it: a cell, a type (open ground, road, house,
+cover), a cost and a clearance, plus the house or road it belongs to. A path is a list of oper
+positions, not cell centres; ours are the smoothed positions `find_path` returns.
+_Avoid_: waypoint (that is a scripted AI order, a different thing)
+
+**Path planner**:
+The object that runs one path search and keeps its scratch between queries — the open list, the
+cost arrays and the generation counter — so that many units can plan without allocating. The
+engine's is `AIPathPlanner` with its incremental `ProcessSearching`; ours is `a3-nav`'s
+`Planner` behind `Navigator`.
+_Avoid_: router, pathfinder (that is the whole crate)
+
+**Path smoothing**:
+Turning the cell path an A* returns into positions a Man can walk: a greedy furthest-visible
+pull over the cell centres, using the heightmap so a shortcut never leaves walkable ground.
+_Avoid_: simplification, decimation
+
+**Building path**:
+The indoor navigation of one building model, from its Paths LOD (its Roadway LOD when it has
+none): a small triangle graph an outdoor path ends at (via a door position) and a ladder
+(`PathActionLadderBottom`/`PathActionLadderTop`) changes floor through. The engine's interface
+is `IPaths`; ours is `a3-nav`'s `PathMesh`, which routes within one floor plan — where a
+`PathAction` sits in the LOD is not read yet (`docs/re/navigation.md` §8).
+_Avoid_: house path index (the engine's terrain-wide lookup of building paths, not the graph)
+
 ## Multiplayer and server
 
 **Dedicated server**:
@@ -549,6 +596,13 @@ _Avoid_: object ID, network ID
 The machine (identified by its client ID; the server is 2) on which an Object is local. Ownership
 can move between machines during a session.
 _Avoid_: host, authority
+
+**Update error**:
+The measure of how far an Object's state has moved from the state a receiving player was last
+sent, tracked per update class — transform, damage, the destroyed/hidden state flags — and per
+player; it decides when and how often the object is sent to that player. A changed state flag
+adds 10000, damage adds 10 × |Δdamage|.
+_Avoid_: priority (that is the order that comes out of it), delta
 
 **verifySignatures**:
 The server setting that decides whether clients' addons must match Bisigns under the server's

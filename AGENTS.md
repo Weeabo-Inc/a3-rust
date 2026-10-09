@@ -55,6 +55,15 @@ Use the `mattpocock-skills:tdd` skill: red, green, refactor.
   Locally, `A3_ROOT=P:\a3-rust\oirignal`.
 - `proptest` for round-trips (read/write, rapify/derap); `insta` for snapshot output of parsers.
 
+## Build economy
+
+Rapid iteration is the project's priority: writing systems outranks waiting on rustc. Scope every
+build to the crates you touch.
+
+- While iterating: `cargo check -p <crate> --all-targets` after each edit, `cargo test -p <crate>`
+  for its tests. Reach for `--workspace` mid-iteration only when a change ripples into many crates.
+- One full gate run, immediately before each push (Workflow step 4); CI guards `main` from there.
+
 ## Code conventions
 
 - Crates: libraries are `crates/a3-<area>` (`a3-pbo`, `a3-config`, `a3-sqf`); binaries are

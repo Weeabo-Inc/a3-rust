@@ -98,3 +98,51 @@ fn shipped_terrains_load_as_static_objects_findable_by_object_id() {
         );
     }
 }
+
+/// A create message for a shipped class builds an Entity of the class's engine type, and the
+/// snapshot a joining client gets carries it. No terrain needed: nothing is placed on the ground.
+#[test]
+fn a_remote_create_and_a_jip_snapshot_work_with_the_shipped_config() {
+    let Some(root) = std::env::var_os("A3_ROOT") else {
+        eprintln!("skipping: A3_ROOT not set");
+        return;
+    };
+    let data = a3_gamedata::GameData::load(&a3_gamedata::LoadOptions::new(root)).unwrap();
+    let mut bank = a3_world::TypeBank::new(data.config.clone());
+    let mut world = World::new(ClientId(7));
+    let creator = a3_world::ClientId(2);
+
+    for (net, name) in [
+        (a3_world::NetworkId::new(2, 1), "C_Offroad_01_F"),
+        (a3_world::NetworkId::new(2, 2), "B_Soldier_F"),
+    ] {
+        let id = world
+            .apply_remote_create(
+                &mut bank,
+                a3_world::RemoteCreate {
+                    network_id: net,
+                    type_name: name.to_owned(),
+                    state: a3_world::ReplicatedState::at(glam::DVec3::new(100.0, 0.0, 200.0)),
+                },
+            )
+            .unwrap();
+        let entity = world.entity(id).unwrap();
+        assert!(entity.type_name().eq_ignore_ascii_case(name));
+        assert!(
+            !matches!(entity.class(), a3_world::SimulationClass::Plain),
+            "{name} fell back to a plain simulation"
+        );
+        assert_eq!(world.owner(net), Some(creator));
+    }
+
+    let snapshot = world.jip_snapshot();
+    assert_eq!(snapshot.len(), 2);
+    assert!(snapshot[0].type_name.eq_ignore_ascii_case("C_Offroad_01_F"));
+    assert_eq!(snapshot[0].owner, Some(creator));
+    assert_eq!(
+        snapshot[0].state.position,
+        glam::DVec3::new(100.0, 0.0, 200.0)
+    );
+    // Nobody has been sent anything yet, so nothing is owed.
+    assert!(world.updates_owed(a3_world::ClientId(4)).is_empty());
+}
