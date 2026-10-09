@@ -118,6 +118,9 @@ interpolation normalises its result.
 
 - Meaning of the header byte, the 0/1 flag and the always-empty name list; the keystone type
   numbering (the name-to-type table).
-- Whether transforms are relative to the skeleton's bind pose or absolute in model space, and the
-  bone order mapping onto a CfgSkeletons skeleton. Needed for Phase 4 animation.
-- How the engine samples between keyframes (linear vs. slerp, looping past the last phase).
+- Settled (see `model-animations.md`, "RTM skeletal poses"): bones bind by name; transforms are
+  local to the parent bone and compose down the skeleton; rotations are the conjugate of the
+  stored quaternion; RTM space is mirrored in X against model space; the root (`pelvis`)
+  translation is the pelvis height above the ground; keyframes blend by slerp of quaternions and
+  lerp of posed pivots (or linear matrix weights without a skeleton).
+- Looping past the last phase.

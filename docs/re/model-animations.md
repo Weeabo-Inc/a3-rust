@@ -94,34 +94,42 @@ Note that all sources at 0 is not the rest pose: for example a damper `translati
 ## RTM skeletal poses
 
 Engine functions (RVAs): BMTR serialiser `0x12557a0`; transform decode `0x1212520`; load-time
-conversion `0x124d370`; skeleton pivots `0x1252020` (from `0x1251c20`); keyframe/animation
-blending `0x12114b0`; the pose builder that calls it `0x12105b0`.
+conversion `0x124d370`; skeleton pivots `0x1252020` (from `0x1251c20`); per-animation bone
+getter `0x12102c0`; keyframe/animation blending `0x12114b0`; pose builder `0x12105b0`; bone
+chain walks `0x1211190` (matrix) and `0x1211390` (point).
 
-- **Bone binding** (high): RTM bone names map to Skeleton bones by name (`0x12531f0`).
-- **Rotation** (high): the decoder `0x1212520` turns the `i16` quaternion (x, y, z, w) / 16384
-  into a `Matrix4` whose columns are the **rows** of the usual quaternion matrix, i.e. the
-  matrix of the conjugate quaternion. `a3-rtm` returns the quaternion as stored; `a3-anim` uses
-  its conjugate.
+- **Bone binding** (high): the BMTR serialiser fills a table indexed by skeleton bone with the
+  index of the RTM bone of the same name (`0x12531f0`). Transforms are stored in RTM name order.
+- **Rotation** (high): `0x1212520` and the pose builder turn the `i16` quaternion (x, y, z, w) /
+  16384 into a `Matrix4` whose columns are the **rows** of the usual matrix: the conjugate.
 - **Pivots** (high): CfgSkeletonParameters `>> skeleton >> pivotsModel` (for
   `OFP2_ManSkeleton`: `A3\anims_f\data\skeleton\SkeletonPivots.p3d`, not autocentred, pelvis at
-  the origin). Each bone's pivot is the memory point named like the bone; without one it takes
-  the parent's pivot, else the origin. `weaponBone` (same class) names one bone the conversion
-  below skips.
-- **Load conversion** (high): after reading a keyframe, every bound bone except the weapon bone
-  gets its translation replaced by `R * pivot + t` (written back as half floats). So the engine's
-  bone matrix is `[R | R * pivot + t]`. On the shipped soldier its translation behaves like the
-  **posed position of the joint**: trunk and leg bone lengths are kept within a few cm
-  (`crates/a3-anim/tests/real_data.rs`).
-- **Blending** (high): keyframes and simultaneous animations are blended by weighting whole
-  matrices linearly (`0x14035bf70` set-scaled, `0x14035a170` add-scaled); no slerp.
-- **Skinning** (open): `a3-anim` currently skins with `frame * translate(-pivot)` (rest frame at
-  the pivot onto the posed frame). For the soldier idle (`amovpercmstpsraswrfldnon`), the spine,
-  head and legs come out right. The arm chains don't: their posed joints drift apart (forearm
-  0.66 m, hand 1.37 m from the parent joint instead of 0.14–0.16 m), and the root bone `pelvis`
-  carries an extra 0.91 m upward translation. Pure local-rotation and absolute-rotation
-  hierarchies about the pivots give connected bodies but not the rifle stance. The pose builder
-  `0x12105b0` (quaternion path with pivots and a recursion to the parent bone) is the next
-  place to read.
+  the origin). A bone's pivot is the memory point named like it, else its parent's, else the
+  origin. `weaponBone` (same class; empty for men) is exempt from the next step.
+- **Load conversion** (high): after reading a keyframe, each bound bone's translation becomes
+  `R * pivot + t` (written back as half floats). The pose builder interpolates these "posed
+  pivot" positions linearly and the quaternions by slerp (`0x14035d140`) when it has the
+  skeleton, otherwise blends whole matrices linearly (`0x12114b0`), and finally builds
+  `[R | P - R * pivot]`, i.e. `[R | t]` again (`0x12105b0` tail).
+- **Hierarchy** (high): those matrices are **local**. `0x1211190` and `0x1211390` walk from a
+  bone up its parents, multiplying each parent's matrix on the left: model transform =
+  `L_root * ... * L_parent * L_bone`. The pose builder itself only special-cases children of
+  the weapon bone (relative quaternions).
+- **Mirror** (high, from data): RTM space is mirrored in X against the model space `a3-p3d`
+  reads. Composed hierarchically and conjugated with `diag(-1, 1, 1)`, the soldier's skin stays
+  together: the mean gap between the two bone transforms of shared vertices is 0.03 m (rifle
+  idle), against 0.4–0.5 m for every unmirrored or non-hierarchical variant tried. Without the
+  mirror, the rotation axes of `right*` bones pass through the `left*` pivots and vice versa.
+- **Spaces**: the vertices go into pivot space (pelvis at the origin; for the autocentred soldier
+  ODOL that is `+ bounding_center`, confirmed by a least-squares fit of the shift). The root
+  bone `pelvis` carries the pelvis height above the ground (1.006 m unarmed standing, 0.912 m
+  rifle stance, 0.111 m prone), so the posed body sits that much above the rest pose.
+- **Verified renders**: rifle idle (`amovpercmstpsraswrfldnon`, arms holding the rifle
+  forward), walk (`amovpercmwlksraswrfldf`, stride) and prone (`amovppnemstpsraswrfldnon`,
+  lying flat, rifle forward) all look right.
+- **Not traced**: the hand IK curves of CfgMovesBasic (`leftHandIKCurve`, `rightHandIKCurve`)
+  and aiming/leaning blends. They are not needed for the RTM poses above, which are complete on
+  their own; the Man simulation adds them on top.
 
 ## Open questions
 

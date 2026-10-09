@@ -105,67 +105,73 @@ fn hunter_wheel_hides_when_destroyed() {
     );
 }
 
-/// A soldier and its idle rifle stance: every skeleton bone binds, and the engine's bone frames
-/// keep the bone lengths of the spine, neck, legs and shoulders (the posed pivot is the frame's
-/// translation). The arm chains do not yet (see `docs/re/model-animations.md`).
+/// A soldier posed by three RTMs: every skeleton bone binds; vertices shared by two bones land in
+/// the same place under both bone matrices (the skin does not tear); standing poses are tall and
+/// the prone pose lies flat.
 #[test]
-fn soldier_rtm_frames_keep_trunk_and_leg_bone_lengths() {
+fn soldier_rtm_poses_keep_the_skin_together() {
     let Some(model) = load(r"a3\characters_f\blufor\b_soldier_01.p3d") else {
         return;
     };
     let root = std::env::var_os("A3_ROOT").unwrap();
     let vfs = Vfs::new();
     vfs.mount_archives(&Path::new(&root).join("Addons"));
-    let rtm = a3_rtm::Animation::read(
-        &vfs.open(r"a3\anims_f\data\anim\sdr\mov\erc\stp\ras\rfl\amovpercmstpsraswrfldnon.rtm")
-            .unwrap(),
-    )
-    .unwrap();
-    let pivots_model = Model::from_bytes(
-        &vfs.open(r"a3\anims_f\data\skeleton\skeletonpivots.p3d")
-            .unwrap(),
-    )
-    .unwrap();
+    let pivots_model =
+        Model::from_bytes(&vfs.open(r"a3\anims_f\data\skeleton\skeletonpivots.p3d").unwrap())
+            .unwrap();
     let skeleton = model.skeleton.as_ref().unwrap();
     let pivots = SkeletonPivots::from_model(skeleton, &pivots_model, "");
-    let binding = RtmBinding::new(skeleton, &rtm);
-    assert_eq!(binding.bound(), skeleton.bones.len());
-
-    let frames = binding.frames(&rtm, 0.0, &pivots);
-    let bone = |name: &str| skeleton.bones.iter().position(|b| b.name == name).unwrap();
-    let mut report = Vec::new();
-    for name in [
-        "spine1",
-        "spine2",
-        "spine3",
-        "neck",
-        "neck1",
-        "head",
-        "leftleg",
-        "leftfoot",
-        "rightleg",
-        "rightfoot",
-        "leftshoulder",
-        "rightshoulder",
-        "leftarm",
-        "leftforearm",
-        "lefthand",
+    let lod = &model.lods[0];
+    let odol = lod.odol.as_ref().unwrap();
+    for (path, phase, standing) in [
+        (r"a3\anims_f\data\anim\sdr\mov\erc\stp\ras\rfl\amovpercmstpsraswrfldnon.rtm", 0.0, true),
+        (r"a3\anims_f\data\anim\sdr\mov\erc\wlk\ras\rfl\amovpercmwlksraswrfldf.rtm", 0.25, true),
+        (r"a3\anims_f\data\anim\sdr\mov\pne\stp\ras\rfl\amovppnemstpsraswrfldnon.rtm", 0.0, false),
     ] {
-        let b = bone(name);
-        let parent = skeleton.bones[b].parent.unwrap();
-        let rest = pivots.positions[b].distance(pivots.positions[parent]);
-        let posed = Vec3::from(frames[b].translation).distance(frames[parent].translation.into());
-        report.push((name, rest, posed));
-    }
-    for (name, rest, posed) in &report {
-        eprintln!("{name:14} rest {rest:.3} posed {posed:.3}");
-    }
-    for (name, rest, posed) in &report[..12] {
-        // Within 7 cm (legs shorten by up to 6.5 cm in this pose); the arms are off by up to 1.2 m.
-        assert!((rest - posed).abs() < 0.07, "{name}: {rest} vs {posed}");
+        let rtm = a3_rtm::Animation::read(&vfs.open(path).unwrap()).unwrap();
+        let binding = RtmBinding::new(skeleton, &rtm);
+        assert_eq!(binding.bound(), skeleton.bones.len());
+        let frames = binding.frames(&rtm, phase, &pivots);
+        let pose = a3_anim::Pose::from_rtm_frames(&frames, &pivots, model.info.bounding_center);
+        let skinning = pose.skinning(lod);
+        let (mut seam, mut shared) = (0.0, 0);
+        for (v, w) in lod.vertices.bone_weights.iter().enumerate() {
+            if w.count < 2 {
+                continue;
+            }
+            let p = lod.vertices.positions[v];
+            let a = skinning[usize::from(w.pairs[0].0)].transform_point3(p);
+            let b = skinning[usize::from(w.pairs[1].0)].transform_point3(p);
+            seam += a.distance(b);
+            shared += 1;
+        }
+        let seam = seam / shared as f32;
+        // Height of the drawn body (proxy triangles left out).
+        let posed = skin(lod, &skinning).positions;
+        let mut lo = f32::MAX;
+        let mut hi = f32::MIN;
+        for s in lod.sections.iter().filter(|s| !s.is_proxy()) {
+            for f in &lod.faces[s.faces.start as usize..s.faces.end as usize] {
+                for &i in f.indices() {
+                    lo = lo.min(posed[i as usize].y);
+                    hi = hi.max(posed[i as usize].y);
+                }
+            }
+        }
+        let _ = odol;
+        eprintln!(
+            "{}: mean seam {seam:.3} m over {shared} shared vertices, height {:.2} m",
+            path.rsplit('\\').next().unwrap(),
+            hi - lo
+        );
+        assert!(seam < 0.06, "{path}: skin tears ({seam})");
+        if standing {
+            assert!(hi - lo > 1.5, "{path}: not standing");
+        } else {
+            assert!(hi - lo < 0.8, "{path}: not lying");
+        }
     }
 }
-
 #[test]
 fn hunter_wheel_turns_about_its_hub() {
     let Some(model) = load(r"a3\soft_f\mrap_01\mrap_01_unarmed_f.p3d") else {

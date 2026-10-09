@@ -8,11 +8,13 @@
 //! - On load the engine replaces each bone's translation `t` with `R * pivot + t`, the pivot
 //!   being the bone's memory point in the skeleton's pivots model, so a bone's frame is
 //!   `[R | R * pivot + t]` (`frames`). The weapon bone (`weaponBone`) keeps its raw translation.
-//! - Keyframes and animations are blended by weighting whole matrices linearly.
+//! - Keyframes and animations blend by slerp of the rotations and lerp of the posed pivots.
 //!
-//! How those frames become skinning matrices is **not confirmed** yet: [`Pose::from_rtm_frames`]
-//! treats them as the bone's posed frame over its rest frame at the pivot, which keeps the spine,
-//! head and legs of a soldier connected with correct bone lengths but not the arm chains.
+//! - The pose builder turns a frame back into the local transform `[R | t]`, and bone chains
+//!   compose parent first (local transforms, not model-space ones).
+//! - RTM space is mirrored in X against model space.
+//!
+//! [`Pose::from_rtm_frames`] builds skinning matrices from that; see its docs.
 
 use a3_p3d::{Lod, LodKind, Model, Skeleton};
 use a3_rtm::Animation as Rtm;
@@ -34,6 +36,8 @@ pub struct SkeletonPivots {
     pub positions: Vec<Vec3>,
     /// Index of the `weaponBone` of CfgSkeletonParameters, which the engine leaves untouched.
     pub weapon_bone: Option<usize>,
+    /// Per skeleton bone: its parent (RTM bone frames are composed down this hierarchy).
+    pub parents: Vec<Option<usize>>,
 }
 
 impl SkeletonPivots {
@@ -81,6 +85,7 @@ impl SkeletonPivots {
                 .bones
                 .iter()
                 .position(|b| !weapon_bone.is_empty() && b.name.eq_ignore_ascii_case(weapon_bone)),
+            parents: skeleton.bones.iter().map(|b| b.parent).collect(),
         }
     }
 }
@@ -156,43 +161,83 @@ impl RtmBinding {
     }
 }
 
-/// Weights two lists of bone frames linearly, matrix by matrix, as the engine blends keyframes
-/// and animations: `t = 0` gives `a`, `t = 1` gives `b`.
+/// Blends two lists of bone frames as the engine's pose builder does with a skeleton:
+/// rotations by spherical interpolation, posed pivots (the frame translations) linearly.
+/// `t = 0` gives `a`, `t = 1` gives `b`.
 pub fn blend(a: &[Affine3A], b: &[Affine3A], t: f32) -> Vec<Affine3A> {
     a.iter()
         .zip(b)
-        .map(|(x, y)| Affine3A {
-            matrix3: x.matrix3 * (1.0 - t) + y.matrix3 * t,
-            translation: x.translation * (1.0 - t) + y.translation * t,
+        .map(|(x, y)| {
+            let qa = glam::Quat::from_mat3a(&x.matrix3).normalize();
+            let mut qb = glam::Quat::from_mat3a(&y.matrix3).normalize();
+            if qa.dot(qb) < 0.0 {
+                qb = -qb;
+            }
+            Affine3A::from_rotation_translation(
+                qa.slerp(qb, t).normalize(),
+                Vec3::from(x.translation.lerp(y.translation, t)),
+            )
         })
         .collect()
 }
 
 impl Pose {
-    /// A pose from RTM bone frames (see [`RtmBinding::frames`]): each bone maps its rest frame
-    /// at the pivot onto its posed frame, `frame * translate(-pivot)`. `model_offset` moves model
-    /// space into pivot space (for an ODOL model: its `bounding_center` when the pivots model is
-    /// not autocentred). _Unconfirmed; see the module docs._
-    pub fn from_rtm_frames(
-        frames: &[Affine3A],
-        pivots: &SkeletonPivots,
-        model_offset: Vec3,
-    ) -> Self {
+    /// The skinning pose for RTM bone frames (see [`RtmBinding::frames`]).
+    ///
+    /// Each frame `[R | R * pivot + t]` gives the bone's local transform `[R | t]` (the engine's
+    /// pose builder subtracts `R * pivot` again); local transforms compose down the skeleton,
+    /// parent first, as the engine's bone-chain walk does. RTM space is mirrored in X against
+    /// model space, so the composed transform is conjugated with that mirror. `model_offset`
+    /// moves model space into pivot space (for an autocentred ODOL model and a pivots model
+    /// that is not autocentred: the model's `bounding_center`).
+    ///
+    /// The root bone's translation is the pelvis height above the ground (about 1.0 m standing,
+    /// 0.11 m prone), so the posed model sits that high above where the rest pose had its pelvis.
+    pub fn from_rtm_frames(frames: &[Affine3A], pivots: &SkeletonPivots, model_offset: Vec3) -> Self {
+        let n = frames.len();
+        let local: Vec<Affine3A> = (0..n)
+            .map(|b| {
+                let pivot = pivots.positions.get(b).copied().unwrap_or(Vec3::ZERO);
+                frames[b] * Affine3A::from_translation(-pivot)
+            })
+            .collect();
+        let parents: Vec<Option<usize>> = (0..n)
+            .map(|b| pivots.parents.get(b).copied().flatten().filter(|&p| p < n))
+            .collect();
+        let mut world: Vec<Option<Affine3A>> = vec![None; n];
+        fn resolve(
+            b: usize,
+            local: &[Affine3A],
+            parents: &[Option<usize>],
+            world: &mut [Option<Affine3A>],
+            depth: usize,
+        ) -> Affine3A {
+            if let Some(m) = world[b] {
+                return m;
+            }
+            let m = match parents[b] {
+                // A parent cycle (corrupt data) is cut after as many steps as there are bones.
+                Some(p) if depth < local.len() => {
+                    resolve(p, local, parents, world, depth + 1) * local[b]
+                }
+                _ => local[b],
+            };
+            world[b] = Some(m);
+            m
+        }
+        let mirror = Affine3A::from_scale(Vec3::new(-1.0, 1.0, 1.0));
         let to_pivot = Affine3A::from_translation(model_offset);
         let back = Affine3A::from_translation(-model_offset);
         Self {
-            bones: frames
-                .iter()
-                .enumerate()
-                .map(|(b, f)| {
-                    let pivot = pivots.positions.get(b).copied().unwrap_or(Vec3::ZERO);
-                    back * *f * Affine3A::from_translation(-pivot) * to_pivot
+            bones: (0..n)
+                .map(|b| {
+                    let w = resolve(b, &local, &parents, &mut world, 0);
+                    back * mirror * w * mirror * to_pivot
                 })
                 .collect(),
-            hidden: vec![false; frames.len()],
+            hidden: vec![false; n],
         }
     }
-
     /// Applies `config` (a pose from model.cfg animations, see [`crate::pose`]) under `self` (an
     /// RTM pose): each bone gets `self * config`, so the config animation acts in the rest pose
     /// and the RTM moves the result. Hidden bones come from `config`. Bones missing from either

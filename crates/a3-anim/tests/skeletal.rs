@@ -158,27 +158,35 @@ fn blends_keyframes_matrix_by_matrix() {
 }
 
 #[test]
-fn rtm_pose_maps_rest_pivot_frames_and_composes_with_config_animation() {
+fn rtm_pose_composes_local_frames_down_the_chain_in_mirrored_space() {
     let pivots = SkeletonPivots::from_model(&skeleton(), &pivots_model(), "");
-    // `lower`'s frame: rotated -90 degrees about Z, posed pivot at (1, 0, 0) (unchanged).
-    let frame = Affine3A::from_rotation_translation(Quat::from_rotation_z(-FRAC_PI_2), Vec3::X);
-    let frames = [Affine3A::IDENTITY, frame, Affine3A::IDENTITY];
+    assert_eq!(pivots.parents, [None, Some(0), Some(1)]);
+    // In RTM space `upper` turns +90 degrees about Z at the origin; `lower` has an identity
+    // local transform (frame = [I | pivot]), so it follows its parent.
+    let upper = Affine3A::from_quat(Quat::from_rotation_z(FRAC_PI_2));
+    let lower = Affine3A::from_translation(Vec3::X);
+    // `tip` inherits the pivot (1, 0, 0) from `lower`; its identity local transform is that.
+    let frames = [upper, lower, lower];
     let pose = Pose::from_rtm_frames(&frames, &pivots, Vec3::ZERO);
-    // A point 1 m past the elbow along X swings to 1 m below it.
-    let p = pose.bones[1].transform_point3(Vec3::new(2.0, 0.0, 0.0));
-    assert!(p.abs_diff_eq(Vec3::new(1.0, -1.0, 0.0), 1e-6), "{p}");
+    // Model space is RTM space mirrored in X: model (-2, 0, 0) is RTM (2, 0, 0), which turns
+    // to RTM (0, 2, 0), model (0, 2, 0).
+    let p = pose.bones[1].transform_point3(Vec3::new(-2.0, 0.0, 0.0));
+    assert!(p.abs_diff_eq(Vec3::new(0.0, 2.0, 0.0), 1e-6), "{p}");
+    // The tip (identity local transform) follows too.
+    let tip = pose.bones[2].transform_point3(Vec3::new(-2.0, 0.0, 0.0));
+    assert!(tip.abs_diff_eq(Vec3::new(0.0, 2.0, 0.0), 1e-6), "{tip}");
 
     // Model space offset from pivot space by +1 in Y.
     let shifted = Pose::from_rtm_frames(&frames, &pivots, Vec3::Y);
-    let q = shifted.bones[1].transform_point3(Vec3::new(2.0, -1.0, 0.0));
-    assert!(q.abs_diff_eq(Vec3::new(1.0, -2.0, 0.0), 1e-6), "{q}");
+    let q = shifted.bones[1].transform_point3(Vec3::new(-2.0, -1.0, 0.0));
+    assert!(q.abs_diff_eq(Vec3::new(0.0, 1.0, 0.0), 1e-6), "{q}");
 
     // A config animation applies first, in the rest pose; the RTM then moves the result.
     let mut config = Pose::identity(3);
     config.bones[1] = Affine3A::from_translation(Vec3::Z);
     config.hidden[2] = true;
     let both = pose.compose(&config);
-    let r = both.bones[1].transform_point3(Vec3::new(2.0, 0.0, 0.0));
-    assert!(r.abs_diff_eq(Vec3::new(1.0, -1.0, 1.0), 1e-6), "{r}");
+    let r = both.bones[1].transform_point3(Vec3::new(-2.0, 0.0, 0.0));
+    assert!(r.abs_diff_eq(Vec3::new(0.0, 2.0, 1.0), 1e-6), "{r}");
     assert_eq!(both.hidden, [false, false, true]);
 }
