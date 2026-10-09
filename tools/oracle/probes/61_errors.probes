@@ -1,0 +1,82 @@
+// Script errors the VM itself raises, not a command handler's.
+//
+// An assignment over a `compileFinal` value is the one the campaign missions hit in
+// `A3\functions_f\initFunctions.sqf` (issue #347). Each probe ends with a statement that runs
+// only if the error was not fatal, so a missing value means the error ended the script; the
+// RPT text between BEGIN and END is kept as the probe's evidence.
+//
+// Variable names are unique across the file and collide with no command name.
+## err.final_global_continues
+finA = compileFinal "1"; finA = "2"; "after"
+## err.final_global_value_rejected
+finB = compileFinal "1"; finB = "2"; str finB
+## err.final_global_casing
+finC_KeEpS_CaSe = compileFinal "1"; finC_KeEpS_CaSe = 2; "after"
+## err.final_casing_define_mixed
+finS_MiXeD = compileFinal "1"; fins_mixed = 2; "after"
+## err.final_casing_define_lower
+fint_lower = compileFinal "1"; finT_LOWER = 2; "after"
+## err.final_casing_setvariable_mixed_key
+missionNamespace setVariable ["finU_MiXeD", compileFinal "1"]; finu_mixed = 2; "after"
+## err.final_casing_setvariable_mixed_value
+finV_lower = compileFinal "1"; missionNamespace setVariable ["finv_LOWER", "2"]; "after"
+## err.final_assign_same_value
+finE = compileFinal "1"; finE = compileFinal "1"; call finE
+## err.final_assign_self
+finF = compileFinal "1"; finF = finF; call finF
+## err.final_assign_final_code
+finG = compileFinal "1"; finG = compileFinal "2"; call finG
+## err.final_local
+private _f = compileFinal "1"; _f = "2"; str _f
+## err.final_local_after_global
+finH = compileFinal "1"; private _finH = 1; _finH = 2; finH = "x"; str _finH
+## err.final_inside_call
+finI = compileFinal "1"; call {finI = "2"}; str finI
+## err.final_inside_isnil
+finJ = compileFinal "1"; isNil {finJ = "2"}; str finJ
+## err.final_setvariable
+finK = compileFinal "1"; missionNamespace setVariable ["finK", "2"]; str (missionNamespace getVariable "finK")
+## err.final_setvariable_new
+missionNamespace setVariable ["finL", compileFinal "1"]; missionNamespace setVariable ["finL", "2"]; str (missionNamespace getVariable "finL")
+## err.final_ui_namespace
+uiNamespace setVariable ["finM", compileFinal "1"]; uiNamespace setVariable ["finM", "2"]; str (uiNamespace getVariable "finM")
+## err.final_hashmap_var
+finN = compileFinal createHashMap; finN = 1; typeName finN
+## err.final_hashmap_setvariable
+missionNamespace setVariable ["finQ", compileFinal createHashMap]; missionNamespace setVariable ["finQ", 1]; typeName (missionNamespace getVariable "finQ")
+## err.final_isFinal
+finO = compileFinal "1"; [isFinal finO, isFinal {1}, isFinal "1"]
+## err.final_str_and_call
+finP = compileFinal "1 + 1"; [str finP, call finP]
+## err.final_assign_nil_read
+finalD = compileFinal "1"; finalD = nil; isNil finalD
+## err.final_nil_plain_global
+nilA = 1; nilA = nil; "after"
+## err.final_nil_plain_global_read
+nilB = 1; nilB = nil; isNil nilB
+## err.final_nil_final_global
+nilC = compileFinal "1"; nilC = nil; "after"
+## err.final_nil_final_global_read
+nilF = compileFinal "1"; nilF = nil; isNil nilF
+## err.final_nil_local
+private _n1 = 1; _n1 = nil; "after"
+## err.final_nil_local_final
+private _n2 = compileFinal "1"; _n2 = nil; "after"
+## err.final_nil_setvariable
+nilD = 1; missionNamespace setVariable ["nilD", nil]; "after"
+## err.final_nil_setvariable_final
+nilG = compileFinal "1"; missionNamespace setVariable ["nilG", nil]; "after"
+## err.final_nil_undeclared
+nilE = nil; "after"
+## err.final_nil_setvariable_final_read
+nilH = compileFinal "1"; missionNamespace setVariable ["nilH", nil]; isNil nilH
+## err.final_nil_hashmap_var
+nilJ = compileFinal createHashMap; nilJ = nil; isNil nilJ
+## err.final_nil_setvariable_hashmap_read
+nilI = compileFinal createHashMap; missionNamespace setVariable ["nilI", nil]; isNil nilI
+## err.final_nil_local_read
+private _n3 = compileFinal "1"; _n3 = nil; isNil _n3
+## err.final_nil_hashmap_var_type
+nilJ = compileFinal createHashMap; nilJ = nil; typeName nilJ
+## err.final_nil_hashmap_setvariable_type
+nilK = compileFinal createHashMap; missionNamespace setVariable ["nilK", nil]; typeName nilK

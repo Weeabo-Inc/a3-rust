@@ -146,7 +146,6 @@ getWeaponCargo	unary	0x842050	verified	decompiled 0x842050 + oracle
 isEngineOn	unary	0x56cca0	verified	decompiled 0x56cca0 + oracle	
 itemCargo	unary	0x842c00	verified	decompiled 0x842c00 + oracle	
 lock	binary	0x536850	verified	decompiled 0x536850 + oracle	
-lock	binary	0x536850	verified	decompiled 0x536850 + oracle	
 lock	unary	0x176420	verified	decompiled 0x176420 + oracle	
 lockCargo	binary	0x56d390	verified	decompiled 0x56d390 + oracle	
 lockCargo	binary	0x56d270	verified	decompiled 0x56d270 + oracle	
@@ -185,3 +184,6 @@ endLoadingScreen	nular	0x8b0220	stub	wiki	headless: no loading screen to show
 createCenter	unary	0x18db90	verified	decompiled 0x18db90	ensures the side AI center exists, returns the side; the World needs no center object
 deleteCenter	unary	0x18dc60	stub	sqf-commands.tsv	returns nothing; no center object to delete
 worldName	nular	*	verified	oracle	the terrain CfgWorlds class (#286); a3-world answers the World's name, which a3-mission sets from the mission's terrain
+compileFinal	unary	0x2ee170	verified	oracle	CODE|STRING yields final code: assignment over the variable is refused (#347)
+compileFinal	unary	0x81b540	verified	oracle	HASHMAP yields a read-only map: assignment over it is refused (#347)
+isFinal	unary	0x2d7de0	verified	oracle	final code true, plain code false (#347)

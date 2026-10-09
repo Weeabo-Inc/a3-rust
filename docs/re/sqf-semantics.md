@@ -65,11 +65,82 @@ oracle --probes-dir`, 104 probes about errors, nil and sort; the recorded
 - **Only the first error of a script is written to the RPT**: `1/0; 5%0;
   "END"` logs one `Zero divisor` line and ends with `"END"`. A compile error
   from `compile`/`compileScript` is printed by the compiler as well, so
-  `call compile "1 2"` shows two blocks.
+  `call compile "1 2"` shows two blocks. A consequence for diagnosis: a harmless
+  first error hides a later fatal one, so a script that aborted can only be read
+  from its first error line. The scenario sweep's `failed_scripts` is
+  unattributable for `A3\functions_f\initFunctions.sqf` for exactly this reason.
 - An undefined variable read is a logged error too, and yields nil
   (`a3ro_undefined + 1` is nil, the script continues).
 - `sleep` in the unscheduled environment is the same: logged, and the script
   continues.
+- The final-value errors below are the one case where the VM raises the error
+  itself and the script still goes on.
+
+## Final values: `compileFinal` and assignment
+
+Confirmed on the original server with `tools/oracle/probes/61_errors.probes`
+(issue #347); every claim below is one of those probes. High confidence.
+
+`compileFinal` makes a **value** final: the code of `compileFinal "..."`,
+`compileFinal {...}` or `compileScript [path, true]`, and the hash map of
+`compileFinal createHashMap`. A variable of a *namespace* holding such a value
+cannot be overwritten or deleted. Locals are not protected: the check belongs to
+the variable space, not to the value, so `private _f = compileFinal "1";
+_f = "2"` is `"2"` with no error at all.
+
+**The error does not end the script** — it is logged and the script goes on.
+That is what keeps `A3\functions_f\initFunctions.sqf` alive for the 35 campaign
+Missions that compile their own `bis_fnc_camp_onmissioninit` over the library's
+final one (issue #347; the issue expected an abort, the probe says otherwise).
+The engine's own boot shows the same: it logs
+`Attempt to override final function - bis_fnc_storeparamsvalues_data` and runs
+on.
+
+| Statement, while `x` holds a final value | Effect | RPT |
+|---|---|---|
+| `x = <anything but nil>` | refused, old value kept | `Attempt to override final function - x` |
+| `x = nil`, final **code** | refused, old value kept | *(nothing)* |
+| `x = nil`, final **hash map** | refused, old value kept | `Attempt to override final function - x` |
+| `ns setVariable ["x", <anything but nil>]` | refused, old value kept | `Attempt to override final function - x` |
+| `ns setVariable ["x", nil]` | refused, old value kept | `Attempt to delete final function - x` |
+| `private _x` local, `_x = <anything>` | allowed | *(nothing)* |
+
+The probes behind the table, with the value each returned and the RPT lines it
+produced:
+
+| Probe | Value | Evidence |
+|---|---|---|
+| `err.final_global_continues` | `"after"` | `Attempt to override final function - fina` |
+| `err.final_global_value_rejected` | `"{1}"` | `Attempt to override final function - finb` |
+| `err.final_assign_same_value`, `err.final_assign_self`, `err.final_assign_final_code` | `1` (the first code still runs) | `- fine`, `- finf`, `- fing` |
+| `err.final_nil_final_global_read` | `false` (`isNil`), so the value stayed | *(none)* |
+| `err.final_nil_hashmap_var_type` | `"HASHMAP"` | `Attempt to override final function - nilj` |
+| `err.final_setvariable`, `err.final_setvariable_new`, `err.final_ui_namespace` | `"{1}"` | `- fink`, `- finl`, `- finm` |
+| `err.final_nil_setvariable_final_read` | `false`, so the value stayed | `Attempt to delete final function - nilh` |
+| `err.final_local`, `err.final_local_after_global` | `"""2"""`, `"2"` | none for the local, `- finh` for the global |
+| `err.final_inside_call`, `err.final_inside_isnil` | `"{1}"` | `- fini`, `- finj` |
+| `err.final_isFinal`, `err.final_str_and_call` | `[true,false,false]`, `["{1 + 1}",2]` | *(none)* |
+
+Both messages name the **stored** variable, which the engine lower-cases — not
+the name as spelled at the assignment site or in the `setVariable` key:
+`finC_KeEpS_CaSe = compileFinal "1"; finC_KeEpS_CaSe = 2` logs
+`- finc_keeps_case`, `finS_MiXeD = ...; fins_mixed = 2` logs `- fins_mixed`, and
+`missionNamespace setVariable ["finU_MiXeD", ...]; finu_mixed = 2` logs
+`- finu_mixed`. `Sym` lower-cases the same way, so `a3-sqf` already prints what
+the engine prints. **Do not change this to the source spelling**: issue #347
+asked for exactly that and the probe refuses it.
+
+### Side observations (not implemented)
+
+- `isNil` of a hash map is a **dispatch failure**, not a handler error:
+  `isnil: Type HashMap, expected String,code`, and the script ends. `a3-sqf`
+  matches (it registers `isNil` for STR and CODE), so the two probes that do this
+  (`err.final_nil_hashmap_var`, `err.final_nil_setvariable_hashmap_read`) end
+  early on both sides; their `_type` variants carry the assignment result.
+- Reading a variable whose name is also a command name *after* deleting it raises
+  `Reserved variable in expression` and ends the script. Found by accident:
+  `finD = 1; finD = nil; isNil finD` — `finD` is `find`. A plain undefined
+  variable only logs "Undefined variable in expression" and is nil.
 
 ## Variables and nil
 
