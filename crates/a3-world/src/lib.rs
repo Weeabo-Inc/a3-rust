@@ -93,6 +93,7 @@
 //! - Test with SQF snippets against a synthetic World (`tests/script.rs`).
 
 mod ai;
+mod aircraft;
 mod class;
 mod damage;
 mod entity;
@@ -117,6 +118,7 @@ pub use ai::{
     FORMATION_SPACING, Formation, GroupAi, KNOWLEDGE_PER_SECOND, LoiterType, ManAi, SpeedMode,
     TargetKnowledge, Targets, VIEW_RANGE, Waypoint, WaypointQueue, WaypointType, target_key,
 };
+pub use aircraft::{AircraftBank, FlightData, FlightType};
 pub use class::{EntityClass, SimulationClass};
 pub use damage::{
     AllHitPointsDamage, DamageContext, DamageHandler, DamageHit, DamageMode, DamageModel,
@@ -137,8 +139,8 @@ pub use object_ref::ObjectRef;
 pub use query::Near;
 pub use script_state::{Identity, ScriptState, VarOwner};
 pub use sim::{
-    AirState, ClassState, GRAVITY, GroundState, MAX_STEP_DOWN, MAX_STEP_UP, ManInput, ManState,
-    Motion, MoveState, ProjectileState, SUB_STEP,
+    AirState, ClassState, Flight, GRAVITY, GroundState, HitIndices, MAX_STEP_DOWN, MAX_STEP_UP,
+    ManInput, ManState, Motion, MoveState, ProjectileState, SUB_STEP,
 };
 pub use statics::{StaticKey, StaticObject};
 pub use types::{
