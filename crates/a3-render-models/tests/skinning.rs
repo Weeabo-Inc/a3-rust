@@ -2,7 +2,8 @@
 //! rest pose (identity matrices) draws exactly like the unskinned model. Every comparison is
 //! made inside one frame — the sky and the exposure adapt between frames — so the tests stage
 //! both the posed and the reference instance side by side. Skips when no GPU adapter (not even
-//! a software one) is available.
+//! a software one) is available: CI has none, so a regression in this file is invisible there
+//! and only a local `cargo test --workspace` on a machine with a GPU catches it.
 
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard, OnceLock};
@@ -101,6 +102,10 @@ impl Harness {
     }
 
     /// Render until every model and texture has loaded, then once more for a settled frame.
+    ///
+    /// The last frame pins the exposure the eye adaptation reached: the compared frames must not
+    /// depend on how far the adaptation travelled while the textures were still streaming in, or
+    /// the one-byte shading comparisons below move with `a3-render`'s adaptation limits.
     fn render(&mut self) -> Vec<u8> {
         let mut image = Vec::new();
         for _ in 0..500 {
@@ -113,6 +118,12 @@ impl Harness {
             }
         }
         assert!(self.models.lock().is_idle(), "loading did not finish");
+        let settled = self
+            .renderer
+            .read_exposure(&self.gpu)
+            .expect("exposure read-back")
+            .exposure;
+        self.renderer.settings.hdr.fixed_exposure = Some(settled);
         self.renderer
             .render_to_image(&self.gpu, SIZE, SIZE, &self.camera, &self.draws, DT)
             .map(|i| if i.is_empty() { image } else { i })
