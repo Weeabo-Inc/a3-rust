@@ -186,4 +186,29 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     r.binary("setLightBrightness", OBJ, NUM, NOTHING, |_, _, _| {
         Ok(Value::Nothing)
     });
+
+    // The rest of the `setLight*` family: the colour, ambient term and flare a placed light
+    // contributes. Our lamps take theirs from `Reflectors` in the config (#294) and accept no
+    // script override yet, so each of these stores nothing (`stub`).
+    r.binary("setLightAmbient", OBJ, ARR, NOTHING, |_, _, _| {
+        Ok(Value::Nothing)
+    });
+    r.binary("setLightColor", OBJ, ARR, NOTHING, |_, _, _| {
+        Ok(Value::Nothing)
+    });
+    r.binary("setLightIntensity", OBJ, NUM, NOTHING, |_, _, _| {
+        Ok(Value::Nothing)
+    });
+    r.binary("setLightUseFlare", OBJ, BOOL, NOTHING, |_, _, _| {
+        Ok(Value::Nothing)
+    });
+    r.binary("setLightFlareSize", OBJ, NUM, NOTHING, |_, _, _| {
+        Ok(Value::Nothing)
+    });
+    r.binary("setLightFlareMaxDistance", OBJ, NUM, NOTHING, |_, _, _| {
+        Ok(Value::Nothing)
+    });
+    r.binary("setLightDayLight", OBJ, BOOL, NOTHING, |_, _, _| {
+        Ok(Value::Nothing)
+    });
 }
