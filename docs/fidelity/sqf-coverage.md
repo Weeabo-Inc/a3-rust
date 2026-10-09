@@ -18,17 +18,17 @@ Scanned: 6685 `.sqf` files (70 failed), 10487 FSM scripts (9 failed), 2197 confi
 
 | Status | Overloads | Names |
 |---|---:|---:|
-| verified | 30 | 17 |
+| verified | 97 | 83 |
 | implemented | 705 | 520 |
-| partial | 6 | 6 |
+| partial | 7 | 7 |
 | stub | 18 | 17 |
-| missing | 2366 | 2083 |
+| missing | 2298 | 2016 |
 
 A name counts under the least complete status among its overloads.
 
 ## Backlog by usage
 
-2233 name/form pairs have missing or partial overloads; 1197 of them are used by shipped code. Implement from the top.
+2167 name/form pairs have missing or partial overloads; 1137 of them are used by shipped code. Implement from the top.
 
 | # | Command | Form | Missing overloads | Handler | sqf | fsm | cfg | Total |
 |---:|---|---|---|---|---:|---:|---:|---:|
@@ -55,2216 +55,2150 @@ A name counts under the least complete status among its overloads.
 | 21 | `fadeMusic` | binary | SCALAR · SCALAR → NOTHING | 0x553190 | 409 | 359 | 0 | 768 |
 | 22 | `setUnitAbility` | binary | OBJECT · SCALAR → NOTHING | 0x566000 | 639 | 0 | 0 | 639 |
 | 23 | `setUnitPos` | binary | OBJECT · STRING → NOTHING | 0x53fc20 | 369 | 268 | 0 | 637 |
-| 24 | `linkItem` | binary | OBJECT · STRING → NOTHING | 0x842c20 | 546 | 47 | 0 | 593 |
-| 25 | `enableSentences` | unary | BOOL → NOTHING | 0x48d480 | 499 | 66 | 0 | 565 |
-| 26 | `playSound` | unary | ARRAY → OBJECT<br>STRING → OBJECT | 0x5458c0<br>0x5458c0 | 458 | 76 | 1 | 535 |
-| 27 | `setObjectMaterialGlobal` | binary | OBJECT · ARRAY → NOTHING | 0x8b82a0 | 519 | 6 | 2 | 527 |
-| 28 | `enableAI` | binary | OBJECT · STRING → NOTHING | 0x527420 | 245 | 281 | 0 | 526 |
-| 29 | `driver` | unary | OBJECT → OBJECT | 0x526e50 | 248 | 211 | 30 | 489 |
-| 30 | `playMusic` | unary | ARRAY → NOTHING<br>STRING → NOTHING | 0x544c00<br>0x544c00 | 236 | 233 | 1 | 470 |
-| 31 | `createDiaryRecord` | binary | OBJECT · ARRAY → DIARY_RECORD | 0xdfd850 | 413 | 32 | 0 | 445 |
-| 32 | `setTriggerActivation` | binary | OBJECT · ARRAY → NOTHING | 0x561ea0 | 376 | 64 | 0 | 440 |
-| 33 | `createTrigger` | unary | ARRAY → OBJECT | 0x561160 | 389 | 45 | 0 | 434 |
-| 34 | `missionName` | nular | → STRING | 0x8b0c00 | 380 | 52 | 2 | 434 |
-| 35 | `setCaptive` | binary | OBJECT · BOOL\|SCALAR → NOTHING | 0x53b1a0 | 212 | 211 | 0 | 423 |
-| 36 | `setTriggerArea` | binary | OBJECT · ARRAY → NOTHING | 0x562160 | 379 | 40 | 0 | 419 |
-| 37 | `addWeapon` | binary | OBJECT · STRING\|ARRAY → NOTHING | 0x83b700 | 306 | 109 | 0 | 415 |
-| 38 | `crew` | unary | OBJECT → ARRAY | 0x5367a0 | 291 | 112 | 4 | 407 |
-| 39 | `fadeSound` | binary | SCALAR · SCALAR → NOTHING | 0x557200 | 329 | 76 | 0 | 405 |
-| 40 | `addItemToVest` | binary | OBJECT · STRING → NOTHING | 0x8391c0 | 379 | 25 | 0 | 404 |
-| 41 | `controlsGroupCtrl` | binary | CONTROL · SCALAR → CONTROL | 0x8cfb30 | 353 | 0 | 51 | 404 |
-| 42 | `addPrimaryWeaponItem` | binary | OBJECT · STRING → NOTHING | 0x8396a0 | 334 | 47 | 0 | 381 |
-| 43 | `setObjectTexture` | binary | OBJECT · ARRAY → NOTHING | 0x8b8550 | 271 | 107 | 2 | 380 |
-| 44 | `date` | nular | → ARRAY | 0x8a8cd0 | 255 | 117 | 2 | 374 |
-| 45 | `direction` | unary | LOCATION → SCALAR<br>OBJECT → SCALAR | 0xd05170<br>0x52b330 | 288 | 78 | 0 | 366 |
-| 46 | `publicVariable` | unary | STRING → NOTHING | 0x547370 | 320 | 43 | 1 | 364 |
-| 47 | `setRank` | binary | OBJECT · STRING → NOTHING | 0x5660a0 | 353 | 5 | 0 | 358 |
-| 48 | `canMove` | unary | OBJECT → BOOL | 0x525f30 | 141 | 207 | 0 | 348 |
-| 49 | `setTriggerStatements` | binary | OBJECT · ARRAY → NOTHING | 0x562430 | 276 | 46 | 0 | 322 |
-| 50 | `addItemToUniform` | binary | OBJECT · STRING → NOTHING | 0x8391a0 | 295 | 17 | 0 | 312 |
-| 51 | `allowFleeing` | binary | OBJECT\|GROUP · SCALAR → NOTHING | 0x1907c0 | 171 | 126 | 0 | 297 |
-| 52 | `lbCurSel` | unary | SCALAR → SCALAR | 0x8db420 | 277 | 3 | 12 | 292 |
-| 53 | `ppEffectAdjust` | binary | SCALAR · ARRAY → NOTHING<br>STRING · ARRAY → NOTHING | 0xb4a150<br>0xb4a580 | 243 | 45 | 4 | 292 |
-| 54 | `setCombatMode` | binary | TEAM_MEMBER · STRING → NOTHING | 0x197510 | 140 | 152 | 0 | 292 |
-| 55 | `createMine` | unary | ARRAY → OBJECT | 0x520300 | 272 | 17 | 0 | 289 |
-| 56 | `cutText` | binary | SCALAR · ARRAY → NOTHING<br>STRING · ARRAY → SCALAR | 0x4890f0<br>0x489580 | 264 | 24 | 0 | 288 |
-| 57 | `getMissionLayerEntities` | unary | STRING\|SCALAR → ARRAY | 0x7fa5f0 | 211 | 73 | 0 | 284 |
-| 58 | `ppEffectCommit` | binary | ARRAY · SCALAR → NOTHING<br>SCALAR · SCALAR → NOTHING<br>STRING · SCALAR → NOTHING | 0xb4bde0<br>0xb4bae0<br>0xb4bb80 | 233 | 45 | 4 | 282 |
-| 59 | `kbTell` | binary | OBJECT · ARRAY → NOTHING | 0x519d70 | 166 | 113 | 0 | 279 |
-| 60 | `lock` | binary | OBJECT · BOOL → NOTHING<br>OBJECT · SCALAR → NOTHING | 0x536850<br>0x536850 | 121 | 142 | 0 | 263 |
-| 61 | `titleCut` | unary | ARRAY → NOTHING | 0x489350 | 207 | 55 | 0 | 262 |
-| 62 | `action` | binary | OBJECT · ARRAY → NOTHING | 0x56e4d0 | 166 | 94 | 0 | 260 |
-| 63 | `setLightBrightness` | binary | OBJECT · SCALAR → NOTHING | 0x51b8d0 | 238 | 15 | 0 | 253 |
-| 64 | `primaryWeapon` | unary | OBJECT → STRING | 0x841160 | 210 | 40 | 1 | 251 |
-| 65 | `setFSMVariable` | binary | SCALAR · ARRAY → NOTHING | 0x48fb20 | 23 | 226 | 0 | 249 |
-| 66 | `distance2D` | binary | OBJECT\|ARRAY · OBJECT\|ARRAY → SCALAR | 0x526ab0 | 170 | 78 | 0 | 248 |
-| 67 | `setFuel` | binary | OBJECT · SCALAR → NOTHING | 0x53c440 | 215 | 32 | 1 | 248 |
-| 68 | `doWatch` | binary | OBJECT\|ARRAY · ARRAY → NOTHING<br>OBJECT\|ARRAY · OBJECT → NOTHING | 0x569150<br>0x569150 | 120 | 125 | 0 | 245 |
-| 69 | `moveInCargo` | binary | OBJECT · ARRAY → NOTHING<br>OBJECT · OBJECT → NOTHING | 0x537680<br>0x5376a0 | 174 | 53 | 0 | 227 |
-| 70 | `list` | unary | OBJECT → ARRAY | 0x5366e0 | 90 | 135 | 0 | 225 |
-| 71 | `playSound3D` | unary | ARRAY → SCALAR | 0x545020 | 204 | 17 | 3 | 224 |
-| 72 | `execFSM` | binary | ANY · ARRAY → SCALAR<br>ANY · STRING → SCALAR | 0x48eea0<br>0x48ecf0 | 90 | 122 | 0 | 212 |
-| 73 | `terminate` | unary | SCALAR → NOTHING | 0x48fc90 | 134 | 72 | 0 | 206 |
-| 74 | `get3DENAttribute` | binary | ARRAY · STRING → ARRAY<br>GROUP · STRING → ARRAY<br>OBJECT · STRING → ARRAY<br>SCALAR · STRING → ARRAY<br>STRING · STRING → ARRAY | 0x7f87a0<br>0x7f7bf0<br>0x7f8340<br>0x7f7870<br>0x7f7fa0 | 202 | 0 | 3 | 205 |
-| 75 | `saveGame` | nular | → NOTHING | 0x8b17c0 | 50 | 155 | 0 | 205 |
-| 76 | `selectPlayer` | unary | OBJECT → NOTHING | 0x54b890 | 197 | 8 | 0 | 205 |
-| 77 | `name` | unary | LOCATION → STRING<br>NAMESPACE → STRING<br>SCRIPT → STRING | 0xd054d0<br>0x4a6fa0<br>0x54a650 | 178 | 24 | 0 | 202 |
-| 78 | `ppEffectEnable` | binary | ARRAY · BOOL → NOTHING<br>SCALAR · BOOL → NOTHING<br>STRING · BOOL → NOTHING | 0xb4c6f0<br>0xb4c650<br>0xb4c6f0 | 154 | 40 | 4 | 198 |
-| 79 | `triggerActivated` | unary | OBJECT → BOOL | 0x560ce0 | 49 | 149 | 0 | 198 |
-| 80 | `addHeadgear` | binary | OBJECT · STRING → NOTHING | 0x8436e0 | 156 | 34 | 0 | 190 |
-| 81 | `allPlayers` | nular | → ARRAY | 0x8a7d10 | 126 | 62 | 0 | 188 |
-| 82 | `addMagazine` | binary | OBJECT · ARRAY → NOTHING<br>OBJECT · STRING → NOTHING | 0x83a4a0<br>0x839ba0 | 122 | 63 | 0 | 185 |
-| 83 | `animationPhase` | binary | OBJECT · STRING → SCALAR | 0x8b6720 | 54 | 21 | 110 | 185 |
-| 84 | `setGroupIconParams` | binary | GROUP · ARRAY → NOTHING | 0x195780 | 57 | 128 | 0 | 185 |
-| 85 | `cutRsc` | binary | SCALAR · ARRAY → NOTHING<br>STRING · ARRAY → SCALAR | 0x488840<br>0x488de0 | 160 | 23 | 0 | 183 |
-| 86 | `setLightColor` | binary | OBJECT · ARRAY → NOTHING | 0x51b970 | 163 | 15 | 0 | 178 |
-| 87 | `setLightAmbient` | binary | OBJECT · ARRAY → NOTHING | 0x51b390 | 162 | 15 | 0 | 177 |
-| 88 | `gunner` | unary | OBJECT → OBJECT | 0x5352d0 | 101 | 65 | 10 | 176 |
-| 89 | `cameraEffect` | binary | OBJECT · ARRAY → NOTHING | 0x8091e0 | 169 | 4 | 0 | 173 |
-| 90 | `orderGetIn` | binary | ARRAY · BOOL → NOTHING | 0x51e0d0 | 70 | 101 | 0 | 171 |
-| 91 | `removeAllWeapons` | unary | OBJECT → NOTHING | 0x844790 | 141 | 30 | 0 | 171 |
-| 92 | `selectWeapon` | binary | OBJECT · ARRAY → BOOL\|NOTHING<br>OBJECT · STRING → NOTHING | 0x53a8b0<br>0x53a6b0 | 81 | 84 | 0 | 165 |
-| 93 | `say3D` | binary | OBJECT\|ARRAY · STRING\|ARRAY → OBJECT | 0x539bc0 | 127 | 28 | 8 | 163 |
-| 94 | `camCommitPrepared` | binary | OBJECT · SCALAR → NOTHING | 0x8060e0 | 150 | 12 | 0 | 162 |
-| 95 | `setPylonLoadout` | binary | OBJECT · ARRAY → BOOL | 0x5559f0 | 156 | 6 | 0 | 162 |
-| 96 | `addVest` | binary | OBJECT · STRING → NOTHING | 0x843fb0 | 150 | 11 | 0 | 161 |
-| 97 | `setFog` | binary | SCALAR · SCALAR\|ARRAY → NOTHING | 0x550030 | 120 | 40 | 0 | 160 |
-| 98 | `forceAddUniform` | binary | OBJECT · STRING → NOTHING | 0x83dd50 | 147 | 11 | 0 | 158 |
-| 99 | `moveInDriver` | binary | OBJECT · OBJECT → NOTHING | 0x537df0 | 125 | 33 | 0 | 158 |
-| 100 | `remoteExec` | binary | ANY · ARRAY → STRING\|NOTHING | 0x8c0600 | 144 | 5 | 6 | 155 |
-| 101 | `setFormDir` | binary | OBJECT\|GROUP · SCALAR → NOTHING | 0x191d00 | 99 | 54 | 0 | 153 |
-| 102 | `createVehicleCrew` | unary | OBJECT → GROUP | 0x486530 | 127 | 25 | 0 | 152 |
-| 103 | `createCenter` | unary | SIDE → SIDE | 0x18db90 | 146 | 4 | 0 | 150 |
-| 104 | `deleteAt` | binary | ARRAY · ARRAY → ARRAY | 0x2e28d0 | 139 | 9 | 0 | 148 |
-| 105 | `moveInTurret` | binary | OBJECT · ARRAY → NOTHING | 0x5382a0 | 143 | 4 | 0 | 147 |
-| 106 | `setFormation` | binary | TEAM_MEMBER · STRING → NOTHING | 0x197700 | 137 | 9 | 0 | 146 |
-| 107 | `addItemToBackpack` | binary | OBJECT · STRING → NOTHING | 0x839180 | 115 | 30 | 0 | 145 |
-| 108 | `setDropInterval` | binary | OBJECT · SCALAR → NOTHING | 0xeb0b20 | 138 | 6 | 0 | 144 |
-| 109 | `setStatValue` | unary | ARRAY → BOOL | 0x1c43e0 | 58 | 83 | 0 | 141 |
-| 110 | `setVehicleLock` | binary | OBJECT · STRING → NOTHING | 0x570440 | 137 | 4 | 0 | 141 |
-| 111 | `flyInHeight` | binary | OBJECT · SCALAR\|ARRAY → NOTHING | 0x53c0b0 | 80 | 59 | 0 | 139 |
-| 112 | `enableEnvironment` | unary | BOOL\|ARRAY → NOTHING | 0x48cfb0 | 104 | 28 | 5 | 137 |
-| 113 | `unassignVehicle` | unary | OBJECT → NOTHING | 0x542400 | 70 | 65 | 0 | 135 |
-| 114 | `forceWeaponFire` | binary | OBJECT · ARRAY → NOTHING | 0x493790 | 112 | 22 | 0 | 134 |
-| 115 | `lbSize` | unary | SCALAR → SCALAR | 0x8db750 | 130 | 0 | 3 | 133 |
-| 116 | `addItemCargoGlobal` | binary | OBJECT · ARRAY → NOTHING | 0x839420 | 129 | 3 | 0 | 132 |
-| 117 | `modelToWorld` | binary | OBJECT · ARRAY → ARRAY | 0x537540 | 122 | 9 | 0 | 131 |
-| 118 | `removeHeadgear` | unary | OBJECT → NOTHING | 0x84b8b0 | 121 | 7 | 0 | 128 |
-| 119 | `vectorMultiply` | binary | ARRAY · SCALAR\|ARRAY → ARRAY (partial) | 0x8f5010 | 123 | 5 | 0 | 128 |
-| 120 | `visibleMap` | nular | → BOOL | 0x8af5f0 | 109 | 19 | 0 | 128 |
-| 121 | `addMagazineCargoGlobal` | binary | OBJECT · ARRAY → NOTHING | 0x83ab60 | 126 | 0 | 0 | 126 |
-| 122 | `addItemCargo` | binary | OBJECT · ARRAY → NOTHING | 0x8391e0 | 106 | 18 | 1 | 125 |
-| 123 | `AGLToASL` | unary | ARRAY → ARRAY | 0x538e90 | 116 | 6 | 0 | 122 |
-| 124 | `ctrlMapAnimAdd` | binary | CONTROL · ARRAY → NOTHING | 0x8e9850 | 118 | 2 | 0 | 120 |
-| 125 | `modelToWorldVisual` | binary | OBJECT · ARRAY → ARRAY | 0x5375a0 | 120 | 0 | 0 | 120 |
-| 126 | `removeGoggles` | unary | OBJECT → NOTHING | 0x84b890 | 113 | 7 | 0 | 120 |
-| 127 | `setParticleParams` | binary | OBJECT · ARRAY → NOTHING | 0xeb0c80 | 117 | 3 | 0 | 120 |
-| 128 | `camPrepareFov` | binary | OBJECT · SCALAR → NOTHING | 0x806eb0 | 107 | 12 | 0 | 119 |
-| 129 | `triggerArea` | unary | OBJECT → ARRAY | 0x561790 | 99 | 20 | 0 | 119 |
-| 130 | `kbAddTopic` | binary | OBJECT · ARRAY → NOTHING | 0x519030 | 110 | 5 | 0 | 115 |
-| 131 | `removeVest` | unary | OBJECT → NOTHING | 0x84bd00 | 107 | 8 | 0 | 115 |
-| 132 | `ctrlMapAnimCommit` | unary | CONTROL → NOTHING | 0x8e9a90 | 112 | 2 | 0 | 114 |
-| 133 | `drawIcon` | binary | CONTROL · ARRAY → NOTHING | 0x8e7cc0 | 113 | 1 | 0 | 114 |
-| 134 | `setVehicleAmmo` | binary | OBJECT · SCALAR → NOTHING | 0x56f960 | 91 | 23 | 0 | 114 |
-| 135 | `removeBackpack` | unary | OBJECT → NOTHING | 0x84b730 | 106 | 7 | 0 | 113 |
-| 136 | `camPrepareTarget` | binary | OBJECT · ARRAY → NOTHING<br>OBJECT · OBJECT → NOTHING | 0x807300<br>0x807260 | 111 | 1 | 0 | 112 |
-| 137 | `setParticleRandom` | binary | OBJECT · ARRAY → NOTHING | 0xeb0e70 | 110 | 2 | 0 | 112 |
-| 138 | `camPreparePos` | binary | OBJECT · ARRAY → NOTHING | 0x8070f0 | 110 | 0 | 0 | 110 |
-| 139 | `groupID` | unary | OBJECT → SCALAR | 0x52bef0 | 109 | 1 | 0 | 110 |
-| 140 | `setLightAttenuation` | binary | OBJECT · ARRAY → NOTHING | 0x51b580 | 103 | 7 | 0 | 110 |
-| 141 | `entities` | unary | ARRAY → ARRAY<br>STRING → ARRAY | 0x4a0b70<br>0x4a0860 | 93 | 15 | 0 | 108 |
-| 142 | `addBackpack` | binary | OBJECT · STRING → NOTHING | 0x8319f0 | 86 | 21 | 0 | 107 |
-| 143 | `animateDoor` | binary | OBJECT · ARRAY → NOTHING | 0x54faf0 | 25 | 23 | 59 | 107 |
-| 144 | `selectionPosition` | binary | OBJECT · ARRAY → ARRAY<br>OBJECT · STRING → ARRAY | 0x531770<br>0x5315c0 | 106 | 0 | 0 | 106 |
-| 145 | `unitReady` | unary | OBJECT\|ARRAY → BOOL | 0x569170 | 31 | 72 | 0 | 103 |
-| 146 | `lightAttachObject` | binary | OBJECT · ARRAY → NOTHING | 0x51b180 | 92 | 10 | 0 | 102 |
-| 147 | `removePrimaryWeaponItem` | binary | OBJECT · STRING → NOTHING | 0x846290 | 73 | 28 | 0 | 101 |
-| 148 | `cutText` | unary | ARRAY → NOTHING | 0x4890d0 | 81 | 19 | 0 | 100 |
-| 149 | `enableSaving` | unary | BOOL\|ARRAY → NOTHING | 0x48d330 | 75 | 25 | 0 | 100 |
-| 150 | `removeAllItems` | unary | OBJECT → NOTHING | 0x844240 | 94 | 6 | 0 | 100 |
-| 151 | `stop` | binary | OBJECT · BOOL → NOTHING | 0x541980 | 31 | 68 | 0 | 99 |
-| 152 | `getFSMVariable` | binary | SCALAR · STRING\|ARRAY → ANY | 0x48f5d0 | 8 | 90 | 0 | 98 |
-| 153 | `currentWeapon` | unary | OBJECT → STRING | 0x84d140 | 63 | 34 | 0 | 97 |
-| 154 | `ppEffectCreate` | unary | ARRAY → SCALAR\|ARRAY | 0xb4c150 | 88 | 9 | 0 | 97 |
-| 155 | `addMagazineCargo` | binary | OBJECT · ARRAY → NOTHING | 0x83a8f0 | 56 | 39 | 0 | 95 |
-| 156 | `clearItemCargoGlobal` | unary | OBJECT → NOTHING | 0x83d830 | 94 | 1 | 0 | 95 |
-| 157 | `removeUniform` | unary | OBJECT → NOTHING | 0x84bce0 | 92 | 3 | 0 | 95 |
-| 158 | `addRating` | binary | OBJECT · SCALAR → NOTHING | 0x5233d0 | 67 | 27 | 0 | 94 |
-| 159 | `clearMagazineCargoGlobal` | unary | OBJECT → NOTHING | 0x83d930 | 93 | 1 | 0 | 94 |
-| 160 | `clearWeaponCargoGlobal` | unary | OBJECT → NOTHING | 0x83da40 | 93 | 1 | 0 | 94 |
-| 161 | `ctrlMapScreenToWorld` | binary | CONTROL · ARRAY → ARRAY | 0x8ea630 | 86 | 8 | 0 | 94 |
-| 162 | `enableRadio` | unary | BOOL → NOTHING | 0x48d210 | 80 | 14 | 0 | 94 |
-| 163 | `surfaceIsWater` | unary | ARRAY → BOOL | 0x55ed70 | 71 | 23 | 0 | 94 |
-| 164 | `addGoggles` | binary | OBJECT · STRING → NOTHING | 0x8436b0 | 83 | 10 | 0 | 93 |
-| 165 | `callExtension` | binary | STRING · ARRAY → ARRAY<br>STRING · STRING → STRING | 0x188030<br>0x187e30 | 92 | 0 | 0 | 92 |
-| 166 | `engineOn` | binary | OBJECT · BOOL → NOTHING | 0x569c30 | 59 | 31 | 1 | 91 |
-| 167 | `inArea` | binary | ARRAY · LOCATION → BOOL<br>OBJECT · LOCATION → BOOL<br>OBJECT\|ARRAY · ARRAY → BOOL<br>OBJECT\|ARRAY · OBJECT → BOOL<br>OBJECT\|ARRAY · STRING → BOOL | 0xd00830<br>0xd00830<br>0x4bb2d0<br>0x4bce10<br>0x4bcbb0 | 73 | 18 | 0 | 91 |
-| 168 | `addCamShake` | unary | ARRAY → NOTHING | 0x805e00 | 59 | 31 | 0 | 90 |
-| 169 | `removeAllAssignedItems` | unary | OBJECT\|ARRAY → NOTHING | 0x84b460 | 85 | 4 | 0 | 89 |
-| 170 | `createAgent` | unary | ARRAY → OBJECT | 0x47dde0 | 77 | 10 | 0 | 87 |
-| 171 | `execFSM` | unary | ARRAY → SCALAR<br>STRING → SCALAR | 0x48f020<br>0x48eda0 | 28 | 58 | 0 | 86 |
-| 172 | `forceSpeed` | binary | OBJECT · SCALAR → NOTHING | 0x569ed0 | 34 | 52 | 0 | 86 |
-| 173 | `getDir` | binary | OBJECT\|ARRAY · OBJECT\|ARRAY → SCALAR | 0x52b3d0 | 72 | 14 | 0 | 86 |
-| 174 | `endLoadingScreen` | nular | → NOTHING | 0x8b0220 | 84 | 0 | 0 | 84 |
-| 175 | `isEqualTypeArray` | binary | ANY · ARRAY → BOOL (partial) | 0x516070 | 81 | 3 | 0 | 84 |
-| 176 | `removeItem` | binary | OBJECT · STRING → NOTHING | 0x844880 | 69 | 15 | 0 | 84 |
-| 177 | `setParticleClass` | binary | OBJECT · STRING → NOTHING | 0xeb0a70 | 75 | 9 | 0 | 84 |
-| 178 | `camCreate` | binary | STRING · ARRAY → OBJECT | 0x806520 | 81 | 2 | 0 | 83 |
-| 179 | `enableMimics` | binary | OBJECT · BOOL → NOTHING | 0x527e30 | 71 | 12 | 0 | 83 |
-| 180 | `getPos` | binary | OBJECT\|ARRAY · ARRAY → ARRAY | 0x52fab0 | 53 | 30 | 0 | 83 |
-| 181 | `leaveVehicle` | binary | GROUP · OBJECT → NOTHING<br>OBJECT · OBJECT → NOTHING | 0x4b9010<br>0x191120 | 44 | 39 | 0 | 83 |
-| 182 | `removeWeapon` | binary | OBJECT · STRING\|ARRAY → NOTHING | 0x8462d0 | 78 | 5 | 0 | 83 |
-| 183 | `steamGameRecordingEvent` | unary | ARRAY → STRING | 0x1c4910 | 18 | 65 | 0 | 83 |
-| 184 | `assignAsCargo` | binary | OBJECT · OBJECT → NOTHING | 0x5250e0 | 39 | 43 | 0 | 82 |
-| 185 | `setViewDistance` | unary | SCALAR → NOTHING | 0x559200 | 68 | 14 | 0 | 82 |
-| 186 | `getUnitLoadout` | unary | CONFIG → ARRAY<br>OBJECT\|ARRAY → ARRAY<br>STRING → ARRAY | 0x841a90<br>0x841c80<br>0x841890 | 75 | 5 | 1 | 81 |
-| 187 | `startLoadingScreen` | unary | ARRAY → NOTHING | 0x51f050 | 81 | 0 | 0 | 81 |
-| 188 | `createDiarySubject` | binary | OBJECT · ARRAY → SCALAR | 0xdfea70 | 78 | 2 | 0 | 80 |
-| 189 | `profileName` | nular | → STRING | 0x8aa9f0 | 78 | 2 | 0 | 80 |
-| 190 | `doTarget` | binary | OBJECT\|ARRAY · OBJECT → NOTHING | 0x569130 | 48 | 31 | 0 | 79 |
-| 191 | `playableUnits` | nular | → ARRAY | 0x8a9f80 | 64 | 15 | 0 | 79 |
-| 192 | `setCuratorCoef` | binary | OBJECT · ARRAY → NOTHING | 0x82b0c0 | 56 | 23 | 0 | 79 |
-| 193 | `canFire` | unary | OBJECT → BOOL | 0x525e90 | 29 | 47 | 0 | 76 |
-| 194 | `buildingPos` | binary | OBJECT · SCALAR → ARRAY | 0x52a470 | 74 | 1 | 0 | 75 |
-| 195 | `handgunWeapon` | unary | OBJECT → STRING | 0x83fc30 | 60 | 15 | 0 | 75 |
-| 196 | `ppEffectDestroy` | unary | ARRAY → NOTHING<br>SCALAR → NOTHING | 0xb4c5b0<br>0xb4c550 | 35 | 40 | 0 | 75 |
-| 197 | `setCustomSoundController` | unary | ARRAY → BOOL | 0x54ed60 | 58 | 16 | 0 | 74 |
-| 198 | `tvData` | binary | CONTROL · ARRAY → STRING | 0x8f1d10 | 74 | 0 | 0 | 74 |
-| 199 | `switchableUnits` | nular | → ARRAY | 0x8ab020 | 60 | 13 | 0 | 73 |
-| 200 | `addWeaponCargo` | binary | OBJECT · ARRAY → NOTHING | 0x83b720 | 66 | 5 | 1 | 72 |
-| 201 | `camCommitted` | unary | OBJECT → BOOL | 0x806170 | 71 | 1 | 0 | 72 |
-| 202 | `getStatValue` | unary | STRING → SCALAR | 0x1c25a0 | 50 | 11 | 11 | 72 |
-| 203 | `items` | unary | OBJECT → ARRAY | 0x83cc40 | 45 | 27 | 0 | 72 |
-| 204 | `clearMagazineCargo` | unary | OBJECT → NOTHING | 0x83d8a0 | 44 | 27 | 0 | 71 |
-| 205 | `lookAt` | binary | OBJECT\|ARRAY · OBJECT\|ARRAY → NOTHING | 0x56d700 | 35 | 36 | 0 | 71 |
-| 206 | `switchCamera` | binary | OBJECT · STRING → NOTHING | 0x541b40 | 64 | 7 | 0 | 71 |
-| 207 | `ctrlMapScale` | unary | CONTROL → SCALAR | 0x8e9bd0 | 70 | 0 | 0 | 70 |
-| 208 | `fuel` | unary | OBJECT → SCALAR | 0x528860 | 41 | 29 | 0 | 70 |
-| 209 | `addMusicEventHandler` | unary | ARRAY → SCALAR | 0x183660 | 40 | 29 | 0 | 69 |
-| 210 | `effectiveCommander` | unary | OBJECT → OBJECT | 0x526ef0 | 49 | 19 | 0 | 68 |
-| 211 | `setUnitRank` | binary | OBJECT · STRING → NOTHING | 0x5660c0 | 68 | 0 | 0 | 68 |
-| 212 | `clearItemCargo` | unary | OBJECT → NOTHING | 0x83d7b0 | 49 | 17 | 1 | 67 |
-| 213 | `drawIcon3D` | unary | ARRAY → NOTHING<br>HASHMAP → NOTHING | 0x572ca0<br>0x572dc0 | 62 | 5 | 0 | 67 |
-| 214 | `allowCrewInImmobile` | binary | OBJECT · BOOL\|ARRAY → NOTHING | 0x47e3b0 | 51 | 15 | 0 | 66 |
-| 215 | `ctrlEnabled` | unary | SCALAR → BOOL | 0x8cbc10 | 65 | 0 | 1 | 66 |
-| 216 | `cursorTarget` | nular | → OBJECT | 0x8a5e30 | 48 | 18 | 0 | 66 |
-| 217 | `magazines` | unary | OBJECT\|ARRAY → ARRAY | 0x83dfa0 | 39 | 27 | 0 | 66 |
-| 218 | `clearWeaponCargo` | unary | OBJECT → NOTHING | 0x83d9b0 | 45 | 19 | 1 | 65 |
-| 219 | `showHUD` | unary | ARRAY → NOTHING<br>BOOL → NOTHING | 0x8cee20<br>0x8ced00 | 50 | 15 | 0 | 65 |
-| 220 | `camDestroy` | unary | OBJECT → NOTHING | 0x806720 | 61 | 3 | 0 | 64 |
-| 221 | `turretUnit` | binary | OBJECT · ARRAY → OBJECT | 0x56c350 | 14 | 0 | 50 | 64 |
-| 222 | `unassignItem` | binary | OBJECT · STRING → NOTHING | 0x847170 | 57 | 7 | 0 | 64 |
-| 223 | `clearBackpackCargoGlobal` | unary | OBJECT → NOTHING | 0x83d730 | 63 | 0 | 0 | 63 |
-| 224 | `curatorCamera` | nular | → OBJECT | 0x826dd0 | 55 | 6 | 1 | 62 |
-| 225 | `setAccTime` | unary | SCALAR → NOTHING | 0x54dcd0 | 59 | 3 | 0 | 62 |
-| 226 | `switchLight` | binary | OBJECT · STRING → NOTHING | 0x541e50 | 54 | 2 | 6 | 62 |
-| 227 | `assignAsDriver` | binary | OBJECT · OBJECT → NOTHING | 0x525420 | 22 | 39 | 0 | 61 |
-| 228 | `clearRadio` | nular | → NOTHING | 0x8b1280 | 42 | 19 | 0 | 61 |
-| 229 | `get3DENEntityID` | unary | ANY → SCALAR | 0x7f9e60 | 61 | 0 | 0 | 61 |
-| 230 | `lifeState` | unary | OBJECT → STRING | 0x52c610 | 33 | 28 | 0 | 61 |
-| 231 | `setDate` | unary | ARRAY → NOTHING | 0x54eef0 | 55 | 6 | 0 | 61 |
-| 232 | `tvCount` | binary | CONTROL · ARRAY → SCALAR | 0x8f1b30 | 61 | 0 | 0 | 61 |
-| 233 | `setFlagTexture` | binary | OBJECT · STRING → NOTHING | 0x53c020 | 13 | 0 | 47 | 60 |
-| 234 | `addWeaponCargoGlobal` | binary | OBJECT · ARRAY → NOTHING | 0x83b980 | 59 | 0 | 0 | 59 |
-| 235 | `allCurators` | nular | → ARRAY | 0x826880 | 59 | 0 | 0 | 59 |
-| 236 | `backpack` | unary | OBJECT → STRING | 0x83d3f0 | 52 | 7 | 0 | 59 |
-| 237 | `boundingBoxReal` | unary | ARRAY → ARRAY<br>OBJECT → ARRAY | 0x529910<br>0x529cd0 | 58 | 1 | 0 | 59 |
-| 238 | `actionKeys` | unary | ARRAY → ARRAY<br>STRING → ARRAY | 0x495d10<br>0x495b50 | 57 | 0 | 1 | 58 |
-| 239 | `assignedItems` | unary | OBJECT\|ARRAY → ARRAY | 0x83c530 | 45 | 13 | 0 | 58 |
-| 240 | `isSimpleObject` | unary | OBJECT → BOOL | 0x518720 | 57 | 1 | 0 | 58 |
-| 241 | `lbClear` | unary | SCALAR → NOTHING | 0x8db0a0 | 57 | 0 | 1 | 58 |
-| 242 | `addAction` | binary | OBJECT · ARRAY → NOTHING\|SCALAR | 0x5677c0 | 54 | 3 | 0 | 57 |
-| 243 | `positionCameraToWorld` | unary | ARRAY → ARRAY | 0x8096a0 | 53 | 4 | 0 | 57 |
-| 244 | `weapons` | unary | OBJECT → ARRAY | 0x83e540 | 44 | 13 | 0 | 57 |
-| 245 | `nearEntities` | binary | ARRAY · ARRAY → ARRAY<br>OBJECT · ARRAY → ARRAY<br>OBJECT\|ARRAY · SCALAR → ARRAY<br>STRING · ARRAY → ARRAY | 0x4a7600<br>0x4a8420<br>0x4a6fe0<br>0x4a7db0 | 46 | 10 | 0 | 56 |
-| 246 | `unlinkItem` | binary | OBJECT · STRING → NOTHING | 0x847510 | 39 | 17 | 0 | 56 |
-| 247 | `weaponState` | unary | ARRAY → ARRAY<br>OBJECT → ARRAY | 0x5347b0<br>0x534280 | 56 | 0 | 0 | 56 |
-| 248 | `deleteVehicleCrew` | binary | OBJECT · OBJECT → NOTHING | 0x48a330 | 47 | 8 | 0 | 55 |
-| 249 | `getTerrainHeightASL` | unary | ARRAY → SCALAR | 0x4b41d0 | 54 | 1 | 0 | 55 |
-| 250 | `openMap` | unary | ARRAY → BOOL<br>BOOL → BOOL | 0x544410<br>0x544410 | 52 | 2 | 1 | 55 |
-| 251 | `addHandgunItem` | binary | OBJECT · STRING → NOTHING | 0x839670 | 45 | 9 | 0 | 54 |
-| 252 | `cursorObject` | nular | → OBJECT | 0x8a5dd0 | 39 | 15 | 0 | 54 |
-| 253 | `getPlayerUID` | unary | OBJECT → STRING | 0x4af150 | 46 | 8 | 0 | 54 |
-| 254 | `isTouchingGround` | unary | OBJECT → BOOL | 0x535ca0 | 15 | 37 | 0 | 52 |
-| 255 | `cameraView` | nular | → STRING | 0x8b10a0 | 39 | 12 | 0 | 51 |
-| 256 | `secondaryWeapon` | unary | OBJECT → STRING | 0x841230 | 43 | 7 | 0 | 50 |
-| 257 | `setTriggerTimeout` | binary | OBJECT · ARRAY → NOTHING | 0x562640 | 33 | 17 | 0 | 50 |
-| 258 | `do3DENAction` | unary | STRING\|ARRAY → NOTHING | 0x7ffc70 | 10 | 0 | 39 | 49 |
-| 259 | `endMission` | unary | STRING → NOTHING | 0x48dc30 | 29 | 19 | 1 | 49 |
-| 260 | `goggles` | unary | OBJECT → STRING | 0x842690 | 48 | 1 | 0 | 49 |
-| 261 | `inputAction` | unary | STRING → SCALAR | 0x4a3980 | 49 | 0 | 0 | 49 |
-| 262 | `remoteExecCall` | binary | ANY · ARRAY → STRING\|NOTHING | 0x8bf9a0 | 35 | 13 | 0 | 48 |
-| 263 | `serverCommandAvailable` | unary | STRING → BOOL | 0x54d520 | 48 | 0 | 0 | 48 |
-| 264 | `setPlayerRespawnTime` | unary | SCALAR → NOTHING | 0x555970 | 48 | 0 | 0 | 48 |
-| 265 | `drawLine3D` | unary | ARRAY → NOTHING | 0x5731f0 | 41 | 5 | 0 | 46 |
-| 266 | `enableAttack` | binary | OBJECT\|GROUP · BOOL → NOTHING | 0x1908e0 | 16 | 30 | 0 | 46 |
-| 267 | `fireAtTarget` | binary | OBJECT · ARRAY → BOOL | 0x492810 | 30 | 16 | 0 | 46 |
-| 268 | `uniform` | unary | OBJECT → STRING | 0x847400 | 39 | 7 | 0 | 46 |
-| 269 | `fire` | binary | OBJECT · ARRAY → NOTHING<br>OBJECT · STRING → NOTHING | 0x528330<br>0x5281a0 | 32 | 13 | 0 | 45 |
-| 270 | `primaryWeaponItems` | unary | OBJECT → ARRAY | 0x843fe0 | 36 | 9 | 0 | 45 |
-| 271 | `saveVar` | unary | STRING → NOTHING | 0x549c10 | 25 | 20 | 0 | 45 |
-| 272 | `setObjectMaterial` | binary | OBJECT · ARRAY → NOTHING | 0x8b8260 | 45 | 0 | 0 | 45 |
-| 273 | `addItem` | binary | OBJECT · STRING → NOTHING | 0x839160 | 28 | 16 | 0 | 44 |
-| 274 | `get3DENCamera` | nular | → OBJECT | 0x7f8ff0 | 41 | 0 | 3 | 44 |
-| 275 | `moveOut` | unary | OBJECT → NOTHING | 0x538400 | 26 | 18 | 0 | 44 |
-| 276 | `playSoundUI` | unary | ARRAY → SCALAR | 0x545c10 | 44 | 0 | 0 | 44 |
-| 277 | `worldSize` | nular | → SCALAR | 0x8ab7d0 | 44 | 0 | 0 | 44 |
-| 278 | `say` | binary | OBJECT\|ARRAY · ARRAY → NOTHING<br>OBJECT\|ARRAY · STRING → NOTHING | 0x53a080<br>0x53a080 | 30 | 9 | 4 | 43 |
-| 279 | `setVehicleReportOwnPosition` | binary | OBJECT · BOOL → NOTHING | 0x1cbc70 | 40 | 3 | 0 | 43 |
-| 280 | `doorPhase` | binary | OBJECT · STRING → SCALAR | 0x4a0570 | 0 | 0 | 42 | 42 |
-| 281 | `getGroupIconParams` | unary | GROUP → ARRAY | 0x18ec00 | 37 | 5 | 0 | 42 |
-| 282 | `removeMagazine` | binary | OBJECT · STRING\|ARRAY → NOTHING | 0x844c90 | 34 | 8 | 0 | 42 |
-| 283 | `showWaypoint` | binary | ARRAY · STRING → NOTHING | 0x8fb640 | 12 | 30 | 0 | 42 |
-| 284 | `accTime` | nular | → SCALAR | 0x8a7170 | 35 | 6 | 0 | 41 |
-| 285 | `getRelPos` | binary | OBJECT · ARRAY → ARRAY<br>OBJECT · OBJECT → ARRAY | 0x530690<br>0x530a10 | 33 | 8 | 0 | 41 |
-| 286 | `isKeyActive` | unary | STRING → BOOL | 0x5180f0 | 7 | 14 | 20 | 41 |
-| 287 | `removeMagazines` | binary | OBJECT · STRING → NOTHING | 0x845940 | 35 | 6 | 0 | 41 |
-| 288 | `showCinemaBorder` | unary | BOOL → NOTHING | 0x1170a50 | 41 | 0 | 0 | 41 |
-| 289 | `titleText` | unary | ARRAY → NOTHING | 0x494f10 | 39 | 2 | 0 | 41 |
-| 290 | `get3DENSelected` | unary | STRING → ARRAY | 0x7f7050 | 37 | 0 | 3 | 40 |
-| 291 | `unitBackpack` | unary | OBJECT → OBJECT | 0x4b6790 | 19 | 21 | 0 | 40 |
-| 292 | `headgear` | unary | OBJECT → STRING | 0x8428d0 | 34 | 5 | 0 | 39 |
-| 293 | `lbSort` | unary | ARRAY → NOTHING<br>CONTROL → NOTHING<br>SCALAR → NOTHING | 0x8dfb80<br>0x8df7c0<br>0x8dd230 | 35 | 0 | 4 | 39 |
-| 294 | `setCustomMissionData` | unary | ARRAY → NOTHING | 0x54e9e0 | 8 | 31 | 0 | 39 |
-| 295 | `setLightDayLight` | binary | OBJECT · BOOL → NOTHING | 0x51bd10 | 36 | 3 | 0 | 39 |
-| 296 | `sliderPosition` | unary | SCALAR → SCALAR | 0x8eae80 | 34 | 0 | 5 | 39 |
-| 297 | `tvAdd` | binary | CONTROL · ARRAY → SCALAR | 0x8f1710 | 39 | 0 | 0 | 39 |
-| 298 | `allowGetIn` | binary | ARRAY · BOOL → NOTHING | 0x51ca20 | 15 | 23 | 0 | 38 |
-| 299 | `assignAsCargoIndex` | binary | OBJECT · ARRAY → NOTHING | 0x5250e0 | 16 | 22 | 0 | 38 |
-| 300 | `assignItem` | binary | OBJECT · STRING → NOTHING | 0x83ccd0 | 20 | 18 | 0 | 38 |
-| 301 | `boundingBox` | unary | OBJECT → ARRAY | 0x529630 | 37 | 1 | 0 | 38 |
-| 302 | `setRain` | binary | SCALAR · SCALAR → NOTHING | 0x556520 | 20 | 18 | 0 | 38 |
-| 303 | `worldToScreen` | unary | ARRAY → ARRAY | 0x80b290 | 26 | 12 | 0 | 38 |
-| 304 | `addGroupIcon` | binary | GROUP · ARRAY → SCALAR | 0x18d2f0 | 26 | 11 | 0 | 37 |
-| 305 | `ammo` | binary | OBJECT · STRING → SCALAR | 0x524dd0 | 21 | 16 | 0 | 37 |
-| 306 | `buttonSetAction` | binary | CONTROL · STRING → NOTHING | 0x8cf360 | 37 | 0 | 0 | 37 |
-| 307 | `playerRespawnTime` | nular | → SCALAR | 0x8aa540 | 37 | 0 | 0 | 37 |
-| 308 | `progressLoadingScreen` | unary | SCALAR → NOTHING | 0x51f240 | 37 | 0 | 0 | 37 |
-| 309 | `showCommandingMenu` | unary | STRING → NOTHING | 0x54e790 | 24 | 13 | 0 | 37 |
-| 310 | `tvCurSel` | unary | CONTROL → ARRAY<br>SCALAR → ARRAY | 0x8f1c30<br>0x8ed9f0 | 37 | 0 | 0 | 37 |
-| 311 | `ASLToAGL` | unary | ARRAY → ARRAY | 0x538fb0 | 36 | 0 | 0 | 36 |
-| 312 | `disableCollisionWith` | binary | OBJECT · OBJECT → NOTHING | 0x568f80 | 31 | 5 | 0 | 36 |
-| 313 | `lockCargo` | binary | OBJECT · ARRAY → NOTHING<br>OBJECT · BOOL → NOTHING | 0x56d390<br>0x56d270 | 15 | 17 | 4 | 36 |
-| 314 | `overcast` | nular | → SCALAR | 0x8a9da0 | 32 | 4 | 0 | 36 |
-| 315 | `removeMusicEventHandler` | unary | ARRAY → NOTHING | 0x183a10 | 21 | 15 | 0 | 36 |
-| 316 | `scoreSide` | unary | SIDE → SCALAR | 0x55bd90 | 20 | 16 | 0 | 36 |
-| 317 | `setOvercast` | binary | SCALAR · SCALAR → NOTHING | 0x5545b0 | 26 | 10 | 0 | 36 |
-| 318 | `commander` | unary | OBJECT → OBJECT | 0x526230 | 20 | 15 | 0 | 35 |
-| 319 | `kbRemoveTopic` | binary | OBJECT · STRING → NOTHING | 0x519ce0 | 13 | 22 | 0 | 35 |
-| 320 | `setAnimSpeedCoef` | binary | OBJECT · SCALAR → NOTHING | 0x896eb0 | 25 | 10 | 0 | 35 |
-| 321 | `skipTime` | unary | SCALAR → NOTHING | 0x55bf70 | 26 | 9 | 0 | 35 |
-| 322 | `stance` | unary | OBJECT → STRING | 0x532d40 | 14 | 21 | 0 | 35 |
-| 323 | `triggerText` | unary | OBJECT → STRING | 0x561b80 | 34 | 1 | 0 | 35 |
-| 324 | `setVehicleReportRemoteTargets` | binary | OBJECT · BOOL → NOTHING | 0x1cbd60 | 34 | 0 | 0 | 34 |
-| 325 | `vest` | unary | OBJECT → STRING | 0x847850 | 27 | 7 | 0 | 34 |
-| 326 | `drop` | unary | ARRAY → OBJECT | 0xeb0410 | 33 | 0 | 0 | 33 |
-| 327 | `moveInGunner` | binary | OBJECT · OBJECT → NOTHING | 0x538060 | 17 | 16 | 0 | 33 |
-| 328 | `playerSide` | nular | → SIDE | 0x8b11b0 | 16 | 16 | 1 | 33 |
-| 329 | `setAmmo` | binary | OBJECT · ARRAY → NOTHING | 0x553250 | 32 | 1 | 0 | 33 |
-| 330 | `addMagazines` | binary | OBJECT · ARRAY → NOTHING | 0x83b290 | 20 | 12 | 0 | 32 |
-| 331 | `assignAsGunner` | binary | OBJECT · OBJECT → NOTHING | 0x5254d0 | 15 | 17 | 0 | 32 |
-| 332 | `camCommit` | binary | OBJECT · SCALAR → NOTHING | 0x806050 | 30 | 2 | 0 | 32 |
-| 333 | `createSoundSource` | unary | ARRAY → OBJECT | 0x55c4b0 | 32 | 0 | 0 | 32 |
-| 334 | `enableGunLights` | binary | OBJECT\|GROUP · STRING → NOTHING | 0x1909f0 | 25 | 7 | 0 | 32 |
-| 335 | `fadeSpeech` | binary | SCALAR · SCALAR → NOTHING | 0x5573c0 | 26 | 6 | 0 | 32 |
-| 336 | `activateKey` | unary | STRING → NOTHING | 0x51a7a0 | 4 | 27 | 0 | 31 |
-| 337 | `createDialog` | unary | ARRAY → DISPLAY | 0x8ccbf0 | 31 | 0 | 0 | 31 |
-| 338 | `eyePos` | unary | OBJECT → ARRAY | 0x52fd50 | 29 | 2 | 0 | 31 |
-| 339 | `addCuratorEditableObjects` | binary | OBJECT · ARRAY → NOTHING | 0x824230 | 21 | 9 | 0 | 30 |
-| 340 | `addUniform` | binary | OBJECT · STRING → NOTHING | 0x843f80 | 21 | 9 | 0 | 30 |
-| 341 | `difficultyOption` | unary | ARRAY → ARRAY<br>STRING → SCALAR | 0x48a6e0<br>0x48a630 | 25 | 5 | 0 | 30 |
-| 342 | `doGetOut` | unary | OBJECT\|ARRAY → NOTHING | 0x5690b0 | 13 | 17 | 0 | 30 |
-| 343 | `fogParams` | nular | → ARRAY | 0x8a9000 | 8 | 22 | 0 | 30 |
-| 344 | `leaderboardState` | unary | STRING → SCALAR | 0x1c3550 | 8 | 22 | 0 | 30 |
-| 345 | `taskState` | unary | TASK → STRING | 0xe0aad0 | 30 | 0 | 0 | 30 |
-| 346 | `faction` | unary | OBJECT → STRING | 0x4a2cf0 | 26 | 3 | 0 | 29 |
-| 347 | `get3DENActionState` | unary | STRING → SCALAR | 0x7f76d0 | 29 | 0 | 0 | 29 |
-| 348 | `joinAsSilent` | binary | OBJECT · ARRAY → NOTHING | 0x197c20 | 11 | 18 | 0 | 29 |
-| 349 | `revealMine` | binary | SIDE · OBJECT → NOTHING | 0x549ae0 | 17 | 12 | 0 | 29 |
-| 350 | `addCuratorAddons` | binary | OBJECT · ARRAY → NOTHING | 0x823b20 | 22 | 6 | 0 | 28 |
-| 351 | `emptyPositions` | binary | OBJECT · STRING\|ARRAY → SCALAR | 0x526fd0 | 13 | 15 | 0 | 28 |
-| 352 | `enableTeamSwitch` | unary | BOOL → NOTHING | 0x55f850 | 28 | 0 | 0 | 28 |
-| 353 | `objectCurators` | unary | OBJECT → ARRAY | 0x829950 | 27 | 0 | 1 | 28 |
-| 354 | `roadsConnectedTo` | unary | OBJECT\|ARRAY → ARRAY | 0x49e7e0 | 28 | 0 | 0 | 28 |
-| 355 | `triggerAttachVehicle` | binary | OBJECT · ARRAY → NOTHING | 0x561030 | 12 | 16 | 0 | 28 |
-| 356 | `camCommand` | binary | OBJECT · STRING → NOTHING | 0x805fa0 | 27 | 0 | 0 | 27 |
-| 357 | `fadeRadio` | binary | SCALAR · SCALAR → NOTHING | 0x556460 | 21 | 6 | 0 | 27 |
-| 358 | `fullCrew` | unary | ARRAY → ARRAY<br>OBJECT → ARRAY | 0x498a00<br>0x498910 | 20 | 3 | 4 | 27 |
-| 359 | `getDLCs` | unary | SCALAR → ARRAY | 0x1c2370 | 18 | 0 | 9 | 27 |
-| 360 | `nearRoads` | binary | OBJECT\|ARRAY · SCALAR → ARRAY | 0x4a8eb0 | 22 | 5 | 0 | 27 |
-| 361 | `playableSlotsNumber` | unary | SIDE → SCALAR | 0x546090 | 25 | 2 | 0 | 27 |
-| 362 | `simpleTasks` | unary | OBJECT → ARRAY | 0xe04730 | 12 | 15 | 0 | 27 |
-| 363 | `addBackpackCargoGlobal` | binary | OBJECT · ARRAY → NOTHING | 0x838e30 | 26 | 0 | 0 | 26 |
-| 364 | `addWeaponWithAttachmentsCargo` | binary | OBJECT · ARRAY → NOTHING | 0x83c030 | 26 | 0 | 0 | 26 |
-| 365 | `allMines` | nular | → ARRAY | 0x89b400 | 8 | 18 | 0 | 26 |
-| 366 | `camUseNVG` | unary | BOOL → NOTHING | 0x54e580 | 26 | 0 | 0 | 26 |
-| 367 | `doArtilleryFire` | binary | OBJECT\|ARRAY · ARRAY → NOTHING | 0x569030 | 19 | 7 | 0 | 26 |
-| 368 | `getAssignedCuratorUnit` | unary | OBJECT → OBJECT | 0x826a40 | 19 | 7 | 0 | 26 |
-| 369 | `isGamePaused` | nular | → BOOL | 0x89a8f0 | 26 | 0 | 0 | 26 |
-| 370 | `random` | binary | SCALAR · SCALAR\|ARRAY → SCALAR (partial) | 0x547ca0 | 26 | 0 | 0 | 26 |
-| 371 | `screenToWorld` | unary | ARRAY → ARRAY | 0x80a1c0 | 25 | 1 | 0 | 26 |
-| 372 | `set3DENAttribute` | binary | ANY · ARRAY → BOOL | 0x801be0 | 26 | 0 | 0 | 26 |
-| 373 | `setLightUseFlare` | binary | OBJECT · BOOL → NOTHING | 0x51bdb0 | 22 | 4 | 0 | 26 |
-| 374 | `activateAddons` | unary | ARRAY → NOTHING | 0x47db50 | 25 | 0 | 0 | 25 |
-| 375 | `allTurrets` | unary | ARRAY → ARRAY<br>OBJECT → ARRAY | 0x49bb80<br>0x49ba10 | 24 | 1 | 0 | 25 |
-| 376 | `clearBackpackCargo` | unary | OBJECT → NOTHING | 0x83d6a0 | 17 | 8 | 0 | 25 |
-| 377 | `drawLine` | binary | CONTROL · ARRAY → NOTHING | 0x8e7f20 | 25 | 0 | 0 | 25 |
-| 378 | `enableStamina` | binary | OBJECT · BOOL → NOTHING | 0x896820 | 24 | 0 | 1 | 25 |
-| 379 | `getArtilleryAmmo` | unary | ARRAY → ARRAY | 0x49be70 | 10 | 15 | 0 | 25 |
-| 380 | `getRelDir` | binary | OBJECT · OBJECT\|ARRAY → SCALAR | 0x530570 | 16 | 9 | 0 | 25 |
-| 381 | `isOnRoad` | unary | OBJECT\|ARRAY → BOOL | 0x546300 | 18 | 7 | 0 | 25 |
-| 382 | `land` | binary | OBJECT · STRING → NOTHING | 0x536300 | 13 | 12 | 0 | 25 |
-| 383 | `lnbAddRow` | binary | CONTROL · ARRAY → SCALAR | 0x8e4540 | 25 | 0 | 0 | 25 |
-| 384 | `mapGridPosition` | unary | OBJECT\|ARRAY → STRING | 0x51f890 | 20 | 5 | 0 | 25 |
-| 385 | `rating` | unary | OBJECT → SCALAR | 0x528080 | 18 | 7 | 0 | 25 |
-| 386 | `setDriveOnPath` | binary | OBJECT · ARRAY → NOTHING | 0x569330 | 22 | 3 | 0 | 25 |
-| 387 | `setLightFlareSize` | binary | OBJECT · SCALAR → NOTHING | 0x51bef0 | 21 | 4 | 0 | 25 |
-| 388 | `setParticleCircle` | binary | OBJECT · ARRAY → NOTHING | 0xeb07c0 | 25 | 0 | 0 | 25 |
-| 389 | `showChat` | unary | BOOL → NOTHING | 0x19f5e0 | 25 | 0 | 0 | 25 |
-| 390 | `tvSetCurSel` | binary | CONTROL · ARRAY → NOTHING | 0x8f28a0 | 21 | 0 | 4 | 25 |
-| 391 | `getAssignedCuratorLogic` | unary | OBJECT → OBJECT | 0x826aa0 | 24 | 0 | 0 | 24 |
-| 392 | `isEngineOn` | unary | OBJECT → BOOL | 0x56cca0 | 17 | 7 | 0 | 24 |
-| 393 | `lnbData` | binary | CONTROL · ARRAY → STRING | 0x8e4bd0 | 24 | 0 | 0 | 24 |
-| 394 | `mineActive` | unary | OBJECT → BOOL | 0x520290 | 4 | 20 | 0 | 24 |
-| 395 | `modelToWorldWorld` | binary | OBJECT · ARRAY → ARRAY | 0x537570 | 24 | 0 | 0 | 24 |
-| 396 | `musicVolume` | nular | → SCALAR | 0x8a9c40 | 24 | 0 | 0 | 24 |
-| 397 | `setObjectScale` | binary | OBJECT · SCALAR → NOTHING | 0x53e9d0 | 24 | 0 | 0 | 24 |
-| 398 | `setSlingLoad` | binary | OBJECT · OBJECT → BOOL | 0x1a97a0 | 21 | 3 | 0 | 24 |
-| 399 | `setVehicleReceiveRemoteTargets` | binary | OBJECT · BOOL → NOTHING | 0x1cbb80 | 24 | 0 | 0 | 24 |
-| 400 | `triggerStatements` | unary | OBJECT → ARRAY | 0x5619a0 | 24 | 0 | 0 | 24 |
-| 401 | `tvSetData` | binary | CONTROL · ARRAY → NOTHING | 0x8f29a0 | 24 | 0 | 0 | 24 |
-| 402 | `tvSetPicture` | binary | CONTROL · ARRAY → NOTHING | 0x8f2b20 | 24 | 0 | 0 | 24 |
-| 403 | `cbSetChecked` | binary | CONTROL · BOOL → NOTHING | 0x8d0260 | 21 | 0 | 2 | 23 |
-| 404 | `ctrlMapCursor` | binary | CONTROL · ARRAY → NOTHING | 0x8e9710 | 23 | 0 | 0 | 23 |
-| 405 | `currentTask` | unary | OBJECT → TASK | 0xe046c0 | 14 | 9 | 0 | 23 |
-| 406 | `estimatedEndServerTime` | nular | → SCALAR | 0x8a8f60 | 15 | 8 | 0 | 23 |
-| 407 | `glanceAt` | binary | OBJECT\|ARRAY · OBJECT\|ARRAY → NOTHING | 0x56cab0 | 14 | 9 | 0 | 23 |
-| 408 | `triggerActivation` | unary | OBJECT → ARRAY | 0x5615a0 | 11 | 12 | 0 | 23 |
-| 409 | `addVehicle` | binary | GROUP · OBJECT → NOTHING | 0x190740 | 11 | 11 | 0 | 22 |
-| 410 | `expectedDestination` | unary | OBJECT → ARRAY | 0x56a880 | 13 | 9 | 0 | 22 |
-| 411 | `getMagazineCargo` | unary | OBJECT → ARRAY | 0x840480 | 11 | 11 | 0 | 22 |
-| 412 | `lnbSetPicture` | binary | CONTROL · ARRAY → NOTHING | 0x8e67a0 | 22 | 0 | 0 | 22 |
-| 413 | `setCamUseTI` | binary | BOOL · SCALAR → NOTHING | 0x54e5d0 | 22 | 0 | 0 | 22 |
-| 414 | `setLightFlareMaxDistance` | binary | OBJECT · SCALAR → NOTHING | 0x51be50 | 18 | 4 | 0 | 22 |
-| 415 | `setMagazineTurretAmmo` | binary | OBJECT · ARRAY → NOTHING | 0x557e40 | 22 | 0 | 0 | 22 |
-| 416 | `setUnconscious` | binary | OBJECT · BOOL → NOTHING | 0x53fa40 | 17 | 5 | 0 | 22 |
-| 417 | `sideRadio` | binary | OBJECT\|ARRAY · STRING → NOTHING | 0x19d7a0 | 22 | 0 | 0 | 22 |
-| 418 | `soundVolume` | nular | → SCALAR | 0x8aaf30 | 22 | 0 | 0 | 22 |
-| 419 | `viewDistance` | nular | → SCALAR | 0x8ab480 | 18 | 4 | 0 | 22 |
-| 420 | `allControls` | unary | CONTROL → ARRAY | 0x8cd3f0 | 13 | 0 | 8 | 21 |
-| 421 | `backpackItems` | unary | OBJECT → ARRAY | 0x83d120 | 20 | 1 | 0 | 21 |
-| 422 | `commandingMenu` | nular | → STRING | 0x8a8c50 | 10 | 11 | 0 | 21 |
-| 423 | `curatorEditableObjects` | unary | OBJECT → ARRAY | 0x827050 | 17 | 4 | 0 | 21 |
-| 424 | `drawRectangle` | binary | CONTROL · ARRAY → NOTHING | 0x8e8240 | 21 | 0 | 0 | 21 |
-| 425 | `get3DENConnections` | unary | ANY → ARRAY | 0x7f9030 | 21 | 0 | 0 | 21 |
-| 426 | `lbSetPictureRight` | binary | CONTROL · ARRAY → NOTHING | 0x8dec90 | 17 | 0 | 4 | 21 |
-| 427 | `removeAllMusicEventHandlers` | unary | STRING → NOTHING | 0x1838a0 | 3 | 18 | 0 | 21 |
-| 428 | `text` | unary | LOCATION → STRING | 0xd05a80 | 21 | 0 | 0 | 21 |
-| 429 | `camPreloaded` | unary | OBJECT → BOOL | 0x806e00 | 20 | 0 | 0 | 20 |
-| 430 | `camSetFov` | binary | OBJECT · SCALAR → NOTHING | 0x8074f0 | 19 | 1 | 0 | 20 |
-| 431 | `language` | nular | → STRING | 0x8a9b60 | 17 | 1 | 2 | 20 |
-| 432 | `moveInAny` | binary | OBJECT · OBJECT\|ARRAY → BOOL | 0x520b90 | 18 | 2 | 0 | 20 |
-| 433 | `ppEffectForceInNVG` | binary | SCALAR · BOOL → NOTHING | 0xb4cdd0 | 17 | 3 | 0 | 20 |
-| 434 | `setDiaryRecordText` | binary | OBJECT · ARRAY → NOTHING | 0xdfe460 | 20 | 0 | 0 | 20 |
-| 435 | `sizeOf` | unary | STRING → SCALAR | 0x564680 | 16 | 4 | 0 | 20 |
-| 436 | `camPreload` | binary | OBJECT · SCALAR → NOTHING | 0x806d70 | 19 | 0 | 0 | 19 |
-| 437 | `commandArtilleryFire` | binary | OBJECT\|ARRAY · ARRAY → NOTHING | 0x5682a0 | 10 | 9 | 0 | 19 |
-| 438 | `ctrlMapWorldToScreen` | binary | CONTROL · ARRAY → ARRAY | 0x8eac30 | 19 | 0 | 0 | 19 |
-| 439 | `ctrlSetScale` | binary | CONTROL · SCALAR → NOTHING | 0x8d4c80 | 19 | 0 | 0 | 19 |
-| 440 | `inGameUISetEventHandler` | unary | ARRAY → NOTHING | 0x182df0 | 19 | 0 | 0 | 19 |
-| 441 | `lnbCurSelRow` | unary | CONTROL → SCALAR<br>SCALAR → SCALAR | 0x8e4b50<br>0x8e14f0 | 19 | 0 | 0 | 19 |
-| 442 | `assignedVehicle` | unary | OBJECT → OBJECT | 0x529220 | 10 | 8 | 0 | 18 |
-| 443 | `forceRespawn` | unary | OBJECT → NOTHING | 0x493570 | 18 | 0 | 0 | 18 |
-| 444 | `forceWalk` | binary | OBJECT · BOOL → NOTHING | 0x493710 | 10 | 8 | 0 | 18 |
-| 445 | `handgunItems` | unary | OBJECT → ARRAY | 0x8428b0 | 15 | 3 | 0 | 18 |
-| 446 | `hcSelected` | unary | OBJECT → ARRAY | 0x199a10 | 12 | 0 | 6 | 18 |
-| 447 | `isUAVConnected` | unary | OBJECT → BOOL | 0x518a80 | 9 | 9 | 0 | 18 |
-| 448 | `kbHasTopic` | binary | OBJECT · STRING → BOOL | 0x519640 | 18 | 0 | 0 | 18 |
-| 449 | `lnbSetColor` | binary | CONTROL · ARRAY → NOTHING | 0x8e55c0 | 18 | 0 | 0 | 18 |
-| 450 | `remoteControl` | binary | OBJECT · OBJECT → NOTHING | 0x5392f0 | 13 | 5 | 0 | 18 |
-| 451 | `removeAction` | binary | OBJECT · SCALAR → NOTHING | 0x56f0d0 | 15 | 3 | 0 | 18 |
-| 452 | `setAperture` | unary | SCALAR → NOTHING | 0x54de60 | 18 | 0 | 0 | 18 |
-| 453 | `setVehiclePosition` | binary | OBJECT · ARRAY → BOOL | 0x570690 | 18 | 0 | 0 | 18 |
-| 454 | `UAVControl` | unary | OBJECT\|ARRAY → ARRAY | 0x5648a0 | 9 | 9 | 0 | 18 |
-| 455 | `uniformItems` | unary | OBJECT → ARRAY | 0x8471b0 | 17 | 1 | 0 | 18 |
-| 456 | `addPublicVariableEventHandler` | binary | STRING · ARRAY → NOTHING<br>STRING · CODE → NOTHING | 0x1809f0<br>0x1809f0 | 17 | 0 | 0 | 17 |
-| 457 | `addSecondaryWeaponItem` | binary | OBJECT · STRING → NOTHING | 0x8396d0 | 14 | 3 | 0 | 17 |
-| 458 | `binocular` | unary | OBJECT → STRING | 0x83f340 | 17 | 0 | 0 | 17 |
-| 459 | `camPrepareFocus` | binary | OBJECT · ARRAY → NOTHING | 0x806f50 | 17 | 0 | 0 | 17 |
-| 460 | `doFire` | binary | OBJECT\|ARRAY · OBJECT → NOTHING | 0x569070 | 8 | 9 | 0 | 17 |
-| 461 | `getCustomSoundController` | unary | ARRAY → SCALAR | 0x49f940 | 13 | 0 | 4 | 17 |
-| 462 | `itemCargo` | unary | OBJECT → ARRAY | 0x842c00 | 16 | 1 | 0 | 17 |
-| 463 | `limitSpeed` | binary | OBJECT · BOOL\|SCALAR → NOTHING | 0x536610 | 15 | 2 | 0 | 17 |
-| 464 | `locked` | unary | OBJECT → SCALAR | 0x537110 | 12 | 4 | 1 | 17 |
-| 465 | `objectParent` | unary | OBJECT → OBJECT | 0x4acd60 | 17 | 0 | 0 | 17 |
-| 466 | `titleRsc` | unary | ARRAY → NOTHING | 0x494c80 | 12 | 5 | 0 | 17 |
-| 467 | `worldToModel` | binary | OBJECT · ARRAY → ARRAY | 0x542fc0 | 17 | 0 | 0 | 17 |
-| 468 | `addCuratorPoints` | binary | OBJECT · SCALAR → NOTHING | 0x825450 | 9 | 7 | 0 | 16 |
-| 469 | `cameraEffectEnableHUD` | unary | BOOL → NOTHING | 0x807a30 | 16 | 0 | 0 | 16 |
-| 470 | `camPrepareDir` | binary | OBJECT · SCALAR → NOTHING | 0x806e60 | 16 | 0 | 0 | 16 |
-| 471 | `enableCamShake` | unary | BOOL → NOTHING | 0x807d80 | 13 | 3 | 0 | 16 |
-| 472 | `getItemCargo` | unary | OBJECT → ARRAY | 0x83fd10 | 14 | 0 | 2 | 16 |
-| 473 | `getObjectTextures` | unary | OBJECT → ARRAY | 0x4ad560 | 16 | 0 | 0 | 16 |
-| 474 | `inAreaArray` | binary | ARRAY · ARRAY → ARRAY<br>ARRAY · LOCATION → ARRAY<br>ARRAY · OBJECT → ARRAY<br>ARRAY · STRING → ARRAY | 0x4bb6c0<br>0xd033e0<br>0x4bc4e0<br>0x4bc080 | 14 | 2 | 0 | 16 |
-| 475 | `isEqualTypeAll` | binary | ANY · ANY → BOOL (partial) | 0x515ea0 | 16 | 0 | 0 | 16 |
-| 476 | `setGroupIconsVisible` | unary | ARRAY → NOTHING | 0x19a6a0 | 14 | 2 | 0 | 16 |
-| 477 | `setLightIntensity` | binary | OBJECT · SCALAR → NOTHING | 0x51c020 | 16 | 0 | 0 | 16 |
-| 478 | `setUnitTrait` | binary | OBJECT · ARRAY → NOTHING | 0x556b40 | 12 | 4 | 0 | 16 |
-| 479 | `setUnloadInCombat` | binary | OBJECT · ARRAY → NOTHING | 0x53fe80 | 15 | 1 | 0 | 16 |
-| 480 | `setUserMFDValue` | binary | OBJECT · ARRAY → NOTHING | 0x558cf0 | 14 | 0 | 2 | 16 |
-| 481 | `showWatch` | unary | BOOL → NOTHING | 0x55b7e0 | 12 | 4 | 0 | 16 |
-| 482 | `tvExpand` | binary | CONTROL · ARRAY → NOTHING | 0x8f1f10 | 16 | 0 | 0 | 16 |
-| 483 | `weaponCargo` | unary | OBJECT → ARRAY | 0x847960 | 16 | 0 | 0 | 16 |
-| 484 | `camSetRelPos` | binary | OBJECT · ARRAY → NOTHING | 0x807800 | 15 | 0 | 0 | 15 |
-| 485 | `distanceSqr` | binary | ARRAY · LOCATION → SCALAR<br>LOCATION · ARRAY → SCALAR<br>LOCATION · LOCATION → SCALAR<br>OBJECT\|ARRAY · OBJECT\|ARRAY → SCALAR<br>SCALAR · SCALAR → SCALAR | 0xd043c0<br>0xd043c0<br>0xd043e0<br>0x526c90<br>0x4baf90 | 14 | 1 | 0 | 15 |
-| 486 | `findEmptyPosition` | binary | ARRAY · ARRAY → ARRAY | 0x490160 | 12 | 3 | 0 | 15 |
-| 487 | `magazineTurretAmmo` | binary | OBJECT · ARRAY → SCALAR | 0x4b5a80 | 7 | 8 | 0 | 15 |
-| 488 | `nearestLocations` | unary | ARRAY → ARRAY | 0xd06f10 | 13 | 2 | 0 | 15 |
-| 489 | `selectBestPlaces` | unary | ARRAY → ARRAY | 0x47e650 | 12 | 3 | 0 | 15 |
-| 490 | `serverCommand` | unary | STRING → BOOL | 0x54d4b0 | 15 | 0 | 0 | 15 |
-| 491 | `setFatigue` | binary | OBJECT · SCALAR → NOTHING | 0x53bc40 | 12 | 3 | 0 | 15 |
-| 492 | `setPilotLight` | binary | OBJECT · BOOL → NOTHING | 0x570570 | 12 | 3 | 0 | 15 |
-| 493 | `setVelocityModelSpace` | binary | OBJECT · ARRAY → NOTHING | 0x540be0 | 12 | 3 | 0 | 15 |
-| 494 | `tvSort` | binary | CONTROL · ARRAY → NOTHING | 0x8f3850 | 15 | 0 | 0 | 15 |
-| 495 | `canStand` | unary | OBJECT → BOOL | 0x525fa0 | 11 | 3 | 0 | 14 |
-| 496 | `configSourceMod` | unary | CONFIG → STRING | 0x8125a0 | 11 | 0 | 3 | 14 |
-| 497 | `ctrlMapMouseOver` | unary | CONTROL → ARRAY | 0x8e9c30 | 6 | 8 | 0 | 14 |
-| 498 | `forceWeatherChange` | nular | → NOTHING | 0x8a70d0 | 11 | 3 | 0 | 14 |
-| 499 | `hcAllGroups` | unary | OBJECT → ARRAY | 0x1990d0 | 14 | 0 | 0 | 14 |
-| 500 | `lnbSetValue` | binary | CONTROL · ARRAY → NOTHING | 0x8e6ac0 | 14 | 0 | 0 | 14 |
-| 501 | `processDiaryLink` | unary | STRING → NOTHING | 0xdfd170 | 9 | 5 | 0 | 14 |
-| 502 | `savingEnabled` | nular | → BOOL | 0x8af810 | 14 | 0 | 0 | 14 |
-| 503 | `setGroupIcon` | binary | GROUP · ARRAY → NOTHING | 0x194f90 | 7 | 7 | 0 | 14 |
-| 504 | `setVehicleCargo` | binary | OBJECT · OBJECT → BOOL | 0x558ee0 | 11 | 3 | 0 | 14 |
-| 505 | `switchAction` | binary | OBJECT · STRING → NOTHING | 0x541a70 | 12 | 2 | 0 | 14 |
-| 506 | `vestItems` | unary | OBJECT → ARRAY | 0x847550 | 13 | 1 | 0 | 14 |
-| 507 | `actionKeysNamesArray` | unary | STRING\|ARRAY → ARRAY | 0x497440 | 13 | 0 | 0 | 13 |
-| 508 | `allDead` | nular | → ARRAY | 0x8a7300 | 8 | 5 | 0 | 13 |
-| 509 | `assignedVehicleRole` | unary | OBJECT → ARRAY | 0x529290 | 11 | 2 | 0 | 13 |
-| 510 | `createDiaryLink` | unary | ARRAY → STRING | 0xdfc5e0 | 6 | 7 | 0 | 13 |
-| 511 | `enableWeaponDisassembly` | binary | OBJECT · BOOL → NOTHING | 0x48dae0 | 12 | 1 | 0 | 13 |
-| 512 | `leaderboardDeInit` | unary | STRING → BOOL | 0x1c29f0 | 2 | 11 | 0 | 13 |
-| 513 | `lineIntersectsSurfaces` | unary | ARRAY → ARRAY | 0x51c4a0 | 10 | 3 | 0 | 13 |
-| 514 | `locationPosition` | unary | LOCATION → ARRAY | 0xd05260 | 13 | 0 | 0 | 13 |
-| 515 | `magazineCargo` | unary | OBJECT → ARRAY | 0x842f30 | 13 | 0 | 0 | 13 |
-| 516 | `radioChannelAdd` | binary | SCALAR · ARRAY → NOTHING | 0x19dbd0 | 13 | 0 | 0 | 13 |
-| 517 | `remoteExec` | unary | ARRAY → STRING\|NOTHING | 0x8c0620 | 13 | 0 | 0 | 13 |
-| 518 | `setObjectViewDistance` | unary | ARRAY → NOTHING<br>SCALAR → NOTHING | 0x553ee0<br>0x553ee0 | 9 | 4 | 0 | 13 |
-| 519 | `setUnitPosWeak` | binary | OBJECT · STRING → NOTHING | 0x53fd50 | 0 | 13 | 0 | 13 |
-| 520 | `vehicles` | nular | → ARRAY | 0x8ab3a0 | 10 | 3 | 0 | 13 |
-| 521 | `waypointAttachVehicle` | binary | ARRAY · OBJECT → NOTHING | 0x8f6cd0 | 7 | 6 | 0 | 13 |
-| 522 | `weaponAccessories` | binary | OBJECT · STRING → ARRAY | 0x841de0 | 13 | 0 | 0 | 13 |
-| 523 | `weaponDirection` | binary | OBJECT · STRING → ARRAY | 0x533ec0 | 13 | 0 | 0 | 13 |
-| 524 | `ATLToASL` | unary | ARRAY → ARRAY | 0x5391e0 | 11 | 1 | 0 | 12 |
-| 525 | `camSetTarget` | binary | OBJECT · ARRAY → NOTHING<br>OBJECT · OBJECT → NOTHING | 0x807970<br>0x8078d0 | 12 | 0 | 0 | 12 |
-| 526 | `cutFadeOut` | binary | SCALAR · SCALAR → NOTHING<br>STRING · SCALAR → SCALAR | 0x488000<br>0x488090 | 12 | 0 | 0 | 12 |
-| 527 | `estimatedTimeLeft` | unary | SCALAR → NOTHING | 0x48e2f0 | 12 | 0 | 0 | 12 |
-| 528 | `getConnectedUAV` | unary | OBJECT → OBJECT | 0x49f600 | 9 | 3 | 0 | 12 |
-| 529 | `getSlingLoad` | unary | OBJECT → OBJECT | 0x1a44d0 | 1 | 11 | 0 | 12 |
-| 530 | `htmlLoad` | binary | CONTROL · STRING → NOTHING | 0x8d7bf0 | 12 | 0 | 0 | 12 |
-| 531 | `kbWasSaid` | binary | OBJECT · ARRAY → BOOL | 0x51a5c0 | 10 | 2 | 0 | 12 |
-| 532 | `lnbSetCurSelRow` | binary | CONTROL · SCALAR → NOTHING | 0x8e5830 | 12 | 0 | 0 | 12 |
-| 533 | `lockCameraTo` | binary | OBJECT · ARRAY → NOTHING | 0x536930 | 7 | 5 | 0 | 12 |
-| 534 | `modParams` | unary | ARRAY → ARRAY | 0x4a6ba0 | 10 | 0 | 2 | 12 |
-| 535 | `setMimic` | binary | OBJECT · STRING → NOTHING | 0x53db00 | 12 | 0 | 0 | 12 |
-| 536 | `unitAddons` | unary | STRING → ARRAY | 0x4b62d0 | 12 | 0 | 0 | 12 |
-| 537 | `all3DENEntities` | nular | → ARRAY | 0x7f4620 | 9 | 0 | 2 | 11 |
-| 538 | `allDeadMen` | nular | → ARRAY | 0x8a7490 | 9 | 2 | 0 | 11 |
-| 539 | `allSimpleObjects` | unary | ARRAY → ARRAY | 0x4b23e0 | 11 | 0 | 0 | 11 |
-| 540 | `ASLToATL` | unary | ARRAY → ARRAY | 0x5390d0 | 10 | 1 | 0 | 11 |
-| 541 | `assignAsCommander` | binary | OBJECT · OBJECT → NOTHING | 0x525370 | 3 | 8 | 0 | 11 |
-| 542 | `camSetPos` | binary | OBJECT · ARRAY → NOTHING | 0x807740 | 10 | 1 | 0 | 11 |
-| 543 | `ctrlAnimateModel` | binary | CONTROL · ARRAY → NOTHING | 0x8cb710 | 11 | 0 | 0 | 11 |
-| 544 | `disableUAVConnectability` | binary | OBJECT · ARRAY → NOTHING | 0x48ade0 | 8 | 3 | 0 | 11 |
-| 545 | `exit` | nular | → NOTHING | 0x10d3da0 | 11 | 0 | 0 | 11 |
-| 546 | `getFatigue` | unary | OBJECT → SCALAR | 0x52b930 | 4 | 7 | 0 | 11 |
-| 547 | `lnbClear` | unary | CONTROL → NOTHING<br>SCALAR → NOTHING | 0x8e4770<br>0x8e0e10 | 11 | 0 | 0 | 11 |
-| 548 | `lockTurret` | binary | OBJECT · ARRAY → NOTHING | 0x56d600 | 2 | 9 | 0 | 11 |
-| 549 | `modelToWorldVisualWorld` | binary | OBJECT · ARRAY → ARRAY | 0x5375d0 | 11 | 0 | 0 | 11 |
-| 550 | `reload` | unary | OBJECT → NOTHING | 0x56e8a0 | 7 | 4 | 0 | 11 |
-| 551 | `setCurrentTask` | binary | OBJECT · TASK → NOTHING | 0xe04940 | 11 | 0 | 0 | 11 |
-| 552 | `setTaskState` | binary | TASK · STRING → NOTHING | 0xe0b8f0 | 11 | 0 | 0 | 11 |
-| 553 | `setVehicleRadar` | binary | OBJECT · SCALAR → NOTHING | 0x1cbaf0 | 11 | 0 | 0 | 11 |
-| 554 | `showScoretable` | unary | SCALAR → NOTHING | 0x55af90 | 11 | 0 | 0 | 11 |
-| 555 | `taskCompleted` | unary | TASK → BOOL | 0xe0b160 | 0 | 11 | 0 | 11 |
-| 556 | `taskDestination` | unary | TASK → ARRAY | 0xe0a560 | 1 | 10 | 0 | 11 |
-| 557 | `tvSetPictureColor` | binary | CONTROL · ARRAY → NOTHING | 0x8f2ca0 | 11 | 0 | 0 | 11 |
-| 558 | `tvSetTooltip` | binary | CONTROL · ARRAY → NOTHING | 0x8f34f0 | 11 | 0 | 0 | 11 |
-| 559 | `weaponsTurret` | binary | OBJECT · ARRAY → ARRAY | 0x5425c0 | 3 | 8 | 0 | 11 |
-| 560 | `addBackpackCargo` | binary | OBJECT · ARRAY → NOTHING | 0x838af0 | 8 | 2 | 0 | 10 |
-| 561 | `addMagazineTurret` | binary | OBJECT · ARRAY → NOTHING | 0x5235c0 | 9 | 1 | 0 | 10 |
-| 562 | `addToRemainsCollector` | unary | ARRAY → NOTHING | 0x47d940 | 9 | 1 | 0 | 10 |
-| 563 | `backpackContainer` | unary | OBJECT → OBJECT | 0x83d100 | 10 | 0 | 0 | 10 |
-| 564 | `briefingName` | nular | → STRING | 0x8995f0 | 10 | 0 | 0 | 10 |
-| 565 | `cbChecked` | unary | CONTROL → BOOL | 0x8d0200 | 6 | 0 | 4 | 10 |
-| 566 | `configSourceAddonList` | unary | CONFIG → ARRAY | 0x812390 | 10 | 0 | 0 | 10 |
-| 567 | `countSide` | binary | SIDE · ARRAY → SCALAR | 0x51cc30 | 0 | 10 | 0 | 10 |
-| 568 | `ctrlSetFont` | binary | CONTROL · STRING → NOTHING | 0x8d2be0 | 10 | 0 | 0 | 10 |
-| 569 | `ctrlSetText` | unary | ARRAY → NOTHING | 0x8cc290 | 10 | 0 | 0 | 10 |
-| 570 | `diarySubjectExists` | binary | OBJECT · STRING → BOOL | 0xdfcac0 | 10 | 0 | 0 | 10 |
-| 571 | `drawEllipse` | binary | CONTROL · ARRAY → NOTHING | 0x8e7830 | 10 | 0 | 0 | 10 |
-| 572 | `drawTriangle` | binary | CONTROL · ARRAY → NOTHING | 0x8e86b0 | 10 | 0 | 0 | 10 |
-| 573 | `enableIRLasers` | binary | OBJECT\|GROUP · BOOL → NOTHING | 0x190960 | 4 | 6 | 0 | 10 |
-| 574 | `fleeing` | unary | OBJECT → BOOL | 0x528630 | 10 | 0 | 0 | 10 |
-| 575 | `fog` | nular | → SCALAR | 0x8a8fa0 | 10 | 0 | 0 | 10 |
-| 576 | `getVehicleCargo` | unary | OBJECT → ARRAY | 0x4b7bb0 | 8 | 2 | 0 | 10 |
-| 577 | `hasWeapon` | binary | OBJECT · STRING → BOOL | 0x5353e0 | 7 | 3 | 0 | 10 |
-| 578 | `inRangeOfArtillery` | binary | ARRAY · ARRAY → BOOL | 0x4bd040 | 9 | 1 | 0 | 10 |
-| 579 | `lnbSetData` | binary | CONTROL · ARRAY → NOTHING | 0x8e58f0 | 10 | 0 | 0 | 10 |
-| 580 | `lnbText` | binary | CONTROL · ARRAY → STRING | 0x8e5200 | 10 | 0 | 0 | 10 |
-| 581 | `remoteExecutedOwner` | nular | → SCALAR | 0x8a3440 | 10 | 0 | 0 | 10 |
-| 582 | `removeWeaponTurret` | binary | OBJECT · ARRAY → NOTHING | 0x846c10 | 10 | 0 | 0 | 10 |
-| 583 | `say2D` | binary | OBJECT\|ARRAY · STRING\|ARRAY → NOTHING | 0x5397d0 | 10 | 0 | 0 | 10 |
-| 584 | `secondaryWeaponItems` | unary | OBJECT → ARRAY | 0x846c30 | 9 | 1 | 0 | 10 |
-| 585 | `setBehaviourStrong` | binary | OBJECT\|GROUP · STRING → NOTHING | 0x191a00 | 3 | 7 | 0 | 10 |
-| 586 | `setPiPEffect` | binary | STRING · ARRAY → NOTHING | 0x554bd0 | 9 | 1 | 0 | 10 |
-| 587 | `setWind` | unary | ARRAY → NOTHING | 0x559ba0 | 8 | 2 | 0 | 10 |
-| 588 | `tvSetValue` | binary | CONTROL · ARRAY → NOTHING | 0x8f36d0 | 10 | 0 | 0 | 10 |
-| 589 | `aimedAtTarget` | binary | OBJECT · ARRAY → SCALAR | 0x47df90 | 6 | 3 | 0 | 9 |
-| 590 | `backpackCargo` | unary | OBJECT → ARRAY | 0x83d0e0 | 9 | 0 | 0 | 9 |
-| 591 | `captive` | unary | OBJECT → BOOL | 0x526070 | 7 | 2 | 0 | 9 |
-| 592 | `ctrlSetModelScale` | binary | CONTROL · SCALAR → NOTHING | 0x8cc140 | 8 | 1 | 0 | 9 |
-| 593 | `enableFatigue` | binary | OBJECT · BOOL → NOTHING | 0x5279a0 | 6 | 3 | 0 | 9 |
-| 594 | `formation` | unary | TEAM_MEMBER → STRING | 0x196980 | 5 | 4 | 0 | 9 |
-| 595 | `isPiPEnabled` | nular | → BOOL | 0x8af7e0 | 3 | 6 | 0 | 9 |
-| 596 | `lbPicture` | binary | CONTROL · SCALAR → STRING | 0x8dde30 | 9 | 0 | 0 | 9 |
-| 597 | `lbSetPictureColor` | binary | CONTROL · ARRAY → NOTHING | 0x8debe0 | 8 | 0 | 1 | 9 |
-| 598 | `leaderboardGetRows` | unary | STRING → ARRAY | 0x1c2ab0 | 3 | 6 | 0 | 9 |
-| 599 | `lineIntersects` | unary | ARRAY → BOOL | 0x51c460 | 7 | 2 | 0 | 9 |
-| 600 | `lineIntersectsWith` | unary | ARRAY → ARRAY | 0x51c480 | 9 | 0 | 0 | 9 |
-| 601 | `lnbSize` | unary | CONTROL → ARRAY<br>SCALAR → ARRAY | 0x8e4fc0<br>0x8e1d10 | 9 | 0 | 0 | 9 |
-| 602 | `lockDriver` | binary | OBJECT · BOOL → NOTHING | 0x56d570 | 3 | 6 | 0 | 9 |
-| 603 | `mapAnimAdd` | unary | ARRAY → NOTHING | 0x51f640 | 8 | 1 | 0 | 9 |
-| 604 | `mapAnimCommit` | nular | → NOTHING | 0x8b0360 | 8 | 1 | 0 | 9 |
-| 605 | `moveInCommander` | binary | OBJECT · OBJECT → NOTHING | 0x537bf0 | 5 | 4 | 0 | 9 |
-| 606 | `pylonAction` | unary | ARRAY → ARRAY | 0x56e550 | 9 | 0 | 0 | 9 |
-| 607 | `radioChannelCreate` | unary | ARRAY → SCALAR | 0x19dc10 | 6 | 3 | 0 | 9 |
-| 608 | `rain` | nular | → SCALAR | 0x8aaaa0 | 8 | 1 | 0 | 9 |
-| 609 | `selectNoPlayer` | nular | → NOTHING | 0x8b19d0 | 5 | 4 | 0 | 9 |
-| 610 | `setMousePosition` | unary | ARRAY → NOTHING | 0x552da0 | 9 | 0 | 0 | 9 |
-| 611 | `sideChat` | binary | OBJECT\|ARRAY · STRING → NOTHING | 0x19d480 | 3 | 6 | 0 | 9 |
-| 612 | `addWeaponGlobal` | binary | OBJECT · STRING\|ARRAY → NOTHING | 0x83bff0 | 2 | 6 | 0 | 8 |
-| 613 | `boundingCenter` | unary | OBJECT → ARRAY | 0x529fb0 | 8 | 0 | 0 | 8 |
-| 614 | `commandTarget` | binary | OBJECT\|ARRAY · OBJECT → NOTHING | 0x5683a0 | 3 | 5 | 0 | 8 |
-| 615 | `completedFSM` | unary | SCALAR → BOOL | 0x48fa30 | 3 | 5 | 0 | 8 |
-| 616 | `ctrlChecked` | unary | CONTROL → BOOL | 0x8d0970 | 8 | 0 | 0 | 8 |
-| 617 | `currentVisionMode` | unary | ARRAY → ARRAY<br>OBJECT → SCALAR | 0x487220<br>0x4871c0 | 4 | 4 | 0 | 8 |
-| 618 | `customWaypointPosition` | nular | → ARRAY | 0x89bd70 | 8 | 0 | 0 | 8 |
-| 619 | `enableRopeAttach` | binary | OBJECT · BOOL → NOTHING | 0x1a1f20 | 1 | 7 | 0 | 8 |
-| 620 | `getAllPylonsInfo` | unary | OBJECT → ARRAY | 0x49b5e0 | 8 | 0 | 0 | 8 |
-| 621 | `getUnitTrait` | binary | OBJECT · STRING → ?\|NOTHING | 0x4b2630 | 8 | 0 | 0 | 8 |
-| 622 | `getWeaponCargo` | unary | OBJECT → ARRAY | 0x842050 | 8 | 0 | 0 | 8 |
-| 623 | `globalChat` | binary | OBJECT · STRING → NOTHING | 0x19d190 | 8 | 0 | 0 | 8 |
-| 624 | `groupChat` | binary | OBJECT · STRING → NOTHING | 0x19d2f0 | 4 | 4 | 0 | 8 |
-| 625 | `lbSetPictureRightColor` | binary | CONTROL · ARRAY → NOTHING | 0x8decb0 | 7 | 0 | 1 | 8 |
-| 626 | `lbSetTextRight` | binary | CONTROL · ARRAY → NOTHING | 0x8df330 | 6 | 0 | 2 | 8 |
-| 627 | `lnbSetText` | binary | CONTROL · ARRAY → NOTHING | 0x8e6a80 | 8 | 0 | 0 | 8 |
-| 628 | `onMapSingleClick` | unary | CODE\|STRING → NOTHING | 0x183050 | 8 | 0 | 0 | 8 |
-| 629 | `playersNumber` | unary | SIDE → SCALAR | 0x546210 | 7 | 1 | 0 | 8 |
-| 630 | `profileNameSteam` | nular | → STRING | 0x89eb10 | 4 | 4 | 0 | 8 |
-| 631 | `removeAllCuratorAddons` | unary | OBJECT → NOTHING | 0x82a020 | 5 | 3 | 0 | 8 |
-| 632 | `removeMagazineGlobal` | binary | OBJECT · STRING → NOTHING | 0x844e30 | 8 | 0 | 0 | 8 |
-| 633 | `reportRemoteTarget` | binary | SIDE · ARRAY → NOTHING | 0x1cb7f0 | 4 | 4 | 0 | 8 |
-| 634 | `score` | unary | OBJECT → SCALAR | 0x530d20 | 8 | 0 | 0 | 8 |
-| 635 | `setPlateNumber` | binary | OBJECT · STRING → NOTHING | 0x570600 | 7 | 0 | 1 | 8 |
-| 636 | `setTerrainGrid` | unary | SCALAR → NOTHING | 0x5576e0 | 8 | 0 | 0 | 8 |
-| 637 | `skill` | binary | OBJECT · STRING → SCALAR | 0x532b10 | 7 | 1 | 0 | 8 |
-| 638 | `terrainIntersect` | unary | ARRAY → BOOL | 0x55f980 | 8 | 0 | 0 | 8 |
-| 639 | `triggerTimeout` | unary | OBJECT → ARRAY | 0x561c20 | 8 | 0 | 0 | 8 |
-| 640 | `underwater` | unary | OBJECT → BOOL | 0x536220 | 3 | 5 | 0 | 8 |
-| 641 | `unitPos` | unary | OBJECT → STRING | 0x533390 | 5 | 3 | 0 | 8 |
-| 642 | `weaponsItems` | unary | OBJECT\|ARRAY → ARRAY | 0x83e560 | 8 | 0 | 0 | 8 |
-| 643 | `weaponsItemsCargo` | unary | OBJECT\|ARRAY → ARRAY | 0x83e910 | 7 | 0 | 1 | 8 |
-| 644 | `agent` | unary | TEAM_MEMBER → OBJECT | 0x196f80 | 7 | 0 | 0 | 7 |
-| 645 | `configSourceModList` | unary | CONFIG → ARRAY | 0x812780 | 7 | 0 | 0 | 7 |
-| 646 | `confirmSensorTarget` | binary | OBJECT · ARRAY → NOTHING | 0x1cb980 | 3 | 4 | 0 | 7 |
-| 647 | `ctrlMapAnimClear` | unary | CONTROL → NOTHING | 0x8e9a30 | 7 | 0 | 0 | 7 |
-| 648 | `curatorPoints` | unary | OBJECT → SCALAR | 0x827760 | 3 | 4 | 0 | 7 |
-| 649 | `detectedMines` | unary | SIDE → ARRAY | 0x49ff40 | 3 | 4 | 0 | 7 |
-| 650 | `distributionRegion` | nular | → SCALAR | 0x8a8ef0 | 6 | 1 | 0 | 7 |
-| 651 | `enginesRpmRTD` | unary | OBJECT → ARRAY | 0x8932c0 | 7 | 0 | 0 | 7 |
-| 652 | `get3DENEntity` | unary | SCALAR → ANY | 0x7f9d80 | 7 | 0 | 0 | 7 |
-| 653 | `getArtilleryETA` | binary | OBJECT · ARRAY → SCALAR | 0x49c200 | 4 | 3 | 0 | 7 |
-| 654 | `getClientState` | nular | → STRING | 0x89b9f0 | 7 | 0 | 0 | 7 |
-| 655 | `getObjectViewDistance` | nular | → ARRAY | 0x8a9ce0 | 5 | 2 | 0 | 7 |
-| 656 | `getShotParents` | unary | OBJECT → ARRAY | 0x5328d0 | 7 | 0 | 0 | 7 |
-| 657 | `hcShownBar` | nular | → BOOL | 0x8af390 | 7 | 0 | 0 | 7 |
-| 658 | `hintC` | unary | STRING → NOTHING | 0x55aa30 | 7 | 0 | 0 | 7 |
-| 659 | `isRemoteExecuted` | nular | → BOOL | 0x8a2db0 | 7 | 0 | 0 | 7 |
-| 660 | `isRemoteExecutedJIP` | nular | → BOOL | 0x8a2df0 | 7 | 0 | 0 | 7 |
-| 661 | `landResult` | unary | OBJECT → STRING | 0x52c510 | 1 | 6 | 0 | 7 |
-| 662 | `laserTarget` | unary | OBJECT → OBJECT | 0x4a4020 | 3 | 4 | 0 | 7 |
-| 663 | `lbSetPictureRightColorSelected` | binary | CONTROL · ARRAY → NOTHING | 0x8ded10 | 7 | 0 | 0 | 7 |
-| 664 | `lnbValue` | binary | CONTROL · ARRAY → SCALAR | 0x8e5240 | 7 | 0 | 0 | 7 |
-| 665 | `preloadCamera` | unary | ARRAY → BOOL | 0x806c50 | 7 | 0 | 0 | 7 |
-| 666 | `publicVariableServer` | unary | STRING → NOTHING | 0x5474b0 | 7 | 0 | 0 | 7 |
-| 667 | `rank` | unary | OBJECT → STRING | 0x565e60 | 6 | 1 | 0 | 7 |
-| 668 | `removeFromRemainsCollector` | unary | ARRAY → NOTHING | 0x549130 | 5 | 2 | 0 | 7 |
-| 669 | `selectWeaponTurret` | binary | OBJECT · ARRAY → NOTHING | 0x56f160 | 2 | 5 | 0 | 7 |
-| 670 | `setAmmoOnPylon` | binary | OBJECT · ARRAY → NOTHING | 0x54dd20 | 1 | 6 | 0 | 7 |
-| 671 | `setWindDir` | binary | SCALAR · SCALAR → NOTHING | 0x559ce0 | 3 | 4 | 0 | 7 |
-| 672 | `shownHUD` | nular | → ARRAY | 0x8af3c0 | 7 | 0 | 0 | 7 |
-| 673 | `skill` | unary | OBJECT → SCALAR | 0x8b6840 | 6 | 1 | 0 | 7 |
-| 674 | `sunOrMoon` | nular | → SCALAR | 0x8aafd0 | 7 | 0 | 0 | 7 |
-| 675 | `tvDelete` | binary | CONTROL · ARRAY → NOTHING | 0x8f1e10 | 7 | 0 | 0 | 7 |
-| 676 | `unitIsUAV` | unary | OBJECT → BOOL | 0x536190 | 7 | 0 | 0 | 7 |
-| 677 | `vectorModelToWorld` | binary | OBJECT · ARRAY → ARRAY | 0x5268e0 | 7 | 0 | 0 | 7 |
-| 678 | `addCuratorEditingArea` | binary | OBJECT · ARRAY → NOTHING | 0x8244b0 | 5 | 1 | 0 | 6 |
-| 679 | `addMagazineGlobal` | binary | OBJECT · STRING → NOTHING | 0x83ae00 | 4 | 2 | 0 | 6 |
-| 680 | `addTorque` | binary | OBJECT · ARRAY → NOTHING | 0x1a53e0 | 6 | 0 | 0 | 6 |
-| 681 | `allUnitsUAV` | nular | → ARRAY | 0x89b4e0 | 0 | 6 | 0 | 6 |
-| 682 | `assignedCargo` | unary | OBJECT → ARRAY | 0x52a9b0 | 1 | 5 | 0 | 6 |
-| 683 | `assignedTarget` | unary | OBJECT → OBJECT | 0x1cc160 | 5 | 1 | 0 | 6 |
-| 684 | `curatorAddons` | unary | OBJECT → ARRAY | 0x826b00 | 5 | 1 | 0 | 6 |
-| 685 | `doFSM` | binary | OBJECT\|ARRAY · ARRAY → NOTHING | 0x569050 | 1 | 5 | 0 | 6 |
-| 686 | `enablePersonTurret` | binary | OBJECT · ARRAY → NOTHING | 0x527ed0 | 3 | 1 | 2 | 6 |
-| 687 | `flyInHeightASL` | binary | OBJECT · ARRAY → NOTHING | 0x53c2a0 | 2 | 4 | 0 | 6 |
-| 688 | `getGroupIcon` | binary | GROUP · SCALAR → ARRAY | 0x18ea00 | 6 | 0 | 0 | 6 |
-| 689 | `getOxygenRemaining` | unary | OBJECT → SCALAR | 0x52e9d0 | 0 | 6 | 0 | 6 |
-| 690 | `getSuppression` | unary | OBJECT → SCALAR | 0x532e60 | 0 | 6 | 0 | 6 |
-| 691 | `inPolygon` | binary | OBJECT\|ARRAY · ARRAY → BOOL | 0x517830 | 6 | 0 | 0 | 6 |
-| 692 | `isFlatEmpty` | binary | ARRAY · ARRAY → ARRAY | 0x5162d0 | 6 | 0 | 0 | 6 |
-| 693 | `isLightOn` | unary | OBJECT\|ARRAY → BOOL | 0x56cf20 | 4 | 0 | 2 | 6 |
-| 694 | `lbSortByValue` | unary | CONTROL → NOTHING<br>SCALAR → NOTHING | 0x8dfb30<br>0x8dd280 | 3 | 0 | 3 | 6 |
-| 695 | `lockedCargo` | binary | OBJECT · SCALAR → BOOL | 0x56cad0 | 6 | 0 | 0 | 6 |
-| 696 | `magazinesAmmo` | unary | OBJECT\|ARRAY → ARRAY | 0x83e090 | 2 | 4 | 0 | 6 |
-| 697 | `nearestBuilding` | unary | ARRAY → OBJECT<br>OBJECT → OBJECT | 0x52d030<br>0x52cfb0 | 6 | 0 | 0 | 6 |
-| 698 | `nearestLocation` | unary | ARRAY → LOCATION | 0xd046c0 | 6 | 0 | 0 | 6 |
-| 699 | `ppEffectEnabled` | unary | SCALAR → BOOL<br>STRING → BOOL | 0xb4cb40<br>0xb4cba0 | 6 | 0 | 0 | 6 |
-| 700 | `preloadObject` | binary | SCALAR · OBJECT\|STRING → BOOL | 0x56d8b0 | 6 | 0 | 0 | 6 |
-| 701 | `removeCuratorEditableObjects` | binary | OBJECT · ARRAY → NOTHING | 0x82aa10 | 5 | 1 | 0 | 6 |
-| 702 | `removeMagazinesTurret` | binary | OBJECT · ARRAY → NOTHING | 0x845a80 | 6 | 0 | 0 | 6 |
-| 703 | `removeSimpleTask` | binary | OBJECT · TASK → NOTHING | 0xe04d30 | 6 | 0 | 0 | 6 |
-| 704 | `set3DENAttributes` | unary | ARRAY → BOOL | 0x801db0 | 6 | 0 | 0 | 6 |
-| 705 | `setAirplaneThrottle` | binary | OBJECT · SCALAR → NOTHING | 0x895a30 | 6 | 0 | 0 | 6 |
-| 706 | `setCollisionLight` | binary | OBJECT · BOOL → NOTHING | 0x56fc00 | 4 | 2 | 0 | 6 |
-| 707 | `setCustomAimCoef` | binary | OBJECT · SCALAR → NOTHING | 0x896fb0 | 1 | 5 | 0 | 6 |
-| 708 | `setFlagOwner` | binary | OBJECT · OBJECT → NOTHING | 0x53be90 | 0 | 6 | 0 | 6 |
-| 709 | `setInfoPanel` | unary | ARRAY → BOOL | 0x55b380 | 3 | 3 | 0 | 6 |
-| 710 | `setLightnings` | binary | SCALAR · SCALAR → NOTHING | 0x552830 | 6 | 0 | 0 | 6 |
-| 711 | `setSimpleTaskDescription` | binary | TASK · ARRAY → NOTHING | 0xe09160 | 6 | 0 | 0 | 6 |
-| 712 | `setSoundEffect` | binary | OBJECT\|ARRAY · ARRAY → NOTHING | 0x48c210 | 5 | 1 | 0 | 6 |
-| 713 | `setTimeMultiplier` | unary | SCALAR → NOTHING | 0x557d30 | 6 | 0 | 0 | 6 |
-| 714 | `setWeaponReloadingTime` | binary | OBJECT · ARRAY → BOOL | 0x559890 | 5 | 1 | 0 | 6 |
-| 715 | `setWindStr` | binary | SCALAR · SCALAR → NOTHING | 0x559f40 | 5 | 1 | 0 | 6 |
-| 716 | `sliderRange` | unary | CONTROL → ARRAY<br>SCALAR → ARRAY | 0x8eb7f0<br>0x8eaef0 | 5 | 0 | 1 | 6 |
-| 717 | `taskDescription` | unary | TASK → ARRAY | 0xe0a230 | 6 | 0 | 0 | 6 |
-| 718 | `tvSetColor` | binary | CONTROL · ARRAY → NOTHING | 0x8f2710 | 6 | 0 | 0 | 6 |
-| 719 | `velocityModelSpace` | unary | OBJECT → ARRAY | 0x533a40 | 5 | 1 | 0 | 6 |
-| 720 | `actionName` | unary | STRING → STRING | 0x497da0 | 5 | 0 | 0 | 5 |
-| 721 | `add3DENConnection` | unary | ARRAY → NOTHING | 0x7f3b20 | 5 | 0 | 0 | 5 |
-| 722 | `allVariables` | unary | CONTROL → ARRAY<br>DISPLAY → ARRAY<br>LOCATION → ARRAY<br>TASK → ARRAY<br>TEAM_MEMBER → ARRAY | 0x13c6830<br>0x8cdc30<br>0xd011e0<br>0xdffd30<br>0x49b920 | 5 | 0 | 0 | 5 |
-| 723 | `assignAsTurret` | binary | OBJECT · ARRAY → NOTHING | 0x525580 | 3 | 2 | 0 | 5 |
-| 724 | `commandGetOut` | unary | OBJECT\|ARRAY → NOTHING | 0x568320 | 2 | 3 | 0 | 5 |
-| 725 | `ctrlMapAnimDone` | unary | CONTROL → BOOL | 0x8e9af0 | 5 | 0 | 0 | 5 |
-| 726 | `ctrlScale` | unary | CONTROL → SCALAR | 0x8d1170 | 5 | 0 | 0 | 5 |
-| 727 | `ctrlSetModelDirAndUp` | binary | CONTROL · ARRAY → NOTHING | 0x8cbf90 | 5 | 0 | 0 | 5 |
-| 728 | `ctrlSetTooltipColorBox` | binary | CONTROL · ARRAY → NOTHING | 0x8d56d0 | 5 | 0 | 0 | 5 |
-| 729 | `curatorCoef` | binary | OBJECT · STRING → SCALAR | 0x826e30 | 2 | 3 | 0 | 5 |
-| 730 | `curatorEditingArea` | unary | OBJECT → ARRAY | 0x8262e0 | 5 | 0 | 0 | 5 |
-| 731 | `current3DENOperation` | nular | → STRING | 0x7f6cc0 | 5 | 0 | 0 | 5 |
-| 732 | `difficulty` | nular | → SCALAR | 0x8a8ec0 | 3 | 2 | 0 | 5 |
-| 733 | `difficultyEnabledRTD` | nular | → BOOL | 0x8955a0 | 1 | 4 | 0 | 5 |
-| 734 | `edit3DENMissionAttributes` | unary | STRING → NOTHING | 0x7ffb20 | 0 | 0 | 5 | 5 |
-| 735 | `enableAimPrecision` | binary | OBJECT · BOOL → NOTHING | 0x896780 | 1 | 4 | 0 | 5 |
-| 736 | `formationPosition` | unary | OBJECT → ARRAY | 0x56ae60 | 5 | 0 | 0 | 5 |
-| 737 | `getBackpackCargo` | unary | OBJECT → ARRAY | 0x83ebd0 | 5 | 0 | 0 | 5 |
-| 738 | `getEngineTargetRPMRTD` | unary | OBJECT → ARRAY | 0x892d80 | 5 | 0 | 0 | 5 |
-| 739 | `getModelInfo` | unary | OBJECT → ARRAY | 0x52cc60 | 5 | 0 | 0 | 5 |
-| 740 | `hcLeader` | unary | GROUP → OBJECT | 0x199650 | 4 | 1 | 0 | 5 |
-| 741 | `hideBody` | unary | OBJECT → NOTHING | 0x535510 | 1 | 4 | 0 | 5 |
-| 742 | `inflame` | binary | OBJECT · BOOL → NOTHING | 0x535640 | 3 | 0 | 2 | 5 |
-| 743 | `keyName` | unary | STRING\|SCALAR → STRING | 0x4a3bf0 | 5 | 0 | 0 | 5 |
-| 744 | `leaderboardInit` | unary | STRING → BOOL | 0x1c3100 | 1 | 4 | 0 | 5 |
-| 745 | `lockedTurret` | binary | OBJECT · ARRAY → BOOL | 0x56d1f0 | 5 | 0 | 0 | 5 |
-| 746 | `lockInventory` | binary | OBJECT · BOOL → NOTHING | 0x84d7a0 | 5 | 0 | 0 | 5 |
-| 747 | `magazinesAmmoCargo` | unary | OBJECT → ARRAY | 0x83e330 | 5 | 0 | 0 | 5 |
-| 748 | `moveToCompleted` | unary | OBJECT → BOOL | 0x47de00 | 2 | 3 | 0 | 5 |
-| 749 | `needReload` | unary | OBJECT → SCALAR | 0x56b4c0 | 3 | 2 | 0 | 5 |
-| 750 | `precision` | unary | OBJECT → SCALAR | 0x530510 | 1 | 4 | 0 | 5 |
-| 751 | `radioVolume` | nular | → SCALAR | 0x8aaa50 | 5 | 0 | 0 | 5 |
-| 752 | `removeHandgunItem` | binary | OBJECT · STRING → NOTHING | 0x844860 | 4 | 1 | 0 | 5 |
-| 753 | `removeMagazineTurret` | binary | OBJECT · ARRAY → NOTHING | 0x845120 | 4 | 1 | 0 | 5 |
-| 754 | `setFuelCargo` | binary | OBJECT · SCALAR → NOTHING | 0x53c510 | 5 | 0 | 0 | 5 |
-| 755 | `setGroupIdGlobal` | binary | OBJECT\|GROUP · ARRAY → NOTHING | 0x192230 | 4 | 0 | 1 | 5 |
-| 756 | `setMass` | binary | OBJECT · SCALAR\|ARRAY → NOTHING | 0x1a6020 | 3 | 2 | 0 | 5 |
-| 757 | `setOwner` | binary | OBJECT · SCALAR → BOOL | 0x53dc20 | 4 | 1 | 0 | 5 |
-| 758 | `setParticleFire` | binary | OBJECT · ARRAY → NOTHING | 0xeb0bc0 | 5 | 0 | 0 | 5 |
-| 759 | `setSimpleTaskDestination` | binary | TASK · ARRAY → NOTHING | 0xe09400 | 4 | 1 | 0 | 5 |
-| 760 | `setTriggerType` | binary | OBJECT · STRING → NOTHING | 0x5627f0 | 3 | 2 | 0 | 5 |
-| 761 | `squadParams` | unary | OBJECT → ARRAY | 0x4b2e50 | 5 | 0 | 0 | 5 |
-| 762 | `uniformContainer` | unary | OBJECT → OBJECT | 0x847190 | 5 | 0 | 0 | 5 |
-| 763 | `vectorWorldToModel` | binary | OBJECT · ARRAY → ARRAY | 0x526920 | 5 | 0 | 0 | 5 |
-| 764 | `worldToModelVisual` | binary | OBJECT · ARRAY → ARRAY | 0x542ff0 | 5 | 0 | 0 | 5 |
-| 765 | `actionKeysNames` | unary | STRING\|ARRAY → STRING | 0x4970a0 | 4 | 0 | 0 | 4 |
-| 766 | `addScoreSide` | binary | SIDE · SCALAR → NOTHING | 0x5243b0 | 3 | 1 | 0 | 4 |
-| 767 | `addWeaponTurret` | binary | OBJECT · ARRAY → NOTHING | 0x83c010 | 1 | 3 | 0 | 4 |
-| 768 | `allowCuratorLogicIgnoreAreas` | binary | OBJECT · BOOL → NOTHING | 0x8256c0 | 4 | 0 | 0 | 4 |
-| 769 | `checkVisibility` | binary | ARRAY · ARRAY → SCALAR | 0x4821b0 | 4 | 0 | 0 | 4 |
-| 770 | `commandStop` | unary | OBJECT\|ARRAY → NOTHING | 0x568360 | 2 | 2 | 0 | 4 |
-| 771 | `countType` | binary | STRING · ARRAY → SCALAR | 0x51ce30 | 2 | 2 | 0 | 4 |
-| 772 | `create3DENEntity` | unary | ARRAY → ANY | 0x7f68a0 | 4 | 0 | 0 | 4 |
-| 773 | `createLocation` | unary | ARRAY → LOCATION | 0xd039e0 | 4 | 0 | 0 | 4 |
-| 774 | `createSimpleTask` | binary | OBJECT · ARRAY → TASK | 0xe049f0 | 4 | 0 | 0 | 4 |
-| 775 | `ctData` | binary | CONTROL · SCALAR → STRING | 0x8d98f0 | 4 | 0 | 0 | 4 |
-| 776 | `ctHeaderControls` | binary | CONTROL · SCALAR → ARRAY | 0x8d9c60 | 4 | 0 | 0 | 4 |
-| 777 | `ctrlAngle` | unary | CONTROL → ARRAY | 0x8d7fe0 | 4 | 0 | 0 | 4 |
-| 778 | `ctrlEnable` | unary | ARRAY → NOTHING | 0x8cbb20 | 4 | 0 | 0 | 4 |
-| 779 | `ctrlSetChecked` | binary | CONTROL · ARRAY → NOTHING<br>CONTROL · BOOL → NOTHING | 0x8d2720<br>0x8d2680 | 4 | 0 | 0 | 4 |
-| 780 | `ctrlSetPixelPrecision` | binary | CONTROL · SCALAR → NOTHING<br>CONTROL · STRING → NOTHING | 0x8d4440<br>0x8d4270 | 4 | 0 | 0 | 4 |
-| 781 | `curatorMouseOver` | nular | → OBJECT | 0x827260 | 4 | 0 | 0 | 4 |
-| 782 | `curatorSelected` | nular | → ARRAY | 0x8282e0 | 3 | 1 | 0 | 4 |
-| 783 | `delete3DENEntities` | unary | ARRAY → NOTHING | 0x7f6d40 | 4 | 0 | 0 | 4 |
-| 784 | `directSay` | binary | OBJECT · STRING → NOTHING | 0x19d0b0 | 4 | 0 | 0 | 4 |
-| 785 | `disableUserInput` | unary | BOOL → NOTHING | 0x48ae00 | 2 | 2 | 0 | 4 |
-| 786 | `doSuppressiveFire` | binary | OBJECT\|ARRAY · OBJECT\|ARRAY → NOTHING | 0x569110 | 1 | 3 | 0 | 4 |
-| 787 | `everyContainer` | unary | OBJECT → ARRAY | 0x83f580 | 4 | 0 | 0 | 4 |
-| 788 | `flagOwner` | unary | OBJECT → OBJECT | 0x52bb90 | 0 | 4 | 0 | 4 |
-| 789 | `forceMap` | unary | BOOL → NOTHING | 0x51f840 | 2 | 2 | 0 | 4 |
-| 790 | `getDLCAssetsUsageByName` | unary | STRING → ARRAY | 0x4a0180 | 4 | 0 | 0 | 4 |
-| 791 | `getMissionDLCs` | nular | → ARRAY | 0x89cdd0 | 4 | 0 | 0 | 4 |
-| 792 | `getObjectMaterials` | unary | OBJECT → ARRAY | 0x4ac4d0 | 4 | 0 | 0 | 4 |
-| 793 | `getPilotCameraRotation` | unary | OBJECT → ARRAY | 0x808f70 | 4 | 0 | 0 | 4 |
-| 794 | `getRotorBrakeRTD` | unary | OBJECT → SCALAR | 0x893e20 | 4 | 0 | 0 | 4 |
-| 795 | `globalRadio` | binary | OBJECT · STRING → NOTHING | 0x19d290 | 4 | 0 | 0 | 4 |
-| 796 | `groupRadio` | binary | OBJECT · STRING → NOTHING | 0x19d400 | 3 | 1 | 0 | 4 |
-| 797 | `hcSelectGroup` | binary | OBJECT · ARRAY → NOTHING | 0x1997e0 | 4 | 0 | 0 | 4 |
-| 798 | `hmd` | unary | OBJECT → STRING | 0x8427a0 | 4 | 0 | 0 | 4 |
-| 799 | `infoPanel` | unary | STRING → ARRAY | 0x55b930 | 2 | 2 | 0 | 4 |
-| 800 | `isManualFire` | unary | OBJECT → BOOL | 0x5183e0 | 4 | 0 | 0 | 4 |
-| 801 | `isStreamFriendlyUIEnabled` | nular | → BOOL | 0x8af900 | 4 | 0 | 0 | 4 |
-| 802 | `lbColor` | binary | CONTROL · SCALAR → ARRAY | 0x8ddb90 | 4 | 0 | 0 | 4 |
-| 803 | `lbSetColorRight` | binary | CONTROL · ARRAY → NOTHING | 0x8de630 | 2 | 0 | 2 | 4 |
-| 804 | `lineIntersectsObjs` | unary | ARRAY → ARRAY | 0x51c480 | 4 | 0 | 0 | 4 |
-| 805 | `lnbGetColumnsPosition` | unary | CONTROL → ARRAY<br>SCALAR → ARRAY | 0x8e4a80<br>0x8e1410 | 4 | 0 | 0 | 4 |
-| 806 | `lnbSort` | binary | CONTROL · ARRAY → NOTHING | 0x8e6d80 | 4 | 0 | 0 | 4 |
-| 807 | `nearTargets` | binary | OBJECT · SCALAR → ARRAY | 0x1cb6a0 | 3 | 1 | 0 | 4 |
-| 808 | `onEachFrame` | unary | CODE\|STRING → NOTHING | 0x185410 | 4 | 0 | 0 | 4 |
-| 809 | `posScreenToWorld` | binary | CONTROL · ARRAY → ARRAY | 0x8e9180 | 4 | 0 | 0 | 4 |
-| 810 | `ppEffectCommitted` | unary | SCALAR → BOOL<br>STRING → BOOL | 0xb4bec0<br>0xb4bf20 | 1 | 3 | 0 | 4 |
-| 811 | `removeCuratorAddons` | binary | OBJECT · ARRAY → NOTHING | 0x82a470 | 4 | 0 | 0 | 4 |
-| 812 | `removeCuratorEditingArea` | binary | OBJECT · SCALAR → NOTHING | 0x82ac80 | 2 | 2 | 0 | 4 |
-| 813 | `resetCamShake` | nular | → NOTHING | 0x8b1480 | 4 | 0 | 0 | 4 |
-| 814 | `ropeAttachedObjects` | unary | OBJECT → ARRAY | 0x1a6be0 | 1 | 3 | 0 | 4 |
-| 815 | `set3DENGrid` | unary | ARRAY → NOTHING | 0x802210 | 4 | 0 | 0 | 4 |
-| 816 | `setAutonomous` | binary | OBJECT · BOOL → BOOL | 0x54e370 | 2 | 2 | 0 | 4 |
-| 817 | `setDestination` | binary | OBJECT · ARRAY → NOTHING | 0x56fd70 | 0 | 4 | 0 | 4 |
-| 818 | `setDynamicSimulationDistance` | binary | STRING · SCALAR → NOTHING | 0x17eb30 | 4 | 0 | 0 | 4 |
-| 819 | `setFlagAnimationPhase` | binary | OBJECT · SCALAR → NOTHING | 0x53bde0 | 0 | 4 | 0 | 4 |
-| 820 | `setGroupIconsSelectable` | unary | BOOL → NOTHING | 0x194750 | 4 | 0 | 0 | 4 |
-| 821 | `setRandomLip` | binary | OBJECT · BOOL → NOTHING | 0x53e7d0 | 4 | 0 | 0 | 4 |
-| 822 | `setSimpleTaskCustomData` | binary | TASK · ARRAY → NOTHING | 0xe08c90 | 4 | 0 | 0 | 4 |
-| 823 | `setSimpleTaskTarget` | binary | TASK · ARRAY → NOTHING | 0xe09550 | 4 | 0 | 0 | 4 |
-| 824 | `setSimpleTaskType` | binary | TASK · STRING → NOTHING | 0xe09740 | 4 | 0 | 0 | 4 |
-| 825 | `setTriggerText` | binary | OBJECT · STRING → NOTHING | 0x562580 | 3 | 1 | 0 | 4 |
-| 826 | `setUserActionText` | binary | OBJECT · ARRAY → NOTHING | 0x571b10 | 4 | 0 | 0 | 4 |
-| 827 | `setVehicleAmmoDef` | binary | OBJECT · SCALAR → NOTHING | 0x56f9e0 | 2 | 1 | 1 | 4 |
-| 828 | `setVehicleTIPars` | binary | OBJECT · ARRAY → NOTHING | 0x558fe0 | 3 | 1 | 0 | 4 |
-| 829 | `setVelocityTransformation` | binary | OBJECT · ARRAY → NOTHING | 0x540db0 | 4 | 0 | 0 | 4 |
-| 830 | `showCompass` | unary | BOOL → NOTHING | 0x559ff0 | 4 | 0 | 0 | 4 |
-| 831 | `showGps` | unary | BOOL → NOTHING | 0x55a310 | 4 | 0 | 0 | 4 |
-| 832 | `showMap` | unary | BOOL → NOTHING | 0x55ada0 | 3 | 1 | 0 | 4 |
-| 833 | `switchCamera` | unary | OBJECT → NOTHING | 0x541d00 | 4 | 0 | 0 | 4 |
-| 834 | `taskType` | unary | TASK → STRING | 0xe0abe0 | 4 | 0 | 0 | 4 |
-| 835 | `timeMultiplier` | nular | → SCALAR | 0x89c2a0 | 4 | 0 | 0 | 4 |
-| 836 | `triggerTimeoutCurrent` | unary | OBJECT → SCALAR | 0x561d30 | 1 | 3 | 0 | 4 |
-| 837 | `tvSetText` | binary | CONTROL · ARRAY → NOTHING | 0x8f3370 | 4 | 0 | 0 | 4 |
-| 838 | `tvSortByValue` | binary | CONTROL · ARRAY → NOTHING | 0x8f3c80 | 4 | 0 | 0 | 4 |
-| 839 | `tvText` | binary | CONTROL · ARRAY → STRING | 0x8f40b0 | 4 | 0 | 0 | 4 |
-| 840 | `unitAimPositionVisual` | unary | OBJECT → ARRAY | 0x5246c0 | 4 | 0 | 0 | 4 |
-| 841 | `vectorWorldToModelVisual` | binary | OBJECT · ARRAY → ARRAY | 0x526940 | 4 | 0 | 0 | 4 |
-| 842 | `wind` | nular | → ARRAY | 0x8ab530 | 4 | 0 | 0 | 4 |
-| 843 | `windStr` | nular | → SCALAR | 0x8ab760 | 4 | 0 | 0 | 4 |
-| 844 | `activatedAddons` | nular | → ARRAY | 0x8a57b0 | 2 | 1 | 0 | 3 |
-| 845 | `addForce` | binary | OBJECT · ARRAY → NOTHING | 0x1a5130 | 3 | 0 | 0 | 3 |
-| 846 | `addScore` | binary | OBJECT · SCALAR → NOTHING | 0x524280 | 3 | 0 | 0 | 3 |
-| 847 | `agents` | nular | → ARRAY | 0x897560 | 3 | 0 | 0 | 3 |
-| 848 | `animationNames` | unary | OBJECT → ARRAY | 0x4abab0 | 3 | 0 | 0 | 3 |
-| 849 | `assignedDriver` | unary | OBJECT → OBJECT | 0x52b860 | 1 | 2 | 0 | 3 |
-| 850 | `boundingBoxReal` | binary | SCALAR · OBJECT → ARRAY | 0x49da70 | 3 | 0 | 0 | 3 |
-| 851 | `canAdd` | binary | OBJECT · STRING\|ARRAY → BOOL<br>STRING · STRING\|ARRAY → BOOL | 0x83d4d0<br>0x832240 | 3 | 0 | 0 | 3 |
-| 852 | `clearAllItemsFromBackpack` | unary | OBJECT → NOTHING | 0x83d620 | 3 | 0 | 0 | 3 |
-| 853 | `collect3DENHistory` | unary | CODE → NOTHING | 0x7f4fd0 | 3 | 0 | 0 | 3 |
-| 854 | `configHierarchy` | unary | ARRAY → ARRAY | 0x80ea00 | 3 | 0 | 0 | 3 |
-| 855 | `connectTerminalToUAV` | binary | OBJECT · OBJECT → BOOL | 0x4830f0 | 2 | 1 | 0 | 3 |
-| 856 | `createMPCampaignDisplay` | binary | DISPLAY · STRING → NOTHING | 0x8cb000 | 2 | 0 | 1 | 3 |
-| 857 | `ctrlModelScale` | unary | CONTROL → SCALAR | 0x8ce440 | 3 | 0 | 0 | 3 |
-| 858 | `ctrlSetShadow` | binary | CONTROL · SCALAR → NOTHING | 0x8d5030 | 3 | 0 | 0 | 3 |
-| 859 | `ctrlSetURLOverlayMode` | binary | CONTROL · SCALAR → NOTHING | 0x8d5df0 | 3 | 0 | 0 | 3 |
-| 860 | `ctSetCurSel` | binary | CONTROL · SCALAR → NOTHING | 0x8da520 | 3 | 0 | 0 | 3 |
-| 861 | `ctSetData` | binary | CONTROL · ARRAY → NOTHING | 0x8da600 | 3 | 0 | 0 | 3 |
-| 862 | `curatorRegisteredObjects` | unary | OBJECT → ARRAY | 0x827830 | 3 | 0 | 0 | 3 |
-| 863 | `currentMagazine` | unary | OBJECT → STRING | 0x84c990 | 1 | 2 | 0 | 3 |
-| 864 | `disableTIEquipment` | binary | OBJECT · BOOL → NOTHING | 0x48ace0 | 3 | 0 | 0 | 3 |
-| 865 | `drawLaser` | unary | ARRAY → NOTHING | 0x572e50 | 3 | 0 | 0 | 3 |
-| 866 | `enableUAVConnectability` | binary | OBJECT · ARRAY → NOTHING | 0x48d4d0 | 3 | 0 | 0 | 3 |
-| 867 | `enableUAVWaypoints` | binary | OBJECT · BOOL → NOTHING | 0x48d4f0 | 3 | 0 | 0 | 3 |
-| 868 | `enableVehicleCargo` | binary | OBJECT · BOOL → NOTHING | 0x48d610 | 1 | 0 | 2 | 3 |
-| 869 | `everyBackpack` | unary | OBJECT → ARRAY | 0x83f410 | 2 | 1 | 0 | 3 |
-| 870 | `failMission` | unary | STRING → NOTHING | 0x48fcf0 | 3 | 0 | 0 | 3 |
-| 871 | `focusOn` | nular | → OBJECT | 0x8a7030 | 3 | 0 | 0 | 3 |
-| 872 | `forceFollowRoad` | binary | OBJECT · BOOL → NOTHING | 0x569e00 | 0 | 3 | 0 | 3 |
-| 873 | `get3DENLayerEntities` | unary | SCALAR → ARRAY | 0x7fa720 | 3 | 0 | 0 | 3 |
-| 874 | `getBleedingRemaining` | unary | OBJECT → SCALAR | 0x5295d0 | 3 | 0 | 0 | 3 |
-| 875 | `getDLCAssetsUsage` | nular | → ARRAY | 0x89c170 | 3 | 0 | 0 | 3 |
-| 876 | `getEntityInfo` | binary | OBJECT · SCALAR → ANY | 0x4a1310 | 0 | 0 | 3 | 3 |
-| 877 | `getMass` | unary | OBJECT → SCALAR | 0x1a5830 | 1 | 2 | 0 | 3 |
-| 878 | `getMusicPlayedTime` | nular | → SCALAR | 0x89d270 | 3 | 0 | 0 | 3 |
-| 879 | `getPilotCameraTarget` | unary | OBJECT → ARRAY | 0x808a80 | 3 | 0 | 0 | 3 |
-| 880 | `getUserMFDValue` | unary | OBJECT → ARRAY | 0x4b7980 | 3 | 0 | 0 | 3 |
-| 881 | `groupSelectedUnits` | unary | OBJECT → ARRAY | 0x190180 | 3 | 0 | 0 | 3 |
-| 882 | `isAutoHoverOn` | unary | OBJECT → BOOL | 0x515ab0 | 2 | 1 | 0 | 3 |
-| 883 | `isDLCAvailable` | unary | SCALAR → BOOL | 0x1c28c0 | 3 | 0 | 0 | 3 |
-| 884 | `isHidden` | unary | OBJECT → BOOL | 0x535980 | 0 | 3 | 0 | 3 |
-| 885 | `isUAVConnectable` | binary | OBJECT · ARRAY → BOOL | 0x518980 | 1 | 2 | 0 | 3 |
-| 886 | `isVehicleCargo` | unary | OBJECT → OBJECT | 0x518ae0 | 3 | 0 | 0 | 3 |
-| 887 | `lbSetPictureColorSelected` | binary | CONTROL · ARRAY → NOTHING | 0x8dec40 | 2 | 0 | 1 | 3 |
-| 888 | `lbTextRight` | binary | CONTROL · SCALAR → STRING | 0x8de1e0 | 3 | 0 | 0 | 3 |
-| 889 | `leaderboardRequestRowsFriends` | unary | STRING → BOOL | 0x1c33b0 | 1 | 2 | 0 | 3 |
-| 890 | `leaderboardRequestRowsGlobal` | unary | ARRAY → BOOL | 0x1c34d0 | 1 | 2 | 0 | 3 |
-| 891 | `leaderboardRequestRowsGlobalAroundUser` | unary | ARRAY → BOOL | 0x1c34f0 | 1 | 2 | 0 | 3 |
-| 892 | `lnbSetTooltip` | binary | CONTROL · ARRAY → NOTHING | 0x8e5b80 | 3 | 0 | 0 | 3 |
-| 893 | `lockedDriver` | unary | OBJECT → BOOL | 0x56cc40 | 3 | 0 | 0 | 3 |
-| 894 | `magazinesTurret` | binary | OBJECT · ARRAY → ARRAY | 0x842f50 | 3 | 0 | 0 | 3 |
-| 895 | `move3DENCamera` | unary | ARRAY → NOTHING | 0x7ffa00 | 3 | 0 | 0 | 3 |
-| 896 | `openCuratorInterface` | nular | → NOTHING | 0x829da0 | 3 | 0 | 0 | 3 |
-| 897 | `primaryWeaponMagazine` | unary | OBJECT → ARRAY | 0x84d700 | 0 | 3 | 0 | 3 |
-| 898 | `publicVariableClient` | binary | SCALAR · STRING → NOTHING | 0x5473f0 | 3 | 0 | 0 | 3 |
-| 899 | `radioChannelSetCallSign` | binary | SCALAR · STRING\|ARRAY → NOTHING | 0x19e200 | 3 | 0 | 0 | 3 |
-| 900 | `rankId` | unary | OBJECT → SCALAR | 0x565f80 | 3 | 0 | 0 | 3 |
-| 901 | `remoteExecutedJIPID` | nular | → STRING | 0x8a33d0 | 3 | 0 | 0 | 3 |
-| 902 | `removeWeaponGlobal` | binary | OBJECT · STRING\|ARRAY → NOTHING | 0x846900 | 2 | 1 | 0 | 3 |
-| 903 | `screenshot` | unary | STRING → BOOL | 0x549dd0 | 3 | 0 | 0 | 3 |
-| 904 | `setGusts` | binary | SCALAR · SCALAR → NOTHING | 0x551f80 | 2 | 1 | 0 | 3 |
-| 905 | `setMissileTargetPos` | binary | OBJECT · ARRAY → NOTHING | 0x552c60 | 1 | 2 | 0 | 3 |
-| 906 | `setStamina` | binary | OBJECT · SCALAR → NOTHING | 0x897050 | 3 | 0 | 0 | 3 |
-| 907 | `setSuppression` | binary | OBJECT · SCALAR → NOTHING | 0x53f810 | 0 | 3 | 0 | 3 |
-| 908 | `someAmmo` | unary | OBJECT → BOOL | 0x5417c0 | 1 | 2 | 0 | 3 |
-| 909 | `surfaceNormal` | unary | ARRAY → ARRAY | 0x55e6f0 | 1 | 1 | 1 | 3 |
-| 910 | `targetKnowledge` | binary | OBJECT · OBJECT → ARRAY | 0x1c76f0 | 3 | 0 | 0 | 3 |
-| 911 | `triggerType` | unary | OBJECT → STRING | 0x561da0 | 3 | 0 | 0 | 3 |
-| 912 | `tvClear` | unary | CONTROL → NOTHING<br>SCALAR → NOTHING | 0x8f1890<br>0x8ec700 | 3 | 0 | 0 | 3 |
-| 913 | `tvCollapse` | binary | CONTROL · ARRAY → NOTHING | 0x8f1960 | 3 | 0 | 0 | 3 |
-| 914 | `tvSetPictureRight` | binary | CONTROL · ARRAY → NOTHING | 0x8f2d30 | 3 | 0 | 0 | 3 |
-| 915 | `tvValue` | binary | CONTROL · ARRAY → SCALAR | 0x8f41b0 | 3 | 0 | 0 | 3 |
-| 916 | `unassignCurator` | unary | OBJECT → NOTHING | 0x82c060 | 3 | 0 | 0 | 3 |
-| 917 | `visibleCompass` | nular | → BOOL | 0x8af080 | 0 | 3 | 0 | 3 |
-| 918 | `weaponLowered` | unary | OBJECT → BOOL | 0x536270 | 1 | 2 | 0 | 3 |
-| 919 | `addCuratorCameraArea` | binary | OBJECT · ARRAY → NOTHING | 0x823ee0 | 2 | 0 | 0 | 2 |
-| 920 | `aimPos` | unary | OBJECT → ARRAY | 0x52f8b0 | 2 | 0 | 0 | 2 |
-| 921 | `allCutLayers` | nular | → ARRAY | 0x8a71a0 | 2 | 0 | 0 | 2 |
-| 922 | `allowSprint` | binary | OBJECT · BOOL → NOTHING | 0x524d20 | 2 | 0 | 0 | 2 |
-| 923 | `assignCurator` | binary | OBJECT · OBJECT → NOTHING | 0x8257f0 | 2 | 0 | 0 | 2 |
-| 924 | `assignedGunner` | unary | OBJECT → OBJECT | 0x52bff0 | 1 | 1 | 0 | 2 |
-| 925 | `canAddItemToBackpack` | binary | OBJECT · STRING\|ARRAY → BOOL | 0x83d4f0 | 1 | 1 | 0 | 2 |
-| 926 | `cancelSimpleTaskDestination` | unary | TASK → NOTHING | 0xe089a0 | 2 | 0 | 0 | 2 |
-| 927 | `canVehicleCargo` | binary | OBJECT · OBJECT → ARRAY | 0x481680 | 2 | 0 | 0 | 2 |
-| 928 | `commandChat` | binary | OBJECT\|ARRAY · STRING → NOTHING | 0x19c8a0 | 2 | 0 | 0 | 2 |
-| 929 | `commandFollow` | binary | OBJECT\|ARRAY · OBJECT → NOTHING | 0x568300 | 0 | 2 | 0 | 2 |
-| 930 | `commandWatch` | binary | OBJECT\|ARRAY · ARRAY → NOTHING<br>OBJECT\|ARRAY · OBJECT → NOTHING | 0x5683c0<br>0x5683c0 | 0 | 2 | 0 | 2 |
-| 931 | `configClasses` | unary | ARRAY → ARRAY | 0x811360 | 2 | 0 | 0 | 2 |
-| 932 | `ctAddRow` | unary | CONTROL → ARRAY | 0x8d94e0 | 2 | 0 | 0 | 2 |
-| 933 | `ctClear` | unary | CONTROL → NOTHING | 0x8d97f0 | 2 | 0 | 0 | 2 |
-| 934 | `ctCurSel` | unary | CONTROL → SCALAR | 0x8d9870 | 2 | 0 | 0 | 2 |
-| 935 | `ctrlSetTooltipColorShade` | binary | CONTROL · ARRAY → NOTHING | 0x8d5750 | 2 | 0 | 0 | 2 |
-| 936 | `ctrlSetTooltipColorText` | binary | CONTROL · ARRAY → NOTHING | 0x8d57d0 | 2 | 0 | 0 | 2 |
-| 937 | `ctRowControls` | binary | CONTROL · SCALAR → ARRAY | 0x8da250 | 2 | 0 | 0 | 2 |
-| 938 | `ctRowCount` | unary | CONTROL → SCALAR | 0x8da4a0 | 2 | 0 | 0 | 2 |
-| 939 | `currentMuzzle` | unary | OBJECT → STRING | 0x487090 | 0 | 2 | 0 | 2 |
-| 940 | `customRadio` | binary | OBJECT · ARRAY → NOTHING | 0x19d090 | 2 | 0 | 0 | 2 |
-| 941 | `cutRsc` | unary | ARRAY → NOTHING | 0x488b30 | 1 | 1 | 0 | 2 |
-| 942 | `decayGraphValues` | unary | ARRAY → ARRAY | 0x4806a0 | 2 | 0 | 0 | 2 |
-| 943 | `deleteGroupWhenEmpty` | binary | GROUP · BOOL → NOTHING | 0x18e370 | 2 | 0 | 0 | 2 |
-| 944 | `disableConversation` | binary | OBJECT · BOOL → NOTHING | 0x565a00 | 2 | 0 | 0 | 2 |
-| 945 | `disableDebriefingStats` | nular | → NOTHING | 0x89a550 | 2 | 0 | 0 | 2 |
-| 946 | `disableNVGEquipment` | binary | OBJECT · BOOL → NOTHING | 0x48ab90 | 2 | 0 | 0 | 2 |
-| 947 | `drawPolygon` | binary | CONTROL · ARRAY → NOTHING | 0x8e8000 | 2 | 0 | 0 | 2 |
-| 948 | `elevatePeriscope` | binary | OBJECT · ARRAY → NOTHING | 0x5697b0 | 0 | 2 | 0 | 2 |
-| 949 | `enableAutoStartUpRTD` | binary | OBJECT · BOOL → NOTHING | 0x892250 | 2 | 0 | 0 | 2 |
-| 950 | `enableCollisionWith` | binary | OBJECT · OBJECT → NOTHING | 0x569b10 | 1 | 1 | 0 | 2 |
-| 951 | `enableDebriefingStats` | unary | ARRAY → NOTHING | 0x48cd10 | 2 | 0 | 0 | 2 |
-| 952 | `enableDynamicSimulationSystem` | unary | BOOL → NOTHING | 0x17e830 | 2 | 0 | 0 | 2 |
-| 953 | `eyeDirection` | unary | OBJECT → ARRAY | 0x52b0d0 | 2 | 0 | 0 | 2 |
-| 954 | `finishMissionInit` | nular | → NOTHING | 0x8b0480 | 2 | 0 | 0 | 2 |
-| 955 | `formationLeader` | unary | OBJECT → OBJECT | 0x56aba0 | 2 | 0 | 0 | 2 |
-| 956 | `freeLook` | nular | → BOOL | 0x8a93f0 | 2 | 0 | 0 | 2 |
-| 957 | `get3DENIconsVisible` | nular | → ARRAY | 0x7fa1d0 | 2 | 0 | 0 | 2 |
-| 958 | `get3DENMouseOver` | nular | → ARRAY | 0x7fc680 | 2 | 0 | 0 | 2 |
-| 959 | `getCenterOfMass` | unary | OBJECT → ARRAY | 0x1a5620 | 2 | 0 | 0 | 2 |
-| 960 | `getDebriefingText` | unary | STRING → ARRAY | 0x49fca0 | 2 | 0 | 0 | 2 |
-| 961 | `getGraphValues` | unary | ARRAY → ARRAY | 0x47f6a0 | 2 | 0 | 0 | 2 |
-| 962 | `getPylonMagazines` | unary | OBJECT → ARRAY | 0x4afad0 | 2 | 0 | 0 | 2 |
-| 963 | `getSubtitleOptions` | nular | → ARRAY | 0x89eb60 | 2 | 0 | 0 | 2 |
-| 964 | `getTextWidth` | binary | STRING · ARRAY → SCALAR | 0x4b4990 | 2 | 0 | 0 | 2 |
-| 965 | `getTotalDLCUsageTime` | nular | → SCALAR | 0x89f190 | 2 | 0 | 0 | 2 |
-| 966 | `hcRemoveGroup` | binary | OBJECT · GROUP → NOTHING | 0x1996e0 | 2 | 0 | 0 | 2 |
-| 967 | `hcSetGroup` | binary | OBJECT · ARRAY → NOTHING | 0x198810 | 2 | 0 | 0 | 2 |
-| 968 | `hideActions` | unary | ARRAY → NOTHING | 0x4ba680 | 2 | 0 | 0 | 2 |
-| 969 | `initAmbientLife` | nular | → NOTHING | 0x8a59a0 | 2 | 0 | 0 | 2 |
-| 970 | `isAbleToBreathe` | unary | OBJECT → BOOL | 0x5357f0 | 2 | 0 | 0 | 2 |
-| 971 | `isAutotest` | nular | → BOOL | 0x8a2bc0 | 2 | 0 | 0 | 2 |
-| 972 | `isBurning` | unary | OBJECT → BOOL | 0x5358b0 | 1 | 1 | 0 | 2 |
-| 973 | `isTutHintsEnabled` | nular | → BOOL | 0x8af970 | 2 | 0 | 0 | 2 |
-| 974 | `isWeaponDeployed` | unary | ARRAY → BOOL<br>OBJECT → BOOL | 0x896d30<br>0x896cc0 | 0 | 2 | 0 | 2 |
-| 975 | `isWeaponRested` | unary | OBJECT → BOOL | 0x896e40 | 0 | 2 | 0 | 2 |
-| 976 | `itemsWithMagazines` | unary | OBJECT → ARRAY | 0x83cbd0 | 0 | 2 | 0 | 2 |
-| 977 | `joinAs` | binary | OBJECT · ARRAY → NOTHING | 0x197c40 | 0 | 2 | 0 | 2 |
-| 978 | `lbSetSelectColor` | binary | CONTROL · ARRAY → NOTHING | 0x8dee70 | 2 | 0 | 0 | 2 |
-| 979 | `leaderboardsRequestUploadScoreKeepBest` | unary | ARRAY → BOOL | 0x1c3530 | 0 | 2 | 0 | 2 |
-| 980 | `lnbDeleteRow` | binary | CONTROL · SCALAR → NOTHING | 0x8e4850 | 2 | 0 | 0 | 2 |
-| 981 | `lnbSetColumnsPos` | binary | CONTROL · ARRAY → NOTHING | 0x8e5600 | 2 | 0 | 0 | 2 |
-| 982 | `lnbSetPictureColor` | binary | CONTROL · ARRAY → NOTHING | 0x8e66e0 | 2 | 0 | 0 | 2 |
-| 983 | `lnbSetPictureColorSelected` | binary | CONTROL · ARRAY → NOTHING | 0x8e6740 | 2 | 0 | 0 | 2 |
-| 984 | `loadBackpack` | unary | OBJECT → SCALAR | 0x840ed0 | 2 | 0 | 0 | 2 |
-| 985 | `loadGame` | nular | → NOTHING | 0x8b01f0 | 2 | 0 | 0 | 2 |
-| 986 | `loadUniform` | unary | OBJECT → SCALAR | 0x840f60 | 2 | 0 | 0 | 2 |
-| 987 | `loadVest` | unary | OBJECT → SCALAR | 0x840ff0 | 2 | 0 | 0 | 2 |
-| 988 | `missionEnd` | nular | → ARRAY | 0x89cf40 | 2 | 0 | 0 | 2 |
-| 989 | `missionNameSource` | nular | → STRING | 0x8a30b0 | 0 | 2 | 0 | 2 |
-| 990 | `moonPhase` | unary | ARRAY → SCALAR | 0x4a6d70 | 1 | 0 | 1 | 2 |
-| 991 | `onPreloadFinished` | unary | CODE\|STRING → NOTHING | 0x183ed0 | 2 | 0 | 0 | 2 |
-| 992 | `onTeamSwitch` | unary | CODE\|STRING → NOTHING | 0x183f90 | 2 | 0 | 0 | 2 |
-| 993 | `openDLCPage` | unary | SCALAR → BOOL | 0x1c3e30 | 2 | 0 | 0 | 2 |
-| 994 | `openYoutubeVideo` | unary | STRING → BOOL | 0x1c4090 | 2 | 0 | 0 | 2 |
-| 995 | `playMission` | unary | ARRAY → NOTHING | 0x520660 | 1 | 0 | 1 | 2 |
-| 996 | `posWorldToScreen` | binary | CONTROL · ARRAY → ARRAY | 0x8e94b0 | 2 | 0 | 0 | 2 |
-| 997 | `preloadTitleRsc` | unary | ARRAY → BOOL | 0x4946d0 | 2 | 0 | 0 | 2 |
-| 998 | `radioChannelRemove` | binary | SCALAR · ARRAY → NOTHING | 0x19e1c0 | 2 | 0 | 0 | 2 |
-| 999 | `removeBackpackGlobal` | unary | OBJECT → NOTHING | 0x84b7d0 | 2 | 0 | 0 | 2 |
-| 1000 | `removeItemFromBackpack` | binary | OBJECT · STRING → NOTHING | 0x844a00 | 2 | 0 | 0 | 2 |
-| 1001 | `removeItemFromUniform` | binary | OBJECT · STRING → NOTHING | 0x844a20 | 2 | 0 | 0 | 2 |
-| 1002 | `removeItemFromVest` | binary | OBJECT · STRING → NOTHING | 0x844a40 | 2 | 0 | 0 | 2 |
-| 1003 | `ropeAttachedTo` | unary | OBJECT → OBJECT | 0x1a6ec0 | 2 | 0 | 0 | 2 |
-| 1004 | `rotorsRpmRTD` | unary | OBJECT → ARRAY | 0x894280 | 2 | 0 | 0 | 2 |
-| 1005 | `runInitScript` | nular | → NOTHING | 0x8b0c20 | 2 | 0 | 0 | 2 |
-| 1006 | `selectionNames` | unary | OBJECT → ARRAY | 0x4ab6c0 | 2 | 0 | 0 | 2 |
-| 1007 | `setAmmoCargo` | binary | OBJECT · SCALAR → NOTHING | 0x53add0 | 2 | 0 | 0 | 2 |
-| 1008 | `setCuratorEditingAreaType` | binary | OBJECT · BOOL → NOTHING | 0x82b440 | 2 | 0 | 0 | 2 |
-| 1009 | `setEffectCondition` | binary | OBJECT\|ARRAY · STRING → NOTHING | 0x48c0d0 | 2 | 0 | 0 | 2 |
-| 1010 | `setMissileTarget` | binary | OBJECT · OBJECT\|ARRAY → BOOL | 0x552b20 | 1 | 1 | 0 | 2 |
-| 1011 | `setMusicEffect` | binary | OBJECT\|ARRAY · STRING → NOTHING | 0x48c170 | 2 | 0 | 0 | 2 |
-| 1012 | `setRadioMsg` | binary | SCALAR · STRING → NOTHING | 0x556280 | 0 | 2 | 0 | 2 |
-| 1013 | `setRain` | unary | ARRAY → NOTHING<br>CONFIG → NOTHING | 0x5565b0<br>0x556730 | 2 | 0 | 0 | 2 |
-| 1014 | `setRepairCargo` | binary | OBJECT · SCALAR → NOTHING | 0x53e8c0 | 2 | 0 | 0 | 2 |
-| 1015 | `setRotorBrakeRTD` | binary | OBJECT · SCALAR → NOTHING | 0x8961e0 | 2 | 0 | 0 | 2 |
-| 1016 | `setShadowDistance` | unary | SCALAR → NOTHING | 0x552a80 | 2 | 0 | 0 | 2 |
-| 1017 | `setSimpleTaskAlwaysVisible` | binary | TASK · BOOL → NOTHING | 0xe08bf0 | 2 | 0 | 0 | 2 |
-| 1018 | `setText` | binary | LOCATION · STRING → NOTHING | 0xd06b60 | 2 | 0 | 0 | 2 |
-| 1019 | `setTitleEffect` | binary | OBJECT\|ARRAY · ARRAY → NOTHING | 0x48c3b0 | 2 | 0 | 0 | 2 |
-| 1020 | `setWindForce` | binary | SCALAR · SCALAR → NOTHING | 0x559e80 | 0 | 2 | 0 | 2 |
-| 1021 | `showCuratorCompass` | unary | BOOL → NOTHING | 0x82bcf0 | 2 | 0 | 0 | 2 |
-| 1022 | `shownChat` | nular | → BOOL | 0x8aefe0 | 2 | 0 | 0 | 2 |
-| 1023 | `shownCuratorCompass` | nular | → BOOL | 0x829c80 | 2 | 0 | 0 | 2 |
-| 1024 | `shownMap` | nular | → BOOL | 0x8af570 | 2 | 0 | 0 | 2 |
-| 1025 | `showPad` | unary | BOOL → NOTHING | 0x55aeb0 | 2 | 0 | 0 | 2 |
-| 1026 | `showRadio` | unary | BOOL → NOTHING | 0x55b680 | 2 | 0 | 0 | 2 |
-| 1027 | `simulWeatherSync` | nular | → NOTHING | 0x1bfeb0 | 1 | 1 | 0 | 2 |
-| 1028 | `sliderSpeed` | unary | CONTROL → ARRAY<br>SCALAR → ARRAY | 0x8eb9e0<br>0x8eb110 | 0 | 0 | 2 | 2 |
-| 1029 | `slingLoadAssistantShown` | nular | → BOOL | 0x1a9930 | 0 | 2 | 0 | 2 |
-| 1030 | `speechVolume` | nular | → SCALAR | 0x8aaf80 | 2 | 0 | 0 | 2 |
-| 1031 | `targetsQuery` | binary | OBJECT · ARRAY → ARRAY | 0x159c190 | 2 | 0 | 0 | 2 |
-| 1032 | `turretLocal` | binary | OBJECT · ARRAY → BOOL | 0x535dc0 | 2 | 0 | 0 | 2 |
-| 1033 | `unassignTeam` | unary | OBJECT → NOTHING | 0x55f8a0 | 2 | 0 | 0 | 2 |
-| 1034 | `unitTurret` | binary | OBJECT · OBJECT → ARRAY | 0x56c420 | 2 | 0 | 0 | 2 |
-| 1035 | `useAudioTimeForMoves` | binary | OBJECT · BOOL → NOTHING | 0x542470 | 2 | 0 | 0 | 2 |
-| 1036 | `vectorModelToWorldVisual` | binary | OBJECT · ARRAY → ARRAY | 0x526900 | 2 | 0 | 0 | 2 |
-| 1037 | `vestContainer` | unary | OBJECT → OBJECT | 0x847530 | 2 | 0 | 0 | 2 |
-| 1038 | `visibleScoretable` | nular | → BOOL | 0x8af850 | 2 | 0 | 0 | 2 |
-| 1039 | `actionIDs` | unary | OBJECT → ARRAY | 0x572070 | 1 | 0 | 0 | 1 |
-| 1040 | `addItemPool` | unary | ARRAY → NOTHING | 0x8b89d0 | 1 | 0 | 0 | 1 |
-| 1041 | `addMagazinePool` | unary | ARRAY → NOTHING | 0x8b8b20 | 1 | 0 | 0 | 1 |
-| 1042 | `addOwnedMine` | binary | OBJECT · OBJECT → NOTHING | 0x523ed0 | 1 | 0 | 0 | 1 |
-| 1043 | `addWeaponItem` | binary | OBJECT · ARRAY → NOTHING | 0x839700 | 1 | 0 | 0 | 1 |
-| 1044 | `addWeaponPool` | unary | ARRAY → NOTHING | 0x8b8c70 | 1 | 0 | 0 | 1 |
-| 1045 | `admin` | unary | SCALAR → SCALAR | 0x8b3950 | 1 | 0 | 0 | 1 |
-| 1046 | `allSites` | nular | → ARRAY | 0x8a8250 | 1 | 0 | 0 | 1 |
-| 1047 | `assignedCommander` | unary | OBJECT → OBJECT | 0x52ac80 | 1 | 0 | 0 | 1 |
-| 1048 | `assignedTeam` | unary | OBJECT → STRING | 0x47ee80 | 1 | 0 | 0 | 1 |
-| 1049 | `boundingBox` | binary | SCALAR · OBJECT → ARRAY | 0x49d740 | 1 | 0 | 0 | 1 |
-| 1050 | `buildingExit` | binary | OBJECT · SCALAR → ARRAY | 0x52a1b0 | 0 | 1 | 0 | 1 |
-| 1051 | `cadetMode` | nular | → BOOL | 0x8a5bc0 | 1 | 0 | 0 | 1 |
-| 1052 | `calculatePlayerVisibilityByFriendly` | unary | BOOL → NOTHING | 0x481630 | 1 | 0 | 0 | 1 |
-| 1053 | `camSetFocus` | binary | OBJECT · ARRAY → NOTHING | 0x8075a0 | 1 | 0 | 0 | 1 |
-| 1054 | `canSlingLoad` | binary | OBJECT · OBJECT → BOOL<br>STRING · STRING → BOOL | 0x1a1ae0<br>0x1a1c60 | 1 | 0 | 0 | 1 |
-| 1055 | `canUnloadInCombat` | unary | OBJECT → BOOL | 0x526000 | 0 | 1 | 0 | 1 |
-| 1056 | `clear3DENInventory` | unary | ARRAY → NOTHING | 0x7f4c50 | 1 | 0 | 0 | 1 |
-| 1057 | `clearGroupIcons` | unary | GROUP → NOTHING | 0x18def0 | 1 | 0 | 0 | 1 |
-| 1058 | `clearItemPool` | nular | → NOTHING | 0x8b8dc0 | 1 | 0 | 0 | 1 |
-| 1059 | `clearMagazinePool` | nular | → NOTHING | 0x8b8e40 | 1 | 0 | 0 | 1 |
-| 1060 | `clearWeaponPool` | nular | → NOTHING | 0x8b8ec0 | 1 | 0 | 0 | 1 |
-| 1061 | `commandFire` | binary | OBJECT\|ARRAY · OBJECT → NOTHING | 0x5682e0 | 0 | 1 | 0 | 1 |
-| 1062 | `commandRadio` | binary | OBJECT\|ARRAY · STRING → NOTHING | 0x19cbc0 | 1 | 0 | 0 | 1 |
-| 1063 | `createGuardedPoint` | unary | ARRAY → NOTHING | 0x4b91d0 | 1 | 0 | 0 | 1 |
-| 1064 | `createMissionDisplay` | binary | DISPLAY · ARRAY → DISPLAY<br>DISPLAY · STRING → DISPLAY | 0x8d6c30<br>0x8d6c30 | 1 | 0 | 0 | 1 |
-| 1065 | `createTask` | binary | TEAM_MEMBER · ARRAY → TASK | 0xe0c040 | 1 | 0 | 0 | 1 |
-| 1066 | `ctAddHeader` | unary | CONTROL → ARRAY | 0x8d91d0 | 1 | 0 | 0 | 1 |
-| 1067 | `ctrlFontHeight` | unary | CONTROL → SCALAR | 0x8d0630 | 1 | 0 | 0 | 1 |
-| 1068 | `ctrlForegroundColor` | unary | CONTROL → ARRAY | 0x8d0af0 | 1 | 0 | 0 | 1 |
-| 1069 | `ctrlHTMLLoaded` | unary | CONTROL → BOOL | 0x8d7f90 | 1 | 0 | 0 | 1 |
-| 1070 | `ctrlSetModel` | binary | CONTROL · STRING → NOTHING | 0x8cbdb0 | 1 | 0 | 0 | 1 |
-| 1071 | `ctrlSetTooltipMaxWidth` | binary | CONTROL · SCALAR → SCALAR | 0x8d5850 | 1 | 0 | 0 | 1 |
-| 1072 | `ctrlTextColor` | unary | CONTROL → ARRAY | 0x8d1670 | 1 | 0 | 0 | 1 |
-| 1073 | `ctSetValue` | binary | CONTROL · ARRAY → NOTHING | 0x8daa20 | 1 | 0 | 0 | 1 |
-| 1074 | `ctValue` | binary | CONTROL · SCALAR → SCALAR | 0x8dab50 | 1 | 0 | 0 | 1 |
-| 1075 | `curatorCameraArea` | unary | OBJECT → ARRAY | 0x826020 | 1 | 0 | 0 | 1 |
-| 1076 | `currentCommand` | unary | OBJECT → STRING | 0x56a660 | 1 | 0 | 0 | 1 |
-| 1077 | `currentWeaponTurret` | binary | OBJECT · ARRAY → STRING | 0x84d240 | 1 | 0 | 0 | 1 |
-| 1078 | `customChat` | binary | OBJECT · ARRAY → NOTHING | 0x19ce00 | 1 | 0 | 0 | 1 |
-| 1079 | `deleteCenter` | unary | SIDE → NOTHING | 0x18dc60 | 1 | 0 | 0 | 1 |
-| 1080 | `deleteLocation` | unary | LOCATION → NOTHING | 0xd04080 | 1 | 0 | 0 | 1 |
-| 1081 | `disableMapIndicators` | unary | ARRAY → NOTHING | 0x48a9e0 | 1 | 0 | 0 | 1 |
-| 1082 | `disableRemoteSensors` | unary | BOOL → NOTHING | 0x48ac90 | 1 | 0 | 0 | 1 |
-| 1083 | `drawArrow` | binary | CONTROL · ARRAY → NOTHING | 0x8e7710 | 1 | 0 | 0 | 1 |
-| 1084 | `enableChannel` | binary | SCALAR · ARRAY → NOTHING<br>SCALAR · BOOL → NOTHING | 0x19c140<br>0x19c070 | 1 | 0 | 0 | 1 |
-| 1085 | `enableEndDialog` | nular | → NOTHING | 0x8a7000 | 1 | 0 | 0 | 1 |
-| 1086 | `enableWeaponDisassembly` | unary | BOOL → NOTHING | 0x48dbb0 | 1 | 0 | 0 | 1 |
-| 1087 | `findNearestEnemy` | binary | OBJECT · OBJECT\|ARRAY → OBJECT | 0x569d50 | 0 | 1 | 0 | 1 |
-| 1088 | `firstBackpack` | unary | OBJECT → OBJECT | 0x83fb80 | 1 | 0 | 0 | 1 |
-| 1089 | `flagAnimationPhase` | unary | OBJECT → SCALAR | 0x52bb30 | 1 | 0 | 0 | 1 |
-| 1090 | `get3DENGrid` | unary | STRING → SCALAR | 0x7fa100 | 1 | 0 | 0 | 1 |
-| 1091 | `getAllOwnedMines` | unary | OBJECT → ARRAY | 0x528d40 | 1 | 0 | 0 | 1 |
-| 1092 | `getAssetDLCInfo` | unary | ARRAY → ARRAY<br>OBJECT\|STRING → ARRAY | 0x49c3c0<br>0x49c3c0 | 1 | 0 | 0 | 1 |
-| 1093 | `getCustomSoundControllerCount` | unary | OBJECT → SCALAR | 0x49fa80 | 1 | 0 | 0 | 1 |
-| 1094 | `getEnvSoundController` | binary | ARRAY · STRING → SCALAR | 0x4a2270 | 1 | 0 | 0 | 1 |
-| 1095 | `getFieldManualStartPage` | unary | DISPLAY → ARRAY | 0x8d72c0 | 1 | 0 | 0 | 1 |
-| 1096 | `getGroupIcons` | unary | GROUP → ARRAY | 0x18efc0 | 0 | 1 | 0 | 1 |
-| 1097 | `getObjectFOV` | unary | OBJECT → SCALAR | 0x4ac020 | 1 | 0 | 0 | 1 |
-| 1098 | `getObjectType` | unary | OBJECT → SCALAR | 0x52e900 | 0 | 1 | 0 | 1 |
-| 1099 | `getPersonUsedDLCs` | unary | OBJECT → ARRAY | 0x4aedc0 | 1 | 0 | 0 | 1 |
-| 1100 | `getPlayerScores` | unary | OBJECT → ARRAY | 0x52ea30 | 1 | 0 | 0 | 1 |
-| 1101 | `getSlotItemName` | binary | OBJECT · SCALAR → STRING | 0x532c40 | 1 | 0 | 0 | 1 |
-| 1102 | `getVehicleTIPars` | unary | OBJECT → ARRAY | 0x4b8070 | 1 | 0 | 0 | 1 |
-| 1103 | `groupIconsVisible` | nular | → ARRAY | 0x8af1e0 | 1 | 0 | 0 | 1 |
-| 1104 | `hashValue` | unary | ?\|SCRIPT → STRING | 0x4a32a0 | 1 | 0 | 0 | 1 |
-| 1105 | `hiddenActions` | unary | ARRAY → ARRAY | 0x4ba360 | 1 | 0 | 0 | 1 |
-| 1106 | `hideSelection` | binary | OBJECT · ARRAY → NOTHING | 0x8b68c0 | 1 | 0 | 0 | 1 |
-| 1107 | `HUDMovementLevels` | nular | → ARRAY | 0x8a9470 | 1 | 0 | 0 | 1 |
-| 1108 | `isAutonomous` | unary | OBJECT → BOOL | 0x515b10 | 0 | 0 | 1 | 1 |
-| 1109 | `isFormationLeader` | unary | OBJECT → BOOL | 0x56cd00 | 0 | 1 | 0 | 1 |
-| 1110 | `isGameFocused` | nular | → BOOL | 0x89a8c0 | 1 | 0 | 0 | 1 |
-| 1111 | `isInstructorFigureEnabled` | nular | → BOOL | 0x8a2d40 | 1 | 0 | 0 | 1 |
-| 1112 | `isUIContext` | nular | → BOOL | 0x8a2ed0 | 1 | 0 | 0 | 1 |
-| 1113 | `isUniformAllowed` | binary | OBJECT · STRING → BOOL | 0x842a60 | 1 | 0 | 0 | 1 |
-| 1114 | `isVehicleRadarOn` | unary | OBJECT → BOOL | 0x1c8af0 | 1 | 0 | 0 | 1 |
-| 1115 | `lbText` | unary | ARRAY → STRING | 0x8db9b0 | 1 | 0 | 0 | 1 |
-| 1116 | `libraryCredits` | nular | → ARRAY | 0x8afba0 | 1 | 0 | 0 | 1 |
-| 1117 | `lightIsOn` | unary | OBJECT → STRING | 0x5364e0 | 1 | 0 | 0 | 1 |
-| 1118 | `load` | unary | OBJECT → SCALAR | 0x83dd80 | 1 | 0 | 0 | 1 |
-| 1119 | `loadStatus` | binary | OBJECT · STRING → BOOL | 0x8b6f60 | 1 | 0 | 0 | 1 |
-| 1120 | `lockIdentity` | unary | OBJECT → BOOL | 0x5370a0 | 1 | 0 | 0 | 1 |
-| 1121 | `magazinesAllTurrets` | unary | OBJECT\|ARRAY → ARRAY | 0x840b90 | 1 | 0 | 0 | 1 |
-| 1122 | `magazinesAmmoFull` | unary | OBJECT\|ARRAY → ARRAY | 0x83e510 | 0 | 1 | 0 | 1 |
-| 1123 | `markAsFinishedOnSteam` | nular | → BOOL | 0x1c3d90 | 1 | 0 | 0 | 1 |
-| 1124 | `menuData` | binary | CONTROL · ARRAY → STRING | 0x853640 | 1 | 0 | 0 | 1 |
-| 1125 | `menuHover` | unary | CONTROL → ARRAY<br>SCALAR → ARRAY | 0x857000<br>0x8570e0 | 1 | 0 | 0 | 1 |
-| 1126 | `menuShortcutText` | binary | CONTROL · ARRAY → STRING | 0x853dc0 | 1 | 0 | 0 | 1 |
-| 1127 | `menuSize` | binary | CONTROL · ARRAY → SCALAR | 0x853ff0 | 1 | 0 | 0 | 1 |
-| 1128 | `missileTarget` | unary | OBJECT → OBJECT | 0x4a65d0 | 1 | 0 | 0 | 1 |
-| 1129 | `onCommandModeChanged` | unary | CODE\|STRING → NOTHING | 0x181250 | 1 | 0 | 0 | 1 |
-| 1130 | `onGroupIconClick` | unary | CODE\|STRING → NOTHING | 0x182c70 | 1 | 0 | 0 | 1 |
-| 1131 | `onGroupIconOverEnter` | unary | CODE\|STRING → NOTHING | 0x182cd0 | 1 | 0 | 0 | 1 |
-| 1132 | `onGroupIconOverLeave` | unary | CODE\|STRING → NOTHING | 0x182d30 | 1 | 0 | 0 | 1 |
-| 1133 | `onHCGroupSelectionChanged` | unary | CODE\|STRING → NOTHING | 0x182d90 | 1 | 0 | 0 | 1 |
-| 1134 | `onMapSingleClick` | binary | ANY · CODE\|STRING → NOTHING | 0x182fa0 | 1 | 0 | 0 | 1 |
-| 1135 | `openSteamApp` | unary | SCALAR → BOOL | 0x1c3f00 | 1 | 0 | 0 | 1 |
-| 1136 | `playerTargetLock` | nular | → ARRAY | 0x89d2e0 | 1 | 0 | 0 | 1 |
-| 1137 | `playScriptedMission` | unary | ARRAY → NOTHING | 0x54b6d0 | 1 | 0 | 0 | 1 |
-| 1138 | `rectangular` | unary | LOCATION → BOOL | 0xd057b0 | 1 | 0 | 0 | 1 |
-| 1139 | `removeAllActions` | unary | OBJECT → NOTHING | 0x539570 | 0 | 1 | 0 | 1 |
-| 1140 | `removeAllOwnedMines` | unary | OBJECT → NOTHING | 0x539500 | 1 | 0 | 0 | 1 |
-| 1141 | `removeAllPrimaryWeaponItems` | unary | OBJECT → NOTHING | 0x844750 | 1 | 0 | 0 | 1 |
-| 1142 | `removeCuratorCameraArea` | binary | OBJECT · SCALAR → NOTHING | 0x82a890 | 1 | 0 | 0 | 1 |
-| 1143 | `removeDiaryRecord` | binary | OBJECT · ARRAY → NOTHING | 0xdfe180 | 1 | 0 | 0 | 1 |
-| 1144 | `removeGroupIcon` | binary | GROUP · SCALAR → NOTHING | 0x1944d0 | 1 | 0 | 0 | 1 |
-| 1145 | `removeSecondaryWeaponItem` | binary | OBJECT · STRING → NOTHING | 0x8462b0 | 1 | 0 | 0 | 1 |
-| 1146 | `resetSubgroupDirection` | unary | OBJECT → NOTHING | 0x549410 | 1 | 0 | 0 | 1 |
-| 1147 | `respawnVehicle` | binary | OBJECT · ARRAY → NOTHING | 0x570b00 | 1 | 0 | 0 | 1 |
-| 1148 | `ropeDestroy` | unary | OBJECT → NOTHING | 0x1a89e0 | 0 | 1 | 0 | 1 |
-| 1149 | `ropes` | unary | OBJECT → ARRAY | 0x1a9500 | 0 | 1 | 0 | 1 |
-| 1150 | `save3DENInventory` | unary | ARRAY → NOTHING | 0x7ff8b0 | 1 | 0 | 0 | 1 |
-| 1151 | `saveStatus` | binary | OBJECT · STRING → BOOL | 0x8b7bc0 | 1 | 0 | 0 | 1 |
-| 1152 | `selectDiarySubject` | binary | OBJECT · STRING → BOOL | 0xdfef80 | 1 | 0 | 0 | 1 |
-| 1153 | `serverName` | nular | → STRING | 0x8b1a60 | 1 | 0 | 0 | 1 |
-| 1154 | `set3DENIconsVisible` | unary | ARRAY → NOTHING | 0x8023d0 | 1 | 0 | 0 | 1 |
-| 1155 | `set3DENLinesVisible` | unary | ARRAY → NOTHING | 0x802870 | 1 | 0 | 0 | 1 |
-| 1156 | `set3DENMissionAttribute` | binary | STRING · ARRAY → NOTHING | 0x802c00 | 1 | 0 | 0 | 1 |
-| 1157 | `set3DENModelsVisible` | unary | ARRAY → NOTHING | 0x803690 | 1 | 0 | 0 | 1 |
-| 1158 | `set3DENSelected` | unary | ARRAY → NOTHING | 0x803a20 | 1 | 0 | 0 | 1 |
-| 1159 | `setActualCollectiveRTD` | binary | OBJECT · SCALAR → NOTHING | 0x8959a0 | 0 | 1 | 0 | 1 |
-| 1160 | `setApertureNew` | unary | ARRAY → NOTHING | 0x54df30 | 1 | 0 | 0 | 1 |
-| 1161 | `setBleedingRemaining` | binary | OBJECT · SCALAR → NOTHING | 0x54e450 | 1 | 0 | 0 | 1 |
-| 1162 | `setConvoySeparation` | binary | OBJECT · SCALAR → NOTHING | 0x56fc90 | 1 | 0 | 0 | 1 |
-| 1163 | `setCuratorCameraAreaCeiling` | binary | OBJECT · SCALAR → NOTHING | 0x82af30 | 1 | 0 | 0 | 1 |
-| 1164 | `setCustomWeightRTD` | binary | OBJECT · SCALAR → NOTHING | 0x895ca0 | 1 | 0 | 0 | 1 |
-| 1165 | `setDirection` | binary | LOCATION · SCALAR → NOTHING | 0xd062c0 | 1 | 0 | 0 | 1 |
-| 1166 | `setDynamicSimulationDistanceCoef` | binary | STRING · SCALAR → NOTHING | 0x17ec90 | 1 | 0 | 0 | 1 |
-| 1167 | `setHUDMovementLevels` | unary | ARRAY → NOTHING | 0x552010 | 1 | 0 | 0 | 1 |
-| 1168 | `setMusicEventHandler` | unary | ARRAY → NOTHING | 0x183c10 | 0 | 1 | 0 | 1 |
-| 1169 | `setShotParents` | binary | OBJECT · ARRAY → NOTHING | 0x53f1c0 | 1 | 0 | 0 | 1 |
-| 1170 | `setSpeech` | binary | LOCATION · STRING → NOTHING | 0xd06a70 | 1 | 0 | 0 | 1 |
-| 1171 | `setTargetAge` | binary | OBJECT · STRING → NOTHING | 0x1cbf30 | 1 | 0 | 0 | 1 |
-| 1172 | `setWaves` | binary | SCALAR · SCALAR → NOTHING | 0x559360 | 1 | 0 | 0 | 1 |
-| 1173 | `size` | unary | LOCATION → ARRAY | 0xd05890 | 1 | 0 | 0 | 1 |
-| 1174 | `sliderSetSpeed` | binary | CONTROL · ARRAY → NOTHING | 0x8ebe20 | 1 | 0 | 0 | 1 |
-| 1175 | `suppressFor` | binary | OBJECT · SCALAR → NOTHING | 0x571fb0 | 0 | 1 | 0 | 1 |
-| 1176 | `surfaceType` | unary | ARRAY → STRING | 0x55eba0 | 1 | 0 | 0 | 1 |
-| 1177 | `synchronizeWaypoint` | binary | ARRAY · ARRAY → NOTHING<br>OBJECT · ARRAY → NOTHING | 0x8fb890<br>0x562950 | 1 | 0 | 0 | 1 |
-| 1178 | `systemOfUnits` | nular | → SCALAR | 0x8ab310 | 1 | 0 | 0 | 1 |
-| 1179 | `targets` | binary | GROUP · ARRAY → ARRAY<br>OBJECT · ARRAY → ARRAY | 0x1c7220<br>0x1c7cf0 | 1 | 0 | 0 | 1 |
-| 1180 | `turretOwner` | binary | OBJECT · ARRAY → SCALAR | 0x4b5f40 | 1 | 0 | 0 | 1 |
-| 1181 | `tvSetPictureColorDisabled` | binary | CONTROL · ARRAY → NOTHING | 0x8f2cd0 | 1 | 0 | 0 | 1 |
-| 1182 | `tvSetPictureColorSelected` | binary | CONTROL · ARRAY → NOTHING | 0x8f2d00 | 1 | 0 | 0 | 1 |
-| 1183 | `type` | unary | LOCATION → STRING<br>TASK → STRING | 0xd05b30<br>0xe0a850 | 1 | 0 | 0 | 1 |
-| 1184 | `unitAimPosition` | unary | OBJECT → ARRAY | 0x5246a0 | 0 | 1 | 0 | 1 |
-| 1185 | `vectorSide` | unary | OBJECT → ARRAY | 0x5338c0 | 1 | 0 | 0 | 1 |
-| 1186 | `vehicleChat` | binary | OBJECT · STRING → NOTHING | 0x19d9e0 | 1 | 0 | 0 | 1 |
-| 1187 | `vehicleRadio` | binary | OBJECT · STRING → NOTHING | 0x19daf0 | 1 | 0 | 0 | 1 |
-| 1188 | `vehicleReceiveRemoteTargets` | unary | OBJECT → BOOL | 0x1c80d0 | 1 | 0 | 0 | 1 |
-| 1189 | `vehicleReportOwnPosition` | unary | OBJECT → BOOL | 0x1c8180 | 1 | 0 | 0 | 1 |
-| 1190 | `vehicleReportRemoteTargets` | unary | OBJECT → BOOL | 0x1c8230 | 1 | 0 | 0 | 1 |
-| 1191 | `visibleGps` | nular | → BOOL | 0x8af180 | 0 | 1 | 0 | 1 |
-| 1192 | `visibleWatch` | nular | → BOOL | 0x8afb50 | 1 | 0 | 0 | 1 |
-| 1193 | `waypointAttachedVehicle` | unary | ARRAY → OBJECT | 0x8f7210 | 1 | 0 | 0 | 1 |
-| 1194 | `waypointAttachObject` | binary | ARRAY · OBJECT\|SCALAR → NOTHING | 0x8f69c0 | 1 | 0 | 0 | 1 |
-| 1195 | `waypointShow` | unary | ARRAY → STRING | 0x8f8460 | 1 | 0 | 0 | 1 |
-| 1196 | `weightRTD` | unary | OBJECT → ARRAY | 0x894610 | 1 | 0 | 0 | 1 |
-| 1197 | `windDir` | nular | → SCALAR | 0x8ab6f0 | 1 | 0 | 0 | 1 |
-| 1198 | `action` | unary | ARRAY → NOTHING | 0x560420 | 0 | 0 | 0 | 0 |
-| 1199 | `actionKeysEx` | unary | STRING → ARRAY | 0x495f60 | 0 | 0 | 0 | 0 |
-| 1200 | `actionKeysImages` | unary | STRING\|ARRAY → TEXT | 0x496dd0 | 0 | 0 | 0 | 0 |
-| 1201 | `actionNow` | binary | OBJECT · ARRAY → NOTHING | 0x56d830 | 0 | 0 | 0 | 0 |
-| 1202 | `actionParams` | binary | OBJECT · SCALAR → ARRAY | 0x569f80 | 0 | 0 | 0 | 0 |
-| 1203 | `activeTitleEffectParams` | unary | SCALAR → ARRAY | 0x497e60 | 0 | 0 | 0 | 0 |
-| 1204 | `add3DENEventHandler` | unary | ARRAY → SCALAR | 0x7f3bf0 | 0 | 0 | 0 | 0 |
-| 1205 | `add3DENLayer` | binary | SCALAR · STRING → SCALAR | 0x7f4050 | 0 | 0 | 0 | 0 |
-| 1206 | `addBackpackGlobal` | binary | OBJECT · STRING → NOTHING | 0x831b10 | 0 | 0 | 0 | 0 |
-| 1207 | `addBinocularItem` | binary | OBJECT · STRING → NOTHING | 0x839640 | 0 | 0 | 0 | 0 |
-| 1208 | `addCuratorSelected` | unary | ARRAY → NOTHING | 0x825600 | 0 | 0 | 0 | 0 |
-| 1209 | `addEditorObject` | binary | CONTROL · ARRAY → STRING | 0x13caef0 | 0 | 0 | 0 | 0 |
-| 1210 | `addForceGeneratorRTD` | unary | ARRAY → SCALAR | 0x891e00 | 0 | 0 | 0 | 0 |
-| 1211 | `addLiveStats` | binary | OBJECT · SCALAR → NOTHING | 0x523490 | 0 | 0 | 0 | 0 |
-| 1212 | `addMagazineAmmoCargo` | binary | OBJECT · ARRAY → NOTHING | 0x83a020 | 0 | 0 | 0 | 0 |
-| 1213 | `addMagazinesTurret` | binary | OBJECT · ARRAY → NOTHING | 0x523b20 | 0 | 0 | 0 | 0 |
-| 1214 | `addMenu` | binary | CONTROL · ARRAY → SCALAR | 0x13ca740 | 0 | 0 | 0 | 0 |
-| 1215 | `addMenuItem` | binary | CONTROL · ARRAY → SCALAR | 0x13caa70 | 0 | 0 | 0 | 0 |
-| 1216 | `addonFiles` | unary | ARRAY → ARRAY | 0x498010 | 0 | 0 | 0 | 0 |
-| 1217 | `addPlayerScores` | binary | OBJECT · ARRAY → NOTHING | 0x523f90 | 0 | 0 | 0 | 0 |
-| 1218 | `addResources` | binary | TEAM_MEMBER · ARRAY → NOTHING | 0x196b70 | 0 | 0 | 0 | 0 |
-| 1219 | `addSwitchableUnit` | unary | OBJECT → NOTHING | 0x47d8c0 | 0 | 0 | 0 | 0 |
-| 1220 | `addTeamMember` | binary | TEAM_MEMBER · TEAM_MEMBER → NOTHING | 0x196b00 | 0 | 0 | 0 | 0 |
-| 1221 | `addUserActionEventHandler` | unary | ARRAY → SCALAR | 0x180be0 | 0 | 0 | 0 | 0 |
-| 1222 | `addWeaponWithAttachmentsCargoGlobal` | binary | OBJECT · ARRAY → NOTHING | 0x83c050 | 0 | 0 | 0 | 0 |
-| 1223 | `airDensityCurveRTD` | nular | → ARRAY | 0x892830 | 0 | 0 | 0 | 0 |
-| 1224 | `airDensityRTD` | unary | SCALAR → SCALAR | 0x892c10 | 0 | 0 | 0 | 0 |
-| 1225 | `airplaneThrottle` | unary | OBJECT → SCALAR | 0x892c70 | 0 | 0 | 0 | 0 |
-| 1226 | `airportSide` | unary | OBJECT\|SCALAR → SIDE | 0x47e2b0 | 0 | 0 | 0 | 0 |
-| 1227 | `AISFinishHeal` | unary | ARRAY → NOTHING | 0x47d2b0 | 0 | 0 | 0 | 0 |
-| 1228 | `allActiveTitleEffects` | nular | → ARRAY | 0x89a9b0 | 0 | 0 | 0 | 0 |
-| 1229 | `allAddonsInfo` | nular | → ARRAY | 0x89abd0 | 0 | 0 | 0 | 0 |
-| 1230 | `allAirports` | nular | → ARRAY | 0x8992e0 | 0 | 0 | 0 | 0 |
-| 1231 | `allCameras` | nular | → ARRAY | 0x807e30 | 0 | 0 | 0 | 0 |
-| 1232 | `allDiaryRecords` | binary | OBJECT · STRING → ARRAY | 0xdff770 | 0 | 0 | 0 | 0 |
-| 1233 | `allDiarySubjects` | unary | OBJECT → ARRAY | 0xdff950 | 0 | 0 | 0 | 0 |
-| 1234 | `allEnv3DSoundSources` | nular | → ARRAY | 0x89b390 | 0 | 0 | 0 | 0 |
-| 1235 | `allExtensions` | nular | → ARRAY | 0x188bb0 | 0 | 0 | 0 | 0 |
-| 1236 | `allLODs` | unary | OBJECT\|STRING → ARRAY | 0x49a5c0 | 0 | 0 | 0 | 0 |
-| 1237 | `allObjects` | binary | SCALAR · SCALAR → ARRAY<br>STRING · SCALAR → ARRAY | 0x49b3e0<br>0x49b4b0 | 0 | 0 | 0 | 0 |
-| 1238 | `allow3DMode` | binary | CONTROL · BOOL → NOTHING | 0x13cb400 | 0 | 0 | 0 | 0 |
-| 1239 | `allowDammage` | binary | OBJECT · BOOL → NOTHING | 0x524bb0 | 0 | 0 | 0 | 0 |
-| 1240 | `allowedService` | unary | OBJECT → SCALAR | 0x47e5e0 | 0 | 0 | 0 | 0 |
-| 1241 | `allowFileOperations` | binary | CONTROL · BOOL → NOTHING | 0x13cb520 | 0 | 0 | 0 | 0 |
-| 1242 | `allowService` | binary | OBJECT · SCALAR → NOTHING | 0x47e540 | 0 | 0 | 0 | 0 |
-| 1243 | `allUsers` | nular | → ARRAY | 0x8994d0 | 0 | 0 | 0 | 0 |
-| 1244 | `ambientTemperature` | nular | → ARRAY | 0x89b5d0 | 0 | 0 | 0 | 0 |
-| 1245 | `ammoOnPylon` | binary | OBJECT · STRING\|SCALAR → SCALAR | 0x49bde0 | 0 | 0 | 0 | 0 |
-| 1246 | `angularVelocity` | unary | OBJECT → ARRAY | 0x5290b0 | 0 | 0 | 0 | 0 |
-| 1247 | `angularVelocityModelSpace` | unary | OBJECT → ARRAY | 0x529130 | 0 | 0 | 0 | 0 |
-| 1248 | `animateBay` | binary | OBJECT · ARRAY → NOTHING | 0x547530 | 0 | 0 | 0 | 0 |
-| 1249 | `animatePylon` | binary | OBJECT · ARRAY → NOTHING | 0x5476e0 | 0 | 0 | 0 | 0 |
-| 1250 | `apertureParams` | nular | → ARRAY | 0x89b680 | 0 | 0 | 0 | 0 |
-| 1251 | `armoryPoints` | nular | → SCALAR | 0x8a8710 | 0 | 0 | 0 | 0 |
-| 1252 | `assignedGroup` | unary | OBJECT → GROUP | 0x197da0 | 0 | 0 | 0 | 0 |
-| 1253 | `assignedVehicles` | unary | GROUP → ARRAY | 0x190bd0 | 0 | 0 | 0 | 0 |
-| 1254 | `assignTeam` | binary | OBJECT · STRING → NOTHING | 0x55f120 | 0 | 0 | 0 | 0 |
-| 1255 | `assignToAirport` | binary | OBJECT · OBJECT\|SCALAR → NOTHING | 0x5256f0 | 0 | 0 | 0 | 0 |
-| 1256 | `attachChild` | binary | ARRAY · ARRAY → NOTHING | 0x1a18a0 | 0 | 0 | 0 | 0 |
-| 1257 | `attachedObject` | unary | LOCATION → OBJECT | 0xd05050 | 0 | 0 | 0 | 0 |
-| 1258 | `attachObject` | binary | LOCATION · OBJECT → NOTHING | 0xd061b0 | 0 | 0 | 0 | 0 |
-| 1259 | `attackEnabled` | unary | OBJECT\|GROUP → BOOL | 0x1910a0 | 0 | 0 | 0 | 0 |
-| 1260 | `awake` | binary | OBJECT · BOOL → NOTHING | 0x1a54b0 | 0 | 0 | 0 | 0 |
-| 1261 | `backpackMagazines` | unary | OBJECT → ARRAY | 0x83d3d0 | 0 | 0 | 0 | 0 |
-| 1262 | `backpacks` | unary | OBJECT → ARRAY | 0x83f2d0 | 0 | 0 | 0 | 0 |
-| 1263 | `backpackSpaceFor` | binary | OBJECT · STRING → ARRAY | 0x49caf0 | 0 | 0 | 0 | 0 |
-| 1264 | `ban` | unary | STRING\|SCALAR → NOTHING | 0x174f30 | 0 | 0 | 0 | 0 |
-| 1265 | `benchmark` | nular | → SCALAR | 0x8a5b70 | 0 | 0 | 0 | 0 |
-| 1266 | `binocularItems` | unary | OBJECT → ARRAY | 0x83d4b0 | 0 | 0 | 0 | 0 |
-| 1267 | `binocularMagazine` | unary | OBJECT → STRING | 0x84c970 | 0 | 0 | 0 | 0 |
-| 1268 | `brakesDisabled` | unary | OBJECT → BOOL | 0x49dda0 | 0 | 0 | 0 | 0 |
-| 1269 | `buldozer_EnableRoadDiag` | unary | BOOL → NOTHING | 0x47f420 | 0 | 0 | 0 | 0 |
-| 1270 | `buldozer_IsEnabledRoadDiag` | nular | → BOOL | 0x8a2e30 | 0 | 0 | 0 | 0 |
-| 1271 | `buldozer_LoadNewRoads` | unary | STRING → BOOL | 0x47f510 | 0 | 0 | 0 | 0 |
-| 1272 | `buldozer_reloadOperMap` | nular | → NOTHING | 0x8a5b90 | 0 | 0 | 0 | 0 |
-| 1273 | `buttonAction` | unary | CONTROL → STRING<br>SCALAR → STRING | 0x8cf260<br>0x8cad40 | 0 | 0 | 0 | 0 |
-| 1274 | `buttonSetAction` | unary | ARRAY → NOTHING | 0x8cae60 | 0 | 0 | 0 | 0 |
-| 1275 | `calculatePath` | unary | ARRAY → OBJECT | 0x480b80 | 0 | 0 | 0 | 0 |
-| 1276 | `camConstuctionSetParams` | binary | OBJECT · ARRAY → NOTHING | 0x8061d0 | 0 | 0 | 0 | 0 |
-| 1277 | `cameraInterest` | unary | OBJECT → SCALAR | 0x56a600 | 0 | 0 | 0 | 0 |
-| 1278 | `camPrepareBank` | binary | OBJECT · SCALAR → NOTHING | 0x806e60 | 0 | 0 | 0 | 0 |
-| 1279 | `camPrepareDive` | binary | OBJECT · SCALAR → NOTHING | 0x806e60 | 0 | 0 | 0 | 0 |
-| 1280 | `camPrepareFovRange` | binary | OBJECT · ARRAY → NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
-| 1281 | `camPrepareRelPos` | binary | OBJECT · ARRAY → NOTHING | 0x8071a0 | 0 | 0 | 0 | 0 |
-| 1282 | `camSetBank` | binary | OBJECT · SCALAR → NOTHING | 0x806e60 | 0 | 0 | 0 | 0 |
-| 1283 | `camSetDir` | binary | OBJECT · ARRAY → NOTHING | 0x8073b0 | 0 | 0 | 0 | 0 |
-| 1284 | `camSetDive` | binary | OBJECT · SCALAR → NOTHING | 0x806e60 | 0 | 0 | 0 | 0 |
-| 1285 | `camSetFovRange` | binary | OBJECT · ARRAY → NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
-| 1286 | `camTarget` | unary | OBJECT → OBJECT | 0x806b80 | 0 | 0 | 0 | 0 |
-| 1287 | `canAddItemToUniform` | binary | OBJECT · STRING\|ARRAY → BOOL | 0x83d510 | 0 | 0 | 0 | 0 |
-| 1288 | `canAddItemToVest` | binary | OBJECT · STRING\|ARRAY → BOOL | 0x83d530 | 0 | 0 | 0 | 0 |
-| 1289 | `canDeployWeapon` | unary | OBJECT → BOOL | 0x896690 | 0 | 0 | 0 | 0 |
-| 1290 | `canTriggerDynamicSimulation` | unary | OBJECT → BOOL | 0x17e570 | 0 | 0 | 0 | 0 |
-| 1291 | `captiveNum` | unary | OBJECT → SCALAR | 0x5260f0 | 0 | 0 | 0 | 0 |
-| 1292 | `channelEnabled` | unary | SCALAR → ARRAY | 0x19bc80 | 0 | 0 | 0 | 0 |
-| 1293 | `checkAIFeature` | binary | OBJECT · STRING → BOOL | 0x481de0 | 0 | 0 | 0 | 0 |
-| 1294 | `checkAIFeature` | unary | STRING → BOOL | 0x481cc0 | 0 | 0 | 0 | 0 |
-| 1295 | `checkExe` | binary | SCALAR · SCALAR → NOTHING | 0x1753d0 | 0 | 0 | 0 | 0 |
-| 1296 | `checkFile` | binary | SCALAR · ARRAY → NOTHING | 0x1754b0 | 0 | 0 | 0 | 0 |
-| 1297 | `childAttached` | unary | OBJECT → OBJECT | 0x1a1da0 | 0 | 0 | 0 | 0 |
-| 1298 | `className` | unary | LOCATION → STRING | 0xd050c0 | 0 | 0 | 0 | 0 |
-| 1299 | `clear3DENAttribute` | binary | ANY · STRING → BOOL | 0x801220 | 0 | 0 | 0 | 0 |
-| 1300 | `clearbans` | nular | → NOTHING | 0x175600 | 0 | 0 | 0 | 0 |
-| 1301 | `clearForcesRTD` | nular | → NOTHING | 0x892180 | 0 | 0 | 0 | 0 |
-| 1302 | `clearkicks` | nular | → NOTHING | 0x175640 | 0 | 0 | 0 | 0 |
-| 1303 | `clearOverlay` | unary | CONTROL → NOTHING | 0x13cf870 | 0 | 0 | 0 | 0 |
-| 1304 | `closeOverlay` | unary | CONTROL → NOTHING | 0x13cf8e0 | 0 | 0 | 0 | 0 |
-| 1305 | `collapseObjectTree` | unary | CONTROL → NOTHING | 0x13cb640 | 0 | 0 | 0 | 0 |
-| 1306 | `collect3DENHistory` | binary | ARRAY · CODE → NOTHING | 0x7f5200 | 0 | 0 | 0 | 0 |
-| 1307 | `collectiveRTD` | unary | OBJECT → SCALAR | 0x892cf0 | 0 | 0 | 0 | 0 |
-| 1308 | `collisionDisabledWith` | unary | OBJECT → ARRAY | 0x49de50 | 0 | 0 | 0 | 0 |
-| 1309 | `combatBehaviour` | unary | GROUP → STRING<br>OBJECT → STRING | 0x18e8e0<br>0x49dff0 | 0 | 0 | 0 | 0 |
-| 1310 | `combatPace` | binary | OBJECT · ARRAY → STRING | 0x51f480 | 0 | 0 | 0 | 0 |
-| 1311 | `commandFSM` | binary | OBJECT\|ARRAY · ARRAY → NOTHING | 0x5682c0 | 0 | 0 | 0 | 0 |
-| 1312 | `commandSuppressiveFire` | binary | OBJECT\|ARRAY · OBJECT\|ARRAY → NOTHING | 0x568380 | 0 | 0 | 0 | 0 |
-| 1313 | `commitOverlay` | unary | CONTROL → NOTHING | 0x13cf950 | 0 | 0 | 0 | 0 |
-| 1314 | `compatibleItems` | unary | STRING\|ARRAY → ARRAY | 0x833b80 | 0 | 0 | 0 | 0 |
-| 1315 | `compatibleMagazines` | unary | STRING\|ARRAY → ARRAY | 0x8328c0 | 0 | 0 | 0 | 0 |
-| 1316 | `compatibleWeapons` | unary | STRING → ARRAY | 0x834030 | 0 | 0 | 0 | 0 |
-| 1317 | `connectToServer` | unary | ARRAY → NOTHING | 0x5491e0 | 0 | 0 | 0 | 0 |
-| 1318 | `continueWith` | binary | SCRIPT · CODE\|ARRAY → NOTHING | 0x54a230 | 0 | 0 | 0 | 0 |
-| 1319 | `conversationDisabled` | unary | OBJECT → BOOL | 0x4a0110 | 0 | 0 | 0 | 0 |
-| 1320 | `countEnemy` | binary | OBJECT · ARRAY → SCALAR | 0x51cb10 | 0 | 0 | 0 | 0 |
-| 1321 | `countFriendly` | binary | OBJECT · ARRAY → SCALAR | 0x51cba0 | 0 | 0 | 0 | 0 |
-| 1322 | `countUnknown` | binary | OBJECT · ARRAY → SCALAR | 0x51cf90 | 0 | 0 | 0 | 0 |
-| 1323 | `create3DENComposition` | unary | ARRAY → ARRAY | 0x7f5730 | 0 | 0 | 0 | 0 |
-| 1324 | `create3DENEntity` | binary | GROUP · ARRAY → ANY | 0x7f6550 | 0 | 0 | 0 | 0 |
-| 1325 | `createGearDialog` | unary | ARRAY → NOTHING | 0x484bd0 | 0 | 0 | 0 | 0 |
-| 1326 | `createMenu` | binary | CONTROL · SCALAR → NOTHING | 0x13cb7b0 | 0 | 0 | 0 | 0 |
-| 1327 | `createSite` | binary | STRING · ARRAY → OBJECT | 0x568a20 | 0 | 0 | 0 | 0 |
-| 1328 | `createSoundSourceLocal` | unary | ARRAY → OBJECT | 0x55c4e0 | 0 | 0 | 0 | 0 |
-| 1329 | `createTeam` | unary | ARRAY → TEAM_MEMBER | 0x195c60 | 0 | 0 | 0 | 0 |
-| 1330 | `createVehicleCrew` | binary | GROUP · OBJECT → GROUP<br>SIDE · OBJECT → GROUP | 0x486f60<br>0x486fe0 | 0 | 0 | 0 | 0 |
-| 1331 | `ctFindHeaderRows` | binary | CONTROL · SCALAR → ARRAY | 0x8d9960 | 0 | 0 | 0 | 0 |
-| 1332 | `ctFindRowHeader` | binary | CONTROL · SCALAR → SCALAR | 0x8d9b90 | 0 | 0 | 0 | 0 |
-| 1333 | `ctHeaderCount` | unary | CONTROL → SCALAR | 0x8d9f50 | 0 | 0 | 0 | 0 |
-| 1334 | `ctRemoveHeaders` | binary | CONTROL · ARRAY → NOTHING | 0x8d9fd0 | 0 | 0 | 0 | 0 |
-| 1335 | `ctRemoveRows` | binary | CONTROL · ARRAY → NOTHING | 0x8da110 | 0 | 0 | 0 | 0 |
-| 1336 | `ctrlActivate` | binary | CONTROL · BOOL → NOTHING | 0x8cfc50 | 0 | 0 | 0 | 0 |
-| 1337 | `ctrlAnimationPhaseModel` | binary | CONTROL · STRING → SCALAR | 0x8cb9f0 | 0 | 0 | 0 | 0 |
-| 1338 | `ctrlAt` | binary | DISPLAY · ARRAY → CONTROL | 0x8cfe80 | 0 | 0 | 0 | 0 |
-| 1339 | `ctrlAutoScrollDelay` | unary | CONTROL → SCALAR | 0x8d0680 | 0 | 0 | 0 | 0 |
-| 1340 | `ctrlAutoScrollRewind` | unary | CONTROL → BOOL | 0x8d0750 | 0 | 0 | 0 | 0 |
-| 1341 | `ctrlAutoScrollSpeed` | unary | CONTROL → SCALAR | 0x8d0810 | 0 | 0 | 0 | 0 |
-| 1342 | `ctrlBackgroundColor` | unary | CONTROL → ARRAY | 0x8d08e0 | 0 | 0 | 0 | 0 |
-| 1343 | `ctrlChecked` | binary | CONTROL · SCALAR → BOOL | 0x8d09d0 | 0 | 0 | 0 | 0 |
-| 1344 | `ctrlMapDir` | unary | CONTROL → SCALAR | 0x8e9b60 | 0 | 0 | 0 | 0 |
-| 1345 | `ctrlMapPosition` | unary | CONTROL → ARRAY | 0x8ea440 | 0 | 0 | 0 | 0 |
-| 1346 | `ctrlMapSetPosition` | binary | CONTROL · ARRAY → NOTHING | 0x8ea910 | 0 | 0 | 0 | 0 |
-| 1347 | `ctrlModel` | unary | CONTROL → STRING | 0x8ce1d0 | 0 | 0 | 0 | 0 |
-| 1348 | `ctrlModelDirAndUp` | unary | CONTROL → ARRAY | 0x8ce360 | 0 | 0 | 0 | 0 |
-| 1349 | `ctrlModelVectorSide` | unary | CONTROL → ARRAY | 0x8ce540 | 0 | 0 | 0 | 0 |
-| 1350 | `ctrlMousePosition` | unary | CONTROL → ARRAY | 0x8d0b80 | 0 | 0 | 0 | 0 |
-| 1351 | `ctrlRelToScreen` | binary | CONTROL · ARRAY → ARRAY | 0x8d1b50 | 0 | 0 | 0 | 0 |
-| 1352 | `ctrlScreenToRel` | binary | CONTROL · ARRAY → ARRAY | 0x8d1fa0 | 0 | 0 | 0 | 0 |
-| 1353 | `ctrlScrollValues` | unary | CONTROL → ARRAY | 0x8d11e0 | 0 | 0 | 0 | 0 |
-| 1354 | `ctrlSetAutoScrollDelay` | binary | CONTROL · SCALAR → NOTHING | 0x8d2210 | 0 | 0 | 0 | 0 |
-| 1355 | `ctrlSetAutoScrollRewind` | binary | CONTROL · BOOL → NOTHING | 0x8d2370 | 0 | 0 | 0 | 0 |
-| 1356 | `ctrlSetAutoScrollSpeed` | binary | CONTROL · SCALAR → NOTHING | 0x8d2470 | 0 | 0 | 0 | 0 |
-| 1357 | `ctrlSetDisabledColor` | binary | CONTROL · ARRAY → NOTHING | 0x8d2880 | 0 | 0 | 0 | 0 |
-| 1358 | `ctrlSetFontH1` | binary | CONTROL · STRING → NOTHING | 0x8d2cd0 | 0 | 0 | 0 | 0 |
-| 1359 | `ctrlSetFontH1B` | binary | CONTROL · STRING → NOTHING | 0x8d2de0 | 0 | 0 | 0 | 0 |
-| 1360 | `ctrlSetFontH2` | binary | CONTROL · STRING → NOTHING | 0x8d2ef0 | 0 | 0 | 0 | 0 |
-| 1361 | `ctrlSetFontH2B` | binary | CONTROL · STRING → NOTHING | 0x8d3000 | 0 | 0 | 0 | 0 |
-| 1362 | `ctrlSetFontH3` | binary | CONTROL · STRING → NOTHING | 0x8d3110 | 0 | 0 | 0 | 0 |
-| 1363 | `ctrlSetFontH3B` | binary | CONTROL · STRING → NOTHING | 0x8d3220 | 0 | 0 | 0 | 0 |
-| 1364 | `ctrlSetFontH4` | binary | CONTROL · STRING → NOTHING | 0x8d3330 | 0 | 0 | 0 | 0 |
-| 1365 | `ctrlSetFontH4B` | binary | CONTROL · STRING → NOTHING | 0x8d3440 | 0 | 0 | 0 | 0 |
-| 1366 | `ctrlSetFontH5` | binary | CONTROL · STRING → NOTHING | 0x8d3550 | 0 | 0 | 0 | 0 |
-| 1367 | `ctrlSetFontH5B` | binary | CONTROL · STRING → NOTHING | 0x8d3660 | 0 | 0 | 0 | 0 |
-| 1368 | `ctrlSetFontH6` | binary | CONTROL · STRING → NOTHING | 0x8d3770 | 0 | 0 | 0 | 0 |
-| 1369 | `ctrlSetFontH6B` | binary | CONTROL · STRING → NOTHING | 0x8d3880 | 0 | 0 | 0 | 0 |
-| 1370 | `ctrlSetFontHeightH1` | binary | CONTROL · SCALAR → NOTHING | 0x8d3a00 | 0 | 0 | 0 | 0 |
-| 1371 | `ctrlSetFontHeightH2` | binary | CONTROL · SCALAR → NOTHING | 0x8d3a70 | 0 | 0 | 0 | 0 |
-| 1372 | `ctrlSetFontHeightH3` | binary | CONTROL · SCALAR → NOTHING | 0x8d3ae0 | 0 | 0 | 0 | 0 |
-| 1373 | `ctrlSetFontHeightH4` | binary | CONTROL · SCALAR → NOTHING | 0x8d3b50 | 0 | 0 | 0 | 0 |
-| 1374 | `ctrlSetFontHeightH5` | binary | CONTROL · SCALAR → NOTHING | 0x8d3bc0 | 0 | 0 | 0 | 0 |
-| 1375 | `ctrlSetFontHeightH6` | binary | CONTROL · SCALAR → NOTHING | 0x8d3c30 | 0 | 0 | 0 | 0 |
-| 1376 | `ctrlSetFontHeightSecondary` | binary | CONTROL · SCALAR → NOTHING | 0x8d3d10 | 0 | 0 | 0 | 0 |
-| 1377 | `ctrlSetFontP` | binary | CONTROL · SCALAR → NOTHING<br>CONTROL · STRING → NOTHING | 0x8d3ca0<br>0x8d3d90 | 0 | 0 | 0 | 0 |
-| 1378 | `ctrlSetFontPB` | binary | CONTROL · STRING → NOTHING | 0x8d3ea0 | 0 | 0 | 0 | 0 |
-| 1379 | `ctrlSetFontSecondary` | binary | CONTROL · STRING → NOTHING | 0x8d3fb0 | 0 | 0 | 0 | 0 |
-| 1380 | `ctrlSetMousePosition` | binary | CONTROL · ARRAY → NOTHING | 0x8d40b0 | 0 | 0 | 0 | 0 |
-| 1381 | `ctrlSetScrollValues` | binary | CONTROL · ARRAY → NOTHING | 0x8d4d10 | 0 | 0 | 0 | 0 |
-| 1382 | `ctrlSetTextColorSecondary` | binary | CONTROL · ARRAY → NOTHING | 0x8d53e0 | 0 | 0 | 0 | 0 |
-| 1383 | `ctrlSetTextSecondary` | binary | CONTROL · STRING → NOTHING | 0x8d5470 | 0 | 0 | 0 | 0 |
-| 1384 | `ctrlSetTextSelection` | binary | CONTROL · ARRAY → NOTHING | 0x8d5510 | 0 | 0 | 0 | 0 |
-| 1385 | `ctrlShadow` | unary | CONTROL → SCALAR | 0x8d5ec0 | 0 | 0 | 0 | 0 |
-| 1386 | `ctrlShow` | unary | ARRAY → NOTHING | 0x8cc5d0 | 0 | 0 | 0 | 0 |
-| 1387 | `ctrlTextSecondary` | unary | CONTROL → STRING | 0x8d14c0 | 0 | 0 | 0 | 0 |
-| 1388 | `ctrlTextSelection` | unary | CONTROL → ARRAY | 0x8d1700 | 0 | 0 | 0 | 0 |
-| 1389 | `ctrlURLOverlayMode` | unary | CONTROL → SCALAR | 0x8d6260 | 0 | 0 | 0 | 0 |
-| 1390 | `ctrlWebBrowserAction` | binary | CONTROL · ARRAY → NOTHING | 0x1dd990 | 0 | 0 | 0 | 0 |
-| 1391 | `ctSetHeaderTemplate` | binary | CONTROL · CONFIG → NOTHING | 0x8da750 | 0 | 0 | 0 | 0 |
-| 1392 | `ctSetRowTemplate` | binary | CONTROL · CONFIG → NOTHING | 0x8da8c0 | 0 | 0 | 0 | 0 |
-| 1393 | `curatorCameraAreaCeiling` | unary | OBJECT → SCALAR | 0x825f50 | 0 | 0 | 0 | 0 |
-| 1394 | `curatorEditingAreaType` | unary | OBJECT → BOOL | 0x826f70 | 0 | 0 | 0 | 0 |
-| 1395 | `curatorSelectionPreset` | unary | SCALAR → ARRAY | 0x829420 | 0 | 0 | 0 | 0 |
-| 1396 | `curatorWaypointCost` | unary | OBJECT → SCALAR | 0x829880 | 0 | 0 | 0 | 0 |
-| 1397 | `currentChannel` | nular | → SCALAR | 0x89ba70 | 0 | 0 | 0 | 0 |
-| 1398 | `currentMagazineDetail` | unary | OBJECT → ARRAY | 0x84ca90 | 0 | 0 | 0 | 0 |
-| 1399 | `currentMagazineDetailTurret` | binary | OBJECT · ARRAY → STRING | 0x84cb80 | 0 | 0 | 0 | 0 |
-| 1400 | `currentMagazineTurret` | binary | OBJECT · ARRAY → STRING | 0x84cd00 | 0 | 0 | 0 | 0 |
-| 1401 | `currentPilot` | unary | OBJECT → OBJECT | 0x526f60 | 0 | 0 | 0 | 0 |
-| 1402 | `currentTasks` | unary | TEAM_MEMBER → ARRAY | 0xe0bc10 | 0 | 0 | 0 | 0 |
-| 1403 | `currentThrowable` | unary | OBJECT → ARRAY | 0x84ce90 | 0 | 0 | 0 | 0 |
-| 1404 | `currentVisionMode` | binary | OBJECT · ARRAY → ARRAY<br>OBJECT · STRING → ARRAY | 0x487380<br>0x4875d0 | 0 | 0 | 0 | 0 |
-| 1405 | `currentWeaponMode` | unary | OBJECT → STRING | 0x487750 | 0 | 0 | 0 | 0 |
-| 1406 | `currentZeroing` | binary | OBJECT · ARRAY → ARRAY | 0x487900 | 0 | 0 | 0 | 0 |
-| 1407 | `currentZeroing` | unary | OBJECT → SCALAR | 0x487870 | 0 | 0 | 0 | 0 |
-| 1408 | `cutObj` | binary | SCALAR · ARRAY → NOTHING<br>STRING · ARRAY → SCALAR | 0x488160<br>0x4885d0 | 0 | 0 | 0 | 0 |
-| 1409 | `cutObj` | unary | ARRAY → NOTHING | 0x4883b0 | 0 | 0 | 0 | 0 |
-| 1410 | `deActivateKey` | unary | STRING → NOTHING | 0x51ad70 | 0 | 0 | 0 | 0 |
-| 1411 | `debriefingText` | unary | STRING → SCALAR | 0x49fae0 | 0 | 0 | 0 | 0 |
-| 1412 | `debugFSM` | binary | SCALAR · BOOL → NOTHING | 0x489a00 | 0 | 0 | 0 | 0 |
-| 1413 | `deleteCollection` | unary | OBJECT → NOTHING | 0x4baa80 | 0 | 0 | 0 | 0 |
-| 1414 | `deleteEditorObject` | binary | CONTROL · STRING → ANY | 0x13cb8d0 | 0 | 0 | 0 | 0 |
-| 1415 | `deleteIdentity` | unary | STRING → BOOL | 0x8b3110 | 0 | 0 | 0 | 0 |
-| 1416 | `deleteResources` | binary | TEAM_MEMBER · ARRAY → NOTHING | 0x196d90 | 0 | 0 | 0 | 0 |
-| 1417 | `deleteSite` | unary | OBJECT → NOTHING | 0x55be80 | 0 | 0 | 0 | 0 |
-| 1418 | `deleteStatus` | unary | STRING → BOOL | 0x8b3530 | 0 | 0 | 0 | 0 |
-| 1419 | `deleteTeam` | unary | TEAM_MEMBER → NOTHING | 0x195f20 | 0 | 0 | 0 | 0 |
-| 1420 | `deleteVehicleCrew` | unary | OBJECT → NOTHING | 0x48a3e0 | 0 | 0 | 0 | 0 |
-| 1421 | `detachChild` | unary | OBJECT → NOTHING | 0x1a1e70 | 0 | 0 | 0 | 0 |
-| 1422 | `diag_allMissionEventHandlers` | nular | → ARRAY | 0x899a50 | 0 | 0 | 0 | 0 |
-| 1423 | `diag_dynamicSimulationEnd` | unary | STRING → NOTHING | 0x8a4230 | 0 | 0 | 0 | 0 |
-| 1424 | `diag_lightNewLoad` | unary | STRING → NOTHING | 0x165b940 | 0 | 0 | 0 | 0 |
-| 1425 | `diag_localized` | unary | STRING → ARRAY | 0x8a4590 | 0 | 0 | 0 | 0 |
-| 1426 | `diag_remainsCollector` | unary | SCALAR → ARRAY | 0x48a480 | 0 | 0 | 0 | 0 |
-| 1427 | `diag_setLightNew` | unary | STRING → NOTHING | 0x165b430 | 0 | 0 | 0 | 0 |
-| 1428 | `diag_testScriptSimpleVM` | unary | CODE → STRING | 0x8a4840 | 0 | 0 | 0 | 0 |
-| 1429 | `didJIPOwner` | unary | OBJECT → BOOL | 0x48a5c0 | 0 | 0 | 0 | 0 |
-| 1430 | `difficultyEnabled` | unary | STRING → BOOL | 0x47de70 | 0 | 0 | 0 | 0 |
-| 1431 | `directionStabilizationEnabled` | binary | OBJECT · ARRAY → BOOL | 0x52b4f0 | 0 | 0 | 0 | 0 |
-| 1432 | `disableBrakes` | binary | OBJECT · BOOL → NOTHING | 0x54e4f0 | 0 | 0 | 0 | 0 |
-| 1433 | `displayChild` | unary | DISPLAY → DISPLAY | 0x8d6500 | 0 | 0 | 0 | 0 |
-| 1434 | `displayCtrl` | unary | SCALAR → CONTROL | 0x8cceb0 | 0 | 0 | 0 | 0 |
-| 1435 | `displayUniqueName` | unary | DISPLAY → STRING | 0x8d71f0 | 0 | 0 | 0 | 0 |
-| 1436 | `displayUpdate` | unary | DISPLAY → NOTHING | 0x8d7260 | 0 | 0 | 0 | 0 |
-| 1437 | `dissolveTeam` | unary | STRING → NOTHING | 0x55f270 | 0 | 0 | 0 | 0 |
-| 1438 | `drawLink` | binary | CONTROL · ARRAY → NOTHING | 0x13cc220 | 0 | 0 | 0 | 0 |
-| 1439 | `drawLocation` | binary | CONTROL · LOCATION → NOTHING | 0xd045f0 | 0 | 0 | 0 | 0 |
-| 1440 | `drawXPolygon` | binary | CONTROL · ARRAY → NOTHING | 0x8e8cc0 | 0 | 0 | 0 | 0 |
-| 1441 | `dynamicSimulationDistance` | unary | STRING → SCALAR | 0x17e5f0 | 0 | 0 | 0 | 0 |
-| 1442 | `dynamicSimulationDistanceCoef` | unary | STRING → SCALAR | 0x17e710 | 0 | 0 | 0 | 0 |
-| 1443 | `dynamicSimulationSystemEnabled` | nular | → BOOL | 0x8a2c00 | 0 | 0 | 0 | 0 |
-| 1444 | `echo` | unary | STRING → NOTHING | 0x2d2780 | 0 | 0 | 0 | 0 |
-| 1445 | `editObject` | binary | CONTROL · STRING → ANY | 0x13cc900 | 0 | 0 | 0 | 0 |
-| 1446 | `editorSetEventHandler` | binary | CONTROL · ARRAY → NOTHING | 0x13d2640 | 0 | 0 | 0 | 0 |
-| 1447 | `enableAIFeature` | binary | OBJECT · ARRAY → NOTHING<br>STRING · BOOL → NOTHING | 0x48c7c0<br>0x48c660 | 0 | 0 | 0 | 0 |
-| 1448 | `enableAudioFeature` | binary | OBJECT · ARRAY → BOOL | 0x53f620 | 0 | 0 | 0 | 0 |
-| 1449 | `enableAudioFeature` | unary | ARRAY → BOOL | 0x5570a0 | 0 | 0 | 0 | 0 |
-| 1450 | `enableAutoTrimRTD` | binary | OBJECT · BOOL → BOOL | 0x895ab0 | 0 | 0 | 0 | 0 |
-| 1451 | `enableCaustics` | unary | BOOL → NOTHING | 0x48cbc0 | 0 | 0 | 0 | 0 |
-| 1452 | `enableCopilot` | binary | OBJECT · BOOL → NOTHING | 0x48cc90 | 0 | 0 | 0 | 0 |
-| 1453 | `enableDiagLegend` | unary | BOOL → NOTHING | 0x48cee0 | 0 | 0 | 0 | 0 |
-| 1454 | `enableDirectionStabilization` | binary | OBJECT · ARRAY → NOTHING | 0x527600 | 0 | 0 | 0 | 0 |
-| 1455 | `enableEngineArtillery` | unary | BOOL → NOTHING | 0x48cb00 | 0 | 0 | 0 | 0 |
-| 1456 | `enableFreeLook` | unary | BOOL → BOOL | 0x48d1d0 | 0 | 0 | 0 | 0 |
-| 1457 | `enableGunStabilization` | binary | OBJECT · ARRAY → SCALAR | 0x5279c0 | 0 | 0 | 0 | 0 |
-| 1458 | `enableInfoPanelComponent` | binary | OBJECT\|ARRAY · ARRAY → BOOL | 0x48d750 | 0 | 0 | 0 | 0 |
-| 1459 | `enableReload` | binary | OBJECT · BOOL → NOTHING | 0x569bb0 | 0 | 0 | 0 | 0 |
-| 1460 | `enableSatNormalOnDetail` | unary | BOOL → NOTHING | 0x48d260 | 0 | 0 | 0 | 0 |
-| 1461 | `enableStressDamage` | unary | BOOL → NOTHING | 0x8922d0 | 0 | 0 | 0 | 0 |
-| 1462 | `enableTraffic` | unary | BOOL → NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
-| 1463 | `enableVehicleSensor` | binary | OBJECT · ARRAY → NOTHING | 0x1c6f10 | 0 | 0 | 0 | 0 |
-| 1464 | `enginesIsOnRTD` | unary | OBJECT → ARRAY | 0x892f40 | 0 | 0 | 0 | 0 |
-| 1465 | `enginesPowerRTD` | unary | OBJECT → ARRAY | 0x893100 | 0 | 0 | 0 | 0 |
-| 1466 | `enginesTorqueRTD` | unary | OBJECT → ARRAY | 0x8934a0 | 0 | 0 | 0 | 0 |
-| 1467 | `environmentEnabled` | nular | → ARRAY | 0x89a580 | 0 | 0 | 0 | 0 |
-| 1468 | `environmentVolume` | nular | → SCALAR | 0x89c250 | 0 | 0 | 0 | 0 |
-| 1469 | `equipmentDisabled` | unary | OBJECT → ARRAY | 0x56a7a0 | 0 | 0 | 0 | 0 |
-| 1470 | `evalObjectArgument` | binary | CONTROL · ARRAY → ANY | 0x13cca70 | 0 | 0 | 0 | 0 |
-| 1471 | `exec` | binary | ANY · STRING → NOTHING | 0x54a4c0 | 0 | 0 | 0 | 0 |
-| 1472 | `execEditorScript` | binary | CONTROL · ARRAY → ANY | 0x13ccd50 | 0 | 0 | 0 | 0 |
-| 1473 | `exportJIPMessages` | unary | STRING → NOTHING | 0x54dbf0 | 0 | 0 | 0 | 0 |
-| 1474 | `fadeEnvironment` | binary | SCALAR · SCALAR → NOTHING | 0x54ff50 | 0 | 0 | 0 | 0 |
-| 1475 | `fillWeaponsFromPool` | unary | OBJECT → NOTHING | 0x8b8990 | 0 | 0 | 0 | 0 |
-| 1476 | `findCover` | binary | OBJECT · ARRAY → OBJECT | 0x569cc0 | 0 | 0 | 0 | 0 |
-| 1477 | `findEditorObject` | binary | CONTROL · ANY → STRING<br>CONTROL · ARRAY → STRING | 0x13cd720<br>0x13cd1c0 | 0 | 0 | 0 | 0 |
-| 1478 | `findEmptyPositionReady` | binary | ARRAY · ARRAY → BOOL | 0x490520 | 0 | 0 | 0 | 0 |
-| 1479 | `flag` | unary | OBJECT → OBJECT | 0x52bad0 | 0 | 0 | 0 | 0 |
-| 1480 | `flagSide` | unary | OBJECT → SIDE | 0x52bbf0 | 0 | 0 | 0 | 0 |
-| 1481 | `flagTexture` | unary | OBJECT → STRING | 0x52bc60 | 0 | 0 | 0 | 0 |
-| 1482 | `focusedCtrl` | unary | DISPLAY → CONTROL | 0x8d05c0 | 0 | 0 | 0 | 0 |
-| 1483 | `fogForecast` | nular | → SCALAR | 0x8a8fd0 | 0 | 0 | 0 | 0 |
-| 1484 | `forceAtPositionRTD` | unary | ARRAY → ARRAY | 0x892310 | 0 | 0 | 0 | 0 |
-| 1485 | `forceCadetDifficulty` | unary | ARRAY → ARRAY | 0x492cf0 | 0 | 0 | 0 | 0 |
-| 1486 | `forcedMap` | nular | → ARRAY | 0x8a9220 | 0 | 0 | 0 | 0 |
-| 1487 | `forceEnd` | nular | → NOTHING | 0x8a70a0 | 0 | 0 | 0 | 0 |
-| 1488 | `forceFlagTexture` | binary | OBJECT · STRING → NOTHING | 0x5286b0 | 0 | 0 | 0 | 0 |
-| 1489 | `forceGeneratorRTD` | unary | SCALAR → ARRAY | 0x893660 | 0 | 0 | 0 | 0 |
-| 1490 | `forceHitPointsDamageSync` | unary | OBJECT → BOOL | 0x492e40 | 0 | 0 | 0 | 0 |
-| 1491 | `forEachMember` | binary | CODE · TEAM_MEMBER → NOTHING | 0x196040 | 0 | 0 | 0 | 0 |
-| 1492 | `forEachMemberAgent` | binary | CODE · TEAM_MEMBER → NOTHING | 0x1962c0 | 0 | 0 | 0 | 0 |
-| 1493 | `forEachMemberTeam` | binary | CODE · TEAM_MEMBER → NOTHING | 0x196630 | 0 | 0 | 0 | 0 |
-| 1494 | `formationDirection` | unary | OBJECT → SCALAR | 0x192bf0 | 0 | 0 | 0 | 0 |
-| 1495 | `formationMembers` | unary | OBJECT → ARRAY | 0x56ac40 | 0 | 0 | 0 | 0 |
-| 1496 | `formationTask` | unary | OBJECT → STRING | 0x56afd0 | 0 | 0 | 0 | 0 |
-| 1497 | `formLeader` | unary | OBJECT → OBJECT | 0x192e50 | 0 | 0 | 0 | 0 |
-| 1498 | `freeExtension` | unary | STRING → BOOL\|NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
-| 1499 | `fromEditor` | unary | TEAM_MEMBER → BOOL | 0x196fd0 | 0 | 0 | 0 | 0 |
-| 1500 | `gearIDCAmmoCount` | unary | SCALAR → SCALAR | 0x8cea00 | 0 | 0 | 0 | 0 |
-| 1501 | `gearSlotAmmoCount` | unary | CONTROL → SCALAR | 0x8cf470 | 0 | 0 | 0 | 0 |
-| 1502 | `gearSlotData` | unary | CONTROL → STRING | 0x8cf4e0 | 0 | 0 | 0 | 0 |
-| 1503 | `gestureState` | unary | OBJECT → STRING | 0x56b0a0 | 0 | 0 | 0 | 0 |
-| 1504 | `get3DENAttributes` | binary | ?\|SCALAR · STRING → ARRAY | 0x7f8c80 | 0 | 0 | 0 | 0 |
-| 1505 | `get3DENLayer` | unary | ?\|SCALAR → SCALAR | 0x7fa010 | 0 | 0 | 0 | 0 |
-| 1506 | `get3DENLinesVisible` | nular | → ARRAY | 0x7fa950 | 0 | 0 | 0 | 0 |
-| 1507 | `get3DENMissionAttributes` | binary | STRING · STRING → ARRAY | 0x7fb120 | 0 | 0 | 0 | 0 |
-| 1508 | `get3DENParent` | unary | ?\|SCALAR → ANY | 0x7fa0a0 | 0 | 0 | 0 | 0 |
-| 1509 | `getAimDirectionAndUp` | unary | ARRAY → ARRAY | 0x565aa0 | 0 | 0 | 0 | 0 |
-| 1510 | `getAimingCoef` | unary | OBJECT → SCALAR | 0x8968c0 | 0 | 0 | 0 | 0 |
-| 1511 | `getAllEnv3DSoundControllers` | unary | OBJECT → ARRAY | 0x4a1cd0 | 0 | 0 | 0 | 0 |
-| 1512 | `getAllEnvSoundControllers` | unary | ARRAY → ARRAY | 0x4a26b0 | 0 | 0 | 0 | 0 |
-| 1513 | `getAllSoundControllers` | unary | OBJECT → ARRAY | 0x4b5300 | 0 | 0 | 0 | 0 |
-| 1514 | `getAllUnitTraits` | unary | OBJECT\|STRING → ARRAY | 0x49b690 | 0 | 0 | 0 | 0 |
-| 1515 | `getAmmoCargo` | unary | OBJECT → SCALAR | 0x528fe0 | 0 | 0 | 0 | 0 |
-| 1516 | `getAnimAimPrecision` | unary | OBJECT → SCALAR | 0x896920 | 0 | 0 | 0 | 0 |
-| 1517 | `getAnimationsQueue` | unary | OBJECT → ARRAY | 0x565c30 | 0 | 0 | 0 | 0 |
-| 1518 | `getAnimSpeedCoef` | unary | OBJECT → SCALAR | 0x8969b0 | 0 | 0 | 0 | 0 |
-| 1519 | `getArtilleryComputerSettings` | nular | → ARRAY | 0x8a8ac0 | 0 | 0 | 0 | 0 |
-| 1520 | `getAttackTarget` | unary | OBJECT → OBJECT | 0x1cc1e0 | 0 | 0 | 0 | 0 |
-| 1521 | `getAudioOptionVolumes` | nular | → ARRAY | 0x89b7e0 | 0 | 0 | 0 | 0 |
-| 1522 | `getBoneNames` | unary | OBJECT → ARRAY | 0x4abbd0 | 0 | 0 | 0 | 0 |
-| 1523 | `getBurningValue` | unary | OBJECT → SCALAR | 0x52a940 | 0 | 0 | 0 | 0 |
-| 1524 | `getCalculatePlayerVisibilityByFriendly` | nular | → BOOL | 0x89b940 | 0 | 0 | 0 | 0 |
-| 1525 | `getCameraViewDirection` | unary | OBJECT → ARRAY | 0x52aee0 | 0 | 0 | 0 | 0 |
-| 1526 | `getCargoIndex` | binary | OBJECT · OBJECT → SCALAR | 0x52aaf0 | 0 | 0 | 0 | 0 |
-| 1527 | `getClientStateNumber` | nular | → STRING | 0x89b9b0 | 0 | 0 | 0 | 0 |
-| 1528 | `getCompatiblePylonMagazines` | binary | OBJECT · STRING\|SCALAR → ARRAY<br>STRING · STRING\|SCALAR → ARRAY | 0x49e6c0<br>0x49e450 | 0 | 0 | 0 | 0 |
-| 1529 | `getConnectedUAVUnit` | unary | OBJECT → OBJECT | 0x49f680 | 0 | 0 | 0 | 0 |
-| 1530 | `getContainerMaxLoad` | unary | STRING → SCALAR | 0x83dac0 | 0 | 0 | 0 | 0 |
-| 1531 | `getCorpse` | unary | OBJECT → OBJECT | 0x4b3f20 | 0 | 0 | 0 | 0 |
-| 1532 | `getCorpseWeaponholders` | unary | OBJECT → ARRAY | 0x49f6e0 | 0 | 0 | 0 | 0 |
-| 1533 | `getCruiseControl` | unary | OBJECT → ARRAY | 0x52acf0 | 0 | 0 | 0 | 0 |
-| 1534 | `getCursorObjectParams` | nular | → ARRAY | 0x89baa0 | 0 | 0 | 0 | 0 |
-| 1535 | `getCustomAimCoef` | unary | OBJECT → SCALAR | 0x896a10 | 0 | 0 | 0 | 0 |
-| 1536 | `getDescription` | unary | OBJECT → ARRAY | 0x573470 | 0 | 0 | 0 | 0 |
-| 1537 | `getDirVisual` | binary | OBJECT\|ARRAY · OBJECT\|ARRAY → SCALAR | 0x52b4d0 | 0 | 0 | 0 | 0 |
-| 1538 | `getDiverState` | unary | OBJECT → BOOL | 0x52b810 | 0 | 0 | 0 | 0 |
-| 1539 | `getDLCUsageTime` | unary | SCALAR → SCALAR | 0x4a0480 | 0 | 0 | 0 | 0 |
-| 1540 | `getEditorCamera` | unary | CONTROL → OBJECT | 0x13b9020 | 0 | 0 | 0 | 0 |
-| 1541 | `getEditorMode` | unary | CONTROL → STRING | 0x13cda50 | 0 | 0 | 0 | 0 |
-| 1542 | `getEditorObjectScope` | binary | CONTROL · STRING → STRING | 0x13cd870 | 0 | 0 | 0 | 0 |
-| 1543 | `getElevationOffset` | nular | → SCALAR | 0x8a8f10 | 0 | 0 | 0 | 0 |
-| 1544 | `getEntityInfo` | unary | OBJECT → ARRAY | 0x4a0f90 | 0 | 0 | 0 | 0 |
-| 1545 | `getEnv3DSoundController` | binary | OBJECT · STRING → SCALAR | 0x4a1860 | 0 | 0 | 0 | 0 |
-| 1546 | `getForcedFlagTexture` | unary | OBJECT → STRING | 0x52bd10 | 0 | 0 | 0 | 0 |
-| 1547 | `getForcedSpeed` | unary | OBJECT → SCALAR | 0x56ab30 | 0 | 0 | 0 | 0 |
-| 1548 | `getFuelCargo` | unary | OBJECT → SCALAR | 0x52bdc0 | 0 | 0 | 0 | 0 |
-| 1549 | `getFuelConsumptionCoef` | unary | OBJECT → SCALAR | 0x52be90 | 0 | 0 | 0 | 0 |
-| 1550 | `getHideFrom` | binary | OBJECT · OBJECT → ARRAY | 0x1cc310 | 0 | 0 | 0 | 0 |
-| 1551 | `getLeaning` | unary | OBJECT → SCALAR | 0x4a41c0 | 0 | 0 | 0 | 0 |
-| 1552 | `getLightInfo` | binary | OBJECT · SCALAR → ANY | 0x4a4b50 | 0 | 0 | 0 | 0 |
-| 1553 | `getLightInfo` | unary | OBJECT → ARRAY | 0x4a4250 | 0 | 0 | 0 | 0 |
-| 1554 | `getLighting` | nular | → ARRAY | 0x89c2f0 | 0 | 0 | 0 | 0 |
-| 1555 | `getLightingAt` | unary | OBJECT → ARRAY | 0x4a55c0 | 0 | 0 | 0 | 0 |
-| 1556 | `getLoadedModsInfo` | nular | → ARRAY | 0x89c6d0 | 0 | 0 | 0 | 0 |
-| 1557 | `getMissionLayers` | nular | → ARRAY | 0x7fcb10 | 0 | 0 | 0 | 0 |
-| 1558 | `getMissionOptions` | nular | → HASHMAP | 0x4a6a00 | 0 | 0 | 0 | 0 |
-| 1559 | `getMissionPath` | unary | STRING → STRING | 0x4a6a30 | 0 | 0 | 0 | 0 |
-| 1560 | `getObjectArgument` | binary | CONTROL · ARRAY → STRING | 0x13cdcf0 | 0 | 0 | 0 | 0 |
-| 1561 | `getObjectChildren` | binary | CONTROL · STRING → ARRAY | 0x13cded0 | 0 | 0 | 0 | 0 |
-| 1562 | `getObjectDLC` | unary | OBJECT → SCALAR | 0x4abf30 | 0 | 0 | 0 | 0 |
-| 1563 | `getObjectMaterials` | binary | OBJECT · ARRAY → ARRAY | 0x4ac060 | 0 | 0 | 0 | 0 |
-| 1564 | `getObjectProxy` | binary | CONTROL · STRING → OBJECT | 0x13ce280 | 0 | 0 | 0 | 0 |
-| 1565 | `getObjectScale` | unary | OBJECT → SCALAR | 0x530cd0 | 0 | 0 | 0 | 0 |
-| 1566 | `getObjectTextures` | binary | OBJECT · ARRAY → ARRAY | 0x4acf00 | 0 | 0 | 0 | 0 |
-| 1567 | `getOpticsMode` | binary | OBJECT · SCALAR → STRING | 0x572780 | 0 | 0 | 0 | 0 |
-| 1568 | `getPhysicsCollisionFlag` | unary | OBJECT → ARRAY | 0x1a5890 | 0 | 0 | 0 | 0 |
-| 1569 | `getPilotCameraDirection` | unary | OBJECT → ARRAY | 0x8088b0 | 0 | 0 | 0 | 0 |
-| 1570 | `getPilotCameraOpticsMode` | unary | OBJECT → SCALAR | 0x8090f0 | 0 | 0 | 0 | 0 |
-| 1571 | `getPilotCameraPosition` | unary | OBJECT → ARRAY | 0x808da0 | 0 | 0 | 0 | 0 |
-| 1572 | `getPiPViewDistance` | nular | → SCALAR | 0x89d2b0 | 0 | 0 | 0 | 0 |
-| 1573 | `getPlateNumber` | unary | OBJECT → STRING | 0x56b390 | 0 | 0 | 0 | 0 |
-| 1574 | `getPlayerChannel` | unary | OBJECT → SCALAR | 0x19c330 | 0 | 0 | 0 | 0 |
-| 1575 | `getPlayerID` | unary | OBJECT → STRING | 0x4af020 | 0 | 0 | 0 | 0 |
-| 1576 | `getPlayerVoNVolume` | unary | OBJECT → SCALAR | 0x4b7460 | 0 | 0 | 0 | 0 |
-| 1577 | `getRemoteSensorsDisabled` | nular | → BOOL | 0x89d850 | 0 | 0 | 0 | 0 |
-| 1578 | `getRepairCargo` | unary | OBJECT → SCALAR | 0x530c00 | 0 | 0 | 0 | 0 |
-| 1579 | `getRespawnVehicleInfo` | binary | OBJECT · SCALAR → ANY | 0x56bb10 | 0 | 0 | 0 | 0 |
-| 1580 | `getRespawnVehicleInfo` | unary | OBJECT → ARRAY | 0x56b530 | 0 | 0 | 0 | 0 |
-| 1581 | `getRoadInfo` | unary | OBJECT → ARRAY | 0x52dc30 | 0 | 0 | 0 | 0 |
-| 1582 | `getRoles` | nular | → ARRAY | 0x175680 | 0 | 0 | 0 | 0 |
-| 1583 | `getSelectionBones` | binary | OBJECT · ARRAY → ARRAY | 0x530f40 | 0 | 0 | 0 | 0 |
-| 1584 | `getSensorTargets` | unary | OBJECT → ARRAY | 0x1c8e00 | 0 | 0 | 0 | 0 |
-| 1585 | `getSensorThreats` | unary | OBJECT → ARRAY | 0x1ca520 | 0 | 0 | 0 | 0 |
-| 1586 | `getServerInfo` | nular | → HASHMAP | 0x89d880 | 0 | 0 | 0 | 0 |
-| 1587 | `getShadowDistance` | nular | → SCALAR | 0x8a9bd0 | 0 | 0 | 0 | 0 |
-| 1588 | `getShotInfo` | binary | OBJECT · SCALAR → ANY | 0x4b2110 | 0 | 0 | 0 | 0 |
-| 1589 | `getShotInfo` | unary | OBJECT → ARRAY | 0x4b1e60 | 0 | 0 | 0 | 0 |
-| 1590 | `getSoundController` | binary | OBJECT · STRING → SCALAR | 0x4b5100 | 0 | 0 | 0 | 0 |
-| 1591 | `getSoundControllerResult` | binary | OBJECT · CONFIG → SCALAR | 0x4b2830 | 0 | 0 | 0 | 0 |
-| 1592 | `getSpeed` | binary | OBJECT · STRING → SCALAR | 0x56bf50 | 0 | 0 | 0 | 0 |
-| 1593 | `getStamina` | unary | OBJECT → SCALAR | 0x896a70 | 0 | 0 | 0 | 0 |
-| 1594 | `getSteamFriendsServers` | nular | → ARRAY | 0x89ea30 | 0 | 0 | 0 | 0 |
-| 1595 | `getTerrainGrid` | nular | → SCALAR | 0x8ab340 | 0 | 0 | 0 | 0 |
-| 1596 | `getTerrainHeight` | unary | ARRAY → SCALAR | 0x4b4090 | 0 | 0 | 0 | 0 |
-| 1597 | `getTerrainInfo` | nular | → ARRAY | 0x89ecf0 | 0 | 0 | 0 | 0 |
-| 1598 | `getTextureInfo` | unary | ARRAY → ARRAY<br>STRING → ARRAY | 0x4b4e30<br>0x4b4c50 | 0 | 0 | 0 | 0 |
-| 1599 | `getTIParameters` | nular | → HASHMAP | 0x89edd0 | 0 | 0 | 0 | 0 |
-| 1600 | `getTowParent` | unary | OBJECT → OBJECT | 0x1a5a90 | 0 | 0 | 0 | 0 |
-| 1601 | `getTrimOffsetRTD` | unary | OBJECT → ARRAY | 0x894440 | 0 | 0 | 0 | 0 |
-| 1602 | `getTurretLimits` | binary | OBJECT · ARRAY → ARRAY | 0x56c110 | 0 | 0 | 0 | 0 |
-| 1603 | `getTurretOpticsMode` | binary | OBJECT · ARRAY → NOTHING | 0x4b5d40 | 0 | 0 | 0 | 0 |
-| 1604 | `getTurretOpticsMode` | unary | OBJECT → ARRAY | 0x4b5e20 | 0 | 0 | 0 | 0 |
-| 1605 | `getUnitFreefallInfo` | unary | OBJECT → ARRAY | 0x4b67f0 | 0 | 0 | 0 | 0 |
-| 1606 | `getUnitMovesInfo` | binary | OBJECT · SCALAR → ANY | 0x4b68f0 | 0 | 0 | 0 | 0 |
-| 1607 | `getUnitMovesInfo` | unary | OBJECT → ARRAY | 0x4b6d20 | 0 | 0 | 0 | 0 |
-| 1608 | `getUnitState` | unary | OBJECT → STRING | 0x4b73a0 | 0 | 0 | 0 | 0 |
-| 1609 | `getUnloadInCombat` | unary | OBJECT → ARRAY | 0x56c930 | 0 | 0 | 0 | 0 |
-| 1610 | `getUserInfo` | binary | STRING · SCALAR → ANY | 0x4b1a00 | 0 | 0 | 0 | 0 |
-| 1611 | `getUserInfo` | unary | STRING → ARRAY | 0x4b14a0 | 0 | 0 | 0 | 0 |
-| 1612 | `getUserMFDText` | unary | OBJECT → ARRAY | 0x4b7750 | 0 | 0 | 0 | 0 |
-| 1613 | `getVideoOptions` | nular | → HASHMAP | 0x89f280 | 0 | 0 | 0 | 0 |
-| 1614 | `getWaterFillPercentage` | unary | OBJECT → SCALAR | 0x533da0 | 0 | 0 | 0 | 0 |
-| 1615 | `getWaterLeakiness` | unary | OBJECT → SCALAR | 0x533e30 | 0 | 0 | 0 | 0 |
-| 1616 | `getWeaponSway` | unary | OBJECT → SCALAR | 0x896b70 | 0 | 0 | 0 | 0 |
-| 1617 | `getWindletParams` | unary | OBJECT → ARRAY | 0x20c8b0 | 0 | 0 | 0 | 0 |
-| 1618 | `getWingsOrientationRTD` | unary | OBJECT → SCALAR | 0x894ca0 | 0 | 0 | 0 | 0 |
-| 1619 | `getWingsPositionRTD` | unary | OBJECT → SCALAR | 0x895090 | 0 | 0 | 0 | 0 |
-| 1620 | `goto` | unary | STRING → NOTHING | 0x10d3dd0 | 0 | 0 | 0 | 0 |
-| 1621 | `groupIconSelectable` | nular | → BOOL | 0x8af1b0 | 0 | 0 | 0 | 0 |
-| 1622 | `groups` | unary | SIDE → ARRAY | 0x1903c0 | 0 | 0 | 0 | 0 |
-| 1623 | `groupSelectUnit` | binary | OBJECT · ARRAY → NOTHING | 0x18ff90 | 0 | 0 | 0 | 0 |
-| 1624 | `gusts` | nular | → SCALAR | 0x8a9420 | 0 | 0 | 0 | 0 |
-| 1625 | `halt` | nular | → NOTHING | 0x2cf7b0 | 0 | 0 | 0 | 0 |
-| 1626 | `handgunMagazine` | unary | OBJECT → ARRAY | 0x84d3c0 | 0 | 0 | 0 | 0 |
-| 1627 | `handsHit` | unary | OBJECT → SCALAR | 0x535370 | 0 | 0 | 0 | 0 |
-| 1628 | `hasCustomFace` | unary | OBJECT → BOOL | 0x4b94b0 | 0 | 0 | 0 | 0 |
-| 1629 | `hasPilotCamera` | unary | OBJECT → BOOL | 0x809170 | 0 | 0 | 0 | 0 |
-| 1630 | `hcGroupParams` | binary | OBJECT · GROUP → ARRAY | 0x1994c0 | 0 | 0 | 0 | 0 |
-| 1631 | `hcRemoveAllGroups` | unary | OBJECT → NOTHING | 0x199410 | 0 | 0 | 0 | 0 |
-| 1632 | `hcShowBar` | unary | BOOL → NOTHING | 0x199da0 | 0 | 0 | 0 | 0 |
-| 1633 | `hintC` | binary | STRING · ARRAY → NOTHING<br>STRING · STRING → NOTHING<br>STRING · TEXT → NOTHING | 0x55a520<br>0x55a540<br>0x55a520 | 0 | 0 | 0 | 0 |
-| 1634 | `hintCadet` | unary | TEXT\|STRING → NOTHING | 0x55aac0 | 0 | 0 | 0 | 0 |
-| 1635 | `hostMission` | unary | ARRAY → NOTHING | 0x4bad50 | 0 | 0 | 0 | 0 |
-| 1636 | `humidity` | nular | → SCALAR | 0x8a9b30 | 0 | 0 | 0 | 0 |
-| 1637 | `ignore3DENHistory` | unary | CODE → NOTHING | 0x7fcf90 | 0 | 0 | 0 | 0 |
-| 1638 | `ignoreTarget` | binary | OBJECT\|GROUP · OBJECT\|ARRAY → NOTHING | 0x1c8370 | 0 | 0 | 0 | 0 |
-| 1639 | `importAllGroups` | unary | CONTROL → NOTHING | 0x13ce7e0 | 0 | 0 | 0 | 0 |
-| 1640 | `importance` | unary | LOCATION → SCALAR | 0xd051f0 | 0 | 0 | 0 | 0 |
-| 1641 | `inAreaArrayIndexes` | binary | ARRAY · ARRAY → ARRAY<br>ARRAY · LOCATION → ARRAY<br>ARRAY · OBJECT → ARRAY<br>ARRAY · STRING → ARRAY | 0x4bc060<br>0xd01430<br>0x4bc850<br>0x4bc4c0 | 0 | 0 | 0 | 0 |
-| 1642 | `incapacitatedState` | unary | OBJECT → STRING | 0x52c3e0 | 0 | 0 | 0 | 0 |
-| 1643 | `inflamed` | unary | OBJECT → BOOL | 0x535720 | 0 | 0 | 0 | 0 |
-| 1644 | `infoPanelComponentEnabled` | binary | OBJECT\|ARRAY · ARRAY → BOOL | 0x518bb0 | 0 | 0 | 0 | 0 |
-| 1645 | `infoPanelComponents` | binary | OBJECT\|ARRAY · STRING → ARRAY | 0x51e530 | 0 | 0 | 0 | 0 |
-| 1646 | `infoPanels` | unary | OBJECT\|ARRAY → ARRAY | 0x51e620 | 0 | 0 | 0 | 0 |
-| 1647 | `inputController` | unary | SCALAR → SCALAR | 0x8ce610 | 0 | 0 | 0 | 0 |
-| 1648 | `inputMouse` | unary | SCALAR → SCALAR<br>STRING → BOOL | 0x8ce6a0<br>0x8ce770 | 0 | 0 | 0 | 0 |
-| 1649 | `insertEditorObject` | binary | CONTROL · ARRAY → STRING | 0x13ce840 | 0 | 0 | 0 | 0 |
-| 1650 | `insideBuilding` | unary | OBJECT → SCALAR | 0x4a3a70 | 0 | 0 | 0 | 0 |
-| 1651 | `intersect` | binary | ARRAY · ARRAY → ARRAY | 0x543770 | 0 | 0 | 0 | 0 |
-| 1652 | `isActionMenuVisible` | nular | → BOOL | 0x899280 | 0 | 0 | 0 | 0 |
-| 1653 | `isAgent` | unary | TEAM_MEMBER → BOOL | 0x197330 | 0 | 0 | 0 | 0 |
-| 1654 | `isAimPrecisionEnabled` | unary | OBJECT → BOOL | 0x896c00 | 0 | 0 | 0 | 0 |
-| 1655 | `isAISteeringComponentEnabled` | unary | OBJECT → BOOL | 0x535780 | 0 | 0 | 0 | 0 |
-| 1656 | `isAllowedCrewInImmobile` | unary | OBJECT → BOOL | 0x515a50 | 0 | 0 | 0 | 0 |
-| 1657 | `isAutoStartUpEnabledRTD` | unary | OBJECT → ARRAY | 0x895480 | 0 | 0 | 0 | 0 |
-| 1658 | `isAutoTrimOnRTD` | unary | OBJECT → BOOL | 0x8954e0 | 0 | 0 | 0 | 0 |
-| 1659 | `isAwake` | unary | OBJECT → BOOL | 0x1a5b90 | 0 | 0 | 0 | 0 |
-| 1660 | `isBleeding` | unary | OBJECT → BOOL | 0x535850 | 0 | 0 | 0 | 0 |
-| 1661 | `isCollisionLightOn` | unary | OBJECT → BOOL | 0x56cbd0 | 0 | 0 | 0 | 0 |
-| 1662 | `isCopilotEnabled` | unary | OBJECT → BOOL | 0x515b70 | 0 | 0 | 0 | 0 |
-| 1663 | `isFilePatchingEnabled` | nular | → BOOL | 0x8a2c50 | 0 | 0 | 0 | 0 |
-| 1664 | `isFinal` | unary | ANY → BOOL (partial) | 0x2d7de0 | 0 | 0 | 0 | 0 |
-| 1665 | `isFlashlightOn` | binary | OBJECT · STRING → BOOL | 0x8429e0 | 0 | 0 | 0 | 0 |
-| 1666 | `isForcedWalk` | unary | OBJECT → BOOL | 0x517340 | 0 | 0 | 0 | 0 |
-| 1667 | `isGroupDeletedWhenEmpty` | unary | GROUP → BOOL | 0x192880 | 0 | 0 | 0 | 0 |
-| 1668 | `isInRemainsCollector` | unary | OBJECT → BOOL | 0x5179a0 | 0 | 0 | 0 | 0 |
-| 1669 | `isIRLaserOn` | binary | OBJECT · STRING → BOOL | 0x842a20 | 0 | 0 | 0 | 0 |
-| 1670 | `isLaserOn` | binary | OBJECT · ARRAY → BOOL | 0x56ce10 | 0 | 0 | 0 | 0 |
-| 1671 | `isLaserOn` | unary | OBJECT → BOOL | 0x56cd80 | 0 | 0 | 0 | 0 |
-| 1672 | `isMarkedForCollection` | unary | OBJECT → BOOL | 0x535a30 | 0 | 0 | 0 | 0 |
-| 1673 | `isObjectRTD` | unary | OBJECT → BOOL | 0x895540 | 0 | 0 | 0 | 0 |
-| 1674 | `isRealTime` | unary | CONTROL → BOOL | 0x13ced80 | 0 | 0 | 0 | 0 |
-| 1675 | `isRemoteControlling` | unary | OBJECT → BOOL | 0x518600 | 0 | 0 | 0 | 0 |
-| 1676 | `isSaving` | nular | → BOOL | 0x89a940 | 0 | 0 | 0 | 0 |
-| 1677 | `isSensorTargetConfirmed` | binary | OBJECT · SIDE → BOOL | 0x1c8a30 | 0 | 0 | 0 | 0 |
-| 1678 | `isShowing3DIcons` | unary | CONTROL → BOOL | 0x13cee00 | 0 | 0 | 0 | 0 |
-| 1679 | `isSprintAllowed` | unary | OBJECT → BOOL | 0x535c40 | 0 | 0 | 0 | 0 |
-| 1680 | `isStaminaEnabled` | unary | OBJECT → BOOL | 0x896c60 | 0 | 0 | 0 | 0 |
-| 1681 | `isSteamMission` | nular | → BOOL | 0x1c2990 | 0 | 0 | 0 | 0 |
-| 1682 | `isSteamOverlayEnabled` | nular | → BOOL | 0x8a2e70 | 0 | 0 | 0 | 0 |
-| 1683 | `isStressDamageEnabled` | nular | → BOOL | 0x895640 | 0 | 0 | 0 | 0 |
-| 1684 | `isSwitchingWeapon` | unary | OBJECT → STRING | 0x51f420 | 0 | 0 | 0 | 0 |
-| 1685 | `isThrowable` | unary | STRING → BOOL | 0x518780 | 0 | 0 | 0 | 0 |
-| 1686 | `isTurnedOut` | unary | OBJECT → BOOL | 0x518840 | 0 | 0 | 0 | 0 |
-| 1687 | `isUsingAISteeringComponent` | nular | → BOOL | 0x8aef40 | 0 | 0 | 0 | 0 |
-| 1688 | `isVehicleSensorEnabled` | binary | OBJECT · STRING → ARRAY | 0x1c8b50 | 0 | 0 | 0 | 0 |
-| 1689 | `isWalking` | unary | OBJECT → BOOL | 0x518f30 | 0 | 0 | 0 | 0 |
-| 1690 | `kbAddDatabase` | binary | OBJECT · STRING → BOOL | 0x519000 | 0 | 0 | 0 | 0 |
-| 1691 | `kbAddDatabaseTargets` | binary | OBJECT · STRING → BOOL | 0x519000 | 0 | 0 | 0 | 0 |
-| 1692 | `kbReact` | binary | OBJECT · ARRAY → NOTHING | 0x5196e0 | 0 | 0 | 0 | 0 |
-| 1693 | `keyImage` | unary | STRING\|SCALAR → TEXT | 0x4a3b30 | 0 | 0 | 0 | 0 |
-| 1694 | `kick` | unary | STRING\|SCALAR → NOTHING | 0x176210 | 0 | 0 | 0 | 0 |
-| 1695 | `landAt` | binary | OBJECT · ARRAY → BOOL<br>OBJECT · OBJECT\|SCALAR → NOTHING | 0x4b9ba0<br>0x536440 | 0 | 0 | 0 | 0 |
-| 1696 | `landAt` | unary | OBJECT → ARRAY | 0x4ba150 | 0 | 0 | 0 | 0 |
-| 1697 | `laserTarget` | binary | OBJECT · ARRAY → OBJECT | 0x4a40b0 | 0 | 0 | 0 | 0 |
-| 1698 | `lbAdd` | unary | ARRAY → SCALAR | 0x8daf00 | 0 | 0 | 0 | 0 |
-| 1699 | `lbColor` | unary | ARRAY → ARRAY | 0x8db3e0 | 0 | 0 | 0 | 0 |
-| 1700 | `lbColorRight` | binary | CONTROL · SCALAR → ARRAY | 0x8ddbb0 | 0 | 0 | 0 | 0 |
-| 1701 | `lbColorRight` | unary | ARRAY → ARRAY | 0x8db400 | 0 | 0 | 0 | 0 |
-| 1702 | `lbData` | unary | ARRAY → STRING | 0x8db4c0 | 0 | 0 | 0 | 0 |
-| 1703 | `lbDelete` | unary | ARRAY → NOTHING | 0x8db150 | 0 | 0 | 0 | 0 |
-| 1704 | `lbIsSelected` | binary | CONTROL · SCALAR → BOOL | 0x8de420 | 0 | 0 | 0 | 0 |
-| 1705 | `lbPicture` | unary | ARRAY → STRING | 0x8db710 | 0 | 0 | 0 | 0 |
-| 1706 | `lbPictureRight` | binary | CONTROL · SCALAR → STRING | 0x8dde50 | 0 | 0 | 0 | 0 |
-| 1707 | `lbPictureRight` | unary | ARRAY → STRING | 0x8db730 | 0 | 0 | 0 | 0 |
-| 1708 | `lbSelection` | unary | CONTROL → ARRAY | 0x8dde70 | 0 | 0 | 0 | 0 |
-| 1709 | `lbSetColor` | unary | ARRAY → NOTHING | 0x8dbf60 | 0 | 0 | 0 | 0 |
-| 1710 | `lbSetColorRight` | unary | ARRAY → NOTHING | 0x8dbf80 | 0 | 0 | 0 | 0 |
-| 1711 | `lbSetCurSel` | unary | ARRAY → NOTHING | 0x8dbfa0 | 0 | 0 | 0 | 0 |
-| 1712 | `lbSetData` | unary | ARRAY → NOTHING | 0x8dc0f0 | 0 | 0 | 0 | 0 |
-| 1713 | `lbSetPicture` | unary | ARRAY → NOTHING | 0x8dc9f0 | 0 | 0 | 0 | 0 |
-| 1714 | `lbSetPictureColor` | unary | ARRAY → NOTHING | 0x8dc5f0 | 0 | 0 | 0 | 0 |
-| 1715 | `lbSetPictureColorDisabled` | binary | CONTROL · ARRAY → NOTHING | 0x8dec10 | 0 | 0 | 0 | 0 |
-| 1716 | `lbSetPictureColorDisabled` | unary | ARRAY → NOTHING | 0x8dc7a0 | 0 | 0 | 0 | 0 |
-| 1717 | `lbSetPictureColorSelected` | unary | ARRAY → NOTHING | 0x8dc9c0 | 0 | 0 | 0 | 0 |
-| 1718 | `lbSetPictureRight` | unary | ARRAY → NOTHING | 0x8dca10 | 0 | 0 | 0 | 0 |
-| 1719 | `lbSetPictureRightColorDisabled` | binary | CONTROL · ARRAY → NOTHING | 0x8dece0 | 0 | 0 | 0 | 0 |
-| 1720 | `lbSetSelectColor` | unary | ARRAY → NOTHING | 0x8dcc00 | 0 | 0 | 0 | 0 |
-| 1721 | `lbSetSelectColorRight` | binary | CONTROL · ARRAY → NOTHING | 0x8dee90 | 0 | 0 | 0 | 0 |
-| 1722 | `lbSetSelectColorRight` | unary | ARRAY → NOTHING | 0x8dcc20 | 0 | 0 | 0 | 0 |
-| 1723 | `lbSetSelected` | binary | CONTROL · ARRAY → NOTHING | 0x8deeb0 | 0 | 0 | 0 | 0 |
-| 1724 | `lbSetText` | unary | ARRAY → STRING | 0x8dcc40 | 0 | 0 | 0 | 0 |
-| 1725 | `lbSetTooltip` | unary | ARRAY → NOTHING | 0x8dce40 | 0 | 0 | 0 | 0 |
-| 1726 | `lbSetValue` | unary | ARRAY → NOTHING | 0x8dd030 | 0 | 0 | 0 | 0 |
-| 1727 | `lbSortBy` | binary | CONTROL\|SCALAR · ARRAY → NOTHING | 0x8df810 | 0 | 0 | 0 | 0 |
-| 1728 | `lbTextRight` | unary | ARRAY → STRING | 0x8db9d0 | 0 | 0 | 0 | 0 |
-| 1729 | `lbTooltip` | binary | CONTROL · SCALAR → STRING | 0x8de200 | 0 | 0 | 0 | 0 |
-| 1730 | `lbTooltip` | unary | ARRAY → STRING | 0x8db9f0 | 0 | 0 | 0 | 0 |
-| 1731 | `lbValue` | unary | ARRAY → SCALAR | 0x8dbc10 | 0 | 0 | 0 | 0 |
-| 1732 | `leaderboardsRequestUploadScore` | unary | ARRAY → BOOL | 0x1c3510 | 0 | 0 | 0 | 0 |
-| 1733 | `libraryDisclaimers` | nular | → ARRAY | 0x8aff50 | 0 | 0 | 0 | 0 |
-| 1734 | `lightDetachObject` | unary | OBJECT → NOTHING | 0x51b330 | 0 | 0 | 0 | 0 |
-| 1735 | `lightnings` | nular | → SCALAR | 0x8a9b80 | 0 | 0 | 0 | 0 |
-| 1736 | `listObjects` | binary | CONTROL · STRING → ARRAY | 0x13cee70 | 0 | 0 | 0 | 0 |
-| 1737 | `listRemoteTargets` | unary | SIDE → ARRAY | 0x1c8c70 | 0 | 0 | 0 | 0 |
-| 1738 | `listVehicleSensors` | unary | OBJECT → ARRAY | 0x1c8d40 | 0 | 0 | 0 | 0 |
-| 1739 | `lnbAddArray` | unary | ARRAY → SCALAR | 0x8e0010 | 0 | 0 | 0 | 0 |
-| 1740 | `lnbAddColumn` | binary | CONTROL · SCALAR → SCALAR | 0x8e4480 | 0 | 0 | 0 | 0 |
-| 1741 | `lnbAddColumn` | unary | ARRAY → SCALAR | 0x8e09a0 | 0 | 0 | 0 | 0 |
-| 1742 | `lnbAddRow` | unary | ARRAY → SCALAR | 0x8e0b10 | 0 | 0 | 0 | 0 |
-| 1743 | `lnbColor` | binary | CONTROL · ARRAY → ARRAY | 0x8e4a40 | 0 | 0 | 0 | 0 |
-| 1744 | `lnbColor` | unary | ARRAY → ARRAY | 0x8e13d0 | 0 | 0 | 0 | 0 |
-| 1745 | `lnbColorRight` | binary | CONTROL · ARRAY → ARRAY | 0x8e4a60 | 0 | 0 | 0 | 0 |
-| 1746 | `lnbColorRight` | unary | ARRAY → ARRAY | 0x8e13f0 | 0 | 0 | 0 | 0 |
-| 1747 | `lnbData` | unary | ARRAY → STRING | 0x8e1540 | 0 | 0 | 0 | 0 |
-| 1748 | `lnbDeleteColumn` | binary | CONTROL · SCALAR → NOTHING | 0x8e4790 | 0 | 0 | 0 | 0 |
-| 1749 | `lnbDeleteColumn` | unary | ARRAY → NOTHING | 0x8e0e60 | 0 | 0 | 0 | 0 |
-| 1750 | `lnbDeleteRow` | unary | ARRAY → NOTHING | 0x8e0fd0 | 0 | 0 | 0 | 0 |
-| 1751 | `lnbPicture` | binary | CONTROL · ARRAY → STRING | 0x8e4f80 | 0 | 0 | 0 | 0 |
-| 1752 | `lnbPicture` | unary | ARRAY → STRING | 0x8e1be0 | 0 | 0 | 0 | 0 |
-| 1753 | `lnbPictureRight` | binary | CONTROL · ARRAY → STRING | 0x8e4fa0 | 0 | 0 | 0 | 0 |
-| 1754 | `lnbPictureRight` | unary | ARRAY → STRING | 0x8e1c00 | 0 | 0 | 0 | 0 |
-| 1755 | `lnbSetColor` | unary | ARRAY → NOTHING | 0x8e2640 | 0 | 0 | 0 | 0 |
-| 1756 | `lnbSetColorRight` | binary | CONTROL · ARRAY → NOTHING | 0x8e55e0 | 0 | 0 | 0 | 0 |
-| 1757 | `lnbSetColorRight` | unary | ARRAY → NOTHING | 0x8e2660 | 0 | 0 | 0 | 0 |
-| 1758 | `lnbSetColumnsPos` | unary | ARRAY → NOTHING | 0x8e2680 | 0 | 0 | 0 | 0 |
-| 1759 | `lnbSetCurSelRow` | unary | ARRAY → NOTHING | 0x8e2960 | 0 | 0 | 0 | 0 |
-| 1760 | `lnbSetData` | unary | ARRAY → NOTHING | 0x8e2ae0 | 0 | 0 | 0 | 0 |
-| 1761 | `lnbSetPicture` | unary | ARRAY → NOTHING | 0x8e3700 | 0 | 0 | 0 | 0 |
-| 1762 | `lnbSetPictureColor` | unary | ARRAY → NOTHING | 0x8e3640 | 0 | 0 | 0 | 0 |
-| 1763 | `lnbSetPictureColorRight` | binary | CONTROL · ARRAY → NOTHING | 0x8e6710 | 0 | 0 | 0 | 0 |
-| 1764 | `lnbSetPictureColorRight` | unary | ARRAY → NOTHING | 0x8e3670 | 0 | 0 | 0 | 0 |
-| 1765 | `lnbSetPictureColorSelected` | unary | ARRAY → NOTHING | 0x8e36a0 | 0 | 0 | 0 | 0 |
-| 1766 | `lnbSetPictureColorSelectedRight` | binary | CONTROL · ARRAY → NOTHING | 0x8e6770 | 0 | 0 | 0 | 0 |
-| 1767 | `lnbSetPictureColorSelectedRight` | unary | ARRAY → NOTHING | 0x8e36d0 | 0 | 0 | 0 | 0 |
-| 1768 | `lnbSetPictureRight` | binary | CONTROL · ARRAY → NOTHING | 0x8e67c0 | 0 | 0 | 0 | 0 |
-| 1769 | `lnbSetPictureRight` | unary | ARRAY → NOTHING | 0x8e3720 | 0 | 0 | 0 | 0 |
-| 1770 | `lnbSetText` | unary | ARRAY → NOTHING | 0x8e3a50 | 0 | 0 | 0 | 0 |
-| 1771 | `lnbSetTextRight` | binary | CONTROL · ARRAY → NOTHING | 0x8e6aa0 | 0 | 0 | 0 | 0 |
-| 1772 | `lnbSetTextRight` | unary | ARRAY → NOTHING | 0x8e3a70 | 0 | 0 | 0 | 0 |
-| 1773 | `lnbSetTooltip` | unary | ARRAY → NOTHING | 0x8e2de0 | 0 | 0 | 0 | 0 |
-| 1774 | `lnbSetValue` | unary | ARRAY → NOTHING | 0x8e3d70 | 0 | 0 | 0 | 0 |
-| 1775 | `lnbSort` | unary | ARRAY → NOTHING | 0x8e4030 | 0 | 0 | 0 | 0 |
-| 1776 | `lnbSortBy` | binary | ARRAY · ARRAY → NOTHING | 0x8e6da0 | 0 | 0 | 0 | 0 |
-| 1777 | `lnbSortByValue` | binary | CONTROL · ARRAY → NOTHING | 0x8e7110 | 0 | 0 | 0 | 0 |
-| 1778 | `lnbSortByValue` | unary | ARRAY → NOTHING | 0x8e4050 | 0 | 0 | 0 | 0 |
-| 1779 | `lnbText` | unary | ARRAY → STRING | 0x8e20e0 | 0 | 0 | 0 | 0 |
-| 1780 | `lnbTextRight` | binary | CONTROL · ARRAY → STRING | 0x8e5220 | 0 | 0 | 0 | 0 |
-| 1781 | `lnbTextRight` | unary | ARRAY → STRING | 0x8e2100 | 0 | 0 | 0 | 0 |
-| 1782 | `lnbValue` | unary | ARRAY → SCALAR | 0x8e2120 | 0 | 0 | 0 | 0 |
-| 1783 | `load3DENScenario` | unary | STRING → BOOL | 0x7ff250 | 0 | 0 | 0 | 0 |
-| 1784 | `loadAbs` | unary | OBJECT → SCALAR | 0x83dee0 | 0 | 0 | 0 | 0 |
-| 1785 | `loadConfig` | unary | STRING → CONFIG | 0x813470 | 0 | 0 | 0 | 0 |
-| 1786 | `loadCuratorSelectionPreset` | unary | SCALAR → NOTHING | 0x82ae00 | 0 | 0 | 0 | 0 |
-| 1787 | `loadIdentity` | binary | OBJECT · STRING → BOOL | 0x8b6af0 | 0 | 0 | 0 | 0 |
-| 1788 | `loadMagazine` | binary | OBJECT · ARRAY → NOTHING | 0x51e8c0 | 0 | 0 | 0 | 0 |
-| 1789 | `loadOverlay` | binary | CONTROL · CONFIG → NOTHING | 0x13cf9c0 | 0 | 0 | 0 | 0 |
-| 1790 | `lock` | unary | BOOL → NOTHING | 0x176420 | 0 | 0 | 0 | 0 |
-| 1791 | `lockedCameraTo` | binary | OBJECT · ARRAY → ?\|ARRAY | 0x52c800 | 0 | 0 | 0 | 0 |
-| 1792 | `lockedInventory` | unary | OBJECT → BOOL | 0x84d740 | 0 | 0 | 0 | 0 |
-| 1793 | `lockWp` | binary | OBJECT\|GROUP · BOOL → NOTHING | 0x1911a0 | 0 | 0 | 0 | 0 |
-| 1794 | `logEntities` | nular | → NOTHING | 0x8b0290 | 0 | 0 | 0 | 0 |
-| 1795 | `logNetwork` | unary | ARRAY → SCALAR | 0x18b0a0 | 0 | 0 | 0 | 0 |
-| 1796 | `logNetworkTerminate` | unary | SCALAR → NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
-| 1797 | `lookAtPos` | binary | CONTROL · ARRAY → NOTHING | 0x13cf1b0 | 0 | 0 | 0 | 0 |
-| 1798 | `magazinesDetail` | unary | OBJECT\|ARRAY → ARRAY | 0x83dfd0 | 0 | 0 | 0 | 0 |
-| 1799 | `magazinesDetailBackpack` | unary | OBJECT\|ARRAY → ARRAY | 0x83e000 | 0 | 0 | 0 | 0 |
-| 1800 | `magazinesDetailUniform` | unary | OBJECT\|ARRAY → ARRAY | 0x83e030 | 0 | 0 | 0 | 0 |
-| 1801 | `magazinesDetailVest` | unary | OBJECT\|ARRAY → ARRAY | 0x83e060 | 0 | 0 | 0 | 0 |
-| 1802 | `mapAnimClear` | nular | → NOTHING | 0x8b02d0 | 0 | 0 | 0 | 0 |
-| 1803 | `mapAnimDone` | nular | → BOOL | 0x8b03f0 | 0 | 0 | 0 | 0 |
-| 1804 | `mapCenterOnCamera` | binary | CONTROL · BOOL → ARRAY | 0x8e7290 | 0 | 0 | 0 | 0 |
-| 1805 | `mapCenterOnCamera` | unary | CONTROL → ARRAY | 0x8e7320 | 0 | 0 | 0 | 0 |
-| 1806 | `maxLoad` | unary | OBJECT → SCALAR | 0x841080 | 0 | 0 | 0 | 0 |
-| 1807 | `members` | unary | TEAM_MEMBER → ARRAY | 0x197070 | 0 | 0 | 0 | 0 |
-| 1808 | `menuAction` | binary | CONTROL · ARRAY → STRING | 0x8533e0 | 0 | 0 | 0 | 0 |
-| 1809 | `menuAction` | unary | ARRAY → STRING | 0x853510 | 0 | 0 | 0 | 0 |
-| 1810 | `menuAdd` | binary | CONTROL · ARRAY → SCALAR | 0x8525a0 | 0 | 0 | 0 | 0 |
-| 1811 | `menuAdd` | unary | ARRAY → SCALAR | 0x852730 | 0 | 0 | 0 | 0 |
-| 1812 | `menuChecked` | binary | CONTROL · ARRAY → BOOL | 0x856810 | 0 | 0 | 0 | 0 |
-| 1813 | `menuChecked` | unary | ARRAY → BOOL | 0x856940 | 0 | 0 | 0 | 0 |
-| 1814 | `menuClear` | unary | CONTROL → NOTHING<br>SCALAR → NOTHING | 0x856ca0<br>0x856d80 | 0 | 0 | 0 | 0 |
-| 1815 | `menuCollapse` | binary | CONTROL · ARRAY → NOTHING | 0x852920 | 0 | 0 | 0 | 0 |
-| 1816 | `menuCollapse` | unary | ARRAY → NOTHING | 0x852a40 | 0 | 0 | 0 | 0 |
-| 1817 | `menuData` | unary | ARRAY → STRING | 0x853770 | 0 | 0 | 0 | 0 |
-| 1818 | `menuDelete` | binary | CONTROL · ARRAY → NOTHING | 0x852b60 | 0 | 0 | 0 | 0 |
-| 1819 | `menuDelete` | unary | ARRAY → NOTHING | 0x852ca0 | 0 | 0 | 0 | 0 |
-| 1820 | `menuEnable` | binary | CONTROL · ARRAY → NOTHING | 0x852dd0 | 0 | 0 | 0 | 0 |
-| 1821 | `menuEnable` | unary | ARRAY → NOTHING | 0x852fe0 | 0 | 0 | 0 | 0 |
-| 1822 | `menuEnabled` | binary | CONTROL · ARRAY → BOOL | 0x856a60 | 0 | 0 | 0 | 0 |
-| 1823 | `menuEnabled` | unary | ARRAY → BOOL | 0x856b80 | 0 | 0 | 0 | 0 |
-| 1824 | `menuExpand` | binary | CONTROL · ARRAY → NOTHING | 0x853180 | 0 | 0 | 0 | 0 |
-| 1825 | `menuExpand` | unary | ARRAY → NOTHING | 0x8532b0 | 0 | 0 | 0 | 0 |
-| 1826 | `menuPicture` | binary | CONTROL · ARRAY → STRING | 0x8538a0 | 0 | 0 | 0 | 0 |
-| 1827 | `menuPicture` | unary | ARRAY → STRING | 0x8539d0 | 0 | 0 | 0 | 0 |
-| 1828 | `menuSetAction` | binary | CONTROL · ARRAY → NOTHING | 0x8573a0 | 0 | 0 | 0 | 0 |
-| 1829 | `menuSetAction` | unary | ARRAY → NOTHING | 0x857530 | 0 | 0 | 0 | 0 |
-| 1830 | `menuSetCheck` | binary | CONTROL · ARRAY → NOTHING | 0x857700 | 0 | 0 | 0 | 0 |
-| 1831 | `menuSetCheck` | unary | ARRAY → NOTHING | 0x857890 | 0 | 0 | 0 | 0 |
-| 1832 | `menuSetData` | binary | CONTROL · ARRAY → NOTHING | 0x857aa0 | 0 | 0 | 0 | 0 |
-| 1833 | `menuSetData` | unary | ARRAY → NOTHING | 0x857c30 | 0 | 0 | 0 | 0 |
-| 1834 | `menuSetPicture` | binary | CONTROL · ARRAY → NOTHING | 0x857da0 | 0 | 0 | 0 | 0 |
-| 1835 | `menuSetPicture` | unary | ARRAY → NOTHING | 0x8580e0 | 0 | 0 | 0 | 0 |
-| 1836 | `menuSetShortcut` | binary | CONTROL · ARRAY → NOTHING | 0x8583f0 | 0 | 0 | 0 | 0 |
-| 1837 | `menuSetShortcut` | unary | ARRAY → NOTHING | 0x858580 | 0 | 0 | 0 | 0 |
-| 1838 | `menuSetText` | binary | CONTROL · ARRAY → NOTHING | 0x858760 | 0 | 0 | 0 | 0 |
-| 1839 | `menuSetText` | unary | ARRAY → NOTHING | 0x8588f0 | 0 | 0 | 0 | 0 |
-| 1840 | `menuSetURL` | binary | CONTROL · ARRAY → NOTHING | 0x858b70 | 0 | 0 | 0 | 0 |
-| 1841 | `menuSetURL` | unary | ARRAY → NOTHING | 0x858d00 | 0 | 0 | 0 | 0 |
-| 1842 | `menuSetValue` | binary | CONTROL · ARRAY → NOTHING | 0x858e70 | 0 | 0 | 0 | 0 |
-| 1843 | `menuSetValue` | unary | ARRAY → NOTHING | 0x859000 | 0 | 0 | 0 | 0 |
-| 1844 | `menuShortcut` | binary | CONTROL · ARRAY → SCALAR | 0x853b00 | 0 | 0 | 0 | 0 |
-| 1845 | `menuShortcut` | unary | ARRAY → SCALAR | 0x853c20 | 0 | 0 | 0 | 0 |
-| 1846 | `menuShortcutText` | unary | ARRAY → STRING | 0x853ee0 | 0 | 0 | 0 | 0 |
-| 1847 | `menuSize` | unary | ARRAY → SCALAR | 0x854120 | 0 | 0 | 0 | 0 |
-| 1848 | `menuSort` | binary | CONTROL · ARRAY → NOTHING | 0x859170 | 0 | 0 | 0 | 0 |
-| 1849 | `menuSort` | unary | ARRAY → NOTHING | 0x859310 | 0 | 0 | 0 | 0 |
-| 1850 | `menuText` | binary | CONTROL · ARRAY → STRING | 0x854240 | 0 | 0 | 0 | 0 |
-| 1851 | `menuText` | unary | ARRAY → STRING | 0x854370 | 0 | 0 | 0 | 0 |
-| 1852 | `menuURL` | binary | CONTROL · ARRAY → STRING | 0x854490 | 0 | 0 | 0 | 0 |
-| 1853 | `menuURL` | unary | ARRAY → STRING | 0x8545c0 | 0 | 0 | 0 | 0 |
-| 1854 | `menuValue` | binary | CONTROL · ARRAY → SCALAR | 0x8546e0 | 0 | 0 | 0 | 0 |
-| 1855 | `menuValue` | unary | ARRAY → SCALAR | 0x854800 | 0 | 0 | 0 | 0 |
-| 1856 | `mineDetectedBy` | binary | OBJECT · SIDE → BOOL | 0x518440 | 0 | 0 | 0 | 0 |
-| 1857 | `missileState` | unary | OBJECT → ARRAY | 0x4a6440 | 0 | 0 | 0 | 0 |
-| 1858 | `missileTargetPos` | unary | OBJECT → ARRAY | 0x4a6630 | 0 | 0 | 0 | 0 |
-| 1859 | `missionDifficulty` | nular | → SCALAR | 0x89cd50 | 0 | 0 | 0 | 0 |
-| 1860 | `missionStart` | nular | → ARRAY | 0x8b0c50 | 0 | 0 | 0 | 0 |
-| 1861 | `missionVersion` | nular | → SCALAR | 0x8b0e60 | 0 | 0 | 0 | 0 |
-| 1862 | `moonIntensity` | nular | → SCALAR | 0x8a9bf0 | 0 | 0 | 0 | 0 |
-| 1863 | `morale` | unary | OBJECT → SCALAR | 0x537600 | 0 | 0 | 0 | 0 |
-| 1864 | `moveObjectToEnd` | binary | CONTROL · STRING → NOTHING | 0x13cf300 | 0 | 0 | 0 | 0 |
-| 1865 | `moveOut` | binary | OBJECT · OBJECT → NOTHING | 0x538510 | 0 | 0 | 0 | 0 |
-| 1866 | `moveTime` | unary | OBJECT → SCALAR | 0x52cf50 | 0 | 0 | 0 | 0 |
-| 1867 | `moveToFailed` | unary | OBJECT → BOOL | 0x47de70 | 0 | 0 | 0 | 0 |
-| 1868 | `namedProperties` | binary | OBJECT · ARRAY → HASHMAP | 0x4aca60 | 0 | 0 | 0 | 0 |
-| 1869 | `namedProperties` | unary | OBJECT → ARRAY | 0x4ac820 | 0 | 0 | 0 | 0 |
-| 1870 | `nearestLocationWithDubbing` | unary | ARRAY → LOCATION | 0xd04d30 | 0 | 0 | 0 | 0 |
-| 1871 | `nearestMines` | unary | ARRAY → ARRAY | 0x4a92c0 | 0 | 0 | 0 | 0 |
-| 1872 | `nearObjectsReady` | binary | OBJECT\|ARRAY · SCALAR → BOOL | 0x4a8d70 | 0 | 0 | 0 | 0 |
-| 1873 | `nearSupplies` | binary | OBJECT\|ARRAY · SCALAR\|ARRAY → ARRAY | 0x4a8fd0 | 0 | 0 | 0 | 0 |
-| 1874 | `needReload` | binary | OBJECT · STRING → SCALAR | 0x56b430 | 0 | 0 | 0 | 0 |
-| 1875 | `needService` | unary | OBJECT → ARRAY | 0x56d720 | 0 | 0 | 0 | 0 |
-| 1876 | `netObjNull` | nular | → NetObject | 0x522c40 | 0 | 0 | 0 | 0 |
-| 1877 | `newOverlay` | binary | CONTROL · CONFIG → NOTHING | 0x13cfd50 | 0 | 0 | 0 | 0 |
-| 1878 | `nextMenuItemIndex` | unary | CONTROL → SCALAR | 0x13cf450 | 0 | 0 | 0 | 0 |
-| 1879 | `nextWeatherChange` | nular | → SCALAR | 0x8a9c90 | 0 | 0 | 0 | 0 |
-| 1880 | `nMenuItems` | binary | CONTROL · STRING\|SCALAR → SCALAR | 0x13cdaf0 | 0 | 0 | 0 | 0 |
-| 1881 | `numberOfEnginesRTD` | unary | OBJECT → SCALAR | 0x893dc0 | 0 | 0 | 0 | 0 |
-| 1882 | `numberOfFiles` | unary | SCALAR → SCALAR | 0x1764b0 | 0 | 0 | 0 | 0 |
-| 1883 | `objStatus` | binary | STRING · STRING → NOTHING | 0x554070 | 0 | 0 | 0 | 0 |
-| 1884 | `onBriefingGroup` | unary | STRING → NOTHING | 0x180f70 | 0 | 0 | 0 | 0 |
-| 1885 | `onBriefingNotes` | unary | STRING → NOTHING | 0x180ff0 | 0 | 0 | 0 | 0 |
-| 1886 | `onBriefingPlan` | unary | STRING → NOTHING | 0x181070 | 0 | 0 | 0 | 0 |
-| 1887 | `onBriefingTeamSwitch` | unary | STRING → NOTHING | 0x1810f0 | 0 | 0 | 0 | 0 |
-| 1888 | `onDoubleClick` | binary | CONTROL · STRING → ANY | 0x13cf4f0 | 0 | 0 | 0 | 0 |
-| 1889 | `onPlayerConnected` | unary | CODE\|STRING → NOTHING | 0x183e10 | 0 | 0 | 0 | 0 |
-| 1890 | `onPlayerDisconnected` | unary | CODE\|STRING → NOTHING | 0x183e70 | 0 | 0 | 0 | 0 |
-| 1891 | `onPreloadStarted` | unary | CODE\|STRING → NOTHING | 0x183f30 | 0 | 0 | 0 | 0 |
-| 1892 | `onShowNewObject` | binary | CONTROL · STRING → ANY | 0x13cf6b0 | 0 | 0 | 0 | 0 |
-| 1893 | `openGPS` | unary | BOOL → BOOL | 0x55ae50 | 0 | 0 | 0 | 0 |
-| 1894 | `overcastForecast` | nular | → SCALAR | 0x8a9dd0 | 0 | 0 | 0 | 0 |
-| 1895 | `parentAttached` | unary | OBJECT → OBJECT | 0x1a64c0 | 0 | 0 | 0 | 0 |
-| 1896 | `particlesQuality` | nular | → SCALAR | 0x8a9e00 | 0 | 0 | 0 | 0 |
-| 1897 | `periscopeElevation` | binary | OBJECT · ARRAY → NOTHING | 0x56b140 | 0 | 0 | 0 | 0 |
-| 1898 | `pickWeaponPool` | unary | OBJECT → NOTHING | 0x8b91a0 | 0 | 0 | 0 | 0 |
-| 1899 | `playGesture` | binary | OBJECT · STRING → NOTHING | 0x538b60 | 0 | 0 | 0 | 0 |
-| 1900 | `pose` | unary | OBJECT → STRING | 0x530410 | 0 | 0 | 0 | 0 |
-| 1901 | `preloadSound` | unary | STRING → BOOL | 0x55c000 | 0 | 0 | 0 | 0 |
-| 1902 | `preloadTitleObj` | unary | ARRAY → BOOL | 0x494400 | 0 | 0 | 0 | 0 |
-| 1903 | `priority` | unary | TASK → SCALAR | 0xe0a8e0 | 0 | 0 | 0 | 0 |
-| 1904 | `putWeaponPool` | unary | OBJECT → NOTHING | 0x8b8f40 | 0 | 0 | 0 | 0 |
-| 1905 | `queryItemsPool` | unary | STRING → SCALAR | 0x8b8ff0 | 0 | 0 | 0 | 0 |
-| 1906 | `queryMagazinePool` | unary | STRING → SCALAR | 0x8b9080 | 0 | 0 | 0 | 0 |
-| 1907 | `queryWeaponPool` | unary | STRING → SCALAR | 0x8b9110 | 0 | 0 | 0 | 0 |
-| 1908 | `radioChannelInfo` | unary | BOOL\|SCALAR → ARRAY | 0x19c4e0 | 0 | 0 | 0 | 0 |
-| 1909 | `radioChannelSetLabel` | binary | SCALAR · STRING → NOTHING | 0x19e410 | 0 | 0 | 0 | 0 |
-| 1910 | `radioEnabled` | nular | → BOOL | 0x89c1f0 | 0 | 0 | 0 | 0 |
-| 1911 | `rainbow` | nular | → SCALAR | 0x8aaad0 | 0 | 0 | 0 | 0 |
-| 1912 | `rainParams` | nular | → ARRAY | 0x89d760 | 0 | 0 | 0 | 0 |
-| 1913 | `registeredTasks` | unary | TEAM_MEMBER → ARRAY | 0xe0be80 | 0 | 0 | 0 | 0 |
-| 1914 | `registerTask` | binary | TEAM_MEMBER · STRING → BOOL | 0xe0c590 | 0 | 0 | 0 | 0 |
-| 1915 | `reload` | binary | OBJECT · ARRAY → BOOL | 0x56e900 | 0 | 0 | 0 | 0 |
-| 1916 | `reloadEnabled` | unary | OBJECT → BOOL | 0x56d130 | 0 | 0 | 0 | 0 |
-| 1917 | `remoteControlled` | unary | OBJECT → OBJECT | 0x4afed0 | 0 | 0 | 0 | 0 |
-| 1918 | `remoteExecCall` | unary | ARRAY → STRING\|NOTHING | 0x8bf9c0 | 0 | 0 | 0 | 0 |
-| 1919 | `remove3DENConnection` | unary | ARRAY → NOTHING | 0x8008c0 | 0 | 0 | 0 | 0 |
-| 1920 | `remove3DENEventHandler` | unary | ARRAY → NOTHING | 0x800a10 | 0 | 0 | 0 | 0 |
-| 1921 | `remove3DENLayer` | unary | SCALAR → BOOL | 0x800bf0 | 0 | 0 | 0 | 0 |
-| 1922 | `removeAll3DENEventHandlers` | unary | STRING → NOTHING | 0x801170 | 0 | 0 | 0 | 0 |
-| 1923 | `removeAllBinocularItems` | unary | OBJECT → NOTHING | 0x844000 | 0 | 0 | 0 | 0 |
-| 1924 | `removeAllContainers` | unary | OBJECT → NOTHING | 0x844020 | 0 | 0 | 0 | 0 |
-| 1925 | `removeAllCuratorCameraAreas` | unary | OBJECT → NOTHING | 0x82a210 | 0 | 0 | 0 | 0 |
-| 1926 | `removeAllCuratorEditingAreas` | unary | OBJECT → NOTHING | 0x82a340 | 0 | 0 | 0 | 0 |
-| 1927 | `removeAllHandgunItems` | unary | OBJECT → NOTHING | 0x844150 | 0 | 0 | 0 | 0 |
-| 1928 | `removeAllItemsWithMagazines` | unary | OBJECT → NOTHING | 0x844170 | 0 | 0 | 0 | 0 |
-| 1929 | `removeAllMagazines` | unary | OBJECT → NOTHING | 0x8443f0 | 0 | 0 | 0 | 0 |
-| 1930 | `removeAllMagazinesTurret` | binary | OBJECT · ARRAY → NOTHING | 0x8444c0 | 0 | 0 | 0 | 0 |
-| 1931 | `removeAllSecondaryWeaponItems` | unary | OBJECT → NOTHING | 0x844770 | 0 | 0 | 0 | 0 |
-| 1932 | `removeAllUserActionEventHandlers` | unary | ARRAY → NOTHING | 0x184330 | 0 | 0 | 0 | 0 |
-| 1933 | `removeBinocularItem` | binary | OBJECT · STRING → NOTHING | 0x844840 | 0 | 0 | 0 | 0 |
-| 1934 | `removeDiarySubject` | binary | OBJECT · STRING → NOTHING | 0xdfee10 | 0 | 0 | 0 | 0 |
-| 1935 | `removeDrawIcon` | binary | CONTROL · ARRAY → NOTHING | 0x13d01d0 | 0 | 0 | 0 | 0 |
-| 1936 | `removeDrawLinks` | binary | CONTROL · ARRAY → NOTHING | 0x13d03e0 | 0 | 0 | 0 | 0 |
-| 1937 | `removeItems` | binary | OBJECT · STRING → NOTHING | 0x844a60 | 0 | 0 | 0 | 0 |
-| 1938 | `removeMenuItem` | binary | CONTROL · SCALAR → NOTHING<br>CONTROL · STRING → NOTHING | 0x13d0830<br>0x13d0a20 | 0 | 0 | 0 | 0 |
-| 1939 | `removeOwnedMine` | binary | OBJECT · OBJECT → NOTHING | 0x5395e0 | 0 | 0 | 0 | 0 |
-| 1940 | `removeSwitchableUnit` | unary | OBJECT → NOTHING | 0x549160 | 0 | 0 | 0 | 0 |
-| 1941 | `removeTeamMember` | binary | TEAM_MEMBER · TEAM_MEMBER → NOTHING | 0x1973d0 | 0 | 0 | 0 | 0 |
-| 1942 | `removeUserActionEventHandler` | unary | ARRAY → NOTHING | 0x1845e0 | 0 | 0 | 0 | 0 |
-| 1943 | `removeWeaponAttachmentCargo` | binary | OBJECT · ARRAY → NOTHING | 0x846650 | 0 | 0 | 0 | 0 |
-| 1944 | `removeWeaponCargo` | binary | OBJECT · ARRAY → NOTHING | 0x8467d0 | 0 | 0 | 0 | 0 |
-| 1945 | `removeWeaponItem` | binary | OBJECT · ARRAY → NOTHING | 0x846bf0 | 0 | 0 | 0 | 0 |
-| 1946 | `resources` | unary | TEAM_MEMBER → ARRAY | 0x1971a0 | 0 | 0 | 0 | 0 |
-| 1947 | `restartEditorCamera` | unary | CONTROL → NOTHING | 0x13b9090 | 0 | 0 | 0 | 0 |
-| 1948 | `reversedMouseY` | nular | → BOOL | 0x8b15c0 | 0 | 0 | 0 | 0 |
-| 1949 | `roadAt` | unary | OBJECT\|ARRAY → OBJECT | 0x4b0e80 | 0 | 0 | 0 | 0 |
-| 1950 | `roleDescription` | unary | OBJECT → STRING | 0x8b3f40 | 0 | 0 | 0 | 0 |
-| 1951 | `ropeAttachEnabled` | unary | OBJECT → BOOL | 0x1a6830 | 0 | 0 | 0 | 0 |
-| 1952 | `ropeAttachTo` | binary | OBJECT\|ARRAY · OBJECT → NOTHING | 0x1a6890 | 0 | 0 | 0 | 0 |
-| 1953 | `ropeCreate` | unary | ARRAY → OBJECT | 0x1a6fd0 | 0 | 0 | 0 | 0 |
-| 1954 | `ropeCut` | unary | ARRAY → NOTHING | 0x1a88b0 | 0 | 0 | 0 | 0 |
-| 1955 | `ropeDetach` | binary | OBJECT · OBJECT → NOTHING | 0x1a8ac0 | 0 | 0 | 0 | 0 |
-| 1956 | `ropeEndPosition` | unary | OBJECT → ARRAY | 0x1a8bd0 | 0 | 0 | 0 | 0 |
-| 1957 | `ropeLength` | unary | OBJECT → SCALAR | 0x1a4400 | 0 | 0 | 0 | 0 |
-| 1958 | `ropesAttachedTo` | unary | OBJECT → ARRAY | 0x1a9270 | 0 | 0 | 0 | 0 |
-| 1959 | `ropeSegments` | unary | OBJECT → ARRAY | 0x1a8e70 | 0 | 0 | 0 | 0 |
-| 1960 | `ropeUnwind` | unary | ARRAY → NOTHING | 0x1a90e0 | 0 | 0 | 0 | 0 |
-| 1961 | `ropeUnwound` | unary | OBJECT → BOOL | 0x1a8da0 | 0 | 0 | 0 | 0 |
-| 1962 | `rotorsForcesRTD` | unary | OBJECT → ARRAY | 0x893e90 | 0 | 0 | 0 | 0 |
-| 1963 | `save3DENPreferences` | nular | → BOOL | 0x801310 | 0 | 0 | 0 | 0 |
-| 1964 | `saveIdentity` | binary | OBJECT · STRING → BOOL | 0x8b7750 | 0 | 0 | 0 | 0 |
-| 1965 | `saveJoysticks` | nular | → NOTHING | 0x8b1820 | 0 | 0 | 0 | 0 |
-| 1966 | `saveOverlay` | unary | CONTROL → NOTHING | 0x13d00e0 | 0 | 0 | 0 | 0 |
-| 1967 | `screenToWorld` | binary | OBJECT · ARRAY → ARRAY | 0x809f50 | 0 | 0 | 0 | 0 |
-| 1968 | `screenToWorldDirection` | binary | OBJECT · ARRAY → ARRAY | 0x80a390 | 0 | 0 | 0 | 0 |
-| 1969 | `screenToWorldDirection` | unary | ARRAY → ARRAY | 0x80a5c0 | 0 | 0 | 0 | 0 |
-| 1970 | `scudState` | unary | OBJECT → SCALAR | 0x530ee0 | 0 | 0 | 0 | 0 |
-| 1971 | `secondaryWeaponMagazine` | unary | OBJECT → ARRAY | 0x84d720 | 0 | 0 | 0 | 0 |
-| 1972 | `selectedEditorObjects` | unary | CONTROL → NOTHING | 0x13ce570 | 0 | 0 | 0 | 0 |
-| 1973 | `selectEditorObject` | binary | CONTROL · STRING → ANY | 0x13d0b50 | 0 | 0 | 0 | 0 |
-| 1974 | `selectionNames` | binary | OBJECT · STRING\|SCALAR → ARRAY | 0x4ab830 | 0 | 0 | 0 | 0 |
-| 1975 | `selectionPosition` | unary | ARRAY → ARRAY | 0x531e50 | 0 | 0 | 0 | 0 |
-| 1976 | `selectionVectorDirAndUp` | binary | OBJECT · ARRAY → ARRAY | 0x532550 | 0 | 0 | 0 | 0 |
-| 1977 | `selectThrowable` | binary | OBJECT · STRING → BOOL | 0x53a490 | 0 | 0 | 0 | 0 |
-| 1978 | `sendAUMessage` | unary | ARRAY → NOTHING | 0x54bcc0 | 0 | 0 | 0 | 0 |
-| 1979 | `sendChatMessage` | binary | STRING · STRING → ANY | 0x174960 | 0 | 0 | 0 | 0 |
-| 1980 | `sendSimpleCommand` | binary | OBJECT · STRING → NOTHING | 0x56f740 | 0 | 0 | 0 | 0 |
-| 1981 | `sendTask` | binary | TEAM_MEMBER · ARRAY → TASK | 0xe0c840 | 0 | 0 | 0 | 0 |
-| 1982 | `sendTaskResult` | binary | TASK · ARRAY → NOTHING | 0xe0b270 | 0 | 0 | 0 | 0 |
-| 1983 | `sendUDPMessage` | unary | ARRAY → BOOL | 0x47de70 | 0 | 0 | 0 | 0 |
-| 1984 | `sentencesEnabled` | nular | → BOOL | 0x89c220 | 0 | 0 | 0 | 0 |
-| 1985 | `serverCommand` | binary | STRING · STRING → BOOL | 0x54d6e0 | 0 | 0 | 0 | 0 |
-| 1986 | `serverCommandExecutable` | unary | STRING → BOOL | 0x54d5e0 | 0 | 0 | 0 | 0 |
-| 1987 | `set3DENAttachedCursorEntity` | unary | HASHMAP → NOTHING | 0x801370 | 0 | 0 | 0 | 0 |
-| 1988 | `set3DENLayer` | binary | ANY · SCALAR → BOOL | 0x8024e0 | 0 | 0 | 0 | 0 |
-| 1989 | `set3DENLogicType` | binary | ARRAY · STRING → NOTHING | 0x802980 | 0 | 0 | 0 | 0 |
-| 1990 | `set3DENMissionAttributes` | unary | ARRAY → NOTHING | 0x803050 | 0 | 0 | 0 | 0 |
-| 1991 | `set3DENObjectType` | binary | ARRAY · STRING → NOTHING | 0x8037a0 | 0 | 0 | 0 | 0 |
-| 1992 | `setAirportSide` | binary | OBJECT\|SCALAR · SIDE → NOTHING | 0x47e300 | 0 | 0 | 0 | 0 |
-| 1993 | `setAngularVelocity` | binary | OBJECT · ARRAY → NOTHING | 0x53aee0 | 0 | 0 | 0 | 0 |
-| 1994 | `setAngularVelocityModelSpace` | binary | OBJECT · ARRAY → NOTHING | 0x53b090 | 0 | 0 | 0 | 0 |
-| 1995 | `setArmoryPoints` | unary | SCALAR → NOTHING | 0x54e1b0 | 0 | 0 | 0 | 0 |
-| 1996 | `setAttributes` | binary | TEXT\|STRING · ARRAY → TEXT | 0x564390 | 0 | 0 | 0 | 0 |
-| 1997 | `setBrakesRTD` | binary | OBJECT · ARRAY → NOTHING | 0x895b40 | 0 | 0 | 0 | 0 |
-| 1998 | `setCameraInterest` | binary | OBJECT · SCALAR → NOTHING | 0x56fb80 | 0 | 0 | 0 | 0 |
-| 1999 | `setCamShakeDefParams` | unary | ARRAY → NOTHING | 0x80a740 | 0 | 0 | 0 | 0 |
-| 2000 | `setCamShakeParams` | unary | ARRAY → NOTHING | 0x80aa00 | 0 | 0 | 0 | 0 |
-| 2001 | `setCenterOfMass` | binary | OBJECT · ARRAY → NOTHING | 0x1a5c80 | 0 | 0 | 0 | 0 |
-| 2002 | `setCombatBehaviour` | binary | GROUP · STRING → NOTHING<br>OBJECT · STRING → NOTHING | 0x194ed0<br>0x54e6c0 | 0 | 0 | 0 | 0 |
-| 2003 | `setCompassDeclination` | unary | SCALAR → NOTHING | 0x54e820 | 0 | 0 | 0 | 0 |
-| 2004 | `setCompassOscillation` | unary | ARRAY → NOTHING | 0x54e870 | 0 | 0 | 0 | 0 |
-| 2005 | `setCruiseControl` | binary | OBJECT · ARRAY → NOTHING | 0x53b320 | 0 | 0 | 0 | 0 |
-| 2006 | `setCuratorSelected` | unary | ARRAY → NOTHING | 0x82b5d0 | 0 | 0 | 0 | 0 |
-| 2007 | `setCuratorSelectionPreset` | binary | SCALAR · ARRAY → NOTHING | 0x82b6a0 | 0 | 0 | 0 | 0 |
-| 2008 | `setCuratorWaypointCost` | binary | OBJECT · SCALAR → NOTHING | 0x82bb60 | 0 | 0 | 0 | 0 |
-| 2009 | `setCurrentChannel` | unary | SCALAR → BOOL | 0x19f4d0 | 0 | 0 | 0 | 0 |
-| 2010 | `setDammage` | binary | OBJECT · SCALAR → NOTHING | 0x53b950 | 0 | 0 | 0 | 0 |
-| 2011 | `setDebriefingText` | binary | STRING · ARRAY → NOTHING | 0x54f0b0 | 0 | 0 | 0 | 0 |
-| 2012 | `setDefaultCamera` | unary | ARRAY → NOTHING | 0x80aba0 | 0 | 0 | 0 | 0 |
-| 2013 | `setDetailMapBlendPars` | unary | ARRAY → NOTHING | 0x54f490 | 0 | 0 | 0 | 0 |
-| 2014 | `setDiarySubjectPicture` | binary | OBJECT · ARRAY → NOTHING | 0xdff0f0 | 0 | 0 | 0 | 0 |
-| 2015 | `setDrawIcon` | binary | CONTROL · ARRAY → NOTHING | 0x13d0cf0 | 0 | 0 | 0 | 0 |
-| 2016 | `setEditorMode` | binary | CONTROL · STRING → NOTHING | 0x13d28f0 | 0 | 0 | 0 | 0 |
-| 2017 | `setEditorObjectScope` | binary | CONTROL · ARRAY → NOTHING | 0x13d17d0 | 0 | 0 | 0 | 0 |
-| 2018 | `setEffectiveCommander` | binary | OBJECT · OBJECT → NOTHING | 0x54fdf0 | 0 | 0 | 0 | 0 |
-| 2019 | `setEngineRpmRTD` | binary | OBJECT · ARRAY → NOTHING | 0x895d30 | 0 | 0 | 0 | 0 |
-| 2020 | `setFaceAnimation` | binary | OBJECT · SCALAR → NOTHING | 0x53bbd0 | 0 | 0 | 0 | 0 |
-| 2021 | `setFeatureType` | binary | OBJECT · SCALAR → BOOL | 0x53bd50 | 0 | 0 | 0 | 0 |
-| 2022 | `setFlagSide` | binary | OBJECT · SIDE → NOTHING | 0x53bf70 | 0 | 0 | 0 | 0 |
-| 2023 | `setForceGeneratorRTD` | binary | SCALAR · ARRAY → NOTHING | 0x895e30 | 0 | 0 | 0 | 0 |
-| 2024 | `setFormationTask` | binary | OBJECT · STRING → NOTHING | 0x570110 | 0 | 0 | 0 | 0 |
-| 2025 | `setFromEditor` | binary | TEAM_MEMBER · BOOL → NOTHING | 0x197620 | 0 | 0 | 0 | 0 |
-| 2026 | `setFuelConsumptionCoef` | binary | OBJECT · SCALAR → NOTHING | 0x53c620 | 0 | 0 | 0 | 0 |
-| 2027 | `setHideBehind` | binary | OBJECT · ARRAY → NOTHING | 0x570140 | 0 | 0 | 0 | 0 |
-| 2028 | `setHorizonParallaxCoef` | unary | SCALAR → NOTHING | 0x552600 | 0 | 0 | 0 | 0 |
-| 2029 | `setHumidity` | unary | SCALAR → NOTHING | 0x557620 | 0 | 0 | 0 | 0 |
-| 2030 | `setImportance` | binary | LOCATION · SCALAR → NOTHING | 0xd06390 | 0 | 0 | 0 | 0 |
-| 2031 | `setJointDriveAngularVelocity` | binary | ? · ARRAY → NOTHING | 0x1a4950 | 0 | 0 | 0 | 0 |
-| 2032 | `setJointDriveLinearVelocity` | binary | ? · ARRAY → NOTHING | 0x1a4a30 | 0 | 0 | 0 | 0 |
-| 2033 | `setJointDriveOrientation` | binary | ? · ARRAY → NOTHING | 0x1a4ae0 | 0 | 0 | 0 | 0 |
-| 2034 | `setJointDrivePosition` | binary | ? · ARRAY → NOTHING | 0x1a5080 | 0 | 0 | 0 | 0 |
-| 2035 | `setLeader` | binary | TEAM_MEMBER · TEAM_MEMBER → NOTHING | 0x197690 | 0 | 0 | 0 | 0 |
-| 2036 | `setLightConePars` | binary | OBJECT · ARRAY → NOTHING | 0x51bb60 | 0 | 0 | 0 | 0 |
-| 2037 | `setLightIR` | binary | OBJECT · BOOL → NOTHING | 0x51bf90 | 0 | 0 | 0 | 0 |
-| 2038 | `setLightVolumeShape` | binary | OBJECT · ARRAY → NOTHING | 0x51c0c0 | 0 | 0 | 0 | 0 |
-| 2039 | `setLocalWindParams` | unary | ARRAY → NOTHING | 0x5528c0 | 0 | 0 | 0 | 0 |
-| 2040 | `setMaxLoad` | binary | OBJECT · SCALAR → NOTHING | 0x846c50 | 0 | 0 | 0 | 0 |
-| 2041 | `setMissionOptions` | unary | HASHMAP → NOTHING | 0x552d60 | 0 | 0 | 0 | 0 |
-| 2042 | `setObjectArguments` | binary | CONTROL · ARRAY → ANY | 0x13d2af0 | 0 | 0 | 0 | 0 |
-| 2043 | `setObjectProxy` | binary | CONTROL · ARRAY → ANY | 0x13d2fb0 | 0 | 0 | 0 | 0 |
-| 2044 | `setOpticsMode` | binary | OBJECT · ?\|ARRAY → NOTHING | 0x559410 | 0 | 0 | 0 | 0 |
-| 2045 | `setOxygenRemaining` | binary | OBJECT · SCALAR → NOTHING | 0x554b30 | 0 | 0 | 0 | 0 |
-| 2046 | `setPhysicsCollisionFlag` | binary | OBJECT · BOOL → NOTHING | 0x1a6260 | 0 | 0 | 0 | 0 |
-| 2047 | `setPilotCameraDirection` | binary | OBJECT · ARRAY → NOTHING | 0x80acf0 | 0 | 0 | 0 | 0 |
-| 2048 | `setPilotCameraOpticsMode` | binary | OBJECT · SCALAR → BOOL | 0x80b0f0 | 0 | 0 | 0 | 0 |
-| 2049 | `setPilotCameraRotation` | binary | OBJECT · ARRAY → NOTHING | 0x80af80 | 0 | 0 | 0 | 0 |
-| 2050 | `setPilotCameraTarget` | binary | OBJECT · OBJECT\|ARRAY → BOOL | 0x80add0 | 0 | 0 | 0 | 0 |
-| 2051 | `setPiPViewDistance` | unary | SCALAR → NOTHING | 0x5558b0 | 0 | 0 | 0 | 0 |
-| 2052 | `setPlayable` | unary | OBJECT → NOTHING | 0x555900 | 0 | 0 | 0 | 0 |
-| 2053 | `setPlayerVoNVolume` | binary | OBJECT · SCALAR → NOTHING | 0x5589f0 | 0 | 0 | 0 | 0 |
-| 2054 | `setPosASL2` | binary | OBJECT · ARRAY → NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
-| 2055 | `setPosition` | binary | LOCATION · ARRAY → NOTHING | 0xd06550 | 0 | 0 | 0 | 0 |
-| 2056 | `setPylonsPriority` | binary | OBJECT · ARRAY → NOTHING | 0x547880 | 0 | 0 | 0 | 0 |
-| 2057 | `setRainbow` | binary | SCALAR · SCALAR → NOTHING | 0x556770 | 0 | 0 | 0 | 0 |
-| 2058 | `setRectangular` | binary | LOCATION · BOOL → NOTHING | 0xd06720 | 0 | 0 | 0 | 0 |
-| 2059 | `setSide` | binary | LOCATION · SIDE → NOTHING | 0xd067e0 | 0 | 0 | 0 | 0 |
-| 2060 | `setSimulWeatherLayers` | unary | SCALAR → NOTHING | 0x1bec10 | 0 | 0 | 0 | 0 |
-| 2061 | `setSize` | binary | LOCATION · ARRAY → NOTHING | 0xd068a0 | 0 | 0 | 0 | 0 |
-| 2062 | `setSkyOverlayMaterial` | unary | STRING → NOTHING | 0x556ab0 | 0 | 0 | 0 | 0 |
-| 2063 | `setStaminaScheme` | unary | STRING → NOTHING | 0x557480 | 0 | 0 | 0 | 0 |
-| 2064 | `setSystemOfUnits` | unary | SCALAR → NOTHING | 0x557690 | 0 | 0 | 0 | 0 |
-| 2065 | `setTargetSize` | binary | OBJECT · ARRAY → ARRAY | 0x5712e0 | 0 | 0 | 0 | 0 |
-| 2066 | `setTaskMarkerOffset` | binary | OBJECT · ARRAY → NOTHING | 0x53f9b0 | 0 | 0 | 0 | 0 |
-| 2067 | `setTaskResult` | binary | TASK · ARRAY → NOTHING | 0xe0b5d0 | 0 | 0 | 0 | 0 |
-| 2068 | `setTerrainHeight` | unary | ARRAY → NOTHING | 0x557730 | 0 | 0 | 0 | 0 |
-| 2069 | `setTIParameter` | unary | ARRAY → NOTHING | 0x1a99e0 | 0 | 0 | 0 | 0 |
-| 2070 | `setTowParent` | binary | OBJECT · OBJECT → NOTHING | 0x1a62f0 | 0 | 0 | 0 | 0 |
-| 2071 | `setTrafficDensity` | unary | ARRAY → NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
-| 2072 | `setTrafficDistance` | unary | SCALAR → NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
-| 2073 | `setTrafficGap` | unary | ARRAY → NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
-| 2074 | `setTrafficSpeed` | unary | ARRAY → NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
-| 2075 | `setTriggerInterval` | binary | OBJECT · SCALAR → NOTHING | 0x562390 | 0 | 0 | 0 | 0 |
-| 2076 | `setTurretLimits` | binary | OBJECT · ARRAY → NOTHING | 0x571650 | 0 | 0 | 0 | 0 |
-| 2077 | `setTurretOpticsMode` | binary | OBJECT · ARRAY → NOTHING<br>OBJECT · SCALAR → NOTHING | 0x558180<br>0x558180 | 0 | 0 | 0 | 0 |
-| 2078 | `setType` | binary | LOCATION · STRING → NOTHING | 0xd06c60 | 0 | 0 | 0 | 0 |
-| 2079 | `setUnitCombatMode` | binary | OBJECT · STRING → NOTHING | 0x197c60 | 0 | 0 | 0 | 0 |
-| 2080 | `setUnitFreefallHeight` | binary | OBJECT · SCALAR → NOTHING | 0x558770 | 0 | 0 | 0 | 0 |
-| 2081 | `setUnitRecoilCoefficient` | binary | OBJECT · SCALAR → NOTHING | 0x558970 | 0 | 0 | 0 | 0 |
-| 2082 | `setUserMFDText` | binary | OBJECT · ARRAY → NOTHING | 0x558ac0 | 0 | 0 | 0 | 0 |
-| 2083 | `setVehicleArmor` | binary | OBJECT · SCALAR → NOTHING | 0x56fa90 | 0 | 0 | 0 | 0 |
-| 2084 | `setVehicleId` | binary | OBJECT · SCALAR → NOTHING | 0x570290 | 0 | 0 | 0 | 0 |
-| 2085 | `setVisibleIfTreeCollapsed` | binary | CONTROL · ARRAY → NOTHING | 0x13d3220 | 0 | 0 | 0 | 0 |
-| 2086 | `setWantedRPMRTD` | binary | OBJECT · ARRAY → NOTHING | 0x896270 | 0 | 0 | 0 | 0 |
-| 2087 | `setWaterFillPercentage` | binary | OBJECT · SCALAR → NOTHING | 0x541580 | 0 | 0 | 0 | 0 |
-| 2088 | `setWaterLeakiness` | binary | OBJECT · SCALAR → NOTHING | 0x5416a0 | 0 | 0 | 0 | 0 |
-| 2089 | `setWaypointForceBehaviour` | binary | ARRAY · BOOL → NOTHING | 0x8f9910 | 0 | 0 | 0 | 0 |
-| 2090 | `setWaypointLoiterAltitude` | binary | ARRAY · SCALAR → NOTHING | 0x8f9e70 | 0 | 0 | 0 | 0 |
-| 2091 | `setWeaponZeroing` | binary | OBJECT · ARRAY → BOOL | 0x572930 | 0 | 0 | 0 | 0 |
-| 2092 | `setWindDir` | unary | ARRAY → NOTHING | 0x559d70 | 0 | 0 | 0 | 0 |
-| 2093 | `setWindletParams` | binary | OBJECT · ARRAY → BOOL | 0x20cc20 | 0 | 0 | 0 | 0 |
-| 2094 | `setWingForceScaleRTD` | binary | OBJECT · ARRAY → NOTHING | 0x896400 | 0 | 0 | 0 | 0 |
-| 2095 | `show3DIcons` | binary | CONTROL · BOOL → NOTHING | 0x13d3440 | 0 | 0 | 0 | 0 |
-| 2096 | `showLegend` | binary | CONTROL · BOOL → NOTHING | 0x13d3560 | 0 | 0 | 0 | 0 |
-| 2097 | `shownAction` | nular | → ARRAY | 0x8a34e0 | 0 | 0 | 0 | 0 |
-| 2098 | `shownArtilleryComputer` | nular | → BOOL | 0x8aef80 | 0 | 0 | 0 | 0 |
-| 2099 | `shownCompass` | nular | → BOOL | 0x8af000 | 0 | 0 | 0 | 0 |
-| 2100 | `showNewEditorObject` | binary | CONTROL · ARRAY → ANY | 0x13d3670 | 0 | 0 | 0 | 0 |
-| 2101 | `shownGps` | nular | → BOOL | 0x8af100 | 0 | 0 | 0 | 0 |
-| 2102 | `shownPad` | nular | → BOOL | 0x8af750 | 0 | 0 | 0 | 0 |
-| 2103 | `shownRadio` | nular | → BOOL | 0x8af9d0 | 0 | 0 | 0 | 0 |
-| 2104 | `shownScoretable` | nular | → SCALAR | 0x8aae90 | 0 | 0 | 0 | 0 |
-| 2105 | `shownSubtitles` | nular | → BOOL | 0x89ea10 | 0 | 0 | 0 | 0 |
-| 2106 | `shownUAVFeed` | nular | → BOOL | 0x8a3540 | 0 | 0 | 0 | 0 |
-| 2107 | `shownWarrant` | nular | → BOOL | 0x8afa50 | 0 | 0 | 0 | 0 |
-| 2108 | `shownWatch` | nular | → BOOL | 0x8afad0 | 0 | 0 | 0 | 0 |
-| 2109 | `showSubtitles` | unary | BOOL → BOOL | 0x8cf220 | 0 | 0 | 0 | 0 |
-| 2110 | `showUAVFeed` | unary | BOOL → NOTHING | 0x55b300 | 0 | 0 | 0 | 0 |
-| 2111 | `showWarrant` | unary | BOOL → NOTHING | 0x55b730 | 0 | 0 | 0 | 0 |
-| 2112 | `showWaypoints` | unary | BOOL → NOTHING | 0x55b890 | 0 | 0 | 0 | 0 |
-| 2113 | `simulCloudDensity` | unary | ARRAY → SCALAR | 0x1bf120 | 0 | 0 | 0 | 0 |
-| 2114 | `simulCloudOcclusion` | unary | ARRAY → SCALAR | 0x1bf3e0 | 0 | 0 | 0 | 0 |
-| 2115 | `simulInClouds` | unary | ARRAY → BOOL | 0x1bf800 | 0 | 0 | 0 | 0 |
-| 2116 | `SimulSetHumidity` | unary | SCALAR → NOTHING | 0x1bfac0 | 0 | 0 | 0 | 0 |
-| 2117 | `skillFinal` | binary | OBJECT · STRING → SCALAR | 0x52b990 | 0 | 0 | 0 | 0 |
-| 2118 | `sliderSetPosition` | unary | ARRAY → NOTHING | 0x8eb3b0 | 0 | 0 | 0 | 0 |
-| 2119 | `sliderSetRange` | unary | ARRAY → NOTHING | 0x8eb4b0 | 0 | 0 | 0 | 0 |
-| 2120 | `sliderSetSpeed` | unary | ARRAY → NOTHING | 0x8eb620 | 0 | 0 | 0 | 0 |
-| 2121 | `soldierMagazines` | unary | OBJECT → ARRAY | 0x83ccb0 | 0 | 0 | 0 | 0 |
-| 2122 | `soundParams` | unary | SCALAR → ARRAY | 0x4b2bb0 | 0 | 0 | 0 | 0 |
-| 2123 | `spawn` | unary | STRING → SCRIPT | 0x54a3f0 | 0 | 0 | 0 | 0 |
-| 2124 | `stopEngineRTD` | unary | OBJECT → NOTHING | 0x895810 | 0 | 0 | 0 | 0 |
-| 2125 | `stopSound` | unary | SCALAR → NOTHING | 0x55c6f0 | 0 | 0 | 0 | 0 |
-| 2126 | `surfaceTexture` | unary | ARRAY → STRING | 0x55e9e0 | 0 | 0 | 0 | 0 |
-| 2127 | `swimInDepth` | binary | OBJECT · SCALAR → NOTHING | 0x53f910 | 0 | 0 | 0 | 0 |
-| 2128 | `switchGesture` | binary | OBJECT · ARRAY → NOTHING<br>OBJECT · STRING → NOTHING | 0x541e30<br>0x541d60 | 0 | 0 | 0 | 0 |
-| 2129 | `synchronizedTriggers` | unary | ARRAY → ARRAY | 0x55ef50 | 0 | 0 | 0 | 0 |
-| 2130 | `synchronizedWaypoints` | unary | ARRAY → ARRAY<br>OBJECT → ARRAY | 0x8f5f50<br>0x8f5f50 | 0 | 0 | 0 | 0 |
-| 2131 | `synchronizeTrigger` | binary | OBJECT · ARRAY → NOTHING | 0x562930 | 0 | 0 | 0 | 0 |
-| 2132 | `targetsAggregate` | binary | ARRAY · ARRAY → ARRAY | 0x1599950 | 0 | 0 | 0 | 0 |
-| 2133 | `taskAlwaysVisible` | unary | TASK → BOOL | 0xe09ea0 | 0 | 0 | 0 | 0 |
-| 2134 | `taskChildren` | unary | TASK → ARRAY | 0xe09c70 | 0 | 0 | 0 | 0 |
-| 2135 | `taskCustomData` | unary | TASK → ARRAY | 0xe09f10 | 0 | 0 | 0 | 0 |
-| 2136 | `taskHint` | unary | ARRAY → NOTHING | 0x55aff0 | 0 | 0 | 0 | 0 |
-| 2137 | `taskMarkerOffset` | unary | OBJECT → ARRAY | 0x533160 | 0 | 0 | 0 | 0 |
-| 2138 | `taskName` | unary | TASK → STRING | 0xe0a760 | 0 | 0 | 0 | 0 |
-| 2139 | `taskParent` | unary | TASK → TASK | 0xe0a870 | 0 | 0 | 0 | 0 |
-| 2140 | `taskResult` | unary | TASK → ARRAY | 0xe0a950 | 0 | 0 | 0 | 0 |
-| 2141 | `teamMember` | unary | OBJECT → TEAM_MEMBER | 0x192cc0 | 0 | 0 | 0 | 0 |
-| 2142 | `teamName` | unary | TEAM_MEMBER → STRING | 0x196a00 | 0 | 0 | 0 | 0 |
-| 2143 | `teams` | nular | → ARRAY | 0x897700 | 0 | 0 | 0 | 0 |
-| 2144 | `teamSwitch` | nular | → NOTHING | 0x8b11d0 | 0 | 0 | 0 | 0 |
-| 2145 | `teamSwitchEnabled` | nular | → BOOL | 0x8af930 | 0 | 0 | 0 | 0 |
-| 2146 | `teamType` | unary | TEAM_MEMBER → STRING | 0x196a80 | 0 | 0 | 0 | 0 |
-| 2147 | `terminate` | binary | SCRIPT · ANY → NOTHING | 0x54b0d0 | 0 | 0 | 0 | 0 |
-| 2148 | `terrainIntersectASL` | unary | ARRAY → BOOL | 0x55fb90 | 0 | 0 | 0 | 0 |
-| 2149 | `terrainIntersectAtASL` | unary | ARRAY → ARRAY | 0x55fda0 | 0 | 0 | 0 | 0 |
-| 2150 | `tg` | unary | SCALAR\|NaN → SCALAR\|NaN | 0x2f1430 | 0 | 0 | 0 | 0 |
-| 2151 | `throwables` | unary | OBJECT\|ARRAY → ARRAY | 0x524730 | 0 | 0 | 0 | 0 |
-| 2152 | `titleFadeOut` | unary | SCALAR → NOTHING | 0x494990 | 0 | 0 | 0 | 0 |
-| 2153 | `titleObj` | unary | ARRAY → NOTHING | 0x4949e0 | 0 | 0 | 0 | 0 |
-| 2154 | `triggerAmmo` | unary | OBJECT\|ARRAY → NOTHING | 0x560d40 | 0 | 0 | 0 | 0 |
-| 2155 | `triggerAttachedVehicle` | unary | OBJECT → OBJECT | 0x5618e0 | 0 | 0 | 0 | 0 |
-| 2156 | `triggerAttachObject` | binary | OBJECT · SCALAR → NOTHING | 0x560f90 | 0 | 0 | 0 | 0 |
-| 2157 | `triggerDynamicSimulation` | binary | OBJECT · BOOL → NOTHING | 0x17edf0 | 0 | 0 | 0 | 0 |
-| 2158 | `triggerInterval` | unary | OBJECT → SCALAR | 0x561940 | 0 | 0 | 0 | 0 |
-| 2159 | `tvAdd` | unary | ARRAY → SCALAR | 0x8ec360 | 0 | 0 | 0 | 0 |
-| 2160 | `tvCollapse` | unary | ARRAY → NOTHING | 0x8ec910 | 0 | 0 | 0 | 0 |
-| 2161 | `tvCollapseAll` | unary | CONTROL → NOTHING<br>SCALAR → NOTHING | 0x8f1a60<br>0x8eca10 | 0 | 0 | 0 | 0 |
-| 2162 | `tvCount` | unary | ARRAY → SCALAR | 0x8eccc0 | 0 | 0 | 0 | 0 |
-| 2163 | `tvData` | unary | ARRAY → STRING | 0x8ecf80 | 0 | 0 | 0 | 0 |
-| 2164 | `tvDelete` | unary | ARRAY → NOTHING | 0x8ed240 | 0 | 0 | 0 | 0 |
-| 2165 | `tvExpand` | unary | ARRAY → NOTHING | 0x8ed580 | 0 | 0 | 0 | 0 |
-| 2166 | `tvExpandAll` | unary | CONTROL → NOTHING<br>SCALAR → NOTHING | 0x8f2010<br>0x8ed680 | 0 | 0 | 0 | 0 |
-| 2167 | `tvIsSelected` | binary | CONTROL · ARRAY → BOOL | 0x8f22e0 | 0 | 0 | 0 | 0 |
-| 2168 | `tvPicture` | binary | CONTROL · ARRAY → STRING | 0x8f24c0 | 0 | 0 | 0 | 0 |
-| 2169 | `tvPicture` | unary | ARRAY → STRING | 0x8ee1d0 | 0 | 0 | 0 | 0 |
-| 2170 | `tvPictureRight` | binary | CONTROL · ARRAY → STRING | 0x8f25c0 | 0 | 0 | 0 | 0 |
-| 2171 | `tvPictureRight` | unary | ARRAY → STRING | 0x8ee2d0 | 0 | 0 | 0 | 0 |
-| 2172 | `tvSelection` | unary | CONTROL → ARRAY | 0x8f26c0 | 0 | 0 | 0 | 0 |
-| 2173 | `tvSetCurSel` | unary | ARRAY → NOTHING | 0x8efcb0 | 0 | 0 | 0 | 0 |
-| 2174 | `tvSetData` | unary | ARRAY → NOTHING | 0x8ee9d0 | 0 | 0 | 0 | 0 |
-| 2175 | `tvSetPicture` | unary | ARRAY → NOTHING | 0x8eed80 | 0 | 0 | 0 | 0 |
-| 2176 | `tvSetPictureColor` | unary | ARRAY → NOTHING | 0x8eeed0 | 0 | 0 | 0 | 0 |
-| 2177 | `tvSetPictureRight` | unary | ARRAY → NOTHING | 0x8ef220 | 0 | 0 | 0 | 0 |
-| 2178 | `tvSetPictureRightColor` | binary | CONTROL · ARRAY → NOTHING | 0x8f2eb0 | 0 | 0 | 0 | 0 |
-| 2179 | `tvSetPictureRightColor` | unary | ARRAY → NOTHING | 0x8ef370 | 0 | 0 | 0 | 0 |
-| 2180 | `tvSetPictureRightColorDisabled` | binary | CONTROL · ARRAY → NOTHING | 0x8f2ee0 | 0 | 0 | 0 | 0 |
-| 2181 | `tvSetPictureRightColorSelected` | binary | CONTROL · ARRAY → NOTHING | 0x8f2f10 | 0 | 0 | 0 | 0 |
-| 2182 | `tvSetSelectColor` | binary | CONTROL · ARRAY → NOTHING | 0x8f2f40 | 0 | 0 | 0 | 0 |
-| 2183 | `tvSetSelected` | binary | CONTROL · ARRAY → NOTHING | 0x8f30d0 | 0 | 0 | 0 | 0 |
-| 2184 | `tvSetText` | unary | ARRAY → STRING | 0x8effa0 | 0 | 0 | 0 | 0 |
-| 2185 | `tvSetTooltip` | unary | ARRAY → NOTHING | 0x8f0320 | 0 | 0 | 0 | 0 |
-| 2186 | `tvSetValue` | unary | ARRAY → NOTHING | 0x8f0500 | 0 | 0 | 0 | 0 |
-| 2187 | `tvSort` | unary | ARRAY → NOTHING | 0x8f0820 | 0 | 0 | 0 | 0 |
-| 2188 | `tvSortAll` | binary | CONTROL · ARRAY → NOTHING | 0x8f39a0 | 0 | 0 | 0 | 0 |
-| 2189 | `tvSortByValue` | unary | ARRAY → NOTHING | 0x8f09a0 | 0 | 0 | 0 | 0 |
-| 2190 | `tvSortByValueAll` | binary | CONTROL · ARRAY → NOTHING | 0x8f3dd0 | 0 | 0 | 0 | 0 |
-| 2191 | `tvText` | unary | ARRAY → STRING | 0x8f1000 | 0 | 0 | 0 | 0 |
-| 2192 | `tvTooltip` | binary | CONTROL · ARRAY → STRING | 0x8f20e0 | 0 | 0 | 0 | 0 |
-| 2193 | `tvTooltip` | unary | ARRAY → STRING | 0x8edea0 | 0 | 0 | 0 | 0 |
-| 2194 | `tvValue` | unary | ARRAY → SCALAR | 0x8f12c0 | 0 | 0 | 0 | 0 |
-| 2195 | `unban` | unary | STRING\|SCALAR → NOTHING | 0x1765c0 | 0 | 0 | 0 | 0 |
-| 2196 | `uniformMagazines` | unary | OBJECT → ARRAY | 0x8473e0 | 0 | 0 | 0 | 0 |
-| 2197 | `uniqueUnitItems` | unary | OBJECT\|ARRAY → HASHMAP | 0x841300 | 0 | 0 | 0 | 0 |
-| 2198 | `unitCombatMode` | unary | OBJECT → STRING | 0x1977b0 | 0 | 0 | 0 | 0 |
-| 2199 | `unitRecoilCoefficient` | unary | OBJECT → SCALAR | 0x4b7340 | 0 | 0 | 0 | 0 |
-| 2200 | `unitsBelowHeight` | binary | ARRAY · SCALAR → ARRAY<br>GROUP · SCALAR → ARRAY | 0x5660e0<br>0x18f890 | 0 | 0 | 0 | 0 |
-| 2201 | `unkick` | unary | STRING\|SCALAR → NOTHING | 0x176910 | 0 | 0 | 0 | 0 |
-| 2202 | `unlockAchievement` | unary | STRING → BOOL | 0x1c1b60 | 0 | 0 | 0 | 0 |
-| 2203 | `unregisterTask` | binary | TEAM_MEMBER · STRING → BOOL | 0xe0cfd0 | 0 | 0 | 0 | 0 |
-| 2204 | `updateDrawIcon` | binary | CONTROL · ARRAY → NOTHING | 0x13cba30 | 0 | 0 | 0 | 0 |
-| 2205 | `updateMenuItem` | binary | CONTROL · ARRAY → NOTHING | 0x13d3940 | 0 | 0 | 0 | 0 |
-| 2206 | `updateObjectTree` | unary | CONTROL → NOTHING | 0x13d3d10 | 0 | 0 | 0 | 0 |
-| 2207 | `useAIOperMapObstructionTest` | unary | BOOL → NOTHING | 0x48c980 | 0 | 0 | 0 | 0 |
-| 2208 | `useAISteeringComponent` | binary | OBJECT · BOOL → NOTHING | 0x527570 | 0 | 0 | 0 | 0 |
-| 2209 | `useAISteeringComponent` | unary | BOOL → NOTHING | 0x48ca30 | 0 | 0 | 0 | 0 |
-| 2210 | `userInputDisabled` | nular | → BOOL | 0x8af9a0 | 0 | 0 | 0 | 0 |
-| 2211 | `users` | nular | → ARRAY | 0x176ac0 | 0 | 0 | 0 | 0 |
-| 2212 | `vectorSideVisual` | unary | OBJECT → ARRAY | 0x5338e0 | 0 | 0 | 0 | 0 |
-| 2213 | `vehicleCargoEnabled` | unary | OBJECT → BOOL | 0x5721a0 | 0 | 0 | 0 | 0 |
-| 2214 | `vehicleMoveInfo` | unary | OBJECT → ARRAY | 0x4b7e70 | 0 | 0 | 0 | 0 |
-| 2215 | `verifySignature` | unary | STRING → BOOL | 0x55be00 | 0 | 0 | 0 | 0 |
-| 2216 | `vestMagazines` | unary | OBJECT → ARRAY | 0x847830 | 0 | 0 | 0 | 0 |
-| 2217 | `waterDamaged` | unary | OBJECT → BOOL | 0x52b8d0 | 0 | 0 | 0 | 0 |
-| 2218 | `waves` | nular | → SCALAR | 0x8ab4e0 | 0 | 0 | 0 | 0 |
-| 2219 | `waypointAttachedObject` | unary | ARRAY → OBJECT | 0x8f70c0 | 0 | 0 | 0 | 0 |
-| 2220 | `waypointForceBehaviour` | unary | ARRAY → BOOL | 0x8f7930 | 0 | 0 | 0 | 0 |
-| 2221 | `waypointLoiterAltitude` | unary | ARRAY → SCALAR | 0x8f7cf0 | 0 | 0 | 0 | 0 |
-| 2222 | `waypointsEnabledUAV` | unary | OBJECT → BOOL | 0x8fbf40 | 0 | 0 | 0 | 0 |
-| 2223 | `waypointTimeoutCurrent` | unary | GROUP → SCALAR | 0x8f8d20 | 0 | 0 | 0 | 0 |
-| 2224 | `weaponAccessoriesCargo` | binary | OBJECT · ARRAY → ARRAY | 0x83d550 | 0 | 0 | 0 | 0 |
-| 2225 | `weaponDisassemblyEnabled` | unary | OBJECT → BOOL | 0x4b8210 | 0 | 0 | 0 | 0 |
-| 2226 | `weaponInertia` | unary | OBJECT → ARRAY | 0x896ad0 | 0 | 0 | 0 | 0 |
-| 2227 | `weaponReloadingTime` | binary | OBJECT · ARRAY → SCALAR | 0x4b8270 | 0 | 0 | 0 | 0 |
-| 2228 | `weaponsInfo` | binary | OBJECT · ARRAY → ARRAY | 0x4b83e0 | 0 | 0 | 0 | 0 |
-| 2229 | `weaponState` | binary | OBJECT · STRING → ARRAY | 0x534750 | 0 | 0 | 0 | 0 |
-| 2230 | `WFSideText` | unary | GROUP → STRING<br>OBJECT → STRING<br>SIDE → STRING | 0x572310<br>0x572560<br>0x572750 | 0 | 0 | 0 | 0 |
-| 2231 | `windRTD` | nular | → ARRAY | 0x8947d0 | 0 | 0 | 0 | 0 |
-| 2232 | `wingsForcesRTD` | unary | OBJECT → ARRAY | 0x8948b0 | 0 | 0 | 0 | 0 |
-| 2233 | `worldToScreen` | binary | OBJECT · ARRAY → ARRAY | 0x80b1b0 | 0 | 0 | 0 | 0 |
+| 24 | `enableSentences` | unary | BOOL → NOTHING | 0x48d480 | 499 | 66 | 0 | 565 |
+| 25 | `playSound` | unary | ARRAY → OBJECT<br>STRING → OBJECT | 0x5458c0<br>0x5458c0 | 458 | 76 | 1 | 535 |
+| 26 | `setObjectMaterialGlobal` | binary | OBJECT · ARRAY → NOTHING | 0x8b82a0 | 519 | 6 | 2 | 527 |
+| 27 | `enableAI` | binary | OBJECT · STRING → NOTHING | 0x527420 | 245 | 281 | 0 | 526 |
+| 28 | `driver` | unary | OBJECT → OBJECT | 0x526e50 | 248 | 211 | 30 | 489 |
+| 29 | `playMusic` | unary | ARRAY → NOTHING<br>STRING → NOTHING | 0x544c00<br>0x544c00 | 236 | 233 | 1 | 470 |
+| 30 | `createDiaryRecord` | binary | OBJECT · ARRAY → DIARY_RECORD | 0xdfd850 | 413 | 32 | 0 | 445 |
+| 31 | `setTriggerActivation` | binary | OBJECT · ARRAY → NOTHING | 0x561ea0 | 376 | 64 | 0 | 440 |
+| 32 | `createTrigger` | unary | ARRAY → OBJECT | 0x561160 | 389 | 45 | 0 | 434 |
+| 33 | `missionName` | nular | → STRING | 0x8b0c00 | 380 | 52 | 2 | 434 |
+| 34 | `setCaptive` | binary | OBJECT · BOOL\|SCALAR → NOTHING | 0x53b1a0 | 212 | 211 | 0 | 423 |
+| 35 | `setTriggerArea` | binary | OBJECT · ARRAY → NOTHING | 0x562160 | 379 | 40 | 0 | 419 |
+| 36 | `crew` | unary | OBJECT → ARRAY | 0x5367a0 | 291 | 112 | 4 | 407 |
+| 37 | `fadeSound` | binary | SCALAR · SCALAR → NOTHING | 0x557200 | 329 | 76 | 0 | 405 |
+| 38 | `controlsGroupCtrl` | binary | CONTROL · SCALAR → CONTROL | 0x8cfb30 | 353 | 0 | 51 | 404 |
+| 39 | `setObjectTexture` | binary | OBJECT · ARRAY → NOTHING | 0x8b8550 | 271 | 107 | 2 | 380 |
+| 40 | `date` | nular | → ARRAY | 0x8a8cd0 | 255 | 117 | 2 | 374 |
+| 41 | `direction` | unary | LOCATION → SCALAR<br>OBJECT → SCALAR | 0xd05170<br>0x52b330 | 288 | 78 | 0 | 366 |
+| 42 | `publicVariable` | unary | STRING → NOTHING | 0x547370 | 320 | 43 | 1 | 364 |
+| 43 | `setRank` | binary | OBJECT · STRING → NOTHING | 0x5660a0 | 353 | 5 | 0 | 358 |
+| 44 | `canMove` | unary | OBJECT → BOOL | 0x525f30 | 141 | 207 | 0 | 348 |
+| 45 | `setTriggerStatements` | binary | OBJECT · ARRAY → NOTHING | 0x562430 | 276 | 46 | 0 | 322 |
+| 46 | `allowFleeing` | binary | OBJECT\|GROUP · SCALAR → NOTHING | 0x1907c0 | 171 | 126 | 0 | 297 |
+| 47 | `lbCurSel` | unary | SCALAR → SCALAR | 0x8db420 | 277 | 3 | 12 | 292 |
+| 48 | `ppEffectAdjust` | binary | SCALAR · ARRAY → NOTHING<br>STRING · ARRAY → NOTHING | 0xb4a150<br>0xb4a580 | 243 | 45 | 4 | 292 |
+| 49 | `setCombatMode` | binary | TEAM_MEMBER · STRING → NOTHING | 0x197510 | 140 | 152 | 0 | 292 |
+| 50 | `createMine` | unary | ARRAY → OBJECT | 0x520300 | 272 | 17 | 0 | 289 |
+| 51 | `cutText` | binary | SCALAR · ARRAY → NOTHING<br>STRING · ARRAY → SCALAR | 0x4890f0<br>0x489580 | 264 | 24 | 0 | 288 |
+| 52 | `getMissionLayerEntities` | unary | STRING\|SCALAR → ARRAY | 0x7fa5f0 | 211 | 73 | 0 | 284 |
+| 53 | `ppEffectCommit` | binary | ARRAY · SCALAR → NOTHING<br>SCALAR · SCALAR → NOTHING<br>STRING · SCALAR → NOTHING | 0xb4bde0<br>0xb4bae0<br>0xb4bb80 | 233 | 45 | 4 | 282 |
+| 54 | `kbTell` | binary | OBJECT · ARRAY → NOTHING | 0x519d70 | 166 | 113 | 0 | 279 |
+| 55 | `lock` | binary | OBJECT · BOOL → NOTHING<br>OBJECT · SCALAR → NOTHING | 0x536850<br>0x536850 | 121 | 142 | 0 | 263 |
+| 56 | `titleCut` | unary | ARRAY → NOTHING | 0x489350 | 207 | 55 | 0 | 262 |
+| 57 | `action` | binary | OBJECT · ARRAY → NOTHING | 0x56e4d0 | 166 | 94 | 0 | 260 |
+| 58 | `setLightBrightness` | binary | OBJECT · SCALAR → NOTHING | 0x51b8d0 | 238 | 15 | 0 | 253 |
+| 59 | `setFSMVariable` | binary | SCALAR · ARRAY → NOTHING | 0x48fb20 | 23 | 226 | 0 | 249 |
+| 60 | `distance2D` | binary | OBJECT\|ARRAY · OBJECT\|ARRAY → SCALAR | 0x526ab0 | 170 | 78 | 0 | 248 |
+| 61 | `setFuel` | binary | OBJECT · SCALAR → NOTHING | 0x53c440 | 215 | 32 | 1 | 248 |
+| 62 | `doWatch` | binary | OBJECT\|ARRAY · ARRAY → NOTHING<br>OBJECT\|ARRAY · OBJECT → NOTHING | 0x569150<br>0x569150 | 120 | 125 | 0 | 245 |
+| 63 | `moveInCargo` | binary | OBJECT · ARRAY → NOTHING<br>OBJECT · OBJECT → NOTHING | 0x537680<br>0x5376a0 | 174 | 53 | 0 | 227 |
+| 64 | `list` | unary | OBJECT → ARRAY | 0x5366e0 | 90 | 135 | 0 | 225 |
+| 65 | `playSound3D` | unary | ARRAY → SCALAR | 0x545020 | 204 | 17 | 3 | 224 |
+| 66 | `execFSM` | binary | ANY · ARRAY → SCALAR<br>ANY · STRING → SCALAR | 0x48eea0<br>0x48ecf0 | 90 | 122 | 0 | 212 |
+| 67 | `terminate` | unary | SCALAR → NOTHING | 0x48fc90 | 134 | 72 | 0 | 206 |
+| 68 | `get3DENAttribute` | binary | ARRAY · STRING → ARRAY<br>GROUP · STRING → ARRAY<br>OBJECT · STRING → ARRAY<br>SCALAR · STRING → ARRAY<br>STRING · STRING → ARRAY | 0x7f87a0<br>0x7f7bf0<br>0x7f8340<br>0x7f7870<br>0x7f7fa0 | 202 | 0 | 3 | 205 |
+| 69 | `saveGame` | nular | → NOTHING | 0x8b17c0 | 50 | 155 | 0 | 205 |
+| 70 | `selectPlayer` | unary | OBJECT → NOTHING | 0x54b890 | 197 | 8 | 0 | 205 |
+| 71 | `name` | unary | LOCATION → STRING<br>NAMESPACE → STRING<br>SCRIPT → STRING | 0xd054d0<br>0x4a6fa0<br>0x54a650 | 178 | 24 | 0 | 202 |
+| 72 | `ppEffectEnable` | binary | ARRAY · BOOL → NOTHING<br>SCALAR · BOOL → NOTHING<br>STRING · BOOL → NOTHING | 0xb4c6f0<br>0xb4c650<br>0xb4c6f0 | 154 | 40 | 4 | 198 |
+| 73 | `triggerActivated` | unary | OBJECT → BOOL | 0x560ce0 | 49 | 149 | 0 | 198 |
+| 74 | `allPlayers` | nular | → ARRAY | 0x8a7d10 | 126 | 62 | 0 | 188 |
+| 75 | `animationPhase` | binary | OBJECT · STRING → SCALAR | 0x8b6720 | 54 | 21 | 110 | 185 |
+| 76 | `setGroupIconParams` | binary | GROUP · ARRAY → NOTHING | 0x195780 | 57 | 128 | 0 | 185 |
+| 77 | `cutRsc` | binary | SCALAR · ARRAY → NOTHING<br>STRING · ARRAY → SCALAR | 0x488840<br>0x488de0 | 160 | 23 | 0 | 183 |
+| 78 | `setLightColor` | binary | OBJECT · ARRAY → NOTHING | 0x51b970 | 163 | 15 | 0 | 178 |
+| 79 | `setLightAmbient` | binary | OBJECT · ARRAY → NOTHING | 0x51b390 | 162 | 15 | 0 | 177 |
+| 80 | `gunner` | unary | OBJECT → OBJECT | 0x5352d0 | 101 | 65 | 10 | 176 |
+| 81 | `cameraEffect` | binary | OBJECT · ARRAY → NOTHING | 0x8091e0 | 169 | 4 | 0 | 173 |
+| 82 | `orderGetIn` | binary | ARRAY · BOOL → NOTHING | 0x51e0d0 | 70 | 101 | 0 | 171 |
+| 83 | `selectWeapon` | binary | OBJECT · ARRAY → BOOL\|NOTHING<br>OBJECT · STRING → NOTHING | 0x53a8b0<br>0x53a6b0 | 81 | 84 | 0 | 165 |
+| 84 | `say3D` | binary | OBJECT\|ARRAY · STRING\|ARRAY → OBJECT | 0x539bc0 | 127 | 28 | 8 | 163 |
+| 85 | `camCommitPrepared` | binary | OBJECT · SCALAR → NOTHING | 0x8060e0 | 150 | 12 | 0 | 162 |
+| 86 | `setPylonLoadout` | binary | OBJECT · ARRAY → BOOL | 0x5559f0 | 156 | 6 | 0 | 162 |
+| 87 | `setFog` | binary | SCALAR · SCALAR\|ARRAY → NOTHING | 0x550030 | 120 | 40 | 0 | 160 |
+| 88 | `moveInDriver` | binary | OBJECT · OBJECT → NOTHING | 0x537df0 | 125 | 33 | 0 | 158 |
+| 89 | `remoteExec` | binary | ANY · ARRAY → STRING\|NOTHING | 0x8c0600 | 144 | 5 | 6 | 155 |
+| 90 | `setFormDir` | binary | OBJECT\|GROUP · SCALAR → NOTHING | 0x191d00 | 99 | 54 | 0 | 153 |
+| 91 | `createVehicleCrew` | unary | OBJECT → GROUP | 0x486530 | 127 | 25 | 0 | 152 |
+| 92 | `createCenter` | unary | SIDE → SIDE | 0x18db90 | 146 | 4 | 0 | 150 |
+| 93 | `deleteAt` | binary | ARRAY · ARRAY → ARRAY | 0x2e28d0 | 139 | 9 | 0 | 148 |
+| 94 | `moveInTurret` | binary | OBJECT · ARRAY → NOTHING | 0x5382a0 | 143 | 4 | 0 | 147 |
+| 95 | `setFormation` | binary | TEAM_MEMBER · STRING → NOTHING | 0x197700 | 137 | 9 | 0 | 146 |
+| 96 | `setDropInterval` | binary | OBJECT · SCALAR → NOTHING | 0xeb0b20 | 138 | 6 | 0 | 144 |
+| 97 | `setStatValue` | unary | ARRAY → BOOL | 0x1c43e0 | 58 | 83 | 0 | 141 |
+| 98 | `setVehicleLock` | binary | OBJECT · STRING → NOTHING | 0x570440 | 137 | 4 | 0 | 141 |
+| 99 | `flyInHeight` | binary | OBJECT · SCALAR\|ARRAY → NOTHING | 0x53c0b0 | 80 | 59 | 0 | 139 |
+| 100 | `enableEnvironment` | unary | BOOL\|ARRAY → NOTHING | 0x48cfb0 | 104 | 28 | 5 | 137 |
+| 101 | `unassignVehicle` | unary | OBJECT → NOTHING | 0x542400 | 70 | 65 | 0 | 135 |
+| 102 | `forceWeaponFire` | binary | OBJECT · ARRAY → NOTHING | 0x493790 | 112 | 22 | 0 | 134 |
+| 103 | `lbSize` | unary | SCALAR → SCALAR | 0x8db750 | 130 | 0 | 3 | 133 |
+| 104 | `addItemCargoGlobal` | binary | OBJECT · ARRAY → NOTHING | 0x839420 | 129 | 3 | 0 | 132 |
+| 105 | `modelToWorld` | binary | OBJECT · ARRAY → ARRAY | 0x537540 | 122 | 9 | 0 | 131 |
+| 106 | `vectorMultiply` | binary | ARRAY · SCALAR\|ARRAY → ARRAY (partial) | 0x8f5010 | 123 | 5 | 0 | 128 |
+| 107 | `visibleMap` | nular | → BOOL | 0x8af5f0 | 109 | 19 | 0 | 128 |
+| 108 | `addMagazineCargoGlobal` | binary | OBJECT · ARRAY → NOTHING | 0x83ab60 | 126 | 0 | 0 | 126 |
+| 109 | `addItemCargo` | binary | OBJECT · ARRAY → NOTHING | 0x8391e0 | 106 | 18 | 1 | 125 |
+| 110 | `AGLToASL` | unary | ARRAY → ARRAY | 0x538e90 | 116 | 6 | 0 | 122 |
+| 111 | `ctrlMapAnimAdd` | binary | CONTROL · ARRAY → NOTHING | 0x8e9850 | 118 | 2 | 0 | 120 |
+| 112 | `modelToWorldVisual` | binary | OBJECT · ARRAY → ARRAY | 0x5375a0 | 120 | 0 | 0 | 120 |
+| 113 | `setParticleParams` | binary | OBJECT · ARRAY → NOTHING | 0xeb0c80 | 117 | 3 | 0 | 120 |
+| 114 | `camPrepareFov` | binary | OBJECT · SCALAR → NOTHING | 0x806eb0 | 107 | 12 | 0 | 119 |
+| 115 | `triggerArea` | unary | OBJECT → ARRAY | 0x561790 | 99 | 20 | 0 | 119 |
+| 116 | `kbAddTopic` | binary | OBJECT · ARRAY → NOTHING | 0x519030 | 110 | 5 | 0 | 115 |
+| 117 | `ctrlMapAnimCommit` | unary | CONTROL → NOTHING | 0x8e9a90 | 112 | 2 | 0 | 114 |
+| 118 | `drawIcon` | binary | CONTROL · ARRAY → NOTHING | 0x8e7cc0 | 113 | 1 | 0 | 114 |
+| 119 | `setVehicleAmmo` | binary | OBJECT · SCALAR → NOTHING | 0x56f960 | 91 | 23 | 0 | 114 |
+| 120 | `camPrepareTarget` | binary | OBJECT · ARRAY → NOTHING<br>OBJECT · OBJECT → NOTHING | 0x807300<br>0x807260 | 111 | 1 | 0 | 112 |
+| 121 | `setParticleRandom` | binary | OBJECT · ARRAY → NOTHING | 0xeb0e70 | 110 | 2 | 0 | 112 |
+| 122 | `camPreparePos` | binary | OBJECT · ARRAY → NOTHING | 0x8070f0 | 110 | 0 | 0 | 110 |
+| 123 | `groupID` | unary | OBJECT → SCALAR | 0x52bef0 | 109 | 1 | 0 | 110 |
+| 124 | `setLightAttenuation` | binary | OBJECT · ARRAY → NOTHING | 0x51b580 | 103 | 7 | 0 | 110 |
+| 125 | `entities` | unary | ARRAY → ARRAY<br>STRING → ARRAY | 0x4a0b70<br>0x4a0860 | 93 | 15 | 0 | 108 |
+| 126 | `animateDoor` | binary | OBJECT · ARRAY → NOTHING | 0x54faf0 | 25 | 23 | 59 | 107 |
+| 127 | `selectionPosition` | binary | OBJECT · ARRAY → ARRAY<br>OBJECT · STRING → ARRAY | 0x531770<br>0x5315c0 | 106 | 0 | 0 | 106 |
+| 128 | `unitReady` | unary | OBJECT\|ARRAY → BOOL | 0x569170 | 31 | 72 | 0 | 103 |
+| 129 | `lightAttachObject` | binary | OBJECT · ARRAY → NOTHING | 0x51b180 | 92 | 10 | 0 | 102 |
+| 130 | `cutText` | unary | ARRAY → NOTHING | 0x4890d0 | 81 | 19 | 0 | 100 |
+| 131 | `enableSaving` | unary | BOOL\|ARRAY → NOTHING | 0x48d330 | 75 | 25 | 0 | 100 |
+| 132 | `stop` | binary | OBJECT · BOOL → NOTHING | 0x541980 | 31 | 68 | 0 | 99 |
+| 133 | `getFSMVariable` | binary | SCALAR · STRING\|ARRAY → ANY | 0x48f5d0 | 8 | 90 | 0 | 98 |
+| 134 | `currentWeapon` | unary | OBJECT → STRING | 0x84d140 | 63 | 34 | 0 | 97 |
+| 135 | `ppEffectCreate` | unary | ARRAY → SCALAR\|ARRAY | 0xb4c150 | 88 | 9 | 0 | 97 |
+| 136 | `addMagazineCargo` | binary | OBJECT · ARRAY → NOTHING | 0x83a8f0 | 56 | 39 | 0 | 95 |
+| 137 | `clearItemCargoGlobal` | unary | OBJECT → NOTHING | 0x83d830 | 94 | 1 | 0 | 95 |
+| 138 | `addRating` | binary | OBJECT · SCALAR → NOTHING | 0x5233d0 | 67 | 27 | 0 | 94 |
+| 139 | `clearMagazineCargoGlobal` | unary | OBJECT → NOTHING | 0x83d930 | 93 | 1 | 0 | 94 |
+| 140 | `clearWeaponCargoGlobal` | unary | OBJECT → NOTHING | 0x83da40 | 93 | 1 | 0 | 94 |
+| 141 | `ctrlMapScreenToWorld` | binary | CONTROL · ARRAY → ARRAY | 0x8ea630 | 86 | 8 | 0 | 94 |
+| 142 | `enableRadio` | unary | BOOL → NOTHING | 0x48d210 | 80 | 14 | 0 | 94 |
+| 143 | `surfaceIsWater` | unary | ARRAY → BOOL | 0x55ed70 | 71 | 23 | 0 | 94 |
+| 144 | `callExtension` | binary | STRING · ARRAY → ARRAY<br>STRING · STRING → STRING | 0x188030<br>0x187e30 | 92 | 0 | 0 | 92 |
+| 145 | `engineOn` | binary | OBJECT · BOOL → NOTHING | 0x569c30 | 59 | 31 | 1 | 91 |
+| 146 | `inArea` | binary | ARRAY · LOCATION → BOOL<br>OBJECT · LOCATION → BOOL<br>OBJECT\|ARRAY · ARRAY → BOOL<br>OBJECT\|ARRAY · OBJECT → BOOL<br>OBJECT\|ARRAY · STRING → BOOL | 0xd00830<br>0xd00830<br>0x4bb2d0<br>0x4bce10<br>0x4bcbb0 | 73 | 18 | 0 | 91 |
+| 147 | `addCamShake` | unary | ARRAY → NOTHING | 0x805e00 | 59 | 31 | 0 | 90 |
+| 148 | `createAgent` | unary | ARRAY → OBJECT | 0x47dde0 | 77 | 10 | 0 | 87 |
+| 149 | `execFSM` | unary | ARRAY → SCALAR<br>STRING → SCALAR | 0x48f020<br>0x48eda0 | 28 | 58 | 0 | 86 |
+| 150 | `forceSpeed` | binary | OBJECT · SCALAR → NOTHING | 0x569ed0 | 34 | 52 | 0 | 86 |
+| 151 | `getDir` | binary | OBJECT\|ARRAY · OBJECT\|ARRAY → SCALAR | 0x52b3d0 | 72 | 14 | 0 | 86 |
+| 152 | `endLoadingScreen` | nular | → NOTHING | 0x8b0220 | 84 | 0 | 0 | 84 |
+| 153 | `isEqualTypeArray` | binary | ANY · ARRAY → BOOL (partial) | 0x516070 | 81 | 3 | 0 | 84 |
+| 154 | `setParticleClass` | binary | OBJECT · STRING → NOTHING | 0xeb0a70 | 75 | 9 | 0 | 84 |
+| 155 | `camCreate` | binary | STRING · ARRAY → OBJECT | 0x806520 | 81 | 2 | 0 | 83 |
+| 156 | `enableMimics` | binary | OBJECT · BOOL → NOTHING | 0x527e30 | 71 | 12 | 0 | 83 |
+| 157 | `getPos` | binary | OBJECT\|ARRAY · ARRAY → ARRAY | 0x52fab0 | 53 | 30 | 0 | 83 |
+| 158 | `leaveVehicle` | binary | GROUP · OBJECT → NOTHING<br>OBJECT · OBJECT → NOTHING | 0x4b9010<br>0x191120 | 44 | 39 | 0 | 83 |
+| 159 | `steamGameRecordingEvent` | unary | ARRAY → STRING | 0x1c4910 | 18 | 65 | 0 | 83 |
+| 160 | `assignAsCargo` | binary | OBJECT · OBJECT → NOTHING | 0x5250e0 | 39 | 43 | 0 | 82 |
+| 161 | `setViewDistance` | unary | SCALAR → NOTHING | 0x559200 | 68 | 14 | 0 | 82 |
+| 162 | `getUnitLoadout` | unary | CONFIG → ARRAY<br>OBJECT\|ARRAY → ARRAY<br>STRING → ARRAY | 0x841a90<br>0x841c80<br>0x841890 | 75 | 5 | 1 | 81 |
+| 163 | `startLoadingScreen` | unary | ARRAY → NOTHING | 0x51f050 | 81 | 0 | 0 | 81 |
+| 164 | `createDiarySubject` | binary | OBJECT · ARRAY → SCALAR | 0xdfea70 | 78 | 2 | 0 | 80 |
+| 165 | `profileName` | nular | → STRING | 0x8aa9f0 | 78 | 2 | 0 | 80 |
+| 166 | `doTarget` | binary | OBJECT\|ARRAY · OBJECT → NOTHING | 0x569130 | 48 | 31 | 0 | 79 |
+| 167 | `playableUnits` | nular | → ARRAY | 0x8a9f80 | 64 | 15 | 0 | 79 |
+| 168 | `setCuratorCoef` | binary | OBJECT · ARRAY → NOTHING | 0x82b0c0 | 56 | 23 | 0 | 79 |
+| 169 | `canFire` | unary | OBJECT → BOOL | 0x525e90 | 29 | 47 | 0 | 76 |
+| 170 | `buildingPos` | binary | OBJECT · SCALAR → ARRAY | 0x52a470 | 74 | 1 | 0 | 75 |
+| 171 | `ppEffectDestroy` | unary | ARRAY → NOTHING<br>SCALAR → NOTHING | 0xb4c5b0<br>0xb4c550 | 35 | 40 | 0 | 75 |
+| 172 | `setCustomSoundController` | unary | ARRAY → BOOL | 0x54ed60 | 58 | 16 | 0 | 74 |
+| 173 | `tvData` | binary | CONTROL · ARRAY → STRING | 0x8f1d10 | 74 | 0 | 0 | 74 |
+| 174 | `switchableUnits` | nular | → ARRAY | 0x8ab020 | 60 | 13 | 0 | 73 |
+| 175 | `addWeaponCargo` | binary | OBJECT · ARRAY → NOTHING | 0x83b720 | 66 | 5 | 1 | 72 |
+| 176 | `camCommitted` | unary | OBJECT → BOOL | 0x806170 | 71 | 1 | 0 | 72 |
+| 177 | `getStatValue` | unary | STRING → SCALAR | 0x1c25a0 | 50 | 11 | 11 | 72 |
+| 178 | `clearMagazineCargo` | unary | OBJECT → NOTHING | 0x83d8a0 | 44 | 27 | 0 | 71 |
+| 179 | `lookAt` | binary | OBJECT\|ARRAY · OBJECT\|ARRAY → NOTHING | 0x56d700 | 35 | 36 | 0 | 71 |
+| 180 | `switchCamera` | binary | OBJECT · STRING → NOTHING | 0x541b40 | 64 | 7 | 0 | 71 |
+| 181 | `ctrlMapScale` | unary | CONTROL → SCALAR | 0x8e9bd0 | 70 | 0 | 0 | 70 |
+| 182 | `fuel` | unary | OBJECT → SCALAR | 0x528860 | 41 | 29 | 0 | 70 |
+| 183 | `addMusicEventHandler` | unary | ARRAY → SCALAR | 0x183660 | 40 | 29 | 0 | 69 |
+| 184 | `effectiveCommander` | unary | OBJECT → OBJECT | 0x526ef0 | 49 | 19 | 0 | 68 |
+| 185 | `setUnitRank` | binary | OBJECT · STRING → NOTHING | 0x5660c0 | 68 | 0 | 0 | 68 |
+| 186 | `clearItemCargo` | unary | OBJECT → NOTHING | 0x83d7b0 | 49 | 17 | 1 | 67 |
+| 187 | `drawIcon3D` | unary | ARRAY → NOTHING<br>HASHMAP → NOTHING | 0x572ca0<br>0x572dc0 | 62 | 5 | 0 | 67 |
+| 188 | `allowCrewInImmobile` | binary | OBJECT · BOOL\|ARRAY → NOTHING | 0x47e3b0 | 51 | 15 | 0 | 66 |
+| 189 | `ctrlEnabled` | unary | SCALAR → BOOL | 0x8cbc10 | 65 | 0 | 1 | 66 |
+| 190 | `cursorTarget` | nular | → OBJECT | 0x8a5e30 | 48 | 18 | 0 | 66 |
+| 191 | `magazines` | unary | OBJECT\|ARRAY → ARRAY (partial) | 0x83dfa0 | 39 | 27 | 0 | 66 |
+| 192 | `clearWeaponCargo` | unary | OBJECT → NOTHING | 0x83d9b0 | 45 | 19 | 1 | 65 |
+| 193 | `showHUD` | unary | ARRAY → NOTHING<br>BOOL → NOTHING | 0x8cee20<br>0x8ced00 | 50 | 15 | 0 | 65 |
+| 194 | `camDestroy` | unary | OBJECT → NOTHING | 0x806720 | 61 | 3 | 0 | 64 |
+| 195 | `turretUnit` | binary | OBJECT · ARRAY → OBJECT | 0x56c350 | 14 | 0 | 50 | 64 |
+| 196 | `clearBackpackCargoGlobal` | unary | OBJECT → NOTHING | 0x83d730 | 63 | 0 | 0 | 63 |
+| 197 | `curatorCamera` | nular | → OBJECT | 0x826dd0 | 55 | 6 | 1 | 62 |
+| 198 | `setAccTime` | unary | SCALAR → NOTHING | 0x54dcd0 | 59 | 3 | 0 | 62 |
+| 199 | `switchLight` | binary | OBJECT · STRING → NOTHING | 0x541e50 | 54 | 2 | 6 | 62 |
+| 200 | `assignAsDriver` | binary | OBJECT · OBJECT → NOTHING | 0x525420 | 22 | 39 | 0 | 61 |
+| 201 | `clearRadio` | nular | → NOTHING | 0x8b1280 | 42 | 19 | 0 | 61 |
+| 202 | `get3DENEntityID` | unary | ANY → SCALAR | 0x7f9e60 | 61 | 0 | 0 | 61 |
+| 203 | `lifeState` | unary | OBJECT → STRING | 0x52c610 | 33 | 28 | 0 | 61 |
+| 204 | `setDate` | unary | ARRAY → NOTHING | 0x54eef0 | 55 | 6 | 0 | 61 |
+| 205 | `tvCount` | binary | CONTROL · ARRAY → SCALAR | 0x8f1b30 | 61 | 0 | 0 | 61 |
+| 206 | `setFlagTexture` | binary | OBJECT · STRING → NOTHING | 0x53c020 | 13 | 0 | 47 | 60 |
+| 207 | `addWeaponCargoGlobal` | binary | OBJECT · ARRAY → NOTHING | 0x83b980 | 59 | 0 | 0 | 59 |
+| 208 | `allCurators` | nular | → ARRAY | 0x826880 | 59 | 0 | 0 | 59 |
+| 209 | `boundingBoxReal` | unary | ARRAY → ARRAY<br>OBJECT → ARRAY | 0x529910<br>0x529cd0 | 58 | 1 | 0 | 59 |
+| 210 | `actionKeys` | unary | ARRAY → ARRAY<br>STRING → ARRAY | 0x495d10<br>0x495b50 | 57 | 0 | 1 | 58 |
+| 211 | `isSimpleObject` | unary | OBJECT → BOOL | 0x518720 | 57 | 1 | 0 | 58 |
+| 212 | `lbClear` | unary | SCALAR → NOTHING | 0x8db0a0 | 57 | 0 | 1 | 58 |
+| 213 | `addAction` | binary | OBJECT · ARRAY → NOTHING\|SCALAR | 0x5677c0 | 54 | 3 | 0 | 57 |
+| 214 | `positionCameraToWorld` | unary | ARRAY → ARRAY | 0x8096a0 | 53 | 4 | 0 | 57 |
+| 215 | `nearEntities` | binary | ARRAY · ARRAY → ARRAY<br>OBJECT · ARRAY → ARRAY<br>OBJECT\|ARRAY · SCALAR → ARRAY<br>STRING · ARRAY → ARRAY | 0x4a7600<br>0x4a8420<br>0x4a6fe0<br>0x4a7db0 | 46 | 10 | 0 | 56 |
+| 216 | `weaponState` | unary | ARRAY → ARRAY<br>OBJECT → ARRAY | 0x5347b0<br>0x534280 | 56 | 0 | 0 | 56 |
+| 217 | `deleteVehicleCrew` | binary | OBJECT · OBJECT → NOTHING | 0x48a330 | 47 | 8 | 0 | 55 |
+| 218 | `getTerrainHeightASL` | unary | ARRAY → SCALAR | 0x4b41d0 | 54 | 1 | 0 | 55 |
+| 219 | `openMap` | unary | ARRAY → BOOL<br>BOOL → BOOL | 0x544410<br>0x544410 | 52 | 2 | 1 | 55 |
+| 220 | `cursorObject` | nular | → OBJECT | 0x8a5dd0 | 39 | 15 | 0 | 54 |
+| 221 | `getPlayerUID` | unary | OBJECT → STRING | 0x4af150 | 46 | 8 | 0 | 54 |
+| 222 | `isTouchingGround` | unary | OBJECT → BOOL | 0x535ca0 | 15 | 37 | 0 | 52 |
+| 223 | `cameraView` | nular | → STRING | 0x8b10a0 | 39 | 12 | 0 | 51 |
+| 224 | `setTriggerTimeout` | binary | OBJECT · ARRAY → NOTHING | 0x562640 | 33 | 17 | 0 | 50 |
+| 225 | `do3DENAction` | unary | STRING\|ARRAY → NOTHING | 0x7ffc70 | 10 | 0 | 39 | 49 |
+| 226 | `endMission` | unary | STRING → NOTHING | 0x48dc30 | 29 | 19 | 1 | 49 |
+| 227 | `inputAction` | unary | STRING → SCALAR | 0x4a3980 | 49 | 0 | 0 | 49 |
+| 228 | `remoteExecCall` | binary | ANY · ARRAY → STRING\|NOTHING | 0x8bf9a0 | 35 | 13 | 0 | 48 |
+| 229 | `serverCommandAvailable` | unary | STRING → BOOL | 0x54d520 | 48 | 0 | 0 | 48 |
+| 230 | `setPlayerRespawnTime` | unary | SCALAR → NOTHING | 0x555970 | 48 | 0 | 0 | 48 |
+| 231 | `drawLine3D` | unary | ARRAY → NOTHING | 0x5731f0 | 41 | 5 | 0 | 46 |
+| 232 | `enableAttack` | binary | OBJECT\|GROUP · BOOL → NOTHING | 0x1908e0 | 16 | 30 | 0 | 46 |
+| 233 | `fireAtTarget` | binary | OBJECT · ARRAY → BOOL | 0x492810 | 30 | 16 | 0 | 46 |
+| 234 | `fire` | binary | OBJECT · ARRAY → NOTHING<br>OBJECT · STRING → NOTHING | 0x528330<br>0x5281a0 | 32 | 13 | 0 | 45 |
+| 235 | `saveVar` | unary | STRING → NOTHING | 0x549c10 | 25 | 20 | 0 | 45 |
+| 236 | `setObjectMaterial` | binary | OBJECT · ARRAY → NOTHING | 0x8b8260 | 45 | 0 | 0 | 45 |
+| 237 | `get3DENCamera` | nular | → OBJECT | 0x7f8ff0 | 41 | 0 | 3 | 44 |
+| 238 | `moveOut` | unary | OBJECT → NOTHING | 0x538400 | 26 | 18 | 0 | 44 |
+| 239 | `playSoundUI` | unary | ARRAY → SCALAR | 0x545c10 | 44 | 0 | 0 | 44 |
+| 240 | `worldSize` | nular | → SCALAR | 0x8ab7d0 | 44 | 0 | 0 | 44 |
+| 241 | `say` | binary | OBJECT\|ARRAY · ARRAY → NOTHING<br>OBJECT\|ARRAY · STRING → NOTHING | 0x53a080<br>0x53a080 | 30 | 9 | 4 | 43 |
+| 242 | `setVehicleReportOwnPosition` | binary | OBJECT · BOOL → NOTHING | 0x1cbc70 | 40 | 3 | 0 | 43 |
+| 243 | `doorPhase` | binary | OBJECT · STRING → SCALAR | 0x4a0570 | 0 | 0 | 42 | 42 |
+| 244 | `getGroupIconParams` | unary | GROUP → ARRAY | 0x18ec00 | 37 | 5 | 0 | 42 |
+| 245 | `showWaypoint` | binary | ARRAY · STRING → NOTHING | 0x8fb640 | 12 | 30 | 0 | 42 |
+| 246 | `accTime` | nular | → SCALAR | 0x8a7170 | 35 | 6 | 0 | 41 |
+| 247 | `getRelPos` | binary | OBJECT · ARRAY → ARRAY<br>OBJECT · OBJECT → ARRAY | 0x530690<br>0x530a10 | 33 | 8 | 0 | 41 |
+| 248 | `isKeyActive` | unary | STRING → BOOL | 0x5180f0 | 7 | 14 | 20 | 41 |
+| 249 | `showCinemaBorder` | unary | BOOL → NOTHING | 0x1170a50 | 41 | 0 | 0 | 41 |
+| 250 | `titleText` | unary | ARRAY → NOTHING | 0x494f10 | 39 | 2 | 0 | 41 |
+| 251 | `get3DENSelected` | unary | STRING → ARRAY | 0x7f7050 | 37 | 0 | 3 | 40 |
+| 252 | `unitBackpack` | unary | OBJECT → OBJECT | 0x4b6790 | 19 | 21 | 0 | 40 |
+| 253 | `lbSort` | unary | ARRAY → NOTHING<br>CONTROL → NOTHING<br>SCALAR → NOTHING | 0x8dfb80<br>0x8df7c0<br>0x8dd230 | 35 | 0 | 4 | 39 |
+| 254 | `setCustomMissionData` | unary | ARRAY → NOTHING | 0x54e9e0 | 8 | 31 | 0 | 39 |
+| 255 | `setLightDayLight` | binary | OBJECT · BOOL → NOTHING | 0x51bd10 | 36 | 3 | 0 | 39 |
+| 256 | `sliderPosition` | unary | SCALAR → SCALAR | 0x8eae80 | 34 | 0 | 5 | 39 |
+| 257 | `tvAdd` | binary | CONTROL · ARRAY → SCALAR | 0x8f1710 | 39 | 0 | 0 | 39 |
+| 258 | `allowGetIn` | binary | ARRAY · BOOL → NOTHING | 0x51ca20 | 15 | 23 | 0 | 38 |
+| 259 | `assignAsCargoIndex` | binary | OBJECT · ARRAY → NOTHING | 0x5250e0 | 16 | 22 | 0 | 38 |
+| 260 | `boundingBox` | unary | OBJECT → ARRAY | 0x529630 | 37 | 1 | 0 | 38 |
+| 261 | `setRain` | binary | SCALAR · SCALAR → NOTHING | 0x556520 | 20 | 18 | 0 | 38 |
+| 262 | `worldToScreen` | unary | ARRAY → ARRAY | 0x80b290 | 26 | 12 | 0 | 38 |
+| 263 | `addGroupIcon` | binary | GROUP · ARRAY → SCALAR | 0x18d2f0 | 26 | 11 | 0 | 37 |
+| 264 | `ammo` | binary | OBJECT · STRING → SCALAR | 0x524dd0 | 21 | 16 | 0 | 37 |
+| 265 | `buttonSetAction` | binary | CONTROL · STRING → NOTHING | 0x8cf360 | 37 | 0 | 0 | 37 |
+| 266 | `playerRespawnTime` | nular | → SCALAR | 0x8aa540 | 37 | 0 | 0 | 37 |
+| 267 | `progressLoadingScreen` | unary | SCALAR → NOTHING | 0x51f240 | 37 | 0 | 0 | 37 |
+| 268 | `showCommandingMenu` | unary | STRING → NOTHING | 0x54e790 | 24 | 13 | 0 | 37 |
+| 269 | `tvCurSel` | unary | CONTROL → ARRAY<br>SCALAR → ARRAY | 0x8f1c30<br>0x8ed9f0 | 37 | 0 | 0 | 37 |
+| 270 | `ASLToAGL` | unary | ARRAY → ARRAY | 0x538fb0 | 36 | 0 | 0 | 36 |
+| 271 | `disableCollisionWith` | binary | OBJECT · OBJECT → NOTHING | 0x568f80 | 31 | 5 | 0 | 36 |
+| 272 | `lockCargo` | binary | OBJECT · ARRAY → NOTHING<br>OBJECT · BOOL → NOTHING | 0x56d390<br>0x56d270 | 15 | 17 | 4 | 36 |
+| 273 | `overcast` | nular | → SCALAR | 0x8a9da0 | 32 | 4 | 0 | 36 |
+| 274 | `removeMusicEventHandler` | unary | ARRAY → NOTHING | 0x183a10 | 21 | 15 | 0 | 36 |
+| 275 | `scoreSide` | unary | SIDE → SCALAR | 0x55bd90 | 20 | 16 | 0 | 36 |
+| 276 | `setOvercast` | binary | SCALAR · SCALAR → NOTHING | 0x5545b0 | 26 | 10 | 0 | 36 |
+| 277 | `commander` | unary | OBJECT → OBJECT | 0x526230 | 20 | 15 | 0 | 35 |
+| 278 | `kbRemoveTopic` | binary | OBJECT · STRING → NOTHING | 0x519ce0 | 13 | 22 | 0 | 35 |
+| 279 | `setAnimSpeedCoef` | binary | OBJECT · SCALAR → NOTHING | 0x896eb0 | 25 | 10 | 0 | 35 |
+| 280 | `skipTime` | unary | SCALAR → NOTHING | 0x55bf70 | 26 | 9 | 0 | 35 |
+| 281 | `stance` | unary | OBJECT → STRING | 0x532d40 | 14 | 21 | 0 | 35 |
+| 282 | `triggerText` | unary | OBJECT → STRING | 0x561b80 | 34 | 1 | 0 | 35 |
+| 283 | `setVehicleReportRemoteTargets` | binary | OBJECT · BOOL → NOTHING | 0x1cbd60 | 34 | 0 | 0 | 34 |
+| 284 | `drop` | unary | ARRAY → OBJECT | 0xeb0410 | 33 | 0 | 0 | 33 |
+| 285 | `moveInGunner` | binary | OBJECT · OBJECT → NOTHING | 0x538060 | 17 | 16 | 0 | 33 |
+| 286 | `playerSide` | nular | → SIDE | 0x8b11b0 | 16 | 16 | 1 | 33 |
+| 287 | `setAmmo` | binary | OBJECT · ARRAY → NOTHING | 0x553250 | 32 | 1 | 0 | 33 |
+| 288 | `assignAsGunner` | binary | OBJECT · OBJECT → NOTHING | 0x5254d0 | 15 | 17 | 0 | 32 |
+| 289 | `camCommit` | binary | OBJECT · SCALAR → NOTHING | 0x806050 | 30 | 2 | 0 | 32 |
+| 290 | `createSoundSource` | unary | ARRAY → OBJECT | 0x55c4b0 | 32 | 0 | 0 | 32 |
+| 291 | `enableGunLights` | binary | OBJECT\|GROUP · STRING → NOTHING | 0x1909f0 | 25 | 7 | 0 | 32 |
+| 292 | `fadeSpeech` | binary | SCALAR · SCALAR → NOTHING | 0x5573c0 | 26 | 6 | 0 | 32 |
+| 293 | `activateKey` | unary | STRING → NOTHING | 0x51a7a0 | 4 | 27 | 0 | 31 |
+| 294 | `createDialog` | unary | ARRAY → DISPLAY | 0x8ccbf0 | 31 | 0 | 0 | 31 |
+| 295 | `eyePos` | unary | OBJECT → ARRAY | 0x52fd50 | 29 | 2 | 0 | 31 |
+| 296 | `addCuratorEditableObjects` | binary | OBJECT · ARRAY → NOTHING | 0x824230 | 21 | 9 | 0 | 30 |
+| 297 | `difficultyOption` | unary | ARRAY → ARRAY<br>STRING → SCALAR | 0x48a6e0<br>0x48a630 | 25 | 5 | 0 | 30 |
+| 298 | `doGetOut` | unary | OBJECT\|ARRAY → NOTHING | 0x5690b0 | 13 | 17 | 0 | 30 |
+| 299 | `fogParams` | nular | → ARRAY | 0x8a9000 | 8 | 22 | 0 | 30 |
+| 300 | `leaderboardState` | unary | STRING → SCALAR | 0x1c3550 | 8 | 22 | 0 | 30 |
+| 301 | `taskState` | unary | TASK → STRING | 0xe0aad0 | 30 | 0 | 0 | 30 |
+| 302 | `faction` | unary | OBJECT → STRING | 0x4a2cf0 | 26 | 3 | 0 | 29 |
+| 303 | `get3DENActionState` | unary | STRING → SCALAR | 0x7f76d0 | 29 | 0 | 0 | 29 |
+| 304 | `joinAsSilent` | binary | OBJECT · ARRAY → NOTHING | 0x197c20 | 11 | 18 | 0 | 29 |
+| 305 | `revealMine` | binary | SIDE · OBJECT → NOTHING | 0x549ae0 | 17 | 12 | 0 | 29 |
+| 306 | `addCuratorAddons` | binary | OBJECT · ARRAY → NOTHING | 0x823b20 | 22 | 6 | 0 | 28 |
+| 307 | `emptyPositions` | binary | OBJECT · STRING\|ARRAY → SCALAR | 0x526fd0 | 13 | 15 | 0 | 28 |
+| 308 | `enableTeamSwitch` | unary | BOOL → NOTHING | 0x55f850 | 28 | 0 | 0 | 28 |
+| 309 | `objectCurators` | unary | OBJECT → ARRAY | 0x829950 | 27 | 0 | 1 | 28 |
+| 310 | `roadsConnectedTo` | unary | OBJECT\|ARRAY → ARRAY | 0x49e7e0 | 28 | 0 | 0 | 28 |
+| 311 | `triggerAttachVehicle` | binary | OBJECT · ARRAY → NOTHING | 0x561030 | 12 | 16 | 0 | 28 |
+| 312 | `camCommand` | binary | OBJECT · STRING → NOTHING | 0x805fa0 | 27 | 0 | 0 | 27 |
+| 313 | `fadeRadio` | binary | SCALAR · SCALAR → NOTHING | 0x556460 | 21 | 6 | 0 | 27 |
+| 314 | `fullCrew` | unary | ARRAY → ARRAY<br>OBJECT → ARRAY | 0x498a00<br>0x498910 | 20 | 3 | 4 | 27 |
+| 315 | `getDLCs` | unary | SCALAR → ARRAY | 0x1c2370 | 18 | 0 | 9 | 27 |
+| 316 | `nearRoads` | binary | OBJECT\|ARRAY · SCALAR → ARRAY | 0x4a8eb0 | 22 | 5 | 0 | 27 |
+| 317 | `playableSlotsNumber` | unary | SIDE → SCALAR | 0x546090 | 25 | 2 | 0 | 27 |
+| 318 | `simpleTasks` | unary | OBJECT → ARRAY | 0xe04730 | 12 | 15 | 0 | 27 |
+| 319 | `addBackpackCargoGlobal` | binary | OBJECT · ARRAY → NOTHING | 0x838e30 | 26 | 0 | 0 | 26 |
+| 320 | `addWeaponWithAttachmentsCargo` | binary | OBJECT · ARRAY → NOTHING | 0x83c030 | 26 | 0 | 0 | 26 |
+| 321 | `allMines` | nular | → ARRAY | 0x89b400 | 8 | 18 | 0 | 26 |
+| 322 | `camUseNVG` | unary | BOOL → NOTHING | 0x54e580 | 26 | 0 | 0 | 26 |
+| 323 | `doArtilleryFire` | binary | OBJECT\|ARRAY · ARRAY → NOTHING | 0x569030 | 19 | 7 | 0 | 26 |
+| 324 | `getAssignedCuratorUnit` | unary | OBJECT → OBJECT | 0x826a40 | 19 | 7 | 0 | 26 |
+| 325 | `isGamePaused` | nular | → BOOL | 0x89a8f0 | 26 | 0 | 0 | 26 |
+| 326 | `random` | binary | SCALAR · SCALAR\|ARRAY → SCALAR (partial) | 0x547ca0 | 26 | 0 | 0 | 26 |
+| 327 | `screenToWorld` | unary | ARRAY → ARRAY | 0x80a1c0 | 25 | 1 | 0 | 26 |
+| 328 | `set3DENAttribute` | binary | ANY · ARRAY → BOOL | 0x801be0 | 26 | 0 | 0 | 26 |
+| 329 | `setLightUseFlare` | binary | OBJECT · BOOL → NOTHING | 0x51bdb0 | 22 | 4 | 0 | 26 |
+| 330 | `activateAddons` | unary | ARRAY → NOTHING | 0x47db50 | 25 | 0 | 0 | 25 |
+| 331 | `allTurrets` | unary | ARRAY → ARRAY<br>OBJECT → ARRAY | 0x49bb80<br>0x49ba10 | 24 | 1 | 0 | 25 |
+| 332 | `clearBackpackCargo` | unary | OBJECT → NOTHING | 0x83d6a0 | 17 | 8 | 0 | 25 |
+| 333 | `drawLine` | binary | CONTROL · ARRAY → NOTHING | 0x8e7f20 | 25 | 0 | 0 | 25 |
+| 334 | `enableStamina` | binary | OBJECT · BOOL → NOTHING | 0x896820 | 24 | 0 | 1 | 25 |
+| 335 | `getArtilleryAmmo` | unary | ARRAY → ARRAY | 0x49be70 | 10 | 15 | 0 | 25 |
+| 336 | `getRelDir` | binary | OBJECT · OBJECT\|ARRAY → SCALAR | 0x530570 | 16 | 9 | 0 | 25 |
+| 337 | `isOnRoad` | unary | OBJECT\|ARRAY → BOOL | 0x546300 | 18 | 7 | 0 | 25 |
+| 338 | `land` | binary | OBJECT · STRING → NOTHING | 0x536300 | 13 | 12 | 0 | 25 |
+| 339 | `lnbAddRow` | binary | CONTROL · ARRAY → SCALAR | 0x8e4540 | 25 | 0 | 0 | 25 |
+| 340 | `mapGridPosition` | unary | OBJECT\|ARRAY → STRING | 0x51f890 | 20 | 5 | 0 | 25 |
+| 341 | `rating` | unary | OBJECT → SCALAR | 0x528080 | 18 | 7 | 0 | 25 |
+| 342 | `setDriveOnPath` | binary | OBJECT · ARRAY → NOTHING | 0x569330 | 22 | 3 | 0 | 25 |
+| 343 | `setLightFlareSize` | binary | OBJECT · SCALAR → NOTHING | 0x51bef0 | 21 | 4 | 0 | 25 |
+| 344 | `setParticleCircle` | binary | OBJECT · ARRAY → NOTHING | 0xeb07c0 | 25 | 0 | 0 | 25 |
+| 345 | `showChat` | unary | BOOL → NOTHING | 0x19f5e0 | 25 | 0 | 0 | 25 |
+| 346 | `tvSetCurSel` | binary | CONTROL · ARRAY → NOTHING | 0x8f28a0 | 21 | 0 | 4 | 25 |
+| 347 | `getAssignedCuratorLogic` | unary | OBJECT → OBJECT | 0x826aa0 | 24 | 0 | 0 | 24 |
+| 348 | `isEngineOn` | unary | OBJECT → BOOL | 0x56cca0 | 17 | 7 | 0 | 24 |
+| 349 | `lnbData` | binary | CONTROL · ARRAY → STRING | 0x8e4bd0 | 24 | 0 | 0 | 24 |
+| 350 | `mineActive` | unary | OBJECT → BOOL | 0x520290 | 4 | 20 | 0 | 24 |
+| 351 | `modelToWorldWorld` | binary | OBJECT · ARRAY → ARRAY | 0x537570 | 24 | 0 | 0 | 24 |
+| 352 | `musicVolume` | nular | → SCALAR | 0x8a9c40 | 24 | 0 | 0 | 24 |
+| 353 | `setObjectScale` | binary | OBJECT · SCALAR → NOTHING | 0x53e9d0 | 24 | 0 | 0 | 24 |
+| 354 | `setSlingLoad` | binary | OBJECT · OBJECT → BOOL | 0x1a97a0 | 21 | 3 | 0 | 24 |
+| 355 | `setVehicleReceiveRemoteTargets` | binary | OBJECT · BOOL → NOTHING | 0x1cbb80 | 24 | 0 | 0 | 24 |
+| 356 | `triggerStatements` | unary | OBJECT → ARRAY | 0x5619a0 | 24 | 0 | 0 | 24 |
+| 357 | `tvSetData` | binary | CONTROL · ARRAY → NOTHING | 0x8f29a0 | 24 | 0 | 0 | 24 |
+| 358 | `tvSetPicture` | binary | CONTROL · ARRAY → NOTHING | 0x8f2b20 | 24 | 0 | 0 | 24 |
+| 359 | `cbSetChecked` | binary | CONTROL · BOOL → NOTHING | 0x8d0260 | 21 | 0 | 2 | 23 |
+| 360 | `ctrlMapCursor` | binary | CONTROL · ARRAY → NOTHING | 0x8e9710 | 23 | 0 | 0 | 23 |
+| 361 | `currentTask` | unary | OBJECT → TASK | 0xe046c0 | 14 | 9 | 0 | 23 |
+| 362 | `estimatedEndServerTime` | nular | → SCALAR | 0x8a8f60 | 15 | 8 | 0 | 23 |
+| 363 | `glanceAt` | binary | OBJECT\|ARRAY · OBJECT\|ARRAY → NOTHING | 0x56cab0 | 14 | 9 | 0 | 23 |
+| 364 | `triggerActivation` | unary | OBJECT → ARRAY | 0x5615a0 | 11 | 12 | 0 | 23 |
+| 365 | `addVehicle` | binary | GROUP · OBJECT → NOTHING | 0x190740 | 11 | 11 | 0 | 22 |
+| 366 | `expectedDestination` | unary | OBJECT → ARRAY | 0x56a880 | 13 | 9 | 0 | 22 |
+| 367 | `getMagazineCargo` | unary | OBJECT → ARRAY | 0x840480 | 11 | 11 | 0 | 22 |
+| 368 | `lnbSetPicture` | binary | CONTROL · ARRAY → NOTHING | 0x8e67a0 | 22 | 0 | 0 | 22 |
+| 369 | `setCamUseTI` | binary | BOOL · SCALAR → NOTHING | 0x54e5d0 | 22 | 0 | 0 | 22 |
+| 370 | `setLightFlareMaxDistance` | binary | OBJECT · SCALAR → NOTHING | 0x51be50 | 18 | 4 | 0 | 22 |
+| 371 | `setMagazineTurretAmmo` | binary | OBJECT · ARRAY → NOTHING | 0x557e40 | 22 | 0 | 0 | 22 |
+| 372 | `setUnconscious` | binary | OBJECT · BOOL → NOTHING | 0x53fa40 | 17 | 5 | 0 | 22 |
+| 373 | `sideRadio` | binary | OBJECT\|ARRAY · STRING → NOTHING | 0x19d7a0 | 22 | 0 | 0 | 22 |
+| 374 | `soundVolume` | nular | → SCALAR | 0x8aaf30 | 22 | 0 | 0 | 22 |
+| 375 | `viewDistance` | nular | → SCALAR | 0x8ab480 | 18 | 4 | 0 | 22 |
+| 376 | `allControls` | unary | CONTROL → ARRAY | 0x8cd3f0 | 13 | 0 | 8 | 21 |
+| 377 | `commandingMenu` | nular | → STRING | 0x8a8c50 | 10 | 11 | 0 | 21 |
+| 378 | `curatorEditableObjects` | unary | OBJECT → ARRAY | 0x827050 | 17 | 4 | 0 | 21 |
+| 379 | `drawRectangle` | binary | CONTROL · ARRAY → NOTHING | 0x8e8240 | 21 | 0 | 0 | 21 |
+| 380 | `get3DENConnections` | unary | ANY → ARRAY | 0x7f9030 | 21 | 0 | 0 | 21 |
+| 381 | `lbSetPictureRight` | binary | CONTROL · ARRAY → NOTHING | 0x8dec90 | 17 | 0 | 4 | 21 |
+| 382 | `removeAllMusicEventHandlers` | unary | STRING → NOTHING | 0x1838a0 | 3 | 18 | 0 | 21 |
+| 383 | `text` | unary | LOCATION → STRING | 0xd05a80 | 21 | 0 | 0 | 21 |
+| 384 | `camPreloaded` | unary | OBJECT → BOOL | 0x806e00 | 20 | 0 | 0 | 20 |
+| 385 | `camSetFov` | binary | OBJECT · SCALAR → NOTHING | 0x8074f0 | 19 | 1 | 0 | 20 |
+| 386 | `language` | nular | → STRING | 0x8a9b60 | 17 | 1 | 2 | 20 |
+| 387 | `moveInAny` | binary | OBJECT · OBJECT\|ARRAY → BOOL | 0x520b90 | 18 | 2 | 0 | 20 |
+| 388 | `ppEffectForceInNVG` | binary | SCALAR · BOOL → NOTHING | 0xb4cdd0 | 17 | 3 | 0 | 20 |
+| 389 | `setDiaryRecordText` | binary | OBJECT · ARRAY → NOTHING | 0xdfe460 | 20 | 0 | 0 | 20 |
+| 390 | `sizeOf` | unary | STRING → SCALAR | 0x564680 | 16 | 4 | 0 | 20 |
+| 391 | `camPreload` | binary | OBJECT · SCALAR → NOTHING | 0x806d70 | 19 | 0 | 0 | 19 |
+| 392 | `commandArtilleryFire` | binary | OBJECT\|ARRAY · ARRAY → NOTHING | 0x5682a0 | 10 | 9 | 0 | 19 |
+| 393 | `ctrlMapWorldToScreen` | binary | CONTROL · ARRAY → ARRAY | 0x8eac30 | 19 | 0 | 0 | 19 |
+| 394 | `ctrlSetScale` | binary | CONTROL · SCALAR → NOTHING | 0x8d4c80 | 19 | 0 | 0 | 19 |
+| 395 | `inGameUISetEventHandler` | unary | ARRAY → NOTHING | 0x182df0 | 19 | 0 | 0 | 19 |
+| 396 | `lnbCurSelRow` | unary | CONTROL → SCALAR<br>SCALAR → SCALAR | 0x8e4b50<br>0x8e14f0 | 19 | 0 | 0 | 19 |
+| 397 | `assignedVehicle` | unary | OBJECT → OBJECT | 0x529220 | 10 | 8 | 0 | 18 |
+| 398 | `forceRespawn` | unary | OBJECT → NOTHING | 0x493570 | 18 | 0 | 0 | 18 |
+| 399 | `forceWalk` | binary | OBJECT · BOOL → NOTHING | 0x493710 | 10 | 8 | 0 | 18 |
+| 400 | `hcSelected` | unary | OBJECT → ARRAY | 0x199a10 | 12 | 0 | 6 | 18 |
+| 401 | `isUAVConnected` | unary | OBJECT → BOOL | 0x518a80 | 9 | 9 | 0 | 18 |
+| 402 | `kbHasTopic` | binary | OBJECT · STRING → BOOL | 0x519640 | 18 | 0 | 0 | 18 |
+| 403 | `lnbSetColor` | binary | CONTROL · ARRAY → NOTHING | 0x8e55c0 | 18 | 0 | 0 | 18 |
+| 404 | `remoteControl` | binary | OBJECT · OBJECT → NOTHING | 0x5392f0 | 13 | 5 | 0 | 18 |
+| 405 | `removeAction` | binary | OBJECT · SCALAR → NOTHING | 0x56f0d0 | 15 | 3 | 0 | 18 |
+| 406 | `setAperture` | unary | SCALAR → NOTHING | 0x54de60 | 18 | 0 | 0 | 18 |
+| 407 | `setVehiclePosition` | binary | OBJECT · ARRAY → BOOL | 0x570690 | 18 | 0 | 0 | 18 |
+| 408 | `UAVControl` | unary | OBJECT\|ARRAY → ARRAY | 0x5648a0 | 9 | 9 | 0 | 18 |
+| 409 | `addPublicVariableEventHandler` | binary | STRING · ARRAY → NOTHING<br>STRING · CODE → NOTHING | 0x1809f0<br>0x1809f0 | 17 | 0 | 0 | 17 |
+| 410 | `camPrepareFocus` | binary | OBJECT · ARRAY → NOTHING | 0x806f50 | 17 | 0 | 0 | 17 |
+| 411 | `doFire` | binary | OBJECT\|ARRAY · OBJECT → NOTHING | 0x569070 | 8 | 9 | 0 | 17 |
+| 412 | `getCustomSoundController` | unary | ARRAY → SCALAR | 0x49f940 | 13 | 0 | 4 | 17 |
+| 413 | `itemCargo` | unary | OBJECT → ARRAY | 0x842c00 | 16 | 1 | 0 | 17 |
+| 414 | `limitSpeed` | binary | OBJECT · BOOL\|SCALAR → NOTHING | 0x536610 | 15 | 2 | 0 | 17 |
+| 415 | `locked` | unary | OBJECT → SCALAR | 0x537110 | 12 | 4 | 1 | 17 |
+| 416 | `objectParent` | unary | OBJECT → OBJECT | 0x4acd60 | 17 | 0 | 0 | 17 |
+| 417 | `titleRsc` | unary | ARRAY → NOTHING | 0x494c80 | 12 | 5 | 0 | 17 |
+| 418 | `worldToModel` | binary | OBJECT · ARRAY → ARRAY | 0x542fc0 | 17 | 0 | 0 | 17 |
+| 419 | `addCuratorPoints` | binary | OBJECT · SCALAR → NOTHING | 0x825450 | 9 | 7 | 0 | 16 |
+| 420 | `cameraEffectEnableHUD` | unary | BOOL → NOTHING | 0x807a30 | 16 | 0 | 0 | 16 |
+| 421 | `camPrepareDir` | binary | OBJECT · SCALAR → NOTHING | 0x806e60 | 16 | 0 | 0 | 16 |
+| 422 | `enableCamShake` | unary | BOOL → NOTHING | 0x807d80 | 13 | 3 | 0 | 16 |
+| 423 | `getItemCargo` | unary | OBJECT → ARRAY | 0x83fd10 | 14 | 0 | 2 | 16 |
+| 424 | `getObjectTextures` | unary | OBJECT → ARRAY | 0x4ad560 | 16 | 0 | 0 | 16 |
+| 425 | `inAreaArray` | binary | ARRAY · ARRAY → ARRAY<br>ARRAY · LOCATION → ARRAY<br>ARRAY · OBJECT → ARRAY<br>ARRAY · STRING → ARRAY | 0x4bb6c0<br>0xd033e0<br>0x4bc4e0<br>0x4bc080 | 14 | 2 | 0 | 16 |
+| 426 | `isEqualTypeAll` | binary | ANY · ANY → BOOL (partial) | 0x515ea0 | 16 | 0 | 0 | 16 |
+| 427 | `setGroupIconsVisible` | unary | ARRAY → NOTHING | 0x19a6a0 | 14 | 2 | 0 | 16 |
+| 428 | `setLightIntensity` | binary | OBJECT · SCALAR → NOTHING | 0x51c020 | 16 | 0 | 0 | 16 |
+| 429 | `setUnitTrait` | binary | OBJECT · ARRAY → NOTHING | 0x556b40 | 12 | 4 | 0 | 16 |
+| 430 | `setUnloadInCombat` | binary | OBJECT · ARRAY → NOTHING | 0x53fe80 | 15 | 1 | 0 | 16 |
+| 431 | `setUserMFDValue` | binary | OBJECT · ARRAY → NOTHING | 0x558cf0 | 14 | 0 | 2 | 16 |
+| 432 | `showWatch` | unary | BOOL → NOTHING | 0x55b7e0 | 12 | 4 | 0 | 16 |
+| 433 | `tvExpand` | binary | CONTROL · ARRAY → NOTHING | 0x8f1f10 | 16 | 0 | 0 | 16 |
+| 434 | `weaponCargo` | unary | OBJECT → ARRAY | 0x847960 | 16 | 0 | 0 | 16 |
+| 435 | `camSetRelPos` | binary | OBJECT · ARRAY → NOTHING | 0x807800 | 15 | 0 | 0 | 15 |
+| 436 | `distanceSqr` | binary | ARRAY · LOCATION → SCALAR<br>LOCATION · ARRAY → SCALAR<br>LOCATION · LOCATION → SCALAR<br>OBJECT\|ARRAY · OBJECT\|ARRAY → SCALAR<br>SCALAR · SCALAR → SCALAR | 0xd043c0<br>0xd043c0<br>0xd043e0<br>0x526c90<br>0x4baf90 | 14 | 1 | 0 | 15 |
+| 437 | `findEmptyPosition` | binary | ARRAY · ARRAY → ARRAY | 0x490160 | 12 | 3 | 0 | 15 |
+| 438 | `magazineTurretAmmo` | binary | OBJECT · ARRAY → SCALAR | 0x4b5a80 | 7 | 8 | 0 | 15 |
+| 439 | `nearestLocations` | unary | ARRAY → ARRAY | 0xd06f10 | 13 | 2 | 0 | 15 |
+| 440 | `selectBestPlaces` | unary | ARRAY → ARRAY | 0x47e650 | 12 | 3 | 0 | 15 |
+| 441 | `serverCommand` | unary | STRING → BOOL | 0x54d4b0 | 15 | 0 | 0 | 15 |
+| 442 | `setFatigue` | binary | OBJECT · SCALAR → NOTHING | 0x53bc40 | 12 | 3 | 0 | 15 |
+| 443 | `setPilotLight` | binary | OBJECT · BOOL → NOTHING | 0x570570 | 12 | 3 | 0 | 15 |
+| 444 | `setVelocityModelSpace` | binary | OBJECT · ARRAY → NOTHING | 0x540be0 | 12 | 3 | 0 | 15 |
+| 445 | `tvSort` | binary | CONTROL · ARRAY → NOTHING | 0x8f3850 | 15 | 0 | 0 | 15 |
+| 446 | `canStand` | unary | OBJECT → BOOL | 0x525fa0 | 11 | 3 | 0 | 14 |
+| 447 | `configSourceMod` | unary | CONFIG → STRING | 0x8125a0 | 11 | 0 | 3 | 14 |
+| 448 | `ctrlMapMouseOver` | unary | CONTROL → ARRAY | 0x8e9c30 | 6 | 8 | 0 | 14 |
+| 449 | `forceWeatherChange` | nular | → NOTHING | 0x8a70d0 | 11 | 3 | 0 | 14 |
+| 450 | `hcAllGroups` | unary | OBJECT → ARRAY | 0x1990d0 | 14 | 0 | 0 | 14 |
+| 451 | `lnbSetValue` | binary | CONTROL · ARRAY → NOTHING | 0x8e6ac0 | 14 | 0 | 0 | 14 |
+| 452 | `processDiaryLink` | unary | STRING → NOTHING | 0xdfd170 | 9 | 5 | 0 | 14 |
+| 453 | `savingEnabled` | nular | → BOOL | 0x8af810 | 14 | 0 | 0 | 14 |
+| 454 | `setGroupIcon` | binary | GROUP · ARRAY → NOTHING | 0x194f90 | 7 | 7 | 0 | 14 |
+| 455 | `setVehicleCargo` | binary | OBJECT · OBJECT → BOOL | 0x558ee0 | 11 | 3 | 0 | 14 |
+| 456 | `switchAction` | binary | OBJECT · STRING → NOTHING | 0x541a70 | 12 | 2 | 0 | 14 |
+| 457 | `actionKeysNamesArray` | unary | STRING\|ARRAY → ARRAY | 0x497440 | 13 | 0 | 0 | 13 |
+| 458 | `allDead` | nular | → ARRAY | 0x8a7300 | 8 | 5 | 0 | 13 |
+| 459 | `assignedVehicleRole` | unary | OBJECT → ARRAY | 0x529290 | 11 | 2 | 0 | 13 |
+| 460 | `createDiaryLink` | unary | ARRAY → STRING | 0xdfc5e0 | 6 | 7 | 0 | 13 |
+| 461 | `enableWeaponDisassembly` | binary | OBJECT · BOOL → NOTHING | 0x48dae0 | 12 | 1 | 0 | 13 |
+| 462 | `leaderboardDeInit` | unary | STRING → BOOL | 0x1c29f0 | 2 | 11 | 0 | 13 |
+| 463 | `lineIntersectsSurfaces` | unary | ARRAY → ARRAY | 0x51c4a0 | 10 | 3 | 0 | 13 |
+| 464 | `locationPosition` | unary | LOCATION → ARRAY | 0xd05260 | 13 | 0 | 0 | 13 |
+| 465 | `magazineCargo` | unary | OBJECT → ARRAY | 0x842f30 | 13 | 0 | 0 | 13 |
+| 466 | `radioChannelAdd` | binary | SCALAR · ARRAY → NOTHING | 0x19dbd0 | 13 | 0 | 0 | 13 |
+| 467 | `remoteExec` | unary | ARRAY → STRING\|NOTHING | 0x8c0620 | 13 | 0 | 0 | 13 |
+| 468 | `setObjectViewDistance` | unary | ARRAY → NOTHING<br>SCALAR → NOTHING | 0x553ee0<br>0x553ee0 | 9 | 4 | 0 | 13 |
+| 469 | `setUnitPosWeak` | binary | OBJECT · STRING → NOTHING | 0x53fd50 | 0 | 13 | 0 | 13 |
+| 470 | `vehicles` | nular | → ARRAY | 0x8ab3a0 | 10 | 3 | 0 | 13 |
+| 471 | `waypointAttachVehicle` | binary | ARRAY · OBJECT → NOTHING | 0x8f6cd0 | 7 | 6 | 0 | 13 |
+| 472 | `weaponAccessories` | binary | OBJECT · STRING → ARRAY | 0x841de0 | 13 | 0 | 0 | 13 |
+| 473 | `weaponDirection` | binary | OBJECT · STRING → ARRAY | 0x533ec0 | 13 | 0 | 0 | 13 |
+| 474 | `ATLToASL` | unary | ARRAY → ARRAY | 0x5391e0 | 11 | 1 | 0 | 12 |
+| 475 | `camSetTarget` | binary | OBJECT · ARRAY → NOTHING<br>OBJECT · OBJECT → NOTHING | 0x807970<br>0x8078d0 | 12 | 0 | 0 | 12 |
+| 476 | `cutFadeOut` | binary | SCALAR · SCALAR → NOTHING<br>STRING · SCALAR → SCALAR | 0x488000<br>0x488090 | 12 | 0 | 0 | 12 |
+| 477 | `estimatedTimeLeft` | unary | SCALAR → NOTHING | 0x48e2f0 | 12 | 0 | 0 | 12 |
+| 478 | `getConnectedUAV` | unary | OBJECT → OBJECT | 0x49f600 | 9 | 3 | 0 | 12 |
+| 479 | `getSlingLoad` | unary | OBJECT → OBJECT | 0x1a44d0 | 1 | 11 | 0 | 12 |
+| 480 | `htmlLoad` | binary | CONTROL · STRING → NOTHING | 0x8d7bf0 | 12 | 0 | 0 | 12 |
+| 481 | `kbWasSaid` | binary | OBJECT · ARRAY → BOOL | 0x51a5c0 | 10 | 2 | 0 | 12 |
+| 482 | `lnbSetCurSelRow` | binary | CONTROL · SCALAR → NOTHING | 0x8e5830 | 12 | 0 | 0 | 12 |
+| 483 | `lockCameraTo` | binary | OBJECT · ARRAY → NOTHING | 0x536930 | 7 | 5 | 0 | 12 |
+| 484 | `modParams` | unary | ARRAY → ARRAY | 0x4a6ba0 | 10 | 0 | 2 | 12 |
+| 485 | `setMimic` | binary | OBJECT · STRING → NOTHING | 0x53db00 | 12 | 0 | 0 | 12 |
+| 486 | `unitAddons` | unary | STRING → ARRAY | 0x4b62d0 | 12 | 0 | 0 | 12 |
+| 487 | `all3DENEntities` | nular | → ARRAY | 0x7f4620 | 9 | 0 | 2 | 11 |
+| 488 | `allDeadMen` | nular | → ARRAY | 0x8a7490 | 9 | 2 | 0 | 11 |
+| 489 | `allSimpleObjects` | unary | ARRAY → ARRAY | 0x4b23e0 | 11 | 0 | 0 | 11 |
+| 490 | `ASLToATL` | unary | ARRAY → ARRAY | 0x5390d0 | 10 | 1 | 0 | 11 |
+| 491 | `assignAsCommander` | binary | OBJECT · OBJECT → NOTHING | 0x525370 | 3 | 8 | 0 | 11 |
+| 492 | `camSetPos` | binary | OBJECT · ARRAY → NOTHING | 0x807740 | 10 | 1 | 0 | 11 |
+| 493 | `ctrlAnimateModel` | binary | CONTROL · ARRAY → NOTHING | 0x8cb710 | 11 | 0 | 0 | 11 |
+| 494 | `disableUAVConnectability` | binary | OBJECT · ARRAY → NOTHING | 0x48ade0 | 8 | 3 | 0 | 11 |
+| 495 | `exit` | nular | → NOTHING | 0x10d3da0 | 11 | 0 | 0 | 11 |
+| 496 | `getFatigue` | unary | OBJECT → SCALAR | 0x52b930 | 4 | 7 | 0 | 11 |
+| 497 | `lnbClear` | unary | CONTROL → NOTHING<br>SCALAR → NOTHING | 0x8e4770<br>0x8e0e10 | 11 | 0 | 0 | 11 |
+| 498 | `lockTurret` | binary | OBJECT · ARRAY → NOTHING | 0x56d600 | 2 | 9 | 0 | 11 |
+| 499 | `modelToWorldVisualWorld` | binary | OBJECT · ARRAY → ARRAY | 0x5375d0 | 11 | 0 | 0 | 11 |
+| 500 | `reload` | unary | OBJECT → NOTHING | 0x56e8a0 | 7 | 4 | 0 | 11 |
+| 501 | `setCurrentTask` | binary | OBJECT · TASK → NOTHING | 0xe04940 | 11 | 0 | 0 | 11 |
+| 502 | `setTaskState` | binary | TASK · STRING → NOTHING | 0xe0b8f0 | 11 | 0 | 0 | 11 |
+| 503 | `setVehicleRadar` | binary | OBJECT · SCALAR → NOTHING | 0x1cbaf0 | 11 | 0 | 0 | 11 |
+| 504 | `showScoretable` | unary | SCALAR → NOTHING | 0x55af90 | 11 | 0 | 0 | 11 |
+| 505 | `taskCompleted` | unary | TASK → BOOL | 0xe0b160 | 0 | 11 | 0 | 11 |
+| 506 | `taskDestination` | unary | TASK → ARRAY | 0xe0a560 | 1 | 10 | 0 | 11 |
+| 507 | `tvSetPictureColor` | binary | CONTROL · ARRAY → NOTHING | 0x8f2ca0 | 11 | 0 | 0 | 11 |
+| 508 | `tvSetTooltip` | binary | CONTROL · ARRAY → NOTHING | 0x8f34f0 | 11 | 0 | 0 | 11 |
+| 509 | `weaponsTurret` | binary | OBJECT · ARRAY → ARRAY | 0x5425c0 | 3 | 8 | 0 | 11 |
+| 510 | `addBackpackCargo` | binary | OBJECT · ARRAY → NOTHING | 0x838af0 | 8 | 2 | 0 | 10 |
+| 511 | `addMagazineTurret` | binary | OBJECT · ARRAY → NOTHING | 0x5235c0 | 9 | 1 | 0 | 10 |
+| 512 | `addToRemainsCollector` | unary | ARRAY → NOTHING | 0x47d940 | 9 | 1 | 0 | 10 |
+| 513 | `backpackContainer` | unary | OBJECT → OBJECT | 0x83d100 | 10 | 0 | 0 | 10 |
+| 514 | `briefingName` | nular | → STRING | 0x8995f0 | 10 | 0 | 0 | 10 |
+| 515 | `cbChecked` | unary | CONTROL → BOOL | 0x8d0200 | 6 | 0 | 4 | 10 |
+| 516 | `configSourceAddonList` | unary | CONFIG → ARRAY | 0x812390 | 10 | 0 | 0 | 10 |
+| 517 | `countSide` | binary | SIDE · ARRAY → SCALAR | 0x51cc30 | 0 | 10 | 0 | 10 |
+| 518 | `ctrlSetFont` | binary | CONTROL · STRING → NOTHING | 0x8d2be0 | 10 | 0 | 0 | 10 |
+| 519 | `ctrlSetText` | unary | ARRAY → NOTHING | 0x8cc290 | 10 | 0 | 0 | 10 |
+| 520 | `diarySubjectExists` | binary | OBJECT · STRING → BOOL | 0xdfcac0 | 10 | 0 | 0 | 10 |
+| 521 | `drawEllipse` | binary | CONTROL · ARRAY → NOTHING | 0x8e7830 | 10 | 0 | 0 | 10 |
+| 522 | `drawTriangle` | binary | CONTROL · ARRAY → NOTHING | 0x8e86b0 | 10 | 0 | 0 | 10 |
+| 523 | `enableIRLasers` | binary | OBJECT\|GROUP · BOOL → NOTHING | 0x190960 | 4 | 6 | 0 | 10 |
+| 524 | `fleeing` | unary | OBJECT → BOOL | 0x528630 | 10 | 0 | 0 | 10 |
+| 525 | `fog` | nular | → SCALAR | 0x8a8fa0 | 10 | 0 | 0 | 10 |
+| 526 | `getVehicleCargo` | unary | OBJECT → ARRAY | 0x4b7bb0 | 8 | 2 | 0 | 10 |
+| 527 | `inRangeOfArtillery` | binary | ARRAY · ARRAY → BOOL | 0x4bd040 | 9 | 1 | 0 | 10 |
+| 528 | `lnbSetData` | binary | CONTROL · ARRAY → NOTHING | 0x8e58f0 | 10 | 0 | 0 | 10 |
+| 529 | `lnbText` | binary | CONTROL · ARRAY → STRING | 0x8e5200 | 10 | 0 | 0 | 10 |
+| 530 | `remoteExecutedOwner` | nular | → SCALAR | 0x8a3440 | 10 | 0 | 0 | 10 |
+| 531 | `removeWeaponTurret` | binary | OBJECT · ARRAY → NOTHING | 0x846c10 | 10 | 0 | 0 | 10 |
+| 532 | `say2D` | binary | OBJECT\|ARRAY · STRING\|ARRAY → NOTHING | 0x5397d0 | 10 | 0 | 0 | 10 |
+| 533 | `setBehaviourStrong` | binary | OBJECT\|GROUP · STRING → NOTHING | 0x191a00 | 3 | 7 | 0 | 10 |
+| 534 | `setPiPEffect` | binary | STRING · ARRAY → NOTHING | 0x554bd0 | 9 | 1 | 0 | 10 |
+| 535 | `setWind` | unary | ARRAY → NOTHING | 0x559ba0 | 8 | 2 | 0 | 10 |
+| 536 | `tvSetValue` | binary | CONTROL · ARRAY → NOTHING | 0x8f36d0 | 10 | 0 | 0 | 10 |
+| 537 | `aimedAtTarget` | binary | OBJECT · ARRAY → SCALAR | 0x47df90 | 6 | 3 | 0 | 9 |
+| 538 | `backpackCargo` | unary | OBJECT → ARRAY | 0x83d0e0 | 9 | 0 | 0 | 9 |
+| 539 | `captive` | unary | OBJECT → BOOL | 0x526070 | 7 | 2 | 0 | 9 |
+| 540 | `ctrlSetModelScale` | binary | CONTROL · SCALAR → NOTHING | 0x8cc140 | 8 | 1 | 0 | 9 |
+| 541 | `enableFatigue` | binary | OBJECT · BOOL → NOTHING | 0x5279a0 | 6 | 3 | 0 | 9 |
+| 542 | `formation` | unary | TEAM_MEMBER → STRING | 0x196980 | 5 | 4 | 0 | 9 |
+| 543 | `isPiPEnabled` | nular | → BOOL | 0x8af7e0 | 3 | 6 | 0 | 9 |
+| 544 | `lbPicture` | binary | CONTROL · SCALAR → STRING | 0x8dde30 | 9 | 0 | 0 | 9 |
+| 545 | `lbSetPictureColor` | binary | CONTROL · ARRAY → NOTHING | 0x8debe0 | 8 | 0 | 1 | 9 |
+| 546 | `leaderboardGetRows` | unary | STRING → ARRAY | 0x1c2ab0 | 3 | 6 | 0 | 9 |
+| 547 | `lineIntersects` | unary | ARRAY → BOOL | 0x51c460 | 7 | 2 | 0 | 9 |
+| 548 | `lineIntersectsWith` | unary | ARRAY → ARRAY | 0x51c480 | 9 | 0 | 0 | 9 |
+| 549 | `lnbSize` | unary | CONTROL → ARRAY<br>SCALAR → ARRAY | 0x8e4fc0<br>0x8e1d10 | 9 | 0 | 0 | 9 |
+| 550 | `lockDriver` | binary | OBJECT · BOOL → NOTHING | 0x56d570 | 3 | 6 | 0 | 9 |
+| 551 | `mapAnimAdd` | unary | ARRAY → NOTHING | 0x51f640 | 8 | 1 | 0 | 9 |
+| 552 | `mapAnimCommit` | nular | → NOTHING | 0x8b0360 | 8 | 1 | 0 | 9 |
+| 553 | `moveInCommander` | binary | OBJECT · OBJECT → NOTHING | 0x537bf0 | 5 | 4 | 0 | 9 |
+| 554 | `pylonAction` | unary | ARRAY → ARRAY | 0x56e550 | 9 | 0 | 0 | 9 |
+| 555 | `radioChannelCreate` | unary | ARRAY → SCALAR | 0x19dc10 | 6 | 3 | 0 | 9 |
+| 556 | `rain` | nular | → SCALAR | 0x8aaaa0 | 8 | 1 | 0 | 9 |
+| 557 | `selectNoPlayer` | nular | → NOTHING | 0x8b19d0 | 5 | 4 | 0 | 9 |
+| 558 | `setMousePosition` | unary | ARRAY → NOTHING | 0x552da0 | 9 | 0 | 0 | 9 |
+| 559 | `sideChat` | binary | OBJECT\|ARRAY · STRING → NOTHING | 0x19d480 | 3 | 6 | 0 | 9 |
+| 560 | `addWeaponGlobal` | binary | OBJECT · STRING\|ARRAY → NOTHING | 0x83bff0 | 2 | 6 | 0 | 8 |
+| 561 | `boundingCenter` | unary | OBJECT → ARRAY | 0x529fb0 | 8 | 0 | 0 | 8 |
+| 562 | `commandTarget` | binary | OBJECT\|ARRAY · OBJECT → NOTHING | 0x5683a0 | 3 | 5 | 0 | 8 |
+| 563 | `completedFSM` | unary | SCALAR → BOOL | 0x48fa30 | 3 | 5 | 0 | 8 |
+| 564 | `ctrlChecked` | unary | CONTROL → BOOL | 0x8d0970 | 8 | 0 | 0 | 8 |
+| 565 | `currentVisionMode` | unary | ARRAY → ARRAY<br>OBJECT → SCALAR | 0x487220<br>0x4871c0 | 4 | 4 | 0 | 8 |
+| 566 | `customWaypointPosition` | nular | → ARRAY | 0x89bd70 | 8 | 0 | 0 | 8 |
+| 567 | `enableRopeAttach` | binary | OBJECT · BOOL → NOTHING | 0x1a1f20 | 1 | 7 | 0 | 8 |
+| 568 | `getAllPylonsInfo` | unary | OBJECT → ARRAY | 0x49b5e0 | 8 | 0 | 0 | 8 |
+| 569 | `getUnitTrait` | binary | OBJECT · STRING → ?\|NOTHING | 0x4b2630 | 8 | 0 | 0 | 8 |
+| 570 | `getWeaponCargo` | unary | OBJECT → ARRAY | 0x842050 | 8 | 0 | 0 | 8 |
+| 571 | `globalChat` | binary | OBJECT · STRING → NOTHING | 0x19d190 | 8 | 0 | 0 | 8 |
+| 572 | `groupChat` | binary | OBJECT · STRING → NOTHING | 0x19d2f0 | 4 | 4 | 0 | 8 |
+| 573 | `lbSetPictureRightColor` | binary | CONTROL · ARRAY → NOTHING | 0x8decb0 | 7 | 0 | 1 | 8 |
+| 574 | `lbSetTextRight` | binary | CONTROL · ARRAY → NOTHING | 0x8df330 | 6 | 0 | 2 | 8 |
+| 575 | `lnbSetText` | binary | CONTROL · ARRAY → NOTHING | 0x8e6a80 | 8 | 0 | 0 | 8 |
+| 576 | `onMapSingleClick` | unary | CODE\|STRING → NOTHING | 0x183050 | 8 | 0 | 0 | 8 |
+| 577 | `playersNumber` | unary | SIDE → SCALAR | 0x546210 | 7 | 1 | 0 | 8 |
+| 578 | `profileNameSteam` | nular | → STRING | 0x89eb10 | 4 | 4 | 0 | 8 |
+| 579 | `removeAllCuratorAddons` | unary | OBJECT → NOTHING | 0x82a020 | 5 | 3 | 0 | 8 |
+| 580 | `removeMagazineGlobal` | binary | OBJECT · STRING → NOTHING | 0x844e30 | 8 | 0 | 0 | 8 |
+| 581 | `reportRemoteTarget` | binary | SIDE · ARRAY → NOTHING | 0x1cb7f0 | 4 | 4 | 0 | 8 |
+| 582 | `score` | unary | OBJECT → SCALAR | 0x530d20 | 8 | 0 | 0 | 8 |
+| 583 | `setPlateNumber` | binary | OBJECT · STRING → NOTHING | 0x570600 | 7 | 0 | 1 | 8 |
+| 584 | `setTerrainGrid` | unary | SCALAR → NOTHING | 0x5576e0 | 8 | 0 | 0 | 8 |
+| 585 | `skill` | binary | OBJECT · STRING → SCALAR | 0x532b10 | 7 | 1 | 0 | 8 |
+| 586 | `terrainIntersect` | unary | ARRAY → BOOL | 0x55f980 | 8 | 0 | 0 | 8 |
+| 587 | `triggerTimeout` | unary | OBJECT → ARRAY | 0x561c20 | 8 | 0 | 0 | 8 |
+| 588 | `underwater` | unary | OBJECT → BOOL | 0x536220 | 3 | 5 | 0 | 8 |
+| 589 | `unitPos` | unary | OBJECT → STRING | 0x533390 | 5 | 3 | 0 | 8 |
+| 590 | `weaponsItems` | unary | OBJECT\|ARRAY → ARRAY | 0x83e560 | 8 | 0 | 0 | 8 |
+| 591 | `weaponsItemsCargo` | unary | OBJECT\|ARRAY → ARRAY | 0x83e910 | 7 | 0 | 1 | 8 |
+| 592 | `agent` | unary | TEAM_MEMBER → OBJECT | 0x196f80 | 7 | 0 | 0 | 7 |
+| 593 | `configSourceModList` | unary | CONFIG → ARRAY | 0x812780 | 7 | 0 | 0 | 7 |
+| 594 | `confirmSensorTarget` | binary | OBJECT · ARRAY → NOTHING | 0x1cb980 | 3 | 4 | 0 | 7 |
+| 595 | `ctrlMapAnimClear` | unary | CONTROL → NOTHING | 0x8e9a30 | 7 | 0 | 0 | 7 |
+| 596 | `curatorPoints` | unary | OBJECT → SCALAR | 0x827760 | 3 | 4 | 0 | 7 |
+| 597 | `detectedMines` | unary | SIDE → ARRAY | 0x49ff40 | 3 | 4 | 0 | 7 |
+| 598 | `distributionRegion` | nular | → SCALAR | 0x8a8ef0 | 6 | 1 | 0 | 7 |
+| 599 | `enginesRpmRTD` | unary | OBJECT → ARRAY | 0x8932c0 | 7 | 0 | 0 | 7 |
+| 600 | `get3DENEntity` | unary | SCALAR → ANY | 0x7f9d80 | 7 | 0 | 0 | 7 |
+| 601 | `getArtilleryETA` | binary | OBJECT · ARRAY → SCALAR | 0x49c200 | 4 | 3 | 0 | 7 |
+| 602 | `getClientState` | nular | → STRING | 0x89b9f0 | 7 | 0 | 0 | 7 |
+| 603 | `getObjectViewDistance` | nular | → ARRAY | 0x8a9ce0 | 5 | 2 | 0 | 7 |
+| 604 | `getShotParents` | unary | OBJECT → ARRAY | 0x5328d0 | 7 | 0 | 0 | 7 |
+| 605 | `hcShownBar` | nular | → BOOL | 0x8af390 | 7 | 0 | 0 | 7 |
+| 606 | `hintC` | unary | STRING → NOTHING | 0x55aa30 | 7 | 0 | 0 | 7 |
+| 607 | `isRemoteExecuted` | nular | → BOOL | 0x8a2db0 | 7 | 0 | 0 | 7 |
+| 608 | `isRemoteExecutedJIP` | nular | → BOOL | 0x8a2df0 | 7 | 0 | 0 | 7 |
+| 609 | `landResult` | unary | OBJECT → STRING | 0x52c510 | 1 | 6 | 0 | 7 |
+| 610 | `laserTarget` | unary | OBJECT → OBJECT | 0x4a4020 | 3 | 4 | 0 | 7 |
+| 611 | `lbSetPictureRightColorSelected` | binary | CONTROL · ARRAY → NOTHING | 0x8ded10 | 7 | 0 | 0 | 7 |
+| 612 | `lnbValue` | binary | CONTROL · ARRAY → SCALAR | 0x8e5240 | 7 | 0 | 0 | 7 |
+| 613 | `preloadCamera` | unary | ARRAY → BOOL | 0x806c50 | 7 | 0 | 0 | 7 |
+| 614 | `publicVariableServer` | unary | STRING → NOTHING | 0x5474b0 | 7 | 0 | 0 | 7 |
+| 615 | `rank` | unary | OBJECT → STRING | 0x565e60 | 6 | 1 | 0 | 7 |
+| 616 | `removeFromRemainsCollector` | unary | ARRAY → NOTHING | 0x549130 | 5 | 2 | 0 | 7 |
+| 617 | `selectWeaponTurret` | binary | OBJECT · ARRAY → NOTHING | 0x56f160 | 2 | 5 | 0 | 7 |
+| 618 | `setAmmoOnPylon` | binary | OBJECT · ARRAY → NOTHING | 0x54dd20 | 1 | 6 | 0 | 7 |
+| 619 | `setWindDir` | binary | SCALAR · SCALAR → NOTHING | 0x559ce0 | 3 | 4 | 0 | 7 |
+| 620 | `shownHUD` | nular | → ARRAY | 0x8af3c0 | 7 | 0 | 0 | 7 |
+| 621 | `skill` | unary | OBJECT → SCALAR | 0x8b6840 | 6 | 1 | 0 | 7 |
+| 622 | `sunOrMoon` | nular | → SCALAR | 0x8aafd0 | 7 | 0 | 0 | 7 |
+| 623 | `tvDelete` | binary | CONTROL · ARRAY → NOTHING | 0x8f1e10 | 7 | 0 | 0 | 7 |
+| 624 | `unitIsUAV` | unary | OBJECT → BOOL | 0x536190 | 7 | 0 | 0 | 7 |
+| 625 | `vectorModelToWorld` | binary | OBJECT · ARRAY → ARRAY | 0x5268e0 | 7 | 0 | 0 | 7 |
+| 626 | `addCuratorEditingArea` | binary | OBJECT · ARRAY → NOTHING | 0x8244b0 | 5 | 1 | 0 | 6 |
+| 627 | `addMagazineGlobal` | binary | OBJECT · STRING → NOTHING | 0x83ae00 | 4 | 2 | 0 | 6 |
+| 628 | `addTorque` | binary | OBJECT · ARRAY → NOTHING | 0x1a53e0 | 6 | 0 | 0 | 6 |
+| 629 | `allUnitsUAV` | nular | → ARRAY | 0x89b4e0 | 0 | 6 | 0 | 6 |
+| 630 | `assignedCargo` | unary | OBJECT → ARRAY | 0x52a9b0 | 1 | 5 | 0 | 6 |
+| 631 | `assignedTarget` | unary | OBJECT → OBJECT | 0x1cc160 | 5 | 1 | 0 | 6 |
+| 632 | `curatorAddons` | unary | OBJECT → ARRAY | 0x826b00 | 5 | 1 | 0 | 6 |
+| 633 | `doFSM` | binary | OBJECT\|ARRAY · ARRAY → NOTHING | 0x569050 | 1 | 5 | 0 | 6 |
+| 634 | `enablePersonTurret` | binary | OBJECT · ARRAY → NOTHING | 0x527ed0 | 3 | 1 | 2 | 6 |
+| 635 | `flyInHeightASL` | binary | OBJECT · ARRAY → NOTHING | 0x53c2a0 | 2 | 4 | 0 | 6 |
+| 636 | `getGroupIcon` | binary | GROUP · SCALAR → ARRAY | 0x18ea00 | 6 | 0 | 0 | 6 |
+| 637 | `getOxygenRemaining` | unary | OBJECT → SCALAR | 0x52e9d0 | 0 | 6 | 0 | 6 |
+| 638 | `getSuppression` | unary | OBJECT → SCALAR | 0x532e60 | 0 | 6 | 0 | 6 |
+| 639 | `inPolygon` | binary | OBJECT\|ARRAY · ARRAY → BOOL | 0x517830 | 6 | 0 | 0 | 6 |
+| 640 | `isFlatEmpty` | binary | ARRAY · ARRAY → ARRAY | 0x5162d0 | 6 | 0 | 0 | 6 |
+| 641 | `isLightOn` | unary | OBJECT\|ARRAY → BOOL | 0x56cf20 | 4 | 0 | 2 | 6 |
+| 642 | `lbSortByValue` | unary | CONTROL → NOTHING<br>SCALAR → NOTHING | 0x8dfb30<br>0x8dd280 | 3 | 0 | 3 | 6 |
+| 643 | `lockedCargo` | binary | OBJECT · SCALAR → BOOL | 0x56cad0 | 6 | 0 | 0 | 6 |
+| 644 | `nearestBuilding` | unary | ARRAY → OBJECT<br>OBJECT → OBJECT | 0x52d030<br>0x52cfb0 | 6 | 0 | 0 | 6 |
+| 645 | `nearestLocation` | unary | ARRAY → LOCATION | 0xd046c0 | 6 | 0 | 0 | 6 |
+| 646 | `ppEffectEnabled` | unary | SCALAR → BOOL<br>STRING → BOOL | 0xb4cb40<br>0xb4cba0 | 6 | 0 | 0 | 6 |
+| 647 | `preloadObject` | binary | SCALAR · OBJECT\|STRING → BOOL | 0x56d8b0 | 6 | 0 | 0 | 6 |
+| 648 | `removeCuratorEditableObjects` | binary | OBJECT · ARRAY → NOTHING | 0x82aa10 | 5 | 1 | 0 | 6 |
+| 649 | `removeMagazinesTurret` | binary | OBJECT · ARRAY → NOTHING | 0x845a80 | 6 | 0 | 0 | 6 |
+| 650 | `removeSimpleTask` | binary | OBJECT · TASK → NOTHING | 0xe04d30 | 6 | 0 | 0 | 6 |
+| 651 | `set3DENAttributes` | unary | ARRAY → BOOL | 0x801db0 | 6 | 0 | 0 | 6 |
+| 652 | `setAirplaneThrottle` | binary | OBJECT · SCALAR → NOTHING | 0x895a30 | 6 | 0 | 0 | 6 |
+| 653 | `setCollisionLight` | binary | OBJECT · BOOL → NOTHING | 0x56fc00 | 4 | 2 | 0 | 6 |
+| 654 | `setCustomAimCoef` | binary | OBJECT · SCALAR → NOTHING | 0x896fb0 | 1 | 5 | 0 | 6 |
+| 655 | `setFlagOwner` | binary | OBJECT · OBJECT → NOTHING | 0x53be90 | 0 | 6 | 0 | 6 |
+| 656 | `setInfoPanel` | unary | ARRAY → BOOL | 0x55b380 | 3 | 3 | 0 | 6 |
+| 657 | `setLightnings` | binary | SCALAR · SCALAR → NOTHING | 0x552830 | 6 | 0 | 0 | 6 |
+| 658 | `setSimpleTaskDescription` | binary | TASK · ARRAY → NOTHING | 0xe09160 | 6 | 0 | 0 | 6 |
+| 659 | `setSoundEffect` | binary | OBJECT\|ARRAY · ARRAY → NOTHING | 0x48c210 | 5 | 1 | 0 | 6 |
+| 660 | `setTimeMultiplier` | unary | SCALAR → NOTHING | 0x557d30 | 6 | 0 | 0 | 6 |
+| 661 | `setWeaponReloadingTime` | binary | OBJECT · ARRAY → BOOL | 0x559890 | 5 | 1 | 0 | 6 |
+| 662 | `setWindStr` | binary | SCALAR · SCALAR → NOTHING | 0x559f40 | 5 | 1 | 0 | 6 |
+| 663 | `sliderRange` | unary | CONTROL → ARRAY<br>SCALAR → ARRAY | 0x8eb7f0<br>0x8eaef0 | 5 | 0 | 1 | 6 |
+| 664 | `taskDescription` | unary | TASK → ARRAY | 0xe0a230 | 6 | 0 | 0 | 6 |
+| 665 | `tvSetColor` | binary | CONTROL · ARRAY → NOTHING | 0x8f2710 | 6 | 0 | 0 | 6 |
+| 666 | `velocityModelSpace` | unary | OBJECT → ARRAY | 0x533a40 | 5 | 1 | 0 | 6 |
+| 667 | `actionName` | unary | STRING → STRING | 0x497da0 | 5 | 0 | 0 | 5 |
+| 668 | `add3DENConnection` | unary | ARRAY → NOTHING | 0x7f3b20 | 5 | 0 | 0 | 5 |
+| 669 | `allVariables` | unary | CONTROL → ARRAY<br>DISPLAY → ARRAY<br>LOCATION → ARRAY<br>TASK → ARRAY<br>TEAM_MEMBER → ARRAY | 0x13c6830<br>0x8cdc30<br>0xd011e0<br>0xdffd30<br>0x49b920 | 5 | 0 | 0 | 5 |
+| 670 | `assignAsTurret` | binary | OBJECT · ARRAY → NOTHING | 0x525580 | 3 | 2 | 0 | 5 |
+| 671 | `commandGetOut` | unary | OBJECT\|ARRAY → NOTHING | 0x568320 | 2 | 3 | 0 | 5 |
+| 672 | `ctrlMapAnimDone` | unary | CONTROL → BOOL | 0x8e9af0 | 5 | 0 | 0 | 5 |
+| 673 | `ctrlScale` | unary | CONTROL → SCALAR | 0x8d1170 | 5 | 0 | 0 | 5 |
+| 674 | `ctrlSetModelDirAndUp` | binary | CONTROL · ARRAY → NOTHING | 0x8cbf90 | 5 | 0 | 0 | 5 |
+| 675 | `ctrlSetTooltipColorBox` | binary | CONTROL · ARRAY → NOTHING | 0x8d56d0 | 5 | 0 | 0 | 5 |
+| 676 | `curatorCoef` | binary | OBJECT · STRING → SCALAR | 0x826e30 | 2 | 3 | 0 | 5 |
+| 677 | `curatorEditingArea` | unary | OBJECT → ARRAY | 0x8262e0 | 5 | 0 | 0 | 5 |
+| 678 | `current3DENOperation` | nular | → STRING | 0x7f6cc0 | 5 | 0 | 0 | 5 |
+| 679 | `difficulty` | nular | → SCALAR | 0x8a8ec0 | 3 | 2 | 0 | 5 |
+| 680 | `difficultyEnabledRTD` | nular | → BOOL | 0x8955a0 | 1 | 4 | 0 | 5 |
+| 681 | `edit3DENMissionAttributes` | unary | STRING → NOTHING | 0x7ffb20 | 0 | 0 | 5 | 5 |
+| 682 | `enableAimPrecision` | binary | OBJECT · BOOL → NOTHING | 0x896780 | 1 | 4 | 0 | 5 |
+| 683 | `formationPosition` | unary | OBJECT → ARRAY | 0x56ae60 | 5 | 0 | 0 | 5 |
+| 684 | `getBackpackCargo` | unary | OBJECT → ARRAY | 0x83ebd0 | 5 | 0 | 0 | 5 |
+| 685 | `getEngineTargetRPMRTD` | unary | OBJECT → ARRAY | 0x892d80 | 5 | 0 | 0 | 5 |
+| 686 | `getModelInfo` | unary | OBJECT → ARRAY | 0x52cc60 | 5 | 0 | 0 | 5 |
+| 687 | `hcLeader` | unary | GROUP → OBJECT | 0x199650 | 4 | 1 | 0 | 5 |
+| 688 | `hideBody` | unary | OBJECT → NOTHING | 0x535510 | 1 | 4 | 0 | 5 |
+| 689 | `inflame` | binary | OBJECT · BOOL → NOTHING | 0x535640 | 3 | 0 | 2 | 5 |
+| 690 | `keyName` | unary | STRING\|SCALAR → STRING | 0x4a3bf0 | 5 | 0 | 0 | 5 |
+| 691 | `leaderboardInit` | unary | STRING → BOOL | 0x1c3100 | 1 | 4 | 0 | 5 |
+| 692 | `lockedTurret` | binary | OBJECT · ARRAY → BOOL | 0x56d1f0 | 5 | 0 | 0 | 5 |
+| 693 | `lockInventory` | binary | OBJECT · BOOL → NOTHING | 0x84d7a0 | 5 | 0 | 0 | 5 |
+| 694 | `magazinesAmmoCargo` | unary | OBJECT → ARRAY | 0x83e330 | 5 | 0 | 0 | 5 |
+| 695 | `moveToCompleted` | unary | OBJECT → BOOL | 0x47de00 | 2 | 3 | 0 | 5 |
+| 696 | `needReload` | unary | OBJECT → SCALAR | 0x56b4c0 | 3 | 2 | 0 | 5 |
+| 697 | `precision` | unary | OBJECT → SCALAR | 0x530510 | 1 | 4 | 0 | 5 |
+| 698 | `radioVolume` | nular | → SCALAR | 0x8aaa50 | 5 | 0 | 0 | 5 |
+| 699 | `removeMagazineTurret` | binary | OBJECT · ARRAY → NOTHING | 0x845120 | 4 | 1 | 0 | 5 |
+| 700 | `setFuelCargo` | binary | OBJECT · SCALAR → NOTHING | 0x53c510 | 5 | 0 | 0 | 5 |
+| 701 | `setGroupIdGlobal` | binary | OBJECT\|GROUP · ARRAY → NOTHING | 0x192230 | 4 | 0 | 1 | 5 |
+| 702 | `setMass` | binary | OBJECT · SCALAR\|ARRAY → NOTHING | 0x1a6020 | 3 | 2 | 0 | 5 |
+| 703 | `setOwner` | binary | OBJECT · SCALAR → BOOL | 0x53dc20 | 4 | 1 | 0 | 5 |
+| 704 | `setParticleFire` | binary | OBJECT · ARRAY → NOTHING | 0xeb0bc0 | 5 | 0 | 0 | 5 |
+| 705 | `setSimpleTaskDestination` | binary | TASK · ARRAY → NOTHING | 0xe09400 | 4 | 1 | 0 | 5 |
+| 706 | `setTriggerType` | binary | OBJECT · STRING → NOTHING | 0x5627f0 | 3 | 2 | 0 | 5 |
+| 707 | `squadParams` | unary | OBJECT → ARRAY | 0x4b2e50 | 5 | 0 | 0 | 5 |
+| 708 | `uniformContainer` | unary | OBJECT → OBJECT | 0x847190 | 5 | 0 | 0 | 5 |
+| 709 | `vectorWorldToModel` | binary | OBJECT · ARRAY → ARRAY | 0x526920 | 5 | 0 | 0 | 5 |
+| 710 | `worldToModelVisual` | binary | OBJECT · ARRAY → ARRAY | 0x542ff0 | 5 | 0 | 0 | 5 |
+| 711 | `actionKeysNames` | unary | STRING\|ARRAY → STRING | 0x4970a0 | 4 | 0 | 0 | 4 |
+| 712 | `addScoreSide` | binary | SIDE · SCALAR → NOTHING | 0x5243b0 | 3 | 1 | 0 | 4 |
+| 713 | `addWeaponTurret` | binary | OBJECT · ARRAY → NOTHING | 0x83c010 | 1 | 3 | 0 | 4 |
+| 714 | `allowCuratorLogicIgnoreAreas` | binary | OBJECT · BOOL → NOTHING | 0x8256c0 | 4 | 0 | 0 | 4 |
+| 715 | `checkVisibility` | binary | ARRAY · ARRAY → SCALAR | 0x4821b0 | 4 | 0 | 0 | 4 |
+| 716 | `commandStop` | unary | OBJECT\|ARRAY → NOTHING | 0x568360 | 2 | 2 | 0 | 4 |
+| 717 | `countType` | binary | STRING · ARRAY → SCALAR | 0x51ce30 | 2 | 2 | 0 | 4 |
+| 718 | `create3DENEntity` | unary | ARRAY → ANY | 0x7f68a0 | 4 | 0 | 0 | 4 |
+| 719 | `createLocation` | unary | ARRAY → LOCATION | 0xd039e0 | 4 | 0 | 0 | 4 |
+| 720 | `createSimpleTask` | binary | OBJECT · ARRAY → TASK | 0xe049f0 | 4 | 0 | 0 | 4 |
+| 721 | `ctData` | binary | CONTROL · SCALAR → STRING | 0x8d98f0 | 4 | 0 | 0 | 4 |
+| 722 | `ctHeaderControls` | binary | CONTROL · SCALAR → ARRAY | 0x8d9c60 | 4 | 0 | 0 | 4 |
+| 723 | `ctrlAngle` | unary | CONTROL → ARRAY | 0x8d7fe0 | 4 | 0 | 0 | 4 |
+| 724 | `ctrlEnable` | unary | ARRAY → NOTHING | 0x8cbb20 | 4 | 0 | 0 | 4 |
+| 725 | `ctrlSetChecked` | binary | CONTROL · ARRAY → NOTHING<br>CONTROL · BOOL → NOTHING | 0x8d2720<br>0x8d2680 | 4 | 0 | 0 | 4 |
+| 726 | `ctrlSetPixelPrecision` | binary | CONTROL · SCALAR → NOTHING<br>CONTROL · STRING → NOTHING | 0x8d4440<br>0x8d4270 | 4 | 0 | 0 | 4 |
+| 727 | `curatorMouseOver` | nular | → OBJECT | 0x827260 | 4 | 0 | 0 | 4 |
+| 728 | `curatorSelected` | nular | → ARRAY | 0x8282e0 | 3 | 1 | 0 | 4 |
+| 729 | `delete3DENEntities` | unary | ARRAY → NOTHING | 0x7f6d40 | 4 | 0 | 0 | 4 |
+| 730 | `directSay` | binary | OBJECT · STRING → NOTHING | 0x19d0b0 | 4 | 0 | 0 | 4 |
+| 731 | `disableUserInput` | unary | BOOL → NOTHING | 0x48ae00 | 2 | 2 | 0 | 4 |
+| 732 | `doSuppressiveFire` | binary | OBJECT\|ARRAY · OBJECT\|ARRAY → NOTHING | 0x569110 | 1 | 3 | 0 | 4 |
+| 733 | `everyContainer` | unary | OBJECT → ARRAY | 0x83f580 | 4 | 0 | 0 | 4 |
+| 734 | `flagOwner` | unary | OBJECT → OBJECT | 0x52bb90 | 0 | 4 | 0 | 4 |
+| 735 | `forceMap` | unary | BOOL → NOTHING | 0x51f840 | 2 | 2 | 0 | 4 |
+| 736 | `getDLCAssetsUsageByName` | unary | STRING → ARRAY | 0x4a0180 | 4 | 0 | 0 | 4 |
+| 737 | `getMissionDLCs` | nular | → ARRAY | 0x89cdd0 | 4 | 0 | 0 | 4 |
+| 738 | `getObjectMaterials` | unary | OBJECT → ARRAY | 0x4ac4d0 | 4 | 0 | 0 | 4 |
+| 739 | `getPilotCameraRotation` | unary | OBJECT → ARRAY | 0x808f70 | 4 | 0 | 0 | 4 |
+| 740 | `getRotorBrakeRTD` | unary | OBJECT → SCALAR | 0x893e20 | 4 | 0 | 0 | 4 |
+| 741 | `globalRadio` | binary | OBJECT · STRING → NOTHING | 0x19d290 | 4 | 0 | 0 | 4 |
+| 742 | `groupRadio` | binary | OBJECT · STRING → NOTHING | 0x19d400 | 3 | 1 | 0 | 4 |
+| 743 | `hcSelectGroup` | binary | OBJECT · ARRAY → NOTHING | 0x1997e0 | 4 | 0 | 0 | 4 |
+| 744 | `hmd` | unary | OBJECT → STRING | 0x8427a0 | 4 | 0 | 0 | 4 |
+| 745 | `infoPanel` | unary | STRING → ARRAY | 0x55b930 | 2 | 2 | 0 | 4 |
+| 746 | `isManualFire` | unary | OBJECT → BOOL | 0x5183e0 | 4 | 0 | 0 | 4 |
+| 747 | `isStreamFriendlyUIEnabled` | nular | → BOOL | 0x8af900 | 4 | 0 | 0 | 4 |
+| 748 | `lbColor` | binary | CONTROL · SCALAR → ARRAY | 0x8ddb90 | 4 | 0 | 0 | 4 |
+| 749 | `lbSetColorRight` | binary | CONTROL · ARRAY → NOTHING | 0x8de630 | 2 | 0 | 2 | 4 |
+| 750 | `lineIntersectsObjs` | unary | ARRAY → ARRAY | 0x51c480 | 4 | 0 | 0 | 4 |
+| 751 | `lnbGetColumnsPosition` | unary | CONTROL → ARRAY<br>SCALAR → ARRAY | 0x8e4a80<br>0x8e1410 | 4 | 0 | 0 | 4 |
+| 752 | `lnbSort` | binary | CONTROL · ARRAY → NOTHING | 0x8e6d80 | 4 | 0 | 0 | 4 |
+| 753 | `nearTargets` | binary | OBJECT · SCALAR → ARRAY | 0x1cb6a0 | 3 | 1 | 0 | 4 |
+| 754 | `onEachFrame` | unary | CODE\|STRING → NOTHING | 0x185410 | 4 | 0 | 0 | 4 |
+| 755 | `posScreenToWorld` | binary | CONTROL · ARRAY → ARRAY | 0x8e9180 | 4 | 0 | 0 | 4 |
+| 756 | `ppEffectCommitted` | unary | SCALAR → BOOL<br>STRING → BOOL | 0xb4bec0<br>0xb4bf20 | 1 | 3 | 0 | 4 |
+| 757 | `removeCuratorAddons` | binary | OBJECT · ARRAY → NOTHING | 0x82a470 | 4 | 0 | 0 | 4 |
+| 758 | `removeCuratorEditingArea` | binary | OBJECT · SCALAR → NOTHING | 0x82ac80 | 2 | 2 | 0 | 4 |
+| 759 | `resetCamShake` | nular | → NOTHING | 0x8b1480 | 4 | 0 | 0 | 4 |
+| 760 | `ropeAttachedObjects` | unary | OBJECT → ARRAY | 0x1a6be0 | 1 | 3 | 0 | 4 |
+| 761 | `set3DENGrid` | unary | ARRAY → NOTHING | 0x802210 | 4 | 0 | 0 | 4 |
+| 762 | `setAutonomous` | binary | OBJECT · BOOL → BOOL | 0x54e370 | 2 | 2 | 0 | 4 |
+| 763 | `setDestination` | binary | OBJECT · ARRAY → NOTHING | 0x56fd70 | 0 | 4 | 0 | 4 |
+| 764 | `setDynamicSimulationDistance` | binary | STRING · SCALAR → NOTHING | 0x17eb30 | 4 | 0 | 0 | 4 |
+| 765 | `setFlagAnimationPhase` | binary | OBJECT · SCALAR → NOTHING | 0x53bde0 | 0 | 4 | 0 | 4 |
+| 766 | `setGroupIconsSelectable` | unary | BOOL → NOTHING | 0x194750 | 4 | 0 | 0 | 4 |
+| 767 | `setRandomLip` | binary | OBJECT · BOOL → NOTHING | 0x53e7d0 | 4 | 0 | 0 | 4 |
+| 768 | `setSimpleTaskCustomData` | binary | TASK · ARRAY → NOTHING | 0xe08c90 | 4 | 0 | 0 | 4 |
+| 769 | `setSimpleTaskTarget` | binary | TASK · ARRAY → NOTHING | 0xe09550 | 4 | 0 | 0 | 4 |
+| 770 | `setSimpleTaskType` | binary | TASK · STRING → NOTHING | 0xe09740 | 4 | 0 | 0 | 4 |
+| 771 | `setTriggerText` | binary | OBJECT · STRING → NOTHING | 0x562580 | 3 | 1 | 0 | 4 |
+| 772 | `setUserActionText` | binary | OBJECT · ARRAY → NOTHING | 0x571b10 | 4 | 0 | 0 | 4 |
+| 773 | `setVehicleAmmoDef` | binary | OBJECT · SCALAR → NOTHING | 0x56f9e0 | 2 | 1 | 1 | 4 |
+| 774 | `setVehicleTIPars` | binary | OBJECT · ARRAY → NOTHING | 0x558fe0 | 3 | 1 | 0 | 4 |
+| 775 | `setVelocityTransformation` | binary | OBJECT · ARRAY → NOTHING | 0x540db0 | 4 | 0 | 0 | 4 |
+| 776 | `showCompass` | unary | BOOL → NOTHING | 0x559ff0 | 4 | 0 | 0 | 4 |
+| 777 | `showGps` | unary | BOOL → NOTHING | 0x55a310 | 4 | 0 | 0 | 4 |
+| 778 | `showMap` | unary | BOOL → NOTHING | 0x55ada0 | 3 | 1 | 0 | 4 |
+| 779 | `switchCamera` | unary | OBJECT → NOTHING | 0x541d00 | 4 | 0 | 0 | 4 |
+| 780 | `taskType` | unary | TASK → STRING | 0xe0abe0 | 4 | 0 | 0 | 4 |
+| 781 | `timeMultiplier` | nular | → SCALAR | 0x89c2a0 | 4 | 0 | 0 | 4 |
+| 782 | `triggerTimeoutCurrent` | unary | OBJECT → SCALAR | 0x561d30 | 1 | 3 | 0 | 4 |
+| 783 | `tvSetText` | binary | CONTROL · ARRAY → NOTHING | 0x8f3370 | 4 | 0 | 0 | 4 |
+| 784 | `tvSortByValue` | binary | CONTROL · ARRAY → NOTHING | 0x8f3c80 | 4 | 0 | 0 | 4 |
+| 785 | `tvText` | binary | CONTROL · ARRAY → STRING | 0x8f40b0 | 4 | 0 | 0 | 4 |
+| 786 | `unitAimPositionVisual` | unary | OBJECT → ARRAY | 0x5246c0 | 4 | 0 | 0 | 4 |
+| 787 | `vectorWorldToModelVisual` | binary | OBJECT · ARRAY → ARRAY | 0x526940 | 4 | 0 | 0 | 4 |
+| 788 | `wind` | nular | → ARRAY | 0x8ab530 | 4 | 0 | 0 | 4 |
+| 789 | `windStr` | nular | → SCALAR | 0x8ab760 | 4 | 0 | 0 | 4 |
+| 790 | `activatedAddons` | nular | → ARRAY | 0x8a57b0 | 2 | 1 | 0 | 3 |
+| 791 | `addForce` | binary | OBJECT · ARRAY → NOTHING | 0x1a5130 | 3 | 0 | 0 | 3 |
+| 792 | `addScore` | binary | OBJECT · SCALAR → NOTHING | 0x524280 | 3 | 0 | 0 | 3 |
+| 793 | `agents` | nular | → ARRAY | 0x897560 | 3 | 0 | 0 | 3 |
+| 794 | `animationNames` | unary | OBJECT → ARRAY | 0x4abab0 | 3 | 0 | 0 | 3 |
+| 795 | `assignedDriver` | unary | OBJECT → OBJECT | 0x52b860 | 1 | 2 | 0 | 3 |
+| 796 | `boundingBoxReal` | binary | SCALAR · OBJECT → ARRAY | 0x49da70 | 3 | 0 | 0 | 3 |
+| 797 | `canAdd` | binary | OBJECT · STRING\|ARRAY → BOOL<br>STRING · STRING\|ARRAY → BOOL | 0x83d4d0<br>0x832240 | 3 | 0 | 0 | 3 |
+| 798 | `clearAllItemsFromBackpack` | unary | OBJECT → NOTHING | 0x83d620 | 3 | 0 | 0 | 3 |
+| 799 | `collect3DENHistory` | unary | CODE → NOTHING | 0x7f4fd0 | 3 | 0 | 0 | 3 |
+| 800 | `configHierarchy` | unary | ARRAY → ARRAY | 0x80ea00 | 3 | 0 | 0 | 3 |
+| 801 | `connectTerminalToUAV` | binary | OBJECT · OBJECT → BOOL | 0x4830f0 | 2 | 1 | 0 | 3 |
+| 802 | `createMPCampaignDisplay` | binary | DISPLAY · STRING → NOTHING | 0x8cb000 | 2 | 0 | 1 | 3 |
+| 803 | `ctrlModelScale` | unary | CONTROL → SCALAR | 0x8ce440 | 3 | 0 | 0 | 3 |
+| 804 | `ctrlSetShadow` | binary | CONTROL · SCALAR → NOTHING | 0x8d5030 | 3 | 0 | 0 | 3 |
+| 805 | `ctrlSetURLOverlayMode` | binary | CONTROL · SCALAR → NOTHING | 0x8d5df0 | 3 | 0 | 0 | 3 |
+| 806 | `ctSetCurSel` | binary | CONTROL · SCALAR → NOTHING | 0x8da520 | 3 | 0 | 0 | 3 |
+| 807 | `ctSetData` | binary | CONTROL · ARRAY → NOTHING | 0x8da600 | 3 | 0 | 0 | 3 |
+| 808 | `curatorRegisteredObjects` | unary | OBJECT → ARRAY | 0x827830 | 3 | 0 | 0 | 3 |
+| 809 | `currentMagazine` | unary | OBJECT → STRING | 0x84c990 | 1 | 2 | 0 | 3 |
+| 810 | `disableTIEquipment` | binary | OBJECT · BOOL → NOTHING | 0x48ace0 | 3 | 0 | 0 | 3 |
+| 811 | `drawLaser` | unary | ARRAY → NOTHING | 0x572e50 | 3 | 0 | 0 | 3 |
+| 812 | `enableUAVConnectability` | binary | OBJECT · ARRAY → NOTHING | 0x48d4d0 | 3 | 0 | 0 | 3 |
+| 813 | `enableUAVWaypoints` | binary | OBJECT · BOOL → NOTHING | 0x48d4f0 | 3 | 0 | 0 | 3 |
+| 814 | `enableVehicleCargo` | binary | OBJECT · BOOL → NOTHING | 0x48d610 | 1 | 0 | 2 | 3 |
+| 815 | `everyBackpack` | unary | OBJECT → ARRAY | 0x83f410 | 2 | 1 | 0 | 3 |
+| 816 | `failMission` | unary | STRING → NOTHING | 0x48fcf0 | 3 | 0 | 0 | 3 |
+| 817 | `focusOn` | nular | → OBJECT | 0x8a7030 | 3 | 0 | 0 | 3 |
+| 818 | `forceFollowRoad` | binary | OBJECT · BOOL → NOTHING | 0x569e00 | 0 | 3 | 0 | 3 |
+| 819 | `get3DENLayerEntities` | unary | SCALAR → ARRAY | 0x7fa720 | 3 | 0 | 0 | 3 |
+| 820 | `getBleedingRemaining` | unary | OBJECT → SCALAR | 0x5295d0 | 3 | 0 | 0 | 3 |
+| 821 | `getDLCAssetsUsage` | nular | → ARRAY | 0x89c170 | 3 | 0 | 0 | 3 |
+| 822 | `getEntityInfo` | binary | OBJECT · SCALAR → ANY | 0x4a1310 | 0 | 0 | 3 | 3 |
+| 823 | `getMass` | unary | OBJECT → SCALAR | 0x1a5830 | 1 | 2 | 0 | 3 |
+| 824 | `getMusicPlayedTime` | nular | → SCALAR | 0x89d270 | 3 | 0 | 0 | 3 |
+| 825 | `getPilotCameraTarget` | unary | OBJECT → ARRAY | 0x808a80 | 3 | 0 | 0 | 3 |
+| 826 | `getUserMFDValue` | unary | OBJECT → ARRAY | 0x4b7980 | 3 | 0 | 0 | 3 |
+| 827 | `groupSelectedUnits` | unary | OBJECT → ARRAY | 0x190180 | 3 | 0 | 0 | 3 |
+| 828 | `isAutoHoverOn` | unary | OBJECT → BOOL | 0x515ab0 | 2 | 1 | 0 | 3 |
+| 829 | `isDLCAvailable` | unary | SCALAR → BOOL | 0x1c28c0 | 3 | 0 | 0 | 3 |
+| 830 | `isHidden` | unary | OBJECT → BOOL | 0x535980 | 0 | 3 | 0 | 3 |
+| 831 | `isUAVConnectable` | binary | OBJECT · ARRAY → BOOL | 0x518980 | 1 | 2 | 0 | 3 |
+| 832 | `isVehicleCargo` | unary | OBJECT → OBJECT | 0x518ae0 | 3 | 0 | 0 | 3 |
+| 833 | `lbSetPictureColorSelected` | binary | CONTROL · ARRAY → NOTHING | 0x8dec40 | 2 | 0 | 1 | 3 |
+| 834 | `lbTextRight` | binary | CONTROL · SCALAR → STRING | 0x8de1e0 | 3 | 0 | 0 | 3 |
+| 835 | `leaderboardRequestRowsFriends` | unary | STRING → BOOL | 0x1c33b0 | 1 | 2 | 0 | 3 |
+| 836 | `leaderboardRequestRowsGlobal` | unary | ARRAY → BOOL | 0x1c34d0 | 1 | 2 | 0 | 3 |
+| 837 | `leaderboardRequestRowsGlobalAroundUser` | unary | ARRAY → BOOL | 0x1c34f0 | 1 | 2 | 0 | 3 |
+| 838 | `lnbSetTooltip` | binary | CONTROL · ARRAY → NOTHING | 0x8e5b80 | 3 | 0 | 0 | 3 |
+| 839 | `lockedDriver` | unary | OBJECT → BOOL | 0x56cc40 | 3 | 0 | 0 | 3 |
+| 840 | `magazinesTurret` | binary | OBJECT · ARRAY → ARRAY | 0x842f50 | 3 | 0 | 0 | 3 |
+| 841 | `move3DENCamera` | unary | ARRAY → NOTHING | 0x7ffa00 | 3 | 0 | 0 | 3 |
+| 842 | `openCuratorInterface` | nular | → NOTHING | 0x829da0 | 3 | 0 | 0 | 3 |
+| 843 | `publicVariableClient` | binary | SCALAR · STRING → NOTHING | 0x5473f0 | 3 | 0 | 0 | 3 |
+| 844 | `radioChannelSetCallSign` | binary | SCALAR · STRING\|ARRAY → NOTHING | 0x19e200 | 3 | 0 | 0 | 3 |
+| 845 | `rankId` | unary | OBJECT → SCALAR | 0x565f80 | 3 | 0 | 0 | 3 |
+| 846 | `remoteExecutedJIPID` | nular | → STRING | 0x8a33d0 | 3 | 0 | 0 | 3 |
+| 847 | `removeWeaponGlobal` | binary | OBJECT · STRING\|ARRAY → NOTHING | 0x846900 | 2 | 1 | 0 | 3 |
+| 848 | `screenshot` | unary | STRING → BOOL | 0x549dd0 | 3 | 0 | 0 | 3 |
+| 849 | `setGusts` | binary | SCALAR · SCALAR → NOTHING | 0x551f80 | 2 | 1 | 0 | 3 |
+| 850 | `setMissileTargetPos` | binary | OBJECT · ARRAY → NOTHING | 0x552c60 | 1 | 2 | 0 | 3 |
+| 851 | `setStamina` | binary | OBJECT · SCALAR → NOTHING | 0x897050 | 3 | 0 | 0 | 3 |
+| 852 | `setSuppression` | binary | OBJECT · SCALAR → NOTHING | 0x53f810 | 0 | 3 | 0 | 3 |
+| 853 | `someAmmo` | unary | OBJECT → BOOL | 0x5417c0 | 1 | 2 | 0 | 3 |
+| 854 | `surfaceNormal` | unary | ARRAY → ARRAY | 0x55e6f0 | 1 | 1 | 1 | 3 |
+| 855 | `targetKnowledge` | binary | OBJECT · OBJECT → ARRAY | 0x1c76f0 | 3 | 0 | 0 | 3 |
+| 856 | `triggerType` | unary | OBJECT → STRING | 0x561da0 | 3 | 0 | 0 | 3 |
+| 857 | `tvClear` | unary | CONTROL → NOTHING<br>SCALAR → NOTHING | 0x8f1890<br>0x8ec700 | 3 | 0 | 0 | 3 |
+| 858 | `tvCollapse` | binary | CONTROL · ARRAY → NOTHING | 0x8f1960 | 3 | 0 | 0 | 3 |
+| 859 | `tvSetPictureRight` | binary | CONTROL · ARRAY → NOTHING | 0x8f2d30 | 3 | 0 | 0 | 3 |
+| 860 | `tvValue` | binary | CONTROL · ARRAY → SCALAR | 0x8f41b0 | 3 | 0 | 0 | 3 |
+| 861 | `unassignCurator` | unary | OBJECT → NOTHING | 0x82c060 | 3 | 0 | 0 | 3 |
+| 862 | `visibleCompass` | nular | → BOOL | 0x8af080 | 0 | 3 | 0 | 3 |
+| 863 | `weaponLowered` | unary | OBJECT → BOOL | 0x536270 | 1 | 2 | 0 | 3 |
+| 864 | `addCuratorCameraArea` | binary | OBJECT · ARRAY → NOTHING | 0x823ee0 | 2 | 0 | 0 | 2 |
+| 865 | `aimPos` | unary | OBJECT → ARRAY | 0x52f8b0 | 2 | 0 | 0 | 2 |
+| 866 | `allCutLayers` | nular | → ARRAY | 0x8a71a0 | 2 | 0 | 0 | 2 |
+| 867 | `allowSprint` | binary | OBJECT · BOOL → NOTHING | 0x524d20 | 2 | 0 | 0 | 2 |
+| 868 | `assignCurator` | binary | OBJECT · OBJECT → NOTHING | 0x8257f0 | 2 | 0 | 0 | 2 |
+| 869 | `assignedGunner` | unary | OBJECT → OBJECT | 0x52bff0 | 1 | 1 | 0 | 2 |
+| 870 | `canAddItemToBackpack` | binary | OBJECT · STRING\|ARRAY → BOOL | 0x83d4f0 | 1 | 1 | 0 | 2 |
+| 871 | `cancelSimpleTaskDestination` | unary | TASK → NOTHING | 0xe089a0 | 2 | 0 | 0 | 2 |
+| 872 | `canVehicleCargo` | binary | OBJECT · OBJECT → ARRAY | 0x481680 | 2 | 0 | 0 | 2 |
+| 873 | `commandChat` | binary | OBJECT\|ARRAY · STRING → NOTHING | 0x19c8a0 | 2 | 0 | 0 | 2 |
+| 874 | `commandFollow` | binary | OBJECT\|ARRAY · OBJECT → NOTHING | 0x568300 | 0 | 2 | 0 | 2 |
+| 875 | `commandWatch` | binary | OBJECT\|ARRAY · ARRAY → NOTHING<br>OBJECT\|ARRAY · OBJECT → NOTHING | 0x5683c0<br>0x5683c0 | 0 | 2 | 0 | 2 |
+| 876 | `configClasses` | unary | ARRAY → ARRAY | 0x811360 | 2 | 0 | 0 | 2 |
+| 877 | `ctAddRow` | unary | CONTROL → ARRAY | 0x8d94e0 | 2 | 0 | 0 | 2 |
+| 878 | `ctClear` | unary | CONTROL → NOTHING | 0x8d97f0 | 2 | 0 | 0 | 2 |
+| 879 | `ctCurSel` | unary | CONTROL → SCALAR | 0x8d9870 | 2 | 0 | 0 | 2 |
+| 880 | `ctrlSetTooltipColorShade` | binary | CONTROL · ARRAY → NOTHING | 0x8d5750 | 2 | 0 | 0 | 2 |
+| 881 | `ctrlSetTooltipColorText` | binary | CONTROL · ARRAY → NOTHING | 0x8d57d0 | 2 | 0 | 0 | 2 |
+| 882 | `ctRowControls` | binary | CONTROL · SCALAR → ARRAY | 0x8da250 | 2 | 0 | 0 | 2 |
+| 883 | `ctRowCount` | unary | CONTROL → SCALAR | 0x8da4a0 | 2 | 0 | 0 | 2 |
+| 884 | `currentMuzzle` | unary | OBJECT → STRING | 0x487090 | 0 | 2 | 0 | 2 |
+| 885 | `customRadio` | binary | OBJECT · ARRAY → NOTHING | 0x19d090 | 2 | 0 | 0 | 2 |
+| 886 | `cutRsc` | unary | ARRAY → NOTHING | 0x488b30 | 1 | 1 | 0 | 2 |
+| 887 | `decayGraphValues` | unary | ARRAY → ARRAY | 0x4806a0 | 2 | 0 | 0 | 2 |
+| 888 | `deleteGroupWhenEmpty` | binary | GROUP · BOOL → NOTHING | 0x18e370 | 2 | 0 | 0 | 2 |
+| 889 | `disableConversation` | binary | OBJECT · BOOL → NOTHING | 0x565a00 | 2 | 0 | 0 | 2 |
+| 890 | `disableDebriefingStats` | nular | → NOTHING | 0x89a550 | 2 | 0 | 0 | 2 |
+| 891 | `disableNVGEquipment` | binary | OBJECT · BOOL → NOTHING | 0x48ab90 | 2 | 0 | 0 | 2 |
+| 892 | `drawPolygon` | binary | CONTROL · ARRAY → NOTHING | 0x8e8000 | 2 | 0 | 0 | 2 |
+| 893 | `elevatePeriscope` | binary | OBJECT · ARRAY → NOTHING | 0x5697b0 | 0 | 2 | 0 | 2 |
+| 894 | `enableAutoStartUpRTD` | binary | OBJECT · BOOL → NOTHING | 0x892250 | 2 | 0 | 0 | 2 |
+| 895 | `enableCollisionWith` | binary | OBJECT · OBJECT → NOTHING | 0x569b10 | 1 | 1 | 0 | 2 |
+| 896 | `enableDebriefingStats` | unary | ARRAY → NOTHING | 0x48cd10 | 2 | 0 | 0 | 2 |
+| 897 | `enableDynamicSimulationSystem` | unary | BOOL → NOTHING | 0x17e830 | 2 | 0 | 0 | 2 |
+| 898 | `eyeDirection` | unary | OBJECT → ARRAY | 0x52b0d0 | 2 | 0 | 0 | 2 |
+| 899 | `finishMissionInit` | nular | → NOTHING | 0x8b0480 | 2 | 0 | 0 | 2 |
+| 900 | `formationLeader` | unary | OBJECT → OBJECT | 0x56aba0 | 2 | 0 | 0 | 2 |
+| 901 | `freeLook` | nular | → BOOL | 0x8a93f0 | 2 | 0 | 0 | 2 |
+| 902 | `get3DENIconsVisible` | nular | → ARRAY | 0x7fa1d0 | 2 | 0 | 0 | 2 |
+| 903 | `get3DENMouseOver` | nular | → ARRAY | 0x7fc680 | 2 | 0 | 0 | 2 |
+| 904 | `getCenterOfMass` | unary | OBJECT → ARRAY | 0x1a5620 | 2 | 0 | 0 | 2 |
+| 905 | `getDebriefingText` | unary | STRING → ARRAY | 0x49fca0 | 2 | 0 | 0 | 2 |
+| 906 | `getGraphValues` | unary | ARRAY → ARRAY | 0x47f6a0 | 2 | 0 | 0 | 2 |
+| 907 | `getPylonMagazines` | unary | OBJECT → ARRAY | 0x4afad0 | 2 | 0 | 0 | 2 |
+| 908 | `getSubtitleOptions` | nular | → ARRAY | 0x89eb60 | 2 | 0 | 0 | 2 |
+| 909 | `getTextWidth` | binary | STRING · ARRAY → SCALAR | 0x4b4990 | 2 | 0 | 0 | 2 |
+| 910 | `getTotalDLCUsageTime` | nular | → SCALAR | 0x89f190 | 2 | 0 | 0 | 2 |
+| 911 | `hcRemoveGroup` | binary | OBJECT · GROUP → NOTHING | 0x1996e0 | 2 | 0 | 0 | 2 |
+| 912 | `hcSetGroup` | binary | OBJECT · ARRAY → NOTHING | 0x198810 | 2 | 0 | 0 | 2 |
+| 913 | `hideActions` | unary | ARRAY → NOTHING | 0x4ba680 | 2 | 0 | 0 | 2 |
+| 914 | `initAmbientLife` | nular | → NOTHING | 0x8a59a0 | 2 | 0 | 0 | 2 |
+| 915 | `isAbleToBreathe` | unary | OBJECT → BOOL | 0x5357f0 | 2 | 0 | 0 | 2 |
+| 916 | `isAutotest` | nular | → BOOL | 0x8a2bc0 | 2 | 0 | 0 | 2 |
+| 917 | `isBurning` | unary | OBJECT → BOOL | 0x5358b0 | 1 | 1 | 0 | 2 |
+| 918 | `isTutHintsEnabled` | nular | → BOOL | 0x8af970 | 2 | 0 | 0 | 2 |
+| 919 | `isWeaponDeployed` | unary | ARRAY → BOOL<br>OBJECT → BOOL | 0x896d30<br>0x896cc0 | 0 | 2 | 0 | 2 |
+| 920 | `isWeaponRested` | unary | OBJECT → BOOL | 0x896e40 | 0 | 2 | 0 | 2 |
+| 921 | `itemsWithMagazines` | unary | OBJECT → ARRAY | 0x83cbd0 | 0 | 2 | 0 | 2 |
+| 922 | `joinAs` | binary | OBJECT · ARRAY → NOTHING | 0x197c40 | 0 | 2 | 0 | 2 |
+| 923 | `lbSetSelectColor` | binary | CONTROL · ARRAY → NOTHING | 0x8dee70 | 2 | 0 | 0 | 2 |
+| 924 | `leaderboardsRequestUploadScoreKeepBest` | unary | ARRAY → BOOL | 0x1c3530 | 0 | 2 | 0 | 2 |
+| 925 | `lnbDeleteRow` | binary | CONTROL · SCALAR → NOTHING | 0x8e4850 | 2 | 0 | 0 | 2 |
+| 926 | `lnbSetColumnsPos` | binary | CONTROL · ARRAY → NOTHING | 0x8e5600 | 2 | 0 | 0 | 2 |
+| 927 | `lnbSetPictureColor` | binary | CONTROL · ARRAY → NOTHING | 0x8e66e0 | 2 | 0 | 0 | 2 |
+| 928 | `lnbSetPictureColorSelected` | binary | CONTROL · ARRAY → NOTHING | 0x8e6740 | 2 | 0 | 0 | 2 |
+| 929 | `loadGame` | nular | → NOTHING | 0x8b01f0 | 2 | 0 | 0 | 2 |
+| 930 | `missionEnd` | nular | → ARRAY | 0x89cf40 | 2 | 0 | 0 | 2 |
+| 931 | `missionNameSource` | nular | → STRING | 0x8a30b0 | 0 | 2 | 0 | 2 |
+| 932 | `moonPhase` | unary | ARRAY → SCALAR | 0x4a6d70 | 1 | 0 | 1 | 2 |
+| 933 | `onPreloadFinished` | unary | CODE\|STRING → NOTHING | 0x183ed0 | 2 | 0 | 0 | 2 |
+| 934 | `onTeamSwitch` | unary | CODE\|STRING → NOTHING | 0x183f90 | 2 | 0 | 0 | 2 |
+| 935 | `openDLCPage` | unary | SCALAR → BOOL | 0x1c3e30 | 2 | 0 | 0 | 2 |
+| 936 | `openYoutubeVideo` | unary | STRING → BOOL | 0x1c4090 | 2 | 0 | 0 | 2 |
+| 937 | `playMission` | unary | ARRAY → NOTHING | 0x520660 | 1 | 0 | 1 | 2 |
+| 938 | `posWorldToScreen` | binary | CONTROL · ARRAY → ARRAY | 0x8e94b0 | 2 | 0 | 0 | 2 |
+| 939 | `preloadTitleRsc` | unary | ARRAY → BOOL | 0x4946d0 | 2 | 0 | 0 | 2 |
+| 940 | `radioChannelRemove` | binary | SCALAR · ARRAY → NOTHING | 0x19e1c0 | 2 | 0 | 0 | 2 |
+| 941 | `removeBackpackGlobal` | unary | OBJECT → NOTHING | 0x84b7d0 | 2 | 0 | 0 | 2 |
+| 942 | `removeItemFromBackpack` | binary | OBJECT · STRING → NOTHING | 0x844a00 | 2 | 0 | 0 | 2 |
+| 943 | `removeItemFromUniform` | binary | OBJECT · STRING → NOTHING | 0x844a20 | 2 | 0 | 0 | 2 |
+| 944 | `removeItemFromVest` | binary | OBJECT · STRING → NOTHING | 0x844a40 | 2 | 0 | 0 | 2 |
+| 945 | `ropeAttachedTo` | unary | OBJECT → OBJECT | 0x1a6ec0 | 2 | 0 | 0 | 2 |
+| 946 | `rotorsRpmRTD` | unary | OBJECT → ARRAY | 0x894280 | 2 | 0 | 0 | 2 |
+| 947 | `runInitScript` | nular | → NOTHING | 0x8b0c20 | 2 | 0 | 0 | 2 |
+| 948 | `selectionNames` | unary | OBJECT → ARRAY | 0x4ab6c0 | 2 | 0 | 0 | 2 |
+| 949 | `setAmmoCargo` | binary | OBJECT · SCALAR → NOTHING | 0x53add0 | 2 | 0 | 0 | 2 |
+| 950 | `setCuratorEditingAreaType` | binary | OBJECT · BOOL → NOTHING | 0x82b440 | 2 | 0 | 0 | 2 |
+| 951 | `setEffectCondition` | binary | OBJECT\|ARRAY · STRING → NOTHING | 0x48c0d0 | 2 | 0 | 0 | 2 |
+| 952 | `setMissileTarget` | binary | OBJECT · OBJECT\|ARRAY → BOOL | 0x552b20 | 1 | 1 | 0 | 2 |
+| 953 | `setMusicEffect` | binary | OBJECT\|ARRAY · STRING → NOTHING | 0x48c170 | 2 | 0 | 0 | 2 |
+| 954 | `setRadioMsg` | binary | SCALAR · STRING → NOTHING | 0x556280 | 0 | 2 | 0 | 2 |
+| 955 | `setRain` | unary | ARRAY → NOTHING<br>CONFIG → NOTHING | 0x5565b0<br>0x556730 | 2 | 0 | 0 | 2 |
+| 956 | `setRepairCargo` | binary | OBJECT · SCALAR → NOTHING | 0x53e8c0 | 2 | 0 | 0 | 2 |
+| 957 | `setRotorBrakeRTD` | binary | OBJECT · SCALAR → NOTHING | 0x8961e0 | 2 | 0 | 0 | 2 |
+| 958 | `setShadowDistance` | unary | SCALAR → NOTHING | 0x552a80 | 2 | 0 | 0 | 2 |
+| 959 | `setSimpleTaskAlwaysVisible` | binary | TASK · BOOL → NOTHING | 0xe08bf0 | 2 | 0 | 0 | 2 |
+| 960 | `setText` | binary | LOCATION · STRING → NOTHING | 0xd06b60 | 2 | 0 | 0 | 2 |
+| 961 | `setTitleEffect` | binary | OBJECT\|ARRAY · ARRAY → NOTHING | 0x48c3b0 | 2 | 0 | 0 | 2 |
+| 962 | `setWindForce` | binary | SCALAR · SCALAR → NOTHING | 0x559e80 | 0 | 2 | 0 | 2 |
+| 963 | `showCuratorCompass` | unary | BOOL → NOTHING | 0x82bcf0 | 2 | 0 | 0 | 2 |
+| 964 | `shownChat` | nular | → BOOL | 0x8aefe0 | 2 | 0 | 0 | 2 |
+| 965 | `shownCuratorCompass` | nular | → BOOL | 0x829c80 | 2 | 0 | 0 | 2 |
+| 966 | `shownMap` | nular | → BOOL | 0x8af570 | 2 | 0 | 0 | 2 |
+| 967 | `showPad` | unary | BOOL → NOTHING | 0x55aeb0 | 2 | 0 | 0 | 2 |
+| 968 | `showRadio` | unary | BOOL → NOTHING | 0x55b680 | 2 | 0 | 0 | 2 |
+| 969 | `simulWeatherSync` | nular | → NOTHING | 0x1bfeb0 | 1 | 1 | 0 | 2 |
+| 970 | `sliderSpeed` | unary | CONTROL → ARRAY<br>SCALAR → ARRAY | 0x8eb9e0<br>0x8eb110 | 0 | 0 | 2 | 2 |
+| 971 | `slingLoadAssistantShown` | nular | → BOOL | 0x1a9930 | 0 | 2 | 0 | 2 |
+| 972 | `speechVolume` | nular | → SCALAR | 0x8aaf80 | 2 | 0 | 0 | 2 |
+| 973 | `targetsQuery` | binary | OBJECT · ARRAY → ARRAY | 0x159c190 | 2 | 0 | 0 | 2 |
+| 974 | `turretLocal` | binary | OBJECT · ARRAY → BOOL | 0x535dc0 | 2 | 0 | 0 | 2 |
+| 975 | `unassignTeam` | unary | OBJECT → NOTHING | 0x55f8a0 | 2 | 0 | 0 | 2 |
+| 976 | `unitTurret` | binary | OBJECT · OBJECT → ARRAY | 0x56c420 | 2 | 0 | 0 | 2 |
+| 977 | `useAudioTimeForMoves` | binary | OBJECT · BOOL → NOTHING | 0x542470 | 2 | 0 | 0 | 2 |
+| 978 | `vectorModelToWorldVisual` | binary | OBJECT · ARRAY → ARRAY | 0x526900 | 2 | 0 | 0 | 2 |
+| 979 | `vestContainer` | unary | OBJECT → OBJECT | 0x847530 | 2 | 0 | 0 | 2 |
+| 980 | `visibleScoretable` | nular | → BOOL | 0x8af850 | 2 | 0 | 0 | 2 |
+| 981 | `actionIDs` | unary | OBJECT → ARRAY | 0x572070 | 1 | 0 | 0 | 1 |
+| 982 | `addItemPool` | unary | ARRAY → NOTHING | 0x8b89d0 | 1 | 0 | 0 | 1 |
+| 983 | `addMagazinePool` | unary | ARRAY → NOTHING | 0x8b8b20 | 1 | 0 | 0 | 1 |
+| 984 | `addOwnedMine` | binary | OBJECT · OBJECT → NOTHING | 0x523ed0 | 1 | 0 | 0 | 1 |
+| 985 | `addWeaponItem` | binary | OBJECT · ARRAY → NOTHING | 0x839700 | 1 | 0 | 0 | 1 |
+| 986 | `addWeaponPool` | unary | ARRAY → NOTHING | 0x8b8c70 | 1 | 0 | 0 | 1 |
+| 987 | `admin` | unary | SCALAR → SCALAR | 0x8b3950 | 1 | 0 | 0 | 1 |
+| 988 | `allSites` | nular | → ARRAY | 0x8a8250 | 1 | 0 | 0 | 1 |
+| 989 | `assignedCommander` | unary | OBJECT → OBJECT | 0x52ac80 | 1 | 0 | 0 | 1 |
+| 990 | `assignedTeam` | unary | OBJECT → STRING | 0x47ee80 | 1 | 0 | 0 | 1 |
+| 991 | `boundingBox` | binary | SCALAR · OBJECT → ARRAY | 0x49d740 | 1 | 0 | 0 | 1 |
+| 992 | `buildingExit` | binary | OBJECT · SCALAR → ARRAY | 0x52a1b0 | 0 | 1 | 0 | 1 |
+| 993 | `cadetMode` | nular | → BOOL | 0x8a5bc0 | 1 | 0 | 0 | 1 |
+| 994 | `calculatePlayerVisibilityByFriendly` | unary | BOOL → NOTHING | 0x481630 | 1 | 0 | 0 | 1 |
+| 995 | `camSetFocus` | binary | OBJECT · ARRAY → NOTHING | 0x8075a0 | 1 | 0 | 0 | 1 |
+| 996 | `canSlingLoad` | binary | OBJECT · OBJECT → BOOL<br>STRING · STRING → BOOL | 0x1a1ae0<br>0x1a1c60 | 1 | 0 | 0 | 1 |
+| 997 | `canUnloadInCombat` | unary | OBJECT → BOOL | 0x526000 | 0 | 1 | 0 | 1 |
+| 998 | `clear3DENInventory` | unary | ARRAY → NOTHING | 0x7f4c50 | 1 | 0 | 0 | 1 |
+| 999 | `clearGroupIcons` | unary | GROUP → NOTHING | 0x18def0 | 1 | 0 | 0 | 1 |
+| 1000 | `clearItemPool` | nular | → NOTHING | 0x8b8dc0 | 1 | 0 | 0 | 1 |
+| 1001 | `clearMagazinePool` | nular | → NOTHING | 0x8b8e40 | 1 | 0 | 0 | 1 |
+| 1002 | `clearWeaponPool` | nular | → NOTHING | 0x8b8ec0 | 1 | 0 | 0 | 1 |
+| 1003 | `commandFire` | binary | OBJECT\|ARRAY · OBJECT → NOTHING | 0x5682e0 | 0 | 1 | 0 | 1 |
+| 1004 | `commandRadio` | binary | OBJECT\|ARRAY · STRING → NOTHING | 0x19cbc0 | 1 | 0 | 0 | 1 |
+| 1005 | `createGuardedPoint` | unary | ARRAY → NOTHING | 0x4b91d0 | 1 | 0 | 0 | 1 |
+| 1006 | `createMissionDisplay` | binary | DISPLAY · ARRAY → DISPLAY<br>DISPLAY · STRING → DISPLAY | 0x8d6c30<br>0x8d6c30 | 1 | 0 | 0 | 1 |
+| 1007 | `createTask` | binary | TEAM_MEMBER · ARRAY → TASK | 0xe0c040 | 1 | 0 | 0 | 1 |
+| 1008 | `ctAddHeader` | unary | CONTROL → ARRAY | 0x8d91d0 | 1 | 0 | 0 | 1 |
+| 1009 | `ctrlFontHeight` | unary | CONTROL → SCALAR | 0x8d0630 | 1 | 0 | 0 | 1 |
+| 1010 | `ctrlForegroundColor` | unary | CONTROL → ARRAY | 0x8d0af0 | 1 | 0 | 0 | 1 |
+| 1011 | `ctrlHTMLLoaded` | unary | CONTROL → BOOL | 0x8d7f90 | 1 | 0 | 0 | 1 |
+| 1012 | `ctrlSetModel` | binary | CONTROL · STRING → NOTHING | 0x8cbdb0 | 1 | 0 | 0 | 1 |
+| 1013 | `ctrlSetTooltipMaxWidth` | binary | CONTROL · SCALAR → SCALAR | 0x8d5850 | 1 | 0 | 0 | 1 |
+| 1014 | `ctrlTextColor` | unary | CONTROL → ARRAY | 0x8d1670 | 1 | 0 | 0 | 1 |
+| 1015 | `ctSetValue` | binary | CONTROL · ARRAY → NOTHING | 0x8daa20 | 1 | 0 | 0 | 1 |
+| 1016 | `ctValue` | binary | CONTROL · SCALAR → SCALAR | 0x8dab50 | 1 | 0 | 0 | 1 |
+| 1017 | `curatorCameraArea` | unary | OBJECT → ARRAY | 0x826020 | 1 | 0 | 0 | 1 |
+| 1018 | `currentCommand` | unary | OBJECT → STRING | 0x56a660 | 1 | 0 | 0 | 1 |
+| 1019 | `currentWeaponTurret` | binary | OBJECT · ARRAY → STRING | 0x84d240 | 1 | 0 | 0 | 1 |
+| 1020 | `customChat` | binary | OBJECT · ARRAY → NOTHING | 0x19ce00 | 1 | 0 | 0 | 1 |
+| 1021 | `deleteCenter` | unary | SIDE → NOTHING | 0x18dc60 | 1 | 0 | 0 | 1 |
+| 1022 | `deleteLocation` | unary | LOCATION → NOTHING | 0xd04080 | 1 | 0 | 0 | 1 |
+| 1023 | `disableMapIndicators` | unary | ARRAY → NOTHING | 0x48a9e0 | 1 | 0 | 0 | 1 |
+| 1024 | `disableRemoteSensors` | unary | BOOL → NOTHING | 0x48ac90 | 1 | 0 | 0 | 1 |
+| 1025 | `drawArrow` | binary | CONTROL · ARRAY → NOTHING | 0x8e7710 | 1 | 0 | 0 | 1 |
+| 1026 | `enableChannel` | binary | SCALAR · ARRAY → NOTHING<br>SCALAR · BOOL → NOTHING | 0x19c140<br>0x19c070 | 1 | 0 | 0 | 1 |
+| 1027 | `enableEndDialog` | nular | → NOTHING | 0x8a7000 | 1 | 0 | 0 | 1 |
+| 1028 | `enableWeaponDisassembly` | unary | BOOL → NOTHING | 0x48dbb0 | 1 | 0 | 0 | 1 |
+| 1029 | `findNearestEnemy` | binary | OBJECT · OBJECT\|ARRAY → OBJECT | 0x569d50 | 0 | 1 | 0 | 1 |
+| 1030 | `firstBackpack` | unary | OBJECT → OBJECT | 0x83fb80 | 1 | 0 | 0 | 1 |
+| 1031 | `flagAnimationPhase` | unary | OBJECT → SCALAR | 0x52bb30 | 1 | 0 | 0 | 1 |
+| 1032 | `get3DENGrid` | unary | STRING → SCALAR | 0x7fa100 | 1 | 0 | 0 | 1 |
+| 1033 | `getAllOwnedMines` | unary | OBJECT → ARRAY | 0x528d40 | 1 | 0 | 0 | 1 |
+| 1034 | `getAssetDLCInfo` | unary | ARRAY → ARRAY<br>OBJECT\|STRING → ARRAY | 0x49c3c0<br>0x49c3c0 | 1 | 0 | 0 | 1 |
+| 1035 | `getCustomSoundControllerCount` | unary | OBJECT → SCALAR | 0x49fa80 | 1 | 0 | 0 | 1 |
+| 1036 | `getEnvSoundController` | binary | ARRAY · STRING → SCALAR | 0x4a2270 | 1 | 0 | 0 | 1 |
+| 1037 | `getFieldManualStartPage` | unary | DISPLAY → ARRAY | 0x8d72c0 | 1 | 0 | 0 | 1 |
+| 1038 | `getGroupIcons` | unary | GROUP → ARRAY | 0x18efc0 | 0 | 1 | 0 | 1 |
+| 1039 | `getObjectFOV` | unary | OBJECT → SCALAR | 0x4ac020 | 1 | 0 | 0 | 1 |
+| 1040 | `getObjectType` | unary | OBJECT → SCALAR | 0x52e900 | 0 | 1 | 0 | 1 |
+| 1041 | `getPersonUsedDLCs` | unary | OBJECT → ARRAY | 0x4aedc0 | 1 | 0 | 0 | 1 |
+| 1042 | `getPlayerScores` | unary | OBJECT → ARRAY | 0x52ea30 | 1 | 0 | 0 | 1 |
+| 1043 | `getSlotItemName` | binary | OBJECT · SCALAR → STRING | 0x532c40 | 1 | 0 | 0 | 1 |
+| 1044 | `getVehicleTIPars` | unary | OBJECT → ARRAY | 0x4b8070 | 1 | 0 | 0 | 1 |
+| 1045 | `groupIconsVisible` | nular | → ARRAY | 0x8af1e0 | 1 | 0 | 0 | 1 |
+| 1046 | `hashValue` | unary | ?\|SCRIPT → STRING | 0x4a32a0 | 1 | 0 | 0 | 1 |
+| 1047 | `hiddenActions` | unary | ARRAY → ARRAY | 0x4ba360 | 1 | 0 | 0 | 1 |
+| 1048 | `hideSelection` | binary | OBJECT · ARRAY → NOTHING | 0x8b68c0 | 1 | 0 | 0 | 1 |
+| 1049 | `HUDMovementLevels` | nular | → ARRAY | 0x8a9470 | 1 | 0 | 0 | 1 |
+| 1050 | `isAutonomous` | unary | OBJECT → BOOL | 0x515b10 | 0 | 0 | 1 | 1 |
+| 1051 | `isFormationLeader` | unary | OBJECT → BOOL | 0x56cd00 | 0 | 1 | 0 | 1 |
+| 1052 | `isGameFocused` | nular | → BOOL | 0x89a8c0 | 1 | 0 | 0 | 1 |
+| 1053 | `isInstructorFigureEnabled` | nular | → BOOL | 0x8a2d40 | 1 | 0 | 0 | 1 |
+| 1054 | `isUIContext` | nular | → BOOL | 0x8a2ed0 | 1 | 0 | 0 | 1 |
+| 1055 | `isUniformAllowed` | binary | OBJECT · STRING → BOOL | 0x842a60 | 1 | 0 | 0 | 1 |
+| 1056 | `isVehicleRadarOn` | unary | OBJECT → BOOL | 0x1c8af0 | 1 | 0 | 0 | 1 |
+| 1057 | `lbText` | unary | ARRAY → STRING | 0x8db9b0 | 1 | 0 | 0 | 1 |
+| 1058 | `libraryCredits` | nular | → ARRAY | 0x8afba0 | 1 | 0 | 0 | 1 |
+| 1059 | `lightIsOn` | unary | OBJECT → STRING | 0x5364e0 | 1 | 0 | 0 | 1 |
+| 1060 | `loadStatus` | binary | OBJECT · STRING → BOOL | 0x8b6f60 | 1 | 0 | 0 | 1 |
+| 1061 | `lockIdentity` | unary | OBJECT → BOOL | 0x5370a0 | 1 | 0 | 0 | 1 |
+| 1062 | `magazinesAllTurrets` | unary | OBJECT\|ARRAY → ARRAY | 0x840b90 | 1 | 0 | 0 | 1 |
+| 1063 | `magazinesAmmoFull` | unary | OBJECT\|ARRAY → ARRAY | 0x83e510 | 0 | 1 | 0 | 1 |
+| 1064 | `markAsFinishedOnSteam` | nular | → BOOL | 0x1c3d90 | 1 | 0 | 0 | 1 |
+| 1065 | `menuData` | binary | CONTROL · ARRAY → STRING | 0x853640 | 1 | 0 | 0 | 1 |
+| 1066 | `menuHover` | unary | CONTROL → ARRAY<br>SCALAR → ARRAY | 0x857000<br>0x8570e0 | 1 | 0 | 0 | 1 |
+| 1067 | `menuShortcutText` | binary | CONTROL · ARRAY → STRING | 0x853dc0 | 1 | 0 | 0 | 1 |
+| 1068 | `menuSize` | binary | CONTROL · ARRAY → SCALAR | 0x853ff0 | 1 | 0 | 0 | 1 |
+| 1069 | `missileTarget` | unary | OBJECT → OBJECT | 0x4a65d0 | 1 | 0 | 0 | 1 |
+| 1070 | `onCommandModeChanged` | unary | CODE\|STRING → NOTHING | 0x181250 | 1 | 0 | 0 | 1 |
+| 1071 | `onGroupIconClick` | unary | CODE\|STRING → NOTHING | 0x182c70 | 1 | 0 | 0 | 1 |
+| 1072 | `onGroupIconOverEnter` | unary | CODE\|STRING → NOTHING | 0x182cd0 | 1 | 0 | 0 | 1 |
+| 1073 | `onGroupIconOverLeave` | unary | CODE\|STRING → NOTHING | 0x182d30 | 1 | 0 | 0 | 1 |
+| 1074 | `onHCGroupSelectionChanged` | unary | CODE\|STRING → NOTHING | 0x182d90 | 1 | 0 | 0 | 1 |
+| 1075 | `onMapSingleClick` | binary | ANY · CODE\|STRING → NOTHING | 0x182fa0 | 1 | 0 | 0 | 1 |
+| 1076 | `openSteamApp` | unary | SCALAR → BOOL | 0x1c3f00 | 1 | 0 | 0 | 1 |
+| 1077 | `playerTargetLock` | nular | → ARRAY | 0x89d2e0 | 1 | 0 | 0 | 1 |
+| 1078 | `playScriptedMission` | unary | ARRAY → NOTHING | 0x54b6d0 | 1 | 0 | 0 | 1 |
+| 1079 | `rectangular` | unary | LOCATION → BOOL | 0xd057b0 | 1 | 0 | 0 | 1 |
+| 1080 | `removeAllActions` | unary | OBJECT → NOTHING | 0x539570 | 0 | 1 | 0 | 1 |
+| 1081 | `removeAllOwnedMines` | unary | OBJECT → NOTHING | 0x539500 | 1 | 0 | 0 | 1 |
+| 1082 | `removeAllPrimaryWeaponItems` | unary | OBJECT → NOTHING | 0x844750 | 1 | 0 | 0 | 1 |
+| 1083 | `removeCuratorCameraArea` | binary | OBJECT · SCALAR → NOTHING | 0x82a890 | 1 | 0 | 0 | 1 |
+| 1084 | `removeDiaryRecord` | binary | OBJECT · ARRAY → NOTHING | 0xdfe180 | 1 | 0 | 0 | 1 |
+| 1085 | `removeGroupIcon` | binary | GROUP · SCALAR → NOTHING | 0x1944d0 | 1 | 0 | 0 | 1 |
+| 1086 | `resetSubgroupDirection` | unary | OBJECT → NOTHING | 0x549410 | 1 | 0 | 0 | 1 |
+| 1087 | `respawnVehicle` | binary | OBJECT · ARRAY → NOTHING | 0x570b00 | 1 | 0 | 0 | 1 |
+| 1088 | `ropeDestroy` | unary | OBJECT → NOTHING | 0x1a89e0 | 0 | 1 | 0 | 1 |
+| 1089 | `ropes` | unary | OBJECT → ARRAY | 0x1a9500 | 0 | 1 | 0 | 1 |
+| 1090 | `save3DENInventory` | unary | ARRAY → NOTHING | 0x7ff8b0 | 1 | 0 | 0 | 1 |
+| 1091 | `saveStatus` | binary | OBJECT · STRING → BOOL | 0x8b7bc0 | 1 | 0 | 0 | 1 |
+| 1092 | `selectDiarySubject` | binary | OBJECT · STRING → BOOL | 0xdfef80 | 1 | 0 | 0 | 1 |
+| 1093 | `serverName` | nular | → STRING | 0x8b1a60 | 1 | 0 | 0 | 1 |
+| 1094 | `set3DENIconsVisible` | unary | ARRAY → NOTHING | 0x8023d0 | 1 | 0 | 0 | 1 |
+| 1095 | `set3DENLinesVisible` | unary | ARRAY → NOTHING | 0x802870 | 1 | 0 | 0 | 1 |
+| 1096 | `set3DENMissionAttribute` | binary | STRING · ARRAY → NOTHING | 0x802c00 | 1 | 0 | 0 | 1 |
+| 1097 | `set3DENModelsVisible` | unary | ARRAY → NOTHING | 0x803690 | 1 | 0 | 0 | 1 |
+| 1098 | `set3DENSelected` | unary | ARRAY → NOTHING | 0x803a20 | 1 | 0 | 0 | 1 |
+| 1099 | `setActualCollectiveRTD` | binary | OBJECT · SCALAR → NOTHING | 0x8959a0 | 0 | 1 | 0 | 1 |
+| 1100 | `setApertureNew` | unary | ARRAY → NOTHING | 0x54df30 | 1 | 0 | 0 | 1 |
+| 1101 | `setBleedingRemaining` | binary | OBJECT · SCALAR → NOTHING | 0x54e450 | 1 | 0 | 0 | 1 |
+| 1102 | `setConvoySeparation` | binary | OBJECT · SCALAR → NOTHING | 0x56fc90 | 1 | 0 | 0 | 1 |
+| 1103 | `setCuratorCameraAreaCeiling` | binary | OBJECT · SCALAR → NOTHING | 0x82af30 | 1 | 0 | 0 | 1 |
+| 1104 | `setCustomWeightRTD` | binary | OBJECT · SCALAR → NOTHING | 0x895ca0 | 1 | 0 | 0 | 1 |
+| 1105 | `setDirection` | binary | LOCATION · SCALAR → NOTHING | 0xd062c0 | 1 | 0 | 0 | 1 |
+| 1106 | `setDynamicSimulationDistanceCoef` | binary | STRING · SCALAR → NOTHING | 0x17ec90 | 1 | 0 | 0 | 1 |
+| 1107 | `setHUDMovementLevels` | unary | ARRAY → NOTHING | 0x552010 | 1 | 0 | 0 | 1 |
+| 1108 | `setMusicEventHandler` | unary | ARRAY → NOTHING | 0x183c10 | 0 | 1 | 0 | 1 |
+| 1109 | `setShotParents` | binary | OBJECT · ARRAY → NOTHING | 0x53f1c0 | 1 | 0 | 0 | 1 |
+| 1110 | `setSpeech` | binary | LOCATION · STRING → NOTHING | 0xd06a70 | 1 | 0 | 0 | 1 |
+| 1111 | `setTargetAge` | binary | OBJECT · STRING → NOTHING | 0x1cbf30 | 1 | 0 | 0 | 1 |
+| 1112 | `setWaves` | binary | SCALAR · SCALAR → NOTHING | 0x559360 | 1 | 0 | 0 | 1 |
+| 1113 | `size` | unary | LOCATION → ARRAY | 0xd05890 | 1 | 0 | 0 | 1 |
+| 1114 | `sliderSetSpeed` | binary | CONTROL · ARRAY → NOTHING | 0x8ebe20 | 1 | 0 | 0 | 1 |
+| 1115 | `suppressFor` | binary | OBJECT · SCALAR → NOTHING | 0x571fb0 | 0 | 1 | 0 | 1 |
+| 1116 | `surfaceType` | unary | ARRAY → STRING | 0x55eba0 | 1 | 0 | 0 | 1 |
+| 1117 | `synchronizeWaypoint` | binary | ARRAY · ARRAY → NOTHING<br>OBJECT · ARRAY → NOTHING | 0x8fb890<br>0x562950 | 1 | 0 | 0 | 1 |
+| 1118 | `systemOfUnits` | nular | → SCALAR | 0x8ab310 | 1 | 0 | 0 | 1 |
+| 1119 | `targets` | binary | GROUP · ARRAY → ARRAY<br>OBJECT · ARRAY → ARRAY | 0x1c7220<br>0x1c7cf0 | 1 | 0 | 0 | 1 |
+| 1120 | `turretOwner` | binary | OBJECT · ARRAY → SCALAR | 0x4b5f40 | 1 | 0 | 0 | 1 |
+| 1121 | `tvSetPictureColorDisabled` | binary | CONTROL · ARRAY → NOTHING | 0x8f2cd0 | 1 | 0 | 0 | 1 |
+| 1122 | `tvSetPictureColorSelected` | binary | CONTROL · ARRAY → NOTHING | 0x8f2d00 | 1 | 0 | 0 | 1 |
+| 1123 | `type` | unary | LOCATION → STRING<br>TASK → STRING | 0xd05b30<br>0xe0a850 | 1 | 0 | 0 | 1 |
+| 1124 | `unitAimPosition` | unary | OBJECT → ARRAY | 0x5246a0 | 0 | 1 | 0 | 1 |
+| 1125 | `vectorSide` | unary | OBJECT → ARRAY | 0x5338c0 | 1 | 0 | 0 | 1 |
+| 1126 | `vehicleChat` | binary | OBJECT · STRING → NOTHING | 0x19d9e0 | 1 | 0 | 0 | 1 |
+| 1127 | `vehicleRadio` | binary | OBJECT · STRING → NOTHING | 0x19daf0 | 1 | 0 | 0 | 1 |
+| 1128 | `vehicleReceiveRemoteTargets` | unary | OBJECT → BOOL | 0x1c80d0 | 1 | 0 | 0 | 1 |
+| 1129 | `vehicleReportOwnPosition` | unary | OBJECT → BOOL | 0x1c8180 | 1 | 0 | 0 | 1 |
+| 1130 | `vehicleReportRemoteTargets` | unary | OBJECT → BOOL | 0x1c8230 | 1 | 0 | 0 | 1 |
+| 1131 | `visibleGps` | nular | → BOOL | 0x8af180 | 0 | 1 | 0 | 1 |
+| 1132 | `visibleWatch` | nular | → BOOL | 0x8afb50 | 1 | 0 | 0 | 1 |
+| 1133 | `waypointAttachedVehicle` | unary | ARRAY → OBJECT | 0x8f7210 | 1 | 0 | 0 | 1 |
+| 1134 | `waypointAttachObject` | binary | ARRAY · OBJECT\|SCALAR → NOTHING | 0x8f69c0 | 1 | 0 | 0 | 1 |
+| 1135 | `waypointShow` | unary | ARRAY → STRING | 0x8f8460 | 1 | 0 | 0 | 1 |
+| 1136 | `weightRTD` | unary | OBJECT → ARRAY | 0x894610 | 1 | 0 | 0 | 1 |
+| 1137 | `windDir` | nular | → SCALAR | 0x8ab6f0 | 1 | 0 | 0 | 1 |
+| 1138 | `action` | unary | ARRAY → NOTHING | 0x560420 | 0 | 0 | 0 | 0 |
+| 1139 | `actionKeysEx` | unary | STRING → ARRAY | 0x495f60 | 0 | 0 | 0 | 0 |
+| 1140 | `actionKeysImages` | unary | STRING\|ARRAY → TEXT | 0x496dd0 | 0 | 0 | 0 | 0 |
+| 1141 | `actionNow` | binary | OBJECT · ARRAY → NOTHING | 0x56d830 | 0 | 0 | 0 | 0 |
+| 1142 | `actionParams` | binary | OBJECT · SCALAR → ARRAY | 0x569f80 | 0 | 0 | 0 | 0 |
+| 1143 | `activeTitleEffectParams` | unary | SCALAR → ARRAY | 0x497e60 | 0 | 0 | 0 | 0 |
+| 1144 | `add3DENEventHandler` | unary | ARRAY → SCALAR | 0x7f3bf0 | 0 | 0 | 0 | 0 |
+| 1145 | `add3DENLayer` | binary | SCALAR · STRING → SCALAR | 0x7f4050 | 0 | 0 | 0 | 0 |
+| 1146 | `addBackpackGlobal` | binary | OBJECT · STRING → NOTHING | 0x831b10 | 0 | 0 | 0 | 0 |
+| 1147 | `addBinocularItem` | binary | OBJECT · STRING → NOTHING | 0x839640 | 0 | 0 | 0 | 0 |
+| 1148 | `addCuratorSelected` | unary | ARRAY → NOTHING | 0x825600 | 0 | 0 | 0 | 0 |
+| 1149 | `addEditorObject` | binary | CONTROL · ARRAY → STRING | 0x13caef0 | 0 | 0 | 0 | 0 |
+| 1150 | `addForceGeneratorRTD` | unary | ARRAY → SCALAR | 0x891e00 | 0 | 0 | 0 | 0 |
+| 1151 | `addLiveStats` | binary | OBJECT · SCALAR → NOTHING | 0x523490 | 0 | 0 | 0 | 0 |
+| 1152 | `addMagazineAmmoCargo` | binary | OBJECT · ARRAY → NOTHING | 0x83a020 | 0 | 0 | 0 | 0 |
+| 1153 | `addMagazinesTurret` | binary | OBJECT · ARRAY → NOTHING | 0x523b20 | 0 | 0 | 0 | 0 |
+| 1154 | `addMenu` | binary | CONTROL · ARRAY → SCALAR | 0x13ca740 | 0 | 0 | 0 | 0 |
+| 1155 | `addMenuItem` | binary | CONTROL · ARRAY → SCALAR | 0x13caa70 | 0 | 0 | 0 | 0 |
+| 1156 | `addonFiles` | unary | ARRAY → ARRAY | 0x498010 | 0 | 0 | 0 | 0 |
+| 1157 | `addPlayerScores` | binary | OBJECT · ARRAY → NOTHING | 0x523f90 | 0 | 0 | 0 | 0 |
+| 1158 | `addResources` | binary | TEAM_MEMBER · ARRAY → NOTHING | 0x196b70 | 0 | 0 | 0 | 0 |
+| 1159 | `addSwitchableUnit` | unary | OBJECT → NOTHING | 0x47d8c0 | 0 | 0 | 0 | 0 |
+| 1160 | `addTeamMember` | binary | TEAM_MEMBER · TEAM_MEMBER → NOTHING | 0x196b00 | 0 | 0 | 0 | 0 |
+| 1161 | `addUserActionEventHandler` | unary | ARRAY → SCALAR | 0x180be0 | 0 | 0 | 0 | 0 |
+| 1162 | `addWeaponWithAttachmentsCargoGlobal` | binary | OBJECT · ARRAY → NOTHING | 0x83c050 | 0 | 0 | 0 | 0 |
+| 1163 | `airDensityCurveRTD` | nular | → ARRAY | 0x892830 | 0 | 0 | 0 | 0 |
+| 1164 | `airDensityRTD` | unary | SCALAR → SCALAR | 0x892c10 | 0 | 0 | 0 | 0 |
+| 1165 | `airplaneThrottle` | unary | OBJECT → SCALAR | 0x892c70 | 0 | 0 | 0 | 0 |
+| 1166 | `airportSide` | unary | OBJECT\|SCALAR → SIDE | 0x47e2b0 | 0 | 0 | 0 | 0 |
+| 1167 | `AISFinishHeal` | unary | ARRAY → NOTHING | 0x47d2b0 | 0 | 0 | 0 | 0 |
+| 1168 | `allActiveTitleEffects` | nular | → ARRAY | 0x89a9b0 | 0 | 0 | 0 | 0 |
+| 1169 | `allAddonsInfo` | nular | → ARRAY | 0x89abd0 | 0 | 0 | 0 | 0 |
+| 1170 | `allAirports` | nular | → ARRAY | 0x8992e0 | 0 | 0 | 0 | 0 |
+| 1171 | `allCameras` | nular | → ARRAY | 0x807e30 | 0 | 0 | 0 | 0 |
+| 1172 | `allDiaryRecords` | binary | OBJECT · STRING → ARRAY | 0xdff770 | 0 | 0 | 0 | 0 |
+| 1173 | `allDiarySubjects` | unary | OBJECT → ARRAY | 0xdff950 | 0 | 0 | 0 | 0 |
+| 1174 | `allEnv3DSoundSources` | nular | → ARRAY | 0x89b390 | 0 | 0 | 0 | 0 |
+| 1175 | `allExtensions` | nular | → ARRAY | 0x188bb0 | 0 | 0 | 0 | 0 |
+| 1176 | `allLODs` | unary | OBJECT\|STRING → ARRAY | 0x49a5c0 | 0 | 0 | 0 | 0 |
+| 1177 | `allObjects` | binary | SCALAR · SCALAR → ARRAY<br>STRING · SCALAR → ARRAY | 0x49b3e0<br>0x49b4b0 | 0 | 0 | 0 | 0 |
+| 1178 | `allow3DMode` | binary | CONTROL · BOOL → NOTHING | 0x13cb400 | 0 | 0 | 0 | 0 |
+| 1179 | `allowDammage` | binary | OBJECT · BOOL → NOTHING | 0x524bb0 | 0 | 0 | 0 | 0 |
+| 1180 | `allowedService` | unary | OBJECT → SCALAR | 0x47e5e0 | 0 | 0 | 0 | 0 |
+| 1181 | `allowFileOperations` | binary | CONTROL · BOOL → NOTHING | 0x13cb520 | 0 | 0 | 0 | 0 |
+| 1182 | `allowService` | binary | OBJECT · SCALAR → NOTHING | 0x47e540 | 0 | 0 | 0 | 0 |
+| 1183 | `allUsers` | nular | → ARRAY | 0x8994d0 | 0 | 0 | 0 | 0 |
+| 1184 | `ambientTemperature` | nular | → ARRAY | 0x89b5d0 | 0 | 0 | 0 | 0 |
+| 1185 | `ammoOnPylon` | binary | OBJECT · STRING\|SCALAR → SCALAR | 0x49bde0 | 0 | 0 | 0 | 0 |
+| 1186 | `angularVelocity` | unary | OBJECT → ARRAY | 0x5290b0 | 0 | 0 | 0 | 0 |
+| 1187 | `angularVelocityModelSpace` | unary | OBJECT → ARRAY | 0x529130 | 0 | 0 | 0 | 0 |
+| 1188 | `animateBay` | binary | OBJECT · ARRAY → NOTHING | 0x547530 | 0 | 0 | 0 | 0 |
+| 1189 | `animatePylon` | binary | OBJECT · ARRAY → NOTHING | 0x5476e0 | 0 | 0 | 0 | 0 |
+| 1190 | `apertureParams` | nular | → ARRAY | 0x89b680 | 0 | 0 | 0 | 0 |
+| 1191 | `armoryPoints` | nular | → SCALAR | 0x8a8710 | 0 | 0 | 0 | 0 |
+| 1192 | `assignedGroup` | unary | OBJECT → GROUP | 0x197da0 | 0 | 0 | 0 | 0 |
+| 1193 | `assignedVehicles` | unary | GROUP → ARRAY | 0x190bd0 | 0 | 0 | 0 | 0 |
+| 1194 | `assignTeam` | binary | OBJECT · STRING → NOTHING | 0x55f120 | 0 | 0 | 0 | 0 |
+| 1195 | `assignToAirport` | binary | OBJECT · OBJECT\|SCALAR → NOTHING | 0x5256f0 | 0 | 0 | 0 | 0 |
+| 1196 | `attachChild` | binary | ARRAY · ARRAY → NOTHING | 0x1a18a0 | 0 | 0 | 0 | 0 |
+| 1197 | `attachedObject` | unary | LOCATION → OBJECT | 0xd05050 | 0 | 0 | 0 | 0 |
+| 1198 | `attachObject` | binary | LOCATION · OBJECT → NOTHING | 0xd061b0 | 0 | 0 | 0 | 0 |
+| 1199 | `attackEnabled` | unary | OBJECT\|GROUP → BOOL | 0x1910a0 | 0 | 0 | 0 | 0 |
+| 1200 | `awake` | binary | OBJECT · BOOL → NOTHING | 0x1a54b0 | 0 | 0 | 0 | 0 |
+| 1201 | `backpackMagazines` | unary | OBJECT → ARRAY | 0x83d3d0 | 0 | 0 | 0 | 0 |
+| 1202 | `backpacks` | unary | OBJECT → ARRAY | 0x83f2d0 | 0 | 0 | 0 | 0 |
+| 1203 | `backpackSpaceFor` | binary | OBJECT · STRING → ARRAY | 0x49caf0 | 0 | 0 | 0 | 0 |
+| 1204 | `ban` | unary | STRING\|SCALAR → NOTHING | 0x174f30 | 0 | 0 | 0 | 0 |
+| 1205 | `benchmark` | nular | → SCALAR | 0x8a5b70 | 0 | 0 | 0 | 0 |
+| 1206 | `binocularItems` | unary | OBJECT → ARRAY | 0x83d4b0 | 0 | 0 | 0 | 0 |
+| 1207 | `binocularMagazine` | unary | OBJECT → STRING | 0x84c970 | 0 | 0 | 0 | 0 |
+| 1208 | `brakesDisabled` | unary | OBJECT → BOOL | 0x49dda0 | 0 | 0 | 0 | 0 |
+| 1209 | `buldozer_EnableRoadDiag` | unary | BOOL → NOTHING | 0x47f420 | 0 | 0 | 0 | 0 |
+| 1210 | `buldozer_IsEnabledRoadDiag` | nular | → BOOL | 0x8a2e30 | 0 | 0 | 0 | 0 |
+| 1211 | `buldozer_LoadNewRoads` | unary | STRING → BOOL | 0x47f510 | 0 | 0 | 0 | 0 |
+| 1212 | `buldozer_reloadOperMap` | nular | → NOTHING | 0x8a5b90 | 0 | 0 | 0 | 0 |
+| 1213 | `buttonAction` | unary | CONTROL → STRING<br>SCALAR → STRING | 0x8cf260<br>0x8cad40 | 0 | 0 | 0 | 0 |
+| 1214 | `buttonSetAction` | unary | ARRAY → NOTHING | 0x8cae60 | 0 | 0 | 0 | 0 |
+| 1215 | `calculatePath` | unary | ARRAY → OBJECT | 0x480b80 | 0 | 0 | 0 | 0 |
+| 1216 | `camConstuctionSetParams` | binary | OBJECT · ARRAY → NOTHING | 0x8061d0 | 0 | 0 | 0 | 0 |
+| 1217 | `cameraInterest` | unary | OBJECT → SCALAR | 0x56a600 | 0 | 0 | 0 | 0 |
+| 1218 | `camPrepareBank` | binary | OBJECT · SCALAR → NOTHING | 0x806e60 | 0 | 0 | 0 | 0 |
+| 1219 | `camPrepareDive` | binary | OBJECT · SCALAR → NOTHING | 0x806e60 | 0 | 0 | 0 | 0 |
+| 1220 | `camPrepareFovRange` | binary | OBJECT · ARRAY → NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
+| 1221 | `camPrepareRelPos` | binary | OBJECT · ARRAY → NOTHING | 0x8071a0 | 0 | 0 | 0 | 0 |
+| 1222 | `camSetBank` | binary | OBJECT · SCALAR → NOTHING | 0x806e60 | 0 | 0 | 0 | 0 |
+| 1223 | `camSetDir` | binary | OBJECT · ARRAY → NOTHING | 0x8073b0 | 0 | 0 | 0 | 0 |
+| 1224 | `camSetDive` | binary | OBJECT · SCALAR → NOTHING | 0x806e60 | 0 | 0 | 0 | 0 |
+| 1225 | `camSetFovRange` | binary | OBJECT · ARRAY → NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
+| 1226 | `camTarget` | unary | OBJECT → OBJECT | 0x806b80 | 0 | 0 | 0 | 0 |
+| 1227 | `canAddItemToUniform` | binary | OBJECT · STRING\|ARRAY → BOOL | 0x83d510 | 0 | 0 | 0 | 0 |
+| 1228 | `canAddItemToVest` | binary | OBJECT · STRING\|ARRAY → BOOL | 0x83d530 | 0 | 0 | 0 | 0 |
+| 1229 | `canDeployWeapon` | unary | OBJECT → BOOL | 0x896690 | 0 | 0 | 0 | 0 |
+| 1230 | `canTriggerDynamicSimulation` | unary | OBJECT → BOOL | 0x17e570 | 0 | 0 | 0 | 0 |
+| 1231 | `captiveNum` | unary | OBJECT → SCALAR | 0x5260f0 | 0 | 0 | 0 | 0 |
+| 1232 | `channelEnabled` | unary | SCALAR → ARRAY | 0x19bc80 | 0 | 0 | 0 | 0 |
+| 1233 | `checkAIFeature` | binary | OBJECT · STRING → BOOL | 0x481de0 | 0 | 0 | 0 | 0 |
+| 1234 | `checkAIFeature` | unary | STRING → BOOL | 0x481cc0 | 0 | 0 | 0 | 0 |
+| 1235 | `checkExe` | binary | SCALAR · SCALAR → NOTHING | 0x1753d0 | 0 | 0 | 0 | 0 |
+| 1236 | `checkFile` | binary | SCALAR · ARRAY → NOTHING | 0x1754b0 | 0 | 0 | 0 | 0 |
+| 1237 | `childAttached` | unary | OBJECT → OBJECT | 0x1a1da0 | 0 | 0 | 0 | 0 |
+| 1238 | `className` | unary | LOCATION → STRING | 0xd050c0 | 0 | 0 | 0 | 0 |
+| 1239 | `clear3DENAttribute` | binary | ANY · STRING → BOOL | 0x801220 | 0 | 0 | 0 | 0 |
+| 1240 | `clearbans` | nular | → NOTHING | 0x175600 | 0 | 0 | 0 | 0 |
+| 1241 | `clearForcesRTD` | nular | → NOTHING | 0x892180 | 0 | 0 | 0 | 0 |
+| 1242 | `clearkicks` | nular | → NOTHING | 0x175640 | 0 | 0 | 0 | 0 |
+| 1243 | `clearOverlay` | unary | CONTROL → NOTHING | 0x13cf870 | 0 | 0 | 0 | 0 |
+| 1244 | `closeOverlay` | unary | CONTROL → NOTHING | 0x13cf8e0 | 0 | 0 | 0 | 0 |
+| 1245 | `collapseObjectTree` | unary | CONTROL → NOTHING | 0x13cb640 | 0 | 0 | 0 | 0 |
+| 1246 | `collect3DENHistory` | binary | ARRAY · CODE → NOTHING | 0x7f5200 | 0 | 0 | 0 | 0 |
+| 1247 | `collectiveRTD` | unary | OBJECT → SCALAR | 0x892cf0 | 0 | 0 | 0 | 0 |
+| 1248 | `collisionDisabledWith` | unary | OBJECT → ARRAY | 0x49de50 | 0 | 0 | 0 | 0 |
+| 1249 | `combatBehaviour` | unary | GROUP → STRING<br>OBJECT → STRING | 0x18e8e0<br>0x49dff0 | 0 | 0 | 0 | 0 |
+| 1250 | `combatPace` | binary | OBJECT · ARRAY → STRING | 0x51f480 | 0 | 0 | 0 | 0 |
+| 1251 | `commandFSM` | binary | OBJECT\|ARRAY · ARRAY → NOTHING | 0x5682c0 | 0 | 0 | 0 | 0 |
+| 1252 | `commandSuppressiveFire` | binary | OBJECT\|ARRAY · OBJECT\|ARRAY → NOTHING | 0x568380 | 0 | 0 | 0 | 0 |
+| 1253 | `commitOverlay` | unary | CONTROL → NOTHING | 0x13cf950 | 0 | 0 | 0 | 0 |
+| 1254 | `compatibleItems` | unary | STRING\|ARRAY → ARRAY | 0x833b80 | 0 | 0 | 0 | 0 |
+| 1255 | `compatibleMagazines` | unary | STRING\|ARRAY → ARRAY | 0x8328c0 | 0 | 0 | 0 | 0 |
+| 1256 | `compatibleWeapons` | unary | STRING → ARRAY | 0x834030 | 0 | 0 | 0 | 0 |
+| 1257 | `connectToServer` | unary | ARRAY → NOTHING | 0x5491e0 | 0 | 0 | 0 | 0 |
+| 1258 | `continueWith` | binary | SCRIPT · CODE\|ARRAY → NOTHING | 0x54a230 | 0 | 0 | 0 | 0 |
+| 1259 | `conversationDisabled` | unary | OBJECT → BOOL | 0x4a0110 | 0 | 0 | 0 | 0 |
+| 1260 | `countEnemy` | binary | OBJECT · ARRAY → SCALAR | 0x51cb10 | 0 | 0 | 0 | 0 |
+| 1261 | `countFriendly` | binary | OBJECT · ARRAY → SCALAR | 0x51cba0 | 0 | 0 | 0 | 0 |
+| 1262 | `countUnknown` | binary | OBJECT · ARRAY → SCALAR | 0x51cf90 | 0 | 0 | 0 | 0 |
+| 1263 | `create3DENComposition` | unary | ARRAY → ARRAY | 0x7f5730 | 0 | 0 | 0 | 0 |
+| 1264 | `create3DENEntity` | binary | GROUP · ARRAY → ANY | 0x7f6550 | 0 | 0 | 0 | 0 |
+| 1265 | `createGearDialog` | unary | ARRAY → NOTHING | 0x484bd0 | 0 | 0 | 0 | 0 |
+| 1266 | `createMenu` | binary | CONTROL · SCALAR → NOTHING | 0x13cb7b0 | 0 | 0 | 0 | 0 |
+| 1267 | `createSite` | binary | STRING · ARRAY → OBJECT | 0x568a20 | 0 | 0 | 0 | 0 |
+| 1268 | `createSoundSourceLocal` | unary | ARRAY → OBJECT | 0x55c4e0 | 0 | 0 | 0 | 0 |
+| 1269 | `createTeam` | unary | ARRAY → TEAM_MEMBER | 0x195c60 | 0 | 0 | 0 | 0 |
+| 1270 | `createVehicleCrew` | binary | GROUP · OBJECT → GROUP<br>SIDE · OBJECT → GROUP | 0x486f60<br>0x486fe0 | 0 | 0 | 0 | 0 |
+| 1271 | `ctFindHeaderRows` | binary | CONTROL · SCALAR → ARRAY | 0x8d9960 | 0 | 0 | 0 | 0 |
+| 1272 | `ctFindRowHeader` | binary | CONTROL · SCALAR → SCALAR | 0x8d9b90 | 0 | 0 | 0 | 0 |
+| 1273 | `ctHeaderCount` | unary | CONTROL → SCALAR | 0x8d9f50 | 0 | 0 | 0 | 0 |
+| 1274 | `ctRemoveHeaders` | binary | CONTROL · ARRAY → NOTHING | 0x8d9fd0 | 0 | 0 | 0 | 0 |
+| 1275 | `ctRemoveRows` | binary | CONTROL · ARRAY → NOTHING | 0x8da110 | 0 | 0 | 0 | 0 |
+| 1276 | `ctrlActivate` | binary | CONTROL · BOOL → NOTHING | 0x8cfc50 | 0 | 0 | 0 | 0 |
+| 1277 | `ctrlAnimationPhaseModel` | binary | CONTROL · STRING → SCALAR | 0x8cb9f0 | 0 | 0 | 0 | 0 |
+| 1278 | `ctrlAt` | binary | DISPLAY · ARRAY → CONTROL | 0x8cfe80 | 0 | 0 | 0 | 0 |
+| 1279 | `ctrlAutoScrollDelay` | unary | CONTROL → SCALAR | 0x8d0680 | 0 | 0 | 0 | 0 |
+| 1280 | `ctrlAutoScrollRewind` | unary | CONTROL → BOOL | 0x8d0750 | 0 | 0 | 0 | 0 |
+| 1281 | `ctrlAutoScrollSpeed` | unary | CONTROL → SCALAR | 0x8d0810 | 0 | 0 | 0 | 0 |
+| 1282 | `ctrlBackgroundColor` | unary | CONTROL → ARRAY | 0x8d08e0 | 0 | 0 | 0 | 0 |
+| 1283 | `ctrlChecked` | binary | CONTROL · SCALAR → BOOL | 0x8d09d0 | 0 | 0 | 0 | 0 |
+| 1284 | `ctrlMapDir` | unary | CONTROL → SCALAR | 0x8e9b60 | 0 | 0 | 0 | 0 |
+| 1285 | `ctrlMapPosition` | unary | CONTROL → ARRAY | 0x8ea440 | 0 | 0 | 0 | 0 |
+| 1286 | `ctrlMapSetPosition` | binary | CONTROL · ARRAY → NOTHING | 0x8ea910 | 0 | 0 | 0 | 0 |
+| 1287 | `ctrlModel` | unary | CONTROL → STRING | 0x8ce1d0 | 0 | 0 | 0 | 0 |
+| 1288 | `ctrlModelDirAndUp` | unary | CONTROL → ARRAY | 0x8ce360 | 0 | 0 | 0 | 0 |
+| 1289 | `ctrlModelVectorSide` | unary | CONTROL → ARRAY | 0x8ce540 | 0 | 0 | 0 | 0 |
+| 1290 | `ctrlMousePosition` | unary | CONTROL → ARRAY | 0x8d0b80 | 0 | 0 | 0 | 0 |
+| 1291 | `ctrlRelToScreen` | binary | CONTROL · ARRAY → ARRAY | 0x8d1b50 | 0 | 0 | 0 | 0 |
+| 1292 | `ctrlScreenToRel` | binary | CONTROL · ARRAY → ARRAY | 0x8d1fa0 | 0 | 0 | 0 | 0 |
+| 1293 | `ctrlScrollValues` | unary | CONTROL → ARRAY | 0x8d11e0 | 0 | 0 | 0 | 0 |
+| 1294 | `ctrlSetAutoScrollDelay` | binary | CONTROL · SCALAR → NOTHING | 0x8d2210 | 0 | 0 | 0 | 0 |
+| 1295 | `ctrlSetAutoScrollRewind` | binary | CONTROL · BOOL → NOTHING | 0x8d2370 | 0 | 0 | 0 | 0 |
+| 1296 | `ctrlSetAutoScrollSpeed` | binary | CONTROL · SCALAR → NOTHING | 0x8d2470 | 0 | 0 | 0 | 0 |
+| 1297 | `ctrlSetDisabledColor` | binary | CONTROL · ARRAY → NOTHING | 0x8d2880 | 0 | 0 | 0 | 0 |
+| 1298 | `ctrlSetFontH1` | binary | CONTROL · STRING → NOTHING | 0x8d2cd0 | 0 | 0 | 0 | 0 |
+| 1299 | `ctrlSetFontH1B` | binary | CONTROL · STRING → NOTHING | 0x8d2de0 | 0 | 0 | 0 | 0 |
+| 1300 | `ctrlSetFontH2` | binary | CONTROL · STRING → NOTHING | 0x8d2ef0 | 0 | 0 | 0 | 0 |
+| 1301 | `ctrlSetFontH2B` | binary | CONTROL · STRING → NOTHING | 0x8d3000 | 0 | 0 | 0 | 0 |
+| 1302 | `ctrlSetFontH3` | binary | CONTROL · STRING → NOTHING | 0x8d3110 | 0 | 0 | 0 | 0 |
+| 1303 | `ctrlSetFontH3B` | binary | CONTROL · STRING → NOTHING | 0x8d3220 | 0 | 0 | 0 | 0 |
+| 1304 | `ctrlSetFontH4` | binary | CONTROL · STRING → NOTHING | 0x8d3330 | 0 | 0 | 0 | 0 |
+| 1305 | `ctrlSetFontH4B` | binary | CONTROL · STRING → NOTHING | 0x8d3440 | 0 | 0 | 0 | 0 |
+| 1306 | `ctrlSetFontH5` | binary | CONTROL · STRING → NOTHING | 0x8d3550 | 0 | 0 | 0 | 0 |
+| 1307 | `ctrlSetFontH5B` | binary | CONTROL · STRING → NOTHING | 0x8d3660 | 0 | 0 | 0 | 0 |
+| 1308 | `ctrlSetFontH6` | binary | CONTROL · STRING → NOTHING | 0x8d3770 | 0 | 0 | 0 | 0 |
+| 1309 | `ctrlSetFontH6B` | binary | CONTROL · STRING → NOTHING | 0x8d3880 | 0 | 0 | 0 | 0 |
+| 1310 | `ctrlSetFontHeightH1` | binary | CONTROL · SCALAR → NOTHING | 0x8d3a00 | 0 | 0 | 0 | 0 |
+| 1311 | `ctrlSetFontHeightH2` | binary | CONTROL · SCALAR → NOTHING | 0x8d3a70 | 0 | 0 | 0 | 0 |
+| 1312 | `ctrlSetFontHeightH3` | binary | CONTROL · SCALAR → NOTHING | 0x8d3ae0 | 0 | 0 | 0 | 0 |
+| 1313 | `ctrlSetFontHeightH4` | binary | CONTROL · SCALAR → NOTHING | 0x8d3b50 | 0 | 0 | 0 | 0 |
+| 1314 | `ctrlSetFontHeightH5` | binary | CONTROL · SCALAR → NOTHING | 0x8d3bc0 | 0 | 0 | 0 | 0 |
+| 1315 | `ctrlSetFontHeightH6` | binary | CONTROL · SCALAR → NOTHING | 0x8d3c30 | 0 | 0 | 0 | 0 |
+| 1316 | `ctrlSetFontHeightSecondary` | binary | CONTROL · SCALAR → NOTHING | 0x8d3d10 | 0 | 0 | 0 | 0 |
+| 1317 | `ctrlSetFontP` | binary | CONTROL · SCALAR → NOTHING<br>CONTROL · STRING → NOTHING | 0x8d3ca0<br>0x8d3d90 | 0 | 0 | 0 | 0 |
+| 1318 | `ctrlSetFontPB` | binary | CONTROL · STRING → NOTHING | 0x8d3ea0 | 0 | 0 | 0 | 0 |
+| 1319 | `ctrlSetFontSecondary` | binary | CONTROL · STRING → NOTHING | 0x8d3fb0 | 0 | 0 | 0 | 0 |
+| 1320 | `ctrlSetMousePosition` | binary | CONTROL · ARRAY → NOTHING | 0x8d40b0 | 0 | 0 | 0 | 0 |
+| 1321 | `ctrlSetScrollValues` | binary | CONTROL · ARRAY → NOTHING | 0x8d4d10 | 0 | 0 | 0 | 0 |
+| 1322 | `ctrlSetTextColorSecondary` | binary | CONTROL · ARRAY → NOTHING | 0x8d53e0 | 0 | 0 | 0 | 0 |
+| 1323 | `ctrlSetTextSecondary` | binary | CONTROL · STRING → NOTHING | 0x8d5470 | 0 | 0 | 0 | 0 |
+| 1324 | `ctrlSetTextSelection` | binary | CONTROL · ARRAY → NOTHING | 0x8d5510 | 0 | 0 | 0 | 0 |
+| 1325 | `ctrlShadow` | unary | CONTROL → SCALAR | 0x8d5ec0 | 0 | 0 | 0 | 0 |
+| 1326 | `ctrlShow` | unary | ARRAY → NOTHING | 0x8cc5d0 | 0 | 0 | 0 | 0 |
+| 1327 | `ctrlTextSecondary` | unary | CONTROL → STRING | 0x8d14c0 | 0 | 0 | 0 | 0 |
+| 1328 | `ctrlTextSelection` | unary | CONTROL → ARRAY | 0x8d1700 | 0 | 0 | 0 | 0 |
+| 1329 | `ctrlURLOverlayMode` | unary | CONTROL → SCALAR | 0x8d6260 | 0 | 0 | 0 | 0 |
+| 1330 | `ctrlWebBrowserAction` | binary | CONTROL · ARRAY → NOTHING | 0x1dd990 | 0 | 0 | 0 | 0 |
+| 1331 | `ctSetHeaderTemplate` | binary | CONTROL · CONFIG → NOTHING | 0x8da750 | 0 | 0 | 0 | 0 |
+| 1332 | `ctSetRowTemplate` | binary | CONTROL · CONFIG → NOTHING | 0x8da8c0 | 0 | 0 | 0 | 0 |
+| 1333 | `curatorCameraAreaCeiling` | unary | OBJECT → SCALAR | 0x825f50 | 0 | 0 | 0 | 0 |
+| 1334 | `curatorEditingAreaType` | unary | OBJECT → BOOL | 0x826f70 | 0 | 0 | 0 | 0 |
+| 1335 | `curatorSelectionPreset` | unary | SCALAR → ARRAY | 0x829420 | 0 | 0 | 0 | 0 |
+| 1336 | `curatorWaypointCost` | unary | OBJECT → SCALAR | 0x829880 | 0 | 0 | 0 | 0 |
+| 1337 | `currentChannel` | nular | → SCALAR | 0x89ba70 | 0 | 0 | 0 | 0 |
+| 1338 | `currentMagazineDetail` | unary | OBJECT → ARRAY | 0x84ca90 | 0 | 0 | 0 | 0 |
+| 1339 | `currentMagazineDetailTurret` | binary | OBJECT · ARRAY → STRING | 0x84cb80 | 0 | 0 | 0 | 0 |
+| 1340 | `currentMagazineTurret` | binary | OBJECT · ARRAY → STRING | 0x84cd00 | 0 | 0 | 0 | 0 |
+| 1341 | `currentPilot` | unary | OBJECT → OBJECT | 0x526f60 | 0 | 0 | 0 | 0 |
+| 1342 | `currentTasks` | unary | TEAM_MEMBER → ARRAY | 0xe0bc10 | 0 | 0 | 0 | 0 |
+| 1343 | `currentThrowable` | unary | OBJECT → ARRAY | 0x84ce90 | 0 | 0 | 0 | 0 |
+| 1344 | `currentVisionMode` | binary | OBJECT · ARRAY → ARRAY<br>OBJECT · STRING → ARRAY | 0x487380<br>0x4875d0 | 0 | 0 | 0 | 0 |
+| 1345 | `currentWeaponMode` | unary | OBJECT → STRING | 0x487750 | 0 | 0 | 0 | 0 |
+| 1346 | `currentZeroing` | binary | OBJECT · ARRAY → ARRAY | 0x487900 | 0 | 0 | 0 | 0 |
+| 1347 | `currentZeroing` | unary | OBJECT → SCALAR | 0x487870 | 0 | 0 | 0 | 0 |
+| 1348 | `cutObj` | binary | SCALAR · ARRAY → NOTHING<br>STRING · ARRAY → SCALAR | 0x488160<br>0x4885d0 | 0 | 0 | 0 | 0 |
+| 1349 | `cutObj` | unary | ARRAY → NOTHING | 0x4883b0 | 0 | 0 | 0 | 0 |
+| 1350 | `deActivateKey` | unary | STRING → NOTHING | 0x51ad70 | 0 | 0 | 0 | 0 |
+| 1351 | `debriefingText` | unary | STRING → SCALAR | 0x49fae0 | 0 | 0 | 0 | 0 |
+| 1352 | `debugFSM` | binary | SCALAR · BOOL → NOTHING | 0x489a00 | 0 | 0 | 0 | 0 |
+| 1353 | `deleteCollection` | unary | OBJECT → NOTHING | 0x4baa80 | 0 | 0 | 0 | 0 |
+| 1354 | `deleteEditorObject` | binary | CONTROL · STRING → ANY | 0x13cb8d0 | 0 | 0 | 0 | 0 |
+| 1355 | `deleteIdentity` | unary | STRING → BOOL | 0x8b3110 | 0 | 0 | 0 | 0 |
+| 1356 | `deleteResources` | binary | TEAM_MEMBER · ARRAY → NOTHING | 0x196d90 | 0 | 0 | 0 | 0 |
+| 1357 | `deleteSite` | unary | OBJECT → NOTHING | 0x55be80 | 0 | 0 | 0 | 0 |
+| 1358 | `deleteStatus` | unary | STRING → BOOL | 0x8b3530 | 0 | 0 | 0 | 0 |
+| 1359 | `deleteTeam` | unary | TEAM_MEMBER → NOTHING | 0x195f20 | 0 | 0 | 0 | 0 |
+| 1360 | `deleteVehicleCrew` | unary | OBJECT → NOTHING | 0x48a3e0 | 0 | 0 | 0 | 0 |
+| 1361 | `detachChild` | unary | OBJECT → NOTHING | 0x1a1e70 | 0 | 0 | 0 | 0 |
+| 1362 | `diag_allMissionEventHandlers` | nular | → ARRAY | 0x899a50 | 0 | 0 | 0 | 0 |
+| 1363 | `diag_dynamicSimulationEnd` | unary | STRING → NOTHING | 0x8a4230 | 0 | 0 | 0 | 0 |
+| 1364 | `diag_lightNewLoad` | unary | STRING → NOTHING | 0x165b940 | 0 | 0 | 0 | 0 |
+| 1365 | `diag_localized` | unary | STRING → ARRAY | 0x8a4590 | 0 | 0 | 0 | 0 |
+| 1366 | `diag_remainsCollector` | unary | SCALAR → ARRAY | 0x48a480 | 0 | 0 | 0 | 0 |
+| 1367 | `diag_setLightNew` | unary | STRING → NOTHING | 0x165b430 | 0 | 0 | 0 | 0 |
+| 1368 | `diag_testScriptSimpleVM` | unary | CODE → STRING | 0x8a4840 | 0 | 0 | 0 | 0 |
+| 1369 | `didJIPOwner` | unary | OBJECT → BOOL | 0x48a5c0 | 0 | 0 | 0 | 0 |
+| 1370 | `difficultyEnabled` | unary | STRING → BOOL | 0x47de70 | 0 | 0 | 0 | 0 |
+| 1371 | `directionStabilizationEnabled` | binary | OBJECT · ARRAY → BOOL | 0x52b4f0 | 0 | 0 | 0 | 0 |
+| 1372 | `disableBrakes` | binary | OBJECT · BOOL → NOTHING | 0x54e4f0 | 0 | 0 | 0 | 0 |
+| 1373 | `displayChild` | unary | DISPLAY → DISPLAY | 0x8d6500 | 0 | 0 | 0 | 0 |
+| 1374 | `displayCtrl` | unary | SCALAR → CONTROL | 0x8cceb0 | 0 | 0 | 0 | 0 |
+| 1375 | `displayUniqueName` | unary | DISPLAY → STRING | 0x8d71f0 | 0 | 0 | 0 | 0 |
+| 1376 | `displayUpdate` | unary | DISPLAY → NOTHING | 0x8d7260 | 0 | 0 | 0 | 0 |
+| 1377 | `dissolveTeam` | unary | STRING → NOTHING | 0x55f270 | 0 | 0 | 0 | 0 |
+| 1378 | `drawLink` | binary | CONTROL · ARRAY → NOTHING | 0x13cc220 | 0 | 0 | 0 | 0 |
+| 1379 | `drawLocation` | binary | CONTROL · LOCATION → NOTHING | 0xd045f0 | 0 | 0 | 0 | 0 |
+| 1380 | `drawXPolygon` | binary | CONTROL · ARRAY → NOTHING | 0x8e8cc0 | 0 | 0 | 0 | 0 |
+| 1381 | `dynamicSimulationDistance` | unary | STRING → SCALAR | 0x17e5f0 | 0 | 0 | 0 | 0 |
+| 1382 | `dynamicSimulationDistanceCoef` | unary | STRING → SCALAR | 0x17e710 | 0 | 0 | 0 | 0 |
+| 1383 | `dynamicSimulationSystemEnabled` | nular | → BOOL | 0x8a2c00 | 0 | 0 | 0 | 0 |
+| 1384 | `echo` | unary | STRING → NOTHING | 0x2d2780 | 0 | 0 | 0 | 0 |
+| 1385 | `editObject` | binary | CONTROL · STRING → ANY | 0x13cc900 | 0 | 0 | 0 | 0 |
+| 1386 | `editorSetEventHandler` | binary | CONTROL · ARRAY → NOTHING | 0x13d2640 | 0 | 0 | 0 | 0 |
+| 1387 | `enableAIFeature` | binary | OBJECT · ARRAY → NOTHING<br>STRING · BOOL → NOTHING | 0x48c7c0<br>0x48c660 | 0 | 0 | 0 | 0 |
+| 1388 | `enableAudioFeature` | binary | OBJECT · ARRAY → BOOL | 0x53f620 | 0 | 0 | 0 | 0 |
+| 1389 | `enableAudioFeature` | unary | ARRAY → BOOL | 0x5570a0 | 0 | 0 | 0 | 0 |
+| 1390 | `enableAutoTrimRTD` | binary | OBJECT · BOOL → BOOL | 0x895ab0 | 0 | 0 | 0 | 0 |
+| 1391 | `enableCaustics` | unary | BOOL → NOTHING | 0x48cbc0 | 0 | 0 | 0 | 0 |
+| 1392 | `enableCopilot` | binary | OBJECT · BOOL → NOTHING | 0x48cc90 | 0 | 0 | 0 | 0 |
+| 1393 | `enableDiagLegend` | unary | BOOL → NOTHING | 0x48cee0 | 0 | 0 | 0 | 0 |
+| 1394 | `enableDirectionStabilization` | binary | OBJECT · ARRAY → NOTHING | 0x527600 | 0 | 0 | 0 | 0 |
+| 1395 | `enableEngineArtillery` | unary | BOOL → NOTHING | 0x48cb00 | 0 | 0 | 0 | 0 |
+| 1396 | `enableFreeLook` | unary | BOOL → BOOL | 0x48d1d0 | 0 | 0 | 0 | 0 |
+| 1397 | `enableGunStabilization` | binary | OBJECT · ARRAY → SCALAR | 0x5279c0 | 0 | 0 | 0 | 0 |
+| 1398 | `enableInfoPanelComponent` | binary | OBJECT\|ARRAY · ARRAY → BOOL | 0x48d750 | 0 | 0 | 0 | 0 |
+| 1399 | `enableReload` | binary | OBJECT · BOOL → NOTHING | 0x569bb0 | 0 | 0 | 0 | 0 |
+| 1400 | `enableSatNormalOnDetail` | unary | BOOL → NOTHING | 0x48d260 | 0 | 0 | 0 | 0 |
+| 1401 | `enableStressDamage` | unary | BOOL → NOTHING | 0x8922d0 | 0 | 0 | 0 | 0 |
+| 1402 | `enableTraffic` | unary | BOOL → NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
+| 1403 | `enableVehicleSensor` | binary | OBJECT · ARRAY → NOTHING | 0x1c6f10 | 0 | 0 | 0 | 0 |
+| 1404 | `enginesIsOnRTD` | unary | OBJECT → ARRAY | 0x892f40 | 0 | 0 | 0 | 0 |
+| 1405 | `enginesPowerRTD` | unary | OBJECT → ARRAY | 0x893100 | 0 | 0 | 0 | 0 |
+| 1406 | `enginesTorqueRTD` | unary | OBJECT → ARRAY | 0x8934a0 | 0 | 0 | 0 | 0 |
+| 1407 | `environmentEnabled` | nular | → ARRAY | 0x89a580 | 0 | 0 | 0 | 0 |
+| 1408 | `environmentVolume` | nular | → SCALAR | 0x89c250 | 0 | 0 | 0 | 0 |
+| 1409 | `equipmentDisabled` | unary | OBJECT → ARRAY | 0x56a7a0 | 0 | 0 | 0 | 0 |
+| 1410 | `evalObjectArgument` | binary | CONTROL · ARRAY → ANY | 0x13cca70 | 0 | 0 | 0 | 0 |
+| 1411 | `exec` | binary | ANY · STRING → NOTHING | 0x54a4c0 | 0 | 0 | 0 | 0 |
+| 1412 | `execEditorScript` | binary | CONTROL · ARRAY → ANY | 0x13ccd50 | 0 | 0 | 0 | 0 |
+| 1413 | `exportJIPMessages` | unary | STRING → NOTHING | 0x54dbf0 | 0 | 0 | 0 | 0 |
+| 1414 | `fadeEnvironment` | binary | SCALAR · SCALAR → NOTHING | 0x54ff50 | 0 | 0 | 0 | 0 |
+| 1415 | `fillWeaponsFromPool` | unary | OBJECT → NOTHING | 0x8b8990 | 0 | 0 | 0 | 0 |
+| 1416 | `findCover` | binary | OBJECT · ARRAY → OBJECT | 0x569cc0 | 0 | 0 | 0 | 0 |
+| 1417 | `findEditorObject` | binary | CONTROL · ANY → STRING<br>CONTROL · ARRAY → STRING | 0x13cd720<br>0x13cd1c0 | 0 | 0 | 0 | 0 |
+| 1418 | `findEmptyPositionReady` | binary | ARRAY · ARRAY → BOOL | 0x490520 | 0 | 0 | 0 | 0 |
+| 1419 | `flag` | unary | OBJECT → OBJECT | 0x52bad0 | 0 | 0 | 0 | 0 |
+| 1420 | `flagSide` | unary | OBJECT → SIDE | 0x52bbf0 | 0 | 0 | 0 | 0 |
+| 1421 | `flagTexture` | unary | OBJECT → STRING | 0x52bc60 | 0 | 0 | 0 | 0 |
+| 1422 | `focusedCtrl` | unary | DISPLAY → CONTROL | 0x8d05c0 | 0 | 0 | 0 | 0 |
+| 1423 | `fogForecast` | nular | → SCALAR | 0x8a8fd0 | 0 | 0 | 0 | 0 |
+| 1424 | `forceAtPositionRTD` | unary | ARRAY → ARRAY | 0x892310 | 0 | 0 | 0 | 0 |
+| 1425 | `forceCadetDifficulty` | unary | ARRAY → ARRAY | 0x492cf0 | 0 | 0 | 0 | 0 |
+| 1426 | `forcedMap` | nular | → ARRAY | 0x8a9220 | 0 | 0 | 0 | 0 |
+| 1427 | `forceEnd` | nular | → NOTHING | 0x8a70a0 | 0 | 0 | 0 | 0 |
+| 1428 | `forceFlagTexture` | binary | OBJECT · STRING → NOTHING | 0x5286b0 | 0 | 0 | 0 | 0 |
+| 1429 | `forceGeneratorRTD` | unary | SCALAR → ARRAY | 0x893660 | 0 | 0 | 0 | 0 |
+| 1430 | `forceHitPointsDamageSync` | unary | OBJECT → BOOL | 0x492e40 | 0 | 0 | 0 | 0 |
+| 1431 | `forEachMember` | binary | CODE · TEAM_MEMBER → NOTHING | 0x196040 | 0 | 0 | 0 | 0 |
+| 1432 | `forEachMemberAgent` | binary | CODE · TEAM_MEMBER → NOTHING | 0x1962c0 | 0 | 0 | 0 | 0 |
+| 1433 | `forEachMemberTeam` | binary | CODE · TEAM_MEMBER → NOTHING | 0x196630 | 0 | 0 | 0 | 0 |
+| 1434 | `formationDirection` | unary | OBJECT → SCALAR | 0x192bf0 | 0 | 0 | 0 | 0 |
+| 1435 | `formationMembers` | unary | OBJECT → ARRAY | 0x56ac40 | 0 | 0 | 0 | 0 |
+| 1436 | `formationTask` | unary | OBJECT → STRING | 0x56afd0 | 0 | 0 | 0 | 0 |
+| 1437 | `formLeader` | unary | OBJECT → OBJECT | 0x192e50 | 0 | 0 | 0 | 0 |
+| 1438 | `freeExtension` | unary | STRING → BOOL\|NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
+| 1439 | `fromEditor` | unary | TEAM_MEMBER → BOOL | 0x196fd0 | 0 | 0 | 0 | 0 |
+| 1440 | `gearIDCAmmoCount` | unary | SCALAR → SCALAR | 0x8cea00 | 0 | 0 | 0 | 0 |
+| 1441 | `gearSlotAmmoCount` | unary | CONTROL → SCALAR | 0x8cf470 | 0 | 0 | 0 | 0 |
+| 1442 | `gearSlotData` | unary | CONTROL → STRING | 0x8cf4e0 | 0 | 0 | 0 | 0 |
+| 1443 | `gestureState` | unary | OBJECT → STRING | 0x56b0a0 | 0 | 0 | 0 | 0 |
+| 1444 | `get3DENAttributes` | binary | ?\|SCALAR · STRING → ARRAY | 0x7f8c80 | 0 | 0 | 0 | 0 |
+| 1445 | `get3DENLayer` | unary | ?\|SCALAR → SCALAR | 0x7fa010 | 0 | 0 | 0 | 0 |
+| 1446 | `get3DENLinesVisible` | nular | → ARRAY | 0x7fa950 | 0 | 0 | 0 | 0 |
+| 1447 | `get3DENMissionAttributes` | binary | STRING · STRING → ARRAY | 0x7fb120 | 0 | 0 | 0 | 0 |
+| 1448 | `get3DENParent` | unary | ?\|SCALAR → ANY | 0x7fa0a0 | 0 | 0 | 0 | 0 |
+| 1449 | `getAimDirectionAndUp` | unary | ARRAY → ARRAY | 0x565aa0 | 0 | 0 | 0 | 0 |
+| 1450 | `getAimingCoef` | unary | OBJECT → SCALAR | 0x8968c0 | 0 | 0 | 0 | 0 |
+| 1451 | `getAllEnv3DSoundControllers` | unary | OBJECT → ARRAY | 0x4a1cd0 | 0 | 0 | 0 | 0 |
+| 1452 | `getAllEnvSoundControllers` | unary | ARRAY → ARRAY | 0x4a26b0 | 0 | 0 | 0 | 0 |
+| 1453 | `getAllSoundControllers` | unary | OBJECT → ARRAY | 0x4b5300 | 0 | 0 | 0 | 0 |
+| 1454 | `getAllUnitTraits` | unary | OBJECT\|STRING → ARRAY | 0x49b690 | 0 | 0 | 0 | 0 |
+| 1455 | `getAmmoCargo` | unary | OBJECT → SCALAR | 0x528fe0 | 0 | 0 | 0 | 0 |
+| 1456 | `getAnimAimPrecision` | unary | OBJECT → SCALAR | 0x896920 | 0 | 0 | 0 | 0 |
+| 1457 | `getAnimationsQueue` | unary | OBJECT → ARRAY | 0x565c30 | 0 | 0 | 0 | 0 |
+| 1458 | `getAnimSpeedCoef` | unary | OBJECT → SCALAR | 0x8969b0 | 0 | 0 | 0 | 0 |
+| 1459 | `getArtilleryComputerSettings` | nular | → ARRAY | 0x8a8ac0 | 0 | 0 | 0 | 0 |
+| 1460 | `getAttackTarget` | unary | OBJECT → OBJECT | 0x1cc1e0 | 0 | 0 | 0 | 0 |
+| 1461 | `getAudioOptionVolumes` | nular | → ARRAY | 0x89b7e0 | 0 | 0 | 0 | 0 |
+| 1462 | `getBoneNames` | unary | OBJECT → ARRAY | 0x4abbd0 | 0 | 0 | 0 | 0 |
+| 1463 | `getBurningValue` | unary | OBJECT → SCALAR | 0x52a940 | 0 | 0 | 0 | 0 |
+| 1464 | `getCalculatePlayerVisibilityByFriendly` | nular | → BOOL | 0x89b940 | 0 | 0 | 0 | 0 |
+| 1465 | `getCameraViewDirection` | unary | OBJECT → ARRAY | 0x52aee0 | 0 | 0 | 0 | 0 |
+| 1466 | `getCargoIndex` | binary | OBJECT · OBJECT → SCALAR | 0x52aaf0 | 0 | 0 | 0 | 0 |
+| 1467 | `getClientStateNumber` | nular | → STRING | 0x89b9b0 | 0 | 0 | 0 | 0 |
+| 1468 | `getCompatiblePylonMagazines` | binary | OBJECT · STRING\|SCALAR → ARRAY<br>STRING · STRING\|SCALAR → ARRAY | 0x49e6c0<br>0x49e450 | 0 | 0 | 0 | 0 |
+| 1469 | `getConnectedUAVUnit` | unary | OBJECT → OBJECT | 0x49f680 | 0 | 0 | 0 | 0 |
+| 1470 | `getContainerMaxLoad` | unary | STRING → SCALAR | 0x83dac0 | 0 | 0 | 0 | 0 |
+| 1471 | `getCorpse` | unary | OBJECT → OBJECT | 0x4b3f20 | 0 | 0 | 0 | 0 |
+| 1472 | `getCorpseWeaponholders` | unary | OBJECT → ARRAY | 0x49f6e0 | 0 | 0 | 0 | 0 |
+| 1473 | `getCruiseControl` | unary | OBJECT → ARRAY | 0x52acf0 | 0 | 0 | 0 | 0 |
+| 1474 | `getCursorObjectParams` | nular | → ARRAY | 0x89baa0 | 0 | 0 | 0 | 0 |
+| 1475 | `getCustomAimCoef` | unary | OBJECT → SCALAR | 0x896a10 | 0 | 0 | 0 | 0 |
+| 1476 | `getDescription` | unary | OBJECT → ARRAY | 0x573470 | 0 | 0 | 0 | 0 |
+| 1477 | `getDirVisual` | binary | OBJECT\|ARRAY · OBJECT\|ARRAY → SCALAR | 0x52b4d0 | 0 | 0 | 0 | 0 |
+| 1478 | `getDiverState` | unary | OBJECT → BOOL | 0x52b810 | 0 | 0 | 0 | 0 |
+| 1479 | `getDLCUsageTime` | unary | SCALAR → SCALAR | 0x4a0480 | 0 | 0 | 0 | 0 |
+| 1480 | `getEditorCamera` | unary | CONTROL → OBJECT | 0x13b9020 | 0 | 0 | 0 | 0 |
+| 1481 | `getEditorMode` | unary | CONTROL → STRING | 0x13cda50 | 0 | 0 | 0 | 0 |
+| 1482 | `getEditorObjectScope` | binary | CONTROL · STRING → STRING | 0x13cd870 | 0 | 0 | 0 | 0 |
+| 1483 | `getElevationOffset` | nular | → SCALAR | 0x8a8f10 | 0 | 0 | 0 | 0 |
+| 1484 | `getEntityInfo` | unary | OBJECT → ARRAY | 0x4a0f90 | 0 | 0 | 0 | 0 |
+| 1485 | `getEnv3DSoundController` | binary | OBJECT · STRING → SCALAR | 0x4a1860 | 0 | 0 | 0 | 0 |
+| 1486 | `getForcedFlagTexture` | unary | OBJECT → STRING | 0x52bd10 | 0 | 0 | 0 | 0 |
+| 1487 | `getForcedSpeed` | unary | OBJECT → SCALAR | 0x56ab30 | 0 | 0 | 0 | 0 |
+| 1488 | `getFuelCargo` | unary | OBJECT → SCALAR | 0x52bdc0 | 0 | 0 | 0 | 0 |
+| 1489 | `getFuelConsumptionCoef` | unary | OBJECT → SCALAR | 0x52be90 | 0 | 0 | 0 | 0 |
+| 1490 | `getHideFrom` | binary | OBJECT · OBJECT → ARRAY | 0x1cc310 | 0 | 0 | 0 | 0 |
+| 1491 | `getLeaning` | unary | OBJECT → SCALAR | 0x4a41c0 | 0 | 0 | 0 | 0 |
+| 1492 | `getLightInfo` | binary | OBJECT · SCALAR → ANY | 0x4a4b50 | 0 | 0 | 0 | 0 |
+| 1493 | `getLightInfo` | unary | OBJECT → ARRAY | 0x4a4250 | 0 | 0 | 0 | 0 |
+| 1494 | `getLighting` | nular | → ARRAY | 0x89c2f0 | 0 | 0 | 0 | 0 |
+| 1495 | `getLightingAt` | unary | OBJECT → ARRAY | 0x4a55c0 | 0 | 0 | 0 | 0 |
+| 1496 | `getLoadedModsInfo` | nular | → ARRAY | 0x89c6d0 | 0 | 0 | 0 | 0 |
+| 1497 | `getMissionLayers` | nular | → ARRAY | 0x7fcb10 | 0 | 0 | 0 | 0 |
+| 1498 | `getMissionOptions` | nular | → HASHMAP | 0x4a6a00 | 0 | 0 | 0 | 0 |
+| 1499 | `getMissionPath` | unary | STRING → STRING | 0x4a6a30 | 0 | 0 | 0 | 0 |
+| 1500 | `getObjectArgument` | binary | CONTROL · ARRAY → STRING | 0x13cdcf0 | 0 | 0 | 0 | 0 |
+| 1501 | `getObjectChildren` | binary | CONTROL · STRING → ARRAY | 0x13cded0 | 0 | 0 | 0 | 0 |
+| 1502 | `getObjectDLC` | unary | OBJECT → SCALAR | 0x4abf30 | 0 | 0 | 0 | 0 |
+| 1503 | `getObjectMaterials` | binary | OBJECT · ARRAY → ARRAY | 0x4ac060 | 0 | 0 | 0 | 0 |
+| 1504 | `getObjectProxy` | binary | CONTROL · STRING → OBJECT | 0x13ce280 | 0 | 0 | 0 | 0 |
+| 1505 | `getObjectScale` | unary | OBJECT → SCALAR | 0x530cd0 | 0 | 0 | 0 | 0 |
+| 1506 | `getObjectTextures` | binary | OBJECT · ARRAY → ARRAY | 0x4acf00 | 0 | 0 | 0 | 0 |
+| 1507 | `getOpticsMode` | binary | OBJECT · SCALAR → STRING | 0x572780 | 0 | 0 | 0 | 0 |
+| 1508 | `getPhysicsCollisionFlag` | unary | OBJECT → ARRAY | 0x1a5890 | 0 | 0 | 0 | 0 |
+| 1509 | `getPilotCameraDirection` | unary | OBJECT → ARRAY | 0x8088b0 | 0 | 0 | 0 | 0 |
+| 1510 | `getPilotCameraOpticsMode` | unary | OBJECT → SCALAR | 0x8090f0 | 0 | 0 | 0 | 0 |
+| 1511 | `getPilotCameraPosition` | unary | OBJECT → ARRAY | 0x808da0 | 0 | 0 | 0 | 0 |
+| 1512 | `getPiPViewDistance` | nular | → SCALAR | 0x89d2b0 | 0 | 0 | 0 | 0 |
+| 1513 | `getPlateNumber` | unary | OBJECT → STRING | 0x56b390 | 0 | 0 | 0 | 0 |
+| 1514 | `getPlayerChannel` | unary | OBJECT → SCALAR | 0x19c330 | 0 | 0 | 0 | 0 |
+| 1515 | `getPlayerID` | unary | OBJECT → STRING | 0x4af020 | 0 | 0 | 0 | 0 |
+| 1516 | `getPlayerVoNVolume` | unary | OBJECT → SCALAR | 0x4b7460 | 0 | 0 | 0 | 0 |
+| 1517 | `getRemoteSensorsDisabled` | nular | → BOOL | 0x89d850 | 0 | 0 | 0 | 0 |
+| 1518 | `getRepairCargo` | unary | OBJECT → SCALAR | 0x530c00 | 0 | 0 | 0 | 0 |
+| 1519 | `getRespawnVehicleInfo` | binary | OBJECT · SCALAR → ANY | 0x56bb10 | 0 | 0 | 0 | 0 |
+| 1520 | `getRespawnVehicleInfo` | unary | OBJECT → ARRAY | 0x56b530 | 0 | 0 | 0 | 0 |
+| 1521 | `getRoadInfo` | unary | OBJECT → ARRAY | 0x52dc30 | 0 | 0 | 0 | 0 |
+| 1522 | `getRoles` | nular | → ARRAY | 0x175680 | 0 | 0 | 0 | 0 |
+| 1523 | `getSelectionBones` | binary | OBJECT · ARRAY → ARRAY | 0x530f40 | 0 | 0 | 0 | 0 |
+| 1524 | `getSensorTargets` | unary | OBJECT → ARRAY | 0x1c8e00 | 0 | 0 | 0 | 0 |
+| 1525 | `getSensorThreats` | unary | OBJECT → ARRAY | 0x1ca520 | 0 | 0 | 0 | 0 |
+| 1526 | `getServerInfo` | nular | → HASHMAP | 0x89d880 | 0 | 0 | 0 | 0 |
+| 1527 | `getShadowDistance` | nular | → SCALAR | 0x8a9bd0 | 0 | 0 | 0 | 0 |
+| 1528 | `getShotInfo` | binary | OBJECT · SCALAR → ANY | 0x4b2110 | 0 | 0 | 0 | 0 |
+| 1529 | `getShotInfo` | unary | OBJECT → ARRAY | 0x4b1e60 | 0 | 0 | 0 | 0 |
+| 1530 | `getSoundController` | binary | OBJECT · STRING → SCALAR | 0x4b5100 | 0 | 0 | 0 | 0 |
+| 1531 | `getSoundControllerResult` | binary | OBJECT · CONFIG → SCALAR | 0x4b2830 | 0 | 0 | 0 | 0 |
+| 1532 | `getSpeed` | binary | OBJECT · STRING → SCALAR | 0x56bf50 | 0 | 0 | 0 | 0 |
+| 1533 | `getStamina` | unary | OBJECT → SCALAR | 0x896a70 | 0 | 0 | 0 | 0 |
+| 1534 | `getSteamFriendsServers` | nular | → ARRAY | 0x89ea30 | 0 | 0 | 0 | 0 |
+| 1535 | `getTerrainGrid` | nular | → SCALAR | 0x8ab340 | 0 | 0 | 0 | 0 |
+| 1536 | `getTerrainHeight` | unary | ARRAY → SCALAR | 0x4b4090 | 0 | 0 | 0 | 0 |
+| 1537 | `getTerrainInfo` | nular | → ARRAY | 0x89ecf0 | 0 | 0 | 0 | 0 |
+| 1538 | `getTextureInfo` | unary | ARRAY → ARRAY<br>STRING → ARRAY | 0x4b4e30<br>0x4b4c50 | 0 | 0 | 0 | 0 |
+| 1539 | `getTIParameters` | nular | → HASHMAP | 0x89edd0 | 0 | 0 | 0 | 0 |
+| 1540 | `getTowParent` | unary | OBJECT → OBJECT | 0x1a5a90 | 0 | 0 | 0 | 0 |
+| 1541 | `getTrimOffsetRTD` | unary | OBJECT → ARRAY | 0x894440 | 0 | 0 | 0 | 0 |
+| 1542 | `getTurretLimits` | binary | OBJECT · ARRAY → ARRAY | 0x56c110 | 0 | 0 | 0 | 0 |
+| 1543 | `getTurretOpticsMode` | binary | OBJECT · ARRAY → NOTHING | 0x4b5d40 | 0 | 0 | 0 | 0 |
+| 1544 | `getTurretOpticsMode` | unary | OBJECT → ARRAY | 0x4b5e20 | 0 | 0 | 0 | 0 |
+| 1545 | `getUnitFreefallInfo` | unary | OBJECT → ARRAY | 0x4b67f0 | 0 | 0 | 0 | 0 |
+| 1546 | `getUnitMovesInfo` | binary | OBJECT · SCALAR → ANY | 0x4b68f0 | 0 | 0 | 0 | 0 |
+| 1547 | `getUnitMovesInfo` | unary | OBJECT → ARRAY | 0x4b6d20 | 0 | 0 | 0 | 0 |
+| 1548 | `getUnitState` | unary | OBJECT → STRING | 0x4b73a0 | 0 | 0 | 0 | 0 |
+| 1549 | `getUnloadInCombat` | unary | OBJECT → ARRAY | 0x56c930 | 0 | 0 | 0 | 0 |
+| 1550 | `getUserInfo` | binary | STRING · SCALAR → ANY | 0x4b1a00 | 0 | 0 | 0 | 0 |
+| 1551 | `getUserInfo` | unary | STRING → ARRAY | 0x4b14a0 | 0 | 0 | 0 | 0 |
+| 1552 | `getUserMFDText` | unary | OBJECT → ARRAY | 0x4b7750 | 0 | 0 | 0 | 0 |
+| 1553 | `getVideoOptions` | nular | → HASHMAP | 0x89f280 | 0 | 0 | 0 | 0 |
+| 1554 | `getWaterFillPercentage` | unary | OBJECT → SCALAR | 0x533da0 | 0 | 0 | 0 | 0 |
+| 1555 | `getWaterLeakiness` | unary | OBJECT → SCALAR | 0x533e30 | 0 | 0 | 0 | 0 |
+| 1556 | `getWeaponSway` | unary | OBJECT → SCALAR | 0x896b70 | 0 | 0 | 0 | 0 |
+| 1557 | `getWindletParams` | unary | OBJECT → ARRAY | 0x20c8b0 | 0 | 0 | 0 | 0 |
+| 1558 | `getWingsOrientationRTD` | unary | OBJECT → SCALAR | 0x894ca0 | 0 | 0 | 0 | 0 |
+| 1559 | `getWingsPositionRTD` | unary | OBJECT → SCALAR | 0x895090 | 0 | 0 | 0 | 0 |
+| 1560 | `goto` | unary | STRING → NOTHING | 0x10d3dd0 | 0 | 0 | 0 | 0 |
+| 1561 | `groupIconSelectable` | nular | → BOOL | 0x8af1b0 | 0 | 0 | 0 | 0 |
+| 1562 | `groups` | unary | SIDE → ARRAY | 0x1903c0 | 0 | 0 | 0 | 0 |
+| 1563 | `groupSelectUnit` | binary | OBJECT · ARRAY → NOTHING | 0x18ff90 | 0 | 0 | 0 | 0 |
+| 1564 | `gusts` | nular | → SCALAR | 0x8a9420 | 0 | 0 | 0 | 0 |
+| 1565 | `halt` | nular | → NOTHING | 0x2cf7b0 | 0 | 0 | 0 | 0 |
+| 1566 | `handsHit` | unary | OBJECT → SCALAR | 0x535370 | 0 | 0 | 0 | 0 |
+| 1567 | `hasCustomFace` | unary | OBJECT → BOOL | 0x4b94b0 | 0 | 0 | 0 | 0 |
+| 1568 | `hasPilotCamera` | unary | OBJECT → BOOL | 0x809170 | 0 | 0 | 0 | 0 |
+| 1569 | `hcGroupParams` | binary | OBJECT · GROUP → ARRAY | 0x1994c0 | 0 | 0 | 0 | 0 |
+| 1570 | `hcRemoveAllGroups` | unary | OBJECT → NOTHING | 0x199410 | 0 | 0 | 0 | 0 |
+| 1571 | `hcShowBar` | unary | BOOL → NOTHING | 0x199da0 | 0 | 0 | 0 | 0 |
+| 1572 | `hintC` | binary | STRING · ARRAY → NOTHING<br>STRING · STRING → NOTHING<br>STRING · TEXT → NOTHING | 0x55a520<br>0x55a540<br>0x55a520 | 0 | 0 | 0 | 0 |
+| 1573 | `hintCadet` | unary | TEXT\|STRING → NOTHING | 0x55aac0 | 0 | 0 | 0 | 0 |
+| 1574 | `hostMission` | unary | ARRAY → NOTHING | 0x4bad50 | 0 | 0 | 0 | 0 |
+| 1575 | `humidity` | nular | → SCALAR | 0x8a9b30 | 0 | 0 | 0 | 0 |
+| 1576 | `ignore3DENHistory` | unary | CODE → NOTHING | 0x7fcf90 | 0 | 0 | 0 | 0 |
+| 1577 | `ignoreTarget` | binary | OBJECT\|GROUP · OBJECT\|ARRAY → NOTHING | 0x1c8370 | 0 | 0 | 0 | 0 |
+| 1578 | `importAllGroups` | unary | CONTROL → NOTHING | 0x13ce7e0 | 0 | 0 | 0 | 0 |
+| 1579 | `importance` | unary | LOCATION → SCALAR | 0xd051f0 | 0 | 0 | 0 | 0 |
+| 1580 | `inAreaArrayIndexes` | binary | ARRAY · ARRAY → ARRAY<br>ARRAY · LOCATION → ARRAY<br>ARRAY · OBJECT → ARRAY<br>ARRAY · STRING → ARRAY | 0x4bc060<br>0xd01430<br>0x4bc850<br>0x4bc4c0 | 0 | 0 | 0 | 0 |
+| 1581 | `incapacitatedState` | unary | OBJECT → STRING | 0x52c3e0 | 0 | 0 | 0 | 0 |
+| 1582 | `inflamed` | unary | OBJECT → BOOL | 0x535720 | 0 | 0 | 0 | 0 |
+| 1583 | `infoPanelComponentEnabled` | binary | OBJECT\|ARRAY · ARRAY → BOOL | 0x518bb0 | 0 | 0 | 0 | 0 |
+| 1584 | `infoPanelComponents` | binary | OBJECT\|ARRAY · STRING → ARRAY | 0x51e530 | 0 | 0 | 0 | 0 |
+| 1585 | `infoPanels` | unary | OBJECT\|ARRAY → ARRAY | 0x51e620 | 0 | 0 | 0 | 0 |
+| 1586 | `inputController` | unary | SCALAR → SCALAR | 0x8ce610 | 0 | 0 | 0 | 0 |
+| 1587 | `inputMouse` | unary | SCALAR → SCALAR<br>STRING → BOOL | 0x8ce6a0<br>0x8ce770 | 0 | 0 | 0 | 0 |
+| 1588 | `insertEditorObject` | binary | CONTROL · ARRAY → STRING | 0x13ce840 | 0 | 0 | 0 | 0 |
+| 1589 | `insideBuilding` | unary | OBJECT → SCALAR | 0x4a3a70 | 0 | 0 | 0 | 0 |
+| 1590 | `intersect` | binary | ARRAY · ARRAY → ARRAY | 0x543770 | 0 | 0 | 0 | 0 |
+| 1591 | `isActionMenuVisible` | nular | → BOOL | 0x899280 | 0 | 0 | 0 | 0 |
+| 1592 | `isAgent` | unary | TEAM_MEMBER → BOOL | 0x197330 | 0 | 0 | 0 | 0 |
+| 1593 | `isAimPrecisionEnabled` | unary | OBJECT → BOOL | 0x896c00 | 0 | 0 | 0 | 0 |
+| 1594 | `isAISteeringComponentEnabled` | unary | OBJECT → BOOL | 0x535780 | 0 | 0 | 0 | 0 |
+| 1595 | `isAllowedCrewInImmobile` | unary | OBJECT → BOOL | 0x515a50 | 0 | 0 | 0 | 0 |
+| 1596 | `isAutoStartUpEnabledRTD` | unary | OBJECT → ARRAY | 0x895480 | 0 | 0 | 0 | 0 |
+| 1597 | `isAutoTrimOnRTD` | unary | OBJECT → BOOL | 0x8954e0 | 0 | 0 | 0 | 0 |
+| 1598 | `isAwake` | unary | OBJECT → BOOL | 0x1a5b90 | 0 | 0 | 0 | 0 |
+| 1599 | `isBleeding` | unary | OBJECT → BOOL | 0x535850 | 0 | 0 | 0 | 0 |
+| 1600 | `isCollisionLightOn` | unary | OBJECT → BOOL | 0x56cbd0 | 0 | 0 | 0 | 0 |
+| 1601 | `isCopilotEnabled` | unary | OBJECT → BOOL | 0x515b70 | 0 | 0 | 0 | 0 |
+| 1602 | `isFilePatchingEnabled` | nular | → BOOL | 0x8a2c50 | 0 | 0 | 0 | 0 |
+| 1603 | `isFinal` | unary | ANY → BOOL (partial) | 0x2d7de0 | 0 | 0 | 0 | 0 |
+| 1604 | `isFlashlightOn` | binary | OBJECT · STRING → BOOL | 0x8429e0 | 0 | 0 | 0 | 0 |
+| 1605 | `isForcedWalk` | unary | OBJECT → BOOL | 0x517340 | 0 | 0 | 0 | 0 |
+| 1606 | `isGroupDeletedWhenEmpty` | unary | GROUP → BOOL | 0x192880 | 0 | 0 | 0 | 0 |
+| 1607 | `isInRemainsCollector` | unary | OBJECT → BOOL | 0x5179a0 | 0 | 0 | 0 | 0 |
+| 1608 | `isIRLaserOn` | binary | OBJECT · STRING → BOOL | 0x842a20 | 0 | 0 | 0 | 0 |
+| 1609 | `isLaserOn` | binary | OBJECT · ARRAY → BOOL | 0x56ce10 | 0 | 0 | 0 | 0 |
+| 1610 | `isLaserOn` | unary | OBJECT → BOOL | 0x56cd80 | 0 | 0 | 0 | 0 |
+| 1611 | `isMarkedForCollection` | unary | OBJECT → BOOL | 0x535a30 | 0 | 0 | 0 | 0 |
+| 1612 | `isObjectRTD` | unary | OBJECT → BOOL | 0x895540 | 0 | 0 | 0 | 0 |
+| 1613 | `isRealTime` | unary | CONTROL → BOOL | 0x13ced80 | 0 | 0 | 0 | 0 |
+| 1614 | `isRemoteControlling` | unary | OBJECT → BOOL | 0x518600 | 0 | 0 | 0 | 0 |
+| 1615 | `isSaving` | nular | → BOOL | 0x89a940 | 0 | 0 | 0 | 0 |
+| 1616 | `isSensorTargetConfirmed` | binary | OBJECT · SIDE → BOOL | 0x1c8a30 | 0 | 0 | 0 | 0 |
+| 1617 | `isShowing3DIcons` | unary | CONTROL → BOOL | 0x13cee00 | 0 | 0 | 0 | 0 |
+| 1618 | `isSprintAllowed` | unary | OBJECT → BOOL | 0x535c40 | 0 | 0 | 0 | 0 |
+| 1619 | `isStaminaEnabled` | unary | OBJECT → BOOL | 0x896c60 | 0 | 0 | 0 | 0 |
+| 1620 | `isSteamMission` | nular | → BOOL | 0x1c2990 | 0 | 0 | 0 | 0 |
+| 1621 | `isSteamOverlayEnabled` | nular | → BOOL | 0x8a2e70 | 0 | 0 | 0 | 0 |
+| 1622 | `isStressDamageEnabled` | nular | → BOOL | 0x895640 | 0 | 0 | 0 | 0 |
+| 1623 | `isSwitchingWeapon` | unary | OBJECT → STRING | 0x51f420 | 0 | 0 | 0 | 0 |
+| 1624 | `isThrowable` | unary | STRING → BOOL | 0x518780 | 0 | 0 | 0 | 0 |
+| 1625 | `isTurnedOut` | unary | OBJECT → BOOL | 0x518840 | 0 | 0 | 0 | 0 |
+| 1626 | `isUsingAISteeringComponent` | nular | → BOOL | 0x8aef40 | 0 | 0 | 0 | 0 |
+| 1627 | `isVehicleSensorEnabled` | binary | OBJECT · STRING → ARRAY | 0x1c8b50 | 0 | 0 | 0 | 0 |
+| 1628 | `isWalking` | unary | OBJECT → BOOL | 0x518f30 | 0 | 0 | 0 | 0 |
+| 1629 | `kbAddDatabase` | binary | OBJECT · STRING → BOOL | 0x519000 | 0 | 0 | 0 | 0 |
+| 1630 | `kbAddDatabaseTargets` | binary | OBJECT · STRING → BOOL | 0x519000 | 0 | 0 | 0 | 0 |
+| 1631 | `kbReact` | binary | OBJECT · ARRAY → NOTHING | 0x5196e0 | 0 | 0 | 0 | 0 |
+| 1632 | `keyImage` | unary | STRING\|SCALAR → TEXT | 0x4a3b30 | 0 | 0 | 0 | 0 |
+| 1633 | `kick` | unary | STRING\|SCALAR → NOTHING | 0x176210 | 0 | 0 | 0 | 0 |
+| 1634 | `landAt` | binary | OBJECT · ARRAY → BOOL<br>OBJECT · OBJECT\|SCALAR → NOTHING | 0x4b9ba0<br>0x536440 | 0 | 0 | 0 | 0 |
+| 1635 | `landAt` | unary | OBJECT → ARRAY | 0x4ba150 | 0 | 0 | 0 | 0 |
+| 1636 | `laserTarget` | binary | OBJECT · ARRAY → OBJECT | 0x4a40b0 | 0 | 0 | 0 | 0 |
+| 1637 | `lbAdd` | unary | ARRAY → SCALAR | 0x8daf00 | 0 | 0 | 0 | 0 |
+| 1638 | `lbColor` | unary | ARRAY → ARRAY | 0x8db3e0 | 0 | 0 | 0 | 0 |
+| 1639 | `lbColorRight` | binary | CONTROL · SCALAR → ARRAY | 0x8ddbb0 | 0 | 0 | 0 | 0 |
+| 1640 | `lbColorRight` | unary | ARRAY → ARRAY | 0x8db400 | 0 | 0 | 0 | 0 |
+| 1641 | `lbData` | unary | ARRAY → STRING | 0x8db4c0 | 0 | 0 | 0 | 0 |
+| 1642 | `lbDelete` | unary | ARRAY → NOTHING | 0x8db150 | 0 | 0 | 0 | 0 |
+| 1643 | `lbIsSelected` | binary | CONTROL · SCALAR → BOOL | 0x8de420 | 0 | 0 | 0 | 0 |
+| 1644 | `lbPicture` | unary | ARRAY → STRING | 0x8db710 | 0 | 0 | 0 | 0 |
+| 1645 | `lbPictureRight` | binary | CONTROL · SCALAR → STRING | 0x8dde50 | 0 | 0 | 0 | 0 |
+| 1646 | `lbPictureRight` | unary | ARRAY → STRING | 0x8db730 | 0 | 0 | 0 | 0 |
+| 1647 | `lbSelection` | unary | CONTROL → ARRAY | 0x8dde70 | 0 | 0 | 0 | 0 |
+| 1648 | `lbSetColor` | unary | ARRAY → NOTHING | 0x8dbf60 | 0 | 0 | 0 | 0 |
+| 1649 | `lbSetColorRight` | unary | ARRAY → NOTHING | 0x8dbf80 | 0 | 0 | 0 | 0 |
+| 1650 | `lbSetCurSel` | unary | ARRAY → NOTHING | 0x8dbfa0 | 0 | 0 | 0 | 0 |
+| 1651 | `lbSetData` | unary | ARRAY → NOTHING | 0x8dc0f0 | 0 | 0 | 0 | 0 |
+| 1652 | `lbSetPicture` | unary | ARRAY → NOTHING | 0x8dc9f0 | 0 | 0 | 0 | 0 |
+| 1653 | `lbSetPictureColor` | unary | ARRAY → NOTHING | 0x8dc5f0 | 0 | 0 | 0 | 0 |
+| 1654 | `lbSetPictureColorDisabled` | binary | CONTROL · ARRAY → NOTHING | 0x8dec10 | 0 | 0 | 0 | 0 |
+| 1655 | `lbSetPictureColorDisabled` | unary | ARRAY → NOTHING | 0x8dc7a0 | 0 | 0 | 0 | 0 |
+| 1656 | `lbSetPictureColorSelected` | unary | ARRAY → NOTHING | 0x8dc9c0 | 0 | 0 | 0 | 0 |
+| 1657 | `lbSetPictureRight` | unary | ARRAY → NOTHING | 0x8dca10 | 0 | 0 | 0 | 0 |
+| 1658 | `lbSetPictureRightColorDisabled` | binary | CONTROL · ARRAY → NOTHING | 0x8dece0 | 0 | 0 | 0 | 0 |
+| 1659 | `lbSetSelectColor` | unary | ARRAY → NOTHING | 0x8dcc00 | 0 | 0 | 0 | 0 |
+| 1660 | `lbSetSelectColorRight` | binary | CONTROL · ARRAY → NOTHING | 0x8dee90 | 0 | 0 | 0 | 0 |
+| 1661 | `lbSetSelectColorRight` | unary | ARRAY → NOTHING | 0x8dcc20 | 0 | 0 | 0 | 0 |
+| 1662 | `lbSetSelected` | binary | CONTROL · ARRAY → NOTHING | 0x8deeb0 | 0 | 0 | 0 | 0 |
+| 1663 | `lbSetText` | unary | ARRAY → STRING | 0x8dcc40 | 0 | 0 | 0 | 0 |
+| 1664 | `lbSetTooltip` | unary | ARRAY → NOTHING | 0x8dce40 | 0 | 0 | 0 | 0 |
+| 1665 | `lbSetValue` | unary | ARRAY → NOTHING | 0x8dd030 | 0 | 0 | 0 | 0 |
+| 1666 | `lbSortBy` | binary | CONTROL\|SCALAR · ARRAY → NOTHING | 0x8df810 | 0 | 0 | 0 | 0 |
+| 1667 | `lbTextRight` | unary | ARRAY → STRING | 0x8db9d0 | 0 | 0 | 0 | 0 |
+| 1668 | `lbTooltip` | binary | CONTROL · SCALAR → STRING | 0x8de200 | 0 | 0 | 0 | 0 |
+| 1669 | `lbTooltip` | unary | ARRAY → STRING | 0x8db9f0 | 0 | 0 | 0 | 0 |
+| 1670 | `lbValue` | unary | ARRAY → SCALAR | 0x8dbc10 | 0 | 0 | 0 | 0 |
+| 1671 | `leaderboardsRequestUploadScore` | unary | ARRAY → BOOL | 0x1c3510 | 0 | 0 | 0 | 0 |
+| 1672 | `libraryDisclaimers` | nular | → ARRAY | 0x8aff50 | 0 | 0 | 0 | 0 |
+| 1673 | `lightDetachObject` | unary | OBJECT → NOTHING | 0x51b330 | 0 | 0 | 0 | 0 |
+| 1674 | `lightnings` | nular | → SCALAR | 0x8a9b80 | 0 | 0 | 0 | 0 |
+| 1675 | `listObjects` | binary | CONTROL · STRING → ARRAY | 0x13cee70 | 0 | 0 | 0 | 0 |
+| 1676 | `listRemoteTargets` | unary | SIDE → ARRAY | 0x1c8c70 | 0 | 0 | 0 | 0 |
+| 1677 | `listVehicleSensors` | unary | OBJECT → ARRAY | 0x1c8d40 | 0 | 0 | 0 | 0 |
+| 1678 | `lnbAddArray` | unary | ARRAY → SCALAR | 0x8e0010 | 0 | 0 | 0 | 0 |
+| 1679 | `lnbAddColumn` | binary | CONTROL · SCALAR → SCALAR | 0x8e4480 | 0 | 0 | 0 | 0 |
+| 1680 | `lnbAddColumn` | unary | ARRAY → SCALAR | 0x8e09a0 | 0 | 0 | 0 | 0 |
+| 1681 | `lnbAddRow` | unary | ARRAY → SCALAR | 0x8e0b10 | 0 | 0 | 0 | 0 |
+| 1682 | `lnbColor` | binary | CONTROL · ARRAY → ARRAY | 0x8e4a40 | 0 | 0 | 0 | 0 |
+| 1683 | `lnbColor` | unary | ARRAY → ARRAY | 0x8e13d0 | 0 | 0 | 0 | 0 |
+| 1684 | `lnbColorRight` | binary | CONTROL · ARRAY → ARRAY | 0x8e4a60 | 0 | 0 | 0 | 0 |
+| 1685 | `lnbColorRight` | unary | ARRAY → ARRAY | 0x8e13f0 | 0 | 0 | 0 | 0 |
+| 1686 | `lnbData` | unary | ARRAY → STRING | 0x8e1540 | 0 | 0 | 0 | 0 |
+| 1687 | `lnbDeleteColumn` | binary | CONTROL · SCALAR → NOTHING | 0x8e4790 | 0 | 0 | 0 | 0 |
+| 1688 | `lnbDeleteColumn` | unary | ARRAY → NOTHING | 0x8e0e60 | 0 | 0 | 0 | 0 |
+| 1689 | `lnbDeleteRow` | unary | ARRAY → NOTHING | 0x8e0fd0 | 0 | 0 | 0 | 0 |
+| 1690 | `lnbPicture` | binary | CONTROL · ARRAY → STRING | 0x8e4f80 | 0 | 0 | 0 | 0 |
+| 1691 | `lnbPicture` | unary | ARRAY → STRING | 0x8e1be0 | 0 | 0 | 0 | 0 |
+| 1692 | `lnbPictureRight` | binary | CONTROL · ARRAY → STRING | 0x8e4fa0 | 0 | 0 | 0 | 0 |
+| 1693 | `lnbPictureRight` | unary | ARRAY → STRING | 0x8e1c00 | 0 | 0 | 0 | 0 |
+| 1694 | `lnbSetColor` | unary | ARRAY → NOTHING | 0x8e2640 | 0 | 0 | 0 | 0 |
+| 1695 | `lnbSetColorRight` | binary | CONTROL · ARRAY → NOTHING | 0x8e55e0 | 0 | 0 | 0 | 0 |
+| 1696 | `lnbSetColorRight` | unary | ARRAY → NOTHING | 0x8e2660 | 0 | 0 | 0 | 0 |
+| 1697 | `lnbSetColumnsPos` | unary | ARRAY → NOTHING | 0x8e2680 | 0 | 0 | 0 | 0 |
+| 1698 | `lnbSetCurSelRow` | unary | ARRAY → NOTHING | 0x8e2960 | 0 | 0 | 0 | 0 |
+| 1699 | `lnbSetData` | unary | ARRAY → NOTHING | 0x8e2ae0 | 0 | 0 | 0 | 0 |
+| 1700 | `lnbSetPicture` | unary | ARRAY → NOTHING | 0x8e3700 | 0 | 0 | 0 | 0 |
+| 1701 | `lnbSetPictureColor` | unary | ARRAY → NOTHING | 0x8e3640 | 0 | 0 | 0 | 0 |
+| 1702 | `lnbSetPictureColorRight` | binary | CONTROL · ARRAY → NOTHING | 0x8e6710 | 0 | 0 | 0 | 0 |
+| 1703 | `lnbSetPictureColorRight` | unary | ARRAY → NOTHING | 0x8e3670 | 0 | 0 | 0 | 0 |
+| 1704 | `lnbSetPictureColorSelected` | unary | ARRAY → NOTHING | 0x8e36a0 | 0 | 0 | 0 | 0 |
+| 1705 | `lnbSetPictureColorSelectedRight` | binary | CONTROL · ARRAY → NOTHING | 0x8e6770 | 0 | 0 | 0 | 0 |
+| 1706 | `lnbSetPictureColorSelectedRight` | unary | ARRAY → NOTHING | 0x8e36d0 | 0 | 0 | 0 | 0 |
+| 1707 | `lnbSetPictureRight` | binary | CONTROL · ARRAY → NOTHING | 0x8e67c0 | 0 | 0 | 0 | 0 |
+| 1708 | `lnbSetPictureRight` | unary | ARRAY → NOTHING | 0x8e3720 | 0 | 0 | 0 | 0 |
+| 1709 | `lnbSetText` | unary | ARRAY → NOTHING | 0x8e3a50 | 0 | 0 | 0 | 0 |
+| 1710 | `lnbSetTextRight` | binary | CONTROL · ARRAY → NOTHING | 0x8e6aa0 | 0 | 0 | 0 | 0 |
+| 1711 | `lnbSetTextRight` | unary | ARRAY → NOTHING | 0x8e3a70 | 0 | 0 | 0 | 0 |
+| 1712 | `lnbSetTooltip` | unary | ARRAY → NOTHING | 0x8e2de0 | 0 | 0 | 0 | 0 |
+| 1713 | `lnbSetValue` | unary | ARRAY → NOTHING | 0x8e3d70 | 0 | 0 | 0 | 0 |
+| 1714 | `lnbSort` | unary | ARRAY → NOTHING | 0x8e4030 | 0 | 0 | 0 | 0 |
+| 1715 | `lnbSortBy` | binary | ARRAY · ARRAY → NOTHING | 0x8e6da0 | 0 | 0 | 0 | 0 |
+| 1716 | `lnbSortByValue` | binary | CONTROL · ARRAY → NOTHING | 0x8e7110 | 0 | 0 | 0 | 0 |
+| 1717 | `lnbSortByValue` | unary | ARRAY → NOTHING | 0x8e4050 | 0 | 0 | 0 | 0 |
+| 1718 | `lnbText` | unary | ARRAY → STRING | 0x8e20e0 | 0 | 0 | 0 | 0 |
+| 1719 | `lnbTextRight` | binary | CONTROL · ARRAY → STRING | 0x8e5220 | 0 | 0 | 0 | 0 |
+| 1720 | `lnbTextRight` | unary | ARRAY → STRING | 0x8e2100 | 0 | 0 | 0 | 0 |
+| 1721 | `lnbValue` | unary | ARRAY → SCALAR | 0x8e2120 | 0 | 0 | 0 | 0 |
+| 1722 | `load3DENScenario` | unary | STRING → BOOL | 0x7ff250 | 0 | 0 | 0 | 0 |
+| 1723 | `loadConfig` | unary | STRING → CONFIG | 0x813470 | 0 | 0 | 0 | 0 |
+| 1724 | `loadCuratorSelectionPreset` | unary | SCALAR → NOTHING | 0x82ae00 | 0 | 0 | 0 | 0 |
+| 1725 | `loadIdentity` | binary | OBJECT · STRING → BOOL | 0x8b6af0 | 0 | 0 | 0 | 0 |
+| 1726 | `loadMagazine` | binary | OBJECT · ARRAY → NOTHING | 0x51e8c0 | 0 | 0 | 0 | 0 |
+| 1727 | `loadOverlay` | binary | CONTROL · CONFIG → NOTHING | 0x13cf9c0 | 0 | 0 | 0 | 0 |
+| 1728 | `lock` | unary | BOOL → NOTHING | 0x176420 | 0 | 0 | 0 | 0 |
+| 1729 | `lockedCameraTo` | binary | OBJECT · ARRAY → ?\|ARRAY | 0x52c800 | 0 | 0 | 0 | 0 |
+| 1730 | `lockedInventory` | unary | OBJECT → BOOL | 0x84d740 | 0 | 0 | 0 | 0 |
+| 1731 | `lockWp` | binary | OBJECT\|GROUP · BOOL → NOTHING | 0x1911a0 | 0 | 0 | 0 | 0 |
+| 1732 | `logEntities` | nular | → NOTHING | 0x8b0290 | 0 | 0 | 0 | 0 |
+| 1733 | `logNetwork` | unary | ARRAY → SCALAR | 0x18b0a0 | 0 | 0 | 0 | 0 |
+| 1734 | `logNetworkTerminate` | unary | SCALAR → NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
+| 1735 | `lookAtPos` | binary | CONTROL · ARRAY → NOTHING | 0x13cf1b0 | 0 | 0 | 0 | 0 |
+| 1736 | `magazinesDetail` | unary | OBJECT\|ARRAY → ARRAY | 0x83dfd0 | 0 | 0 | 0 | 0 |
+| 1737 | `magazinesDetailBackpack` | unary | OBJECT\|ARRAY → ARRAY | 0x83e000 | 0 | 0 | 0 | 0 |
+| 1738 | `magazinesDetailUniform` | unary | OBJECT\|ARRAY → ARRAY | 0x83e030 | 0 | 0 | 0 | 0 |
+| 1739 | `magazinesDetailVest` | unary | OBJECT\|ARRAY → ARRAY | 0x83e060 | 0 | 0 | 0 | 0 |
+| 1740 | `mapAnimClear` | nular | → NOTHING | 0x8b02d0 | 0 | 0 | 0 | 0 |
+| 1741 | `mapAnimDone` | nular | → BOOL | 0x8b03f0 | 0 | 0 | 0 | 0 |
+| 1742 | `mapCenterOnCamera` | binary | CONTROL · BOOL → ARRAY | 0x8e7290 | 0 | 0 | 0 | 0 |
+| 1743 | `mapCenterOnCamera` | unary | CONTROL → ARRAY | 0x8e7320 | 0 | 0 | 0 | 0 |
+| 1744 | `maxLoad` | unary | OBJECT → SCALAR | 0x841080 | 0 | 0 | 0 | 0 |
+| 1745 | `members` | unary | TEAM_MEMBER → ARRAY | 0x197070 | 0 | 0 | 0 | 0 |
+| 1746 | `menuAction` | binary | CONTROL · ARRAY → STRING | 0x8533e0 | 0 | 0 | 0 | 0 |
+| 1747 | `menuAction` | unary | ARRAY → STRING | 0x853510 | 0 | 0 | 0 | 0 |
+| 1748 | `menuAdd` | binary | CONTROL · ARRAY → SCALAR | 0x8525a0 | 0 | 0 | 0 | 0 |
+| 1749 | `menuAdd` | unary | ARRAY → SCALAR | 0x852730 | 0 | 0 | 0 | 0 |
+| 1750 | `menuChecked` | binary | CONTROL · ARRAY → BOOL | 0x856810 | 0 | 0 | 0 | 0 |
+| 1751 | `menuChecked` | unary | ARRAY → BOOL | 0x856940 | 0 | 0 | 0 | 0 |
+| 1752 | `menuClear` | unary | CONTROL → NOTHING<br>SCALAR → NOTHING | 0x856ca0<br>0x856d80 | 0 | 0 | 0 | 0 |
+| 1753 | `menuCollapse` | binary | CONTROL · ARRAY → NOTHING | 0x852920 | 0 | 0 | 0 | 0 |
+| 1754 | `menuCollapse` | unary | ARRAY → NOTHING | 0x852a40 | 0 | 0 | 0 | 0 |
+| 1755 | `menuData` | unary | ARRAY → STRING | 0x853770 | 0 | 0 | 0 | 0 |
+| 1756 | `menuDelete` | binary | CONTROL · ARRAY → NOTHING | 0x852b60 | 0 | 0 | 0 | 0 |
+| 1757 | `menuDelete` | unary | ARRAY → NOTHING | 0x852ca0 | 0 | 0 | 0 | 0 |
+| 1758 | `menuEnable` | binary | CONTROL · ARRAY → NOTHING | 0x852dd0 | 0 | 0 | 0 | 0 |
+| 1759 | `menuEnable` | unary | ARRAY → NOTHING | 0x852fe0 | 0 | 0 | 0 | 0 |
+| 1760 | `menuEnabled` | binary | CONTROL · ARRAY → BOOL | 0x856a60 | 0 | 0 | 0 | 0 |
+| 1761 | `menuEnabled` | unary | ARRAY → BOOL | 0x856b80 | 0 | 0 | 0 | 0 |
+| 1762 | `menuExpand` | binary | CONTROL · ARRAY → NOTHING | 0x853180 | 0 | 0 | 0 | 0 |
+| 1763 | `menuExpand` | unary | ARRAY → NOTHING | 0x8532b0 | 0 | 0 | 0 | 0 |
+| 1764 | `menuPicture` | binary | CONTROL · ARRAY → STRING | 0x8538a0 | 0 | 0 | 0 | 0 |
+| 1765 | `menuPicture` | unary | ARRAY → STRING | 0x8539d0 | 0 | 0 | 0 | 0 |
+| 1766 | `menuSetAction` | binary | CONTROL · ARRAY → NOTHING | 0x8573a0 | 0 | 0 | 0 | 0 |
+| 1767 | `menuSetAction` | unary | ARRAY → NOTHING | 0x857530 | 0 | 0 | 0 | 0 |
+| 1768 | `menuSetCheck` | binary | CONTROL · ARRAY → NOTHING | 0x857700 | 0 | 0 | 0 | 0 |
+| 1769 | `menuSetCheck` | unary | ARRAY → NOTHING | 0x857890 | 0 | 0 | 0 | 0 |
+| 1770 | `menuSetData` | binary | CONTROL · ARRAY → NOTHING | 0x857aa0 | 0 | 0 | 0 | 0 |
+| 1771 | `menuSetData` | unary | ARRAY → NOTHING | 0x857c30 | 0 | 0 | 0 | 0 |
+| 1772 | `menuSetPicture` | binary | CONTROL · ARRAY → NOTHING | 0x857da0 | 0 | 0 | 0 | 0 |
+| 1773 | `menuSetPicture` | unary | ARRAY → NOTHING | 0x8580e0 | 0 | 0 | 0 | 0 |
+| 1774 | `menuSetShortcut` | binary | CONTROL · ARRAY → NOTHING | 0x8583f0 | 0 | 0 | 0 | 0 |
+| 1775 | `menuSetShortcut` | unary | ARRAY → NOTHING | 0x858580 | 0 | 0 | 0 | 0 |
+| 1776 | `menuSetText` | binary | CONTROL · ARRAY → NOTHING | 0x858760 | 0 | 0 | 0 | 0 |
+| 1777 | `menuSetText` | unary | ARRAY → NOTHING | 0x8588f0 | 0 | 0 | 0 | 0 |
+| 1778 | `menuSetURL` | binary | CONTROL · ARRAY → NOTHING | 0x858b70 | 0 | 0 | 0 | 0 |
+| 1779 | `menuSetURL` | unary | ARRAY → NOTHING | 0x858d00 | 0 | 0 | 0 | 0 |
+| 1780 | `menuSetValue` | binary | CONTROL · ARRAY → NOTHING | 0x858e70 | 0 | 0 | 0 | 0 |
+| 1781 | `menuSetValue` | unary | ARRAY → NOTHING | 0x859000 | 0 | 0 | 0 | 0 |
+| 1782 | `menuShortcut` | binary | CONTROL · ARRAY → SCALAR | 0x853b00 | 0 | 0 | 0 | 0 |
+| 1783 | `menuShortcut` | unary | ARRAY → SCALAR | 0x853c20 | 0 | 0 | 0 | 0 |
+| 1784 | `menuShortcutText` | unary | ARRAY → STRING | 0x853ee0 | 0 | 0 | 0 | 0 |
+| 1785 | `menuSize` | unary | ARRAY → SCALAR | 0x854120 | 0 | 0 | 0 | 0 |
+| 1786 | `menuSort` | binary | CONTROL · ARRAY → NOTHING | 0x859170 | 0 | 0 | 0 | 0 |
+| 1787 | `menuSort` | unary | ARRAY → NOTHING | 0x859310 | 0 | 0 | 0 | 0 |
+| 1788 | `menuText` | binary | CONTROL · ARRAY → STRING | 0x854240 | 0 | 0 | 0 | 0 |
+| 1789 | `menuText` | unary | ARRAY → STRING | 0x854370 | 0 | 0 | 0 | 0 |
+| 1790 | `menuURL` | binary | CONTROL · ARRAY → STRING | 0x854490 | 0 | 0 | 0 | 0 |
+| 1791 | `menuURL` | unary | ARRAY → STRING | 0x8545c0 | 0 | 0 | 0 | 0 |
+| 1792 | `menuValue` | binary | CONTROL · ARRAY → SCALAR | 0x8546e0 | 0 | 0 | 0 | 0 |
+| 1793 | `menuValue` | unary | ARRAY → SCALAR | 0x854800 | 0 | 0 | 0 | 0 |
+| 1794 | `mineDetectedBy` | binary | OBJECT · SIDE → BOOL | 0x518440 | 0 | 0 | 0 | 0 |
+| 1795 | `missileState` | unary | OBJECT → ARRAY | 0x4a6440 | 0 | 0 | 0 | 0 |
+| 1796 | `missileTargetPos` | unary | OBJECT → ARRAY | 0x4a6630 | 0 | 0 | 0 | 0 |
+| 1797 | `missionDifficulty` | nular | → SCALAR | 0x89cd50 | 0 | 0 | 0 | 0 |
+| 1798 | `missionStart` | nular | → ARRAY | 0x8b0c50 | 0 | 0 | 0 | 0 |
+| 1799 | `missionVersion` | nular | → SCALAR | 0x8b0e60 | 0 | 0 | 0 | 0 |
+| 1800 | `moonIntensity` | nular | → SCALAR | 0x8a9bf0 | 0 | 0 | 0 | 0 |
+| 1801 | `morale` | unary | OBJECT → SCALAR | 0x537600 | 0 | 0 | 0 | 0 |
+| 1802 | `moveObjectToEnd` | binary | CONTROL · STRING → NOTHING | 0x13cf300 | 0 | 0 | 0 | 0 |
+| 1803 | `moveOut` | binary | OBJECT · OBJECT → NOTHING | 0x538510 | 0 | 0 | 0 | 0 |
+| 1804 | `moveTime` | unary | OBJECT → SCALAR | 0x52cf50 | 0 | 0 | 0 | 0 |
+| 1805 | `moveToFailed` | unary | OBJECT → BOOL | 0x47de70 | 0 | 0 | 0 | 0 |
+| 1806 | `namedProperties` | binary | OBJECT · ARRAY → HASHMAP | 0x4aca60 | 0 | 0 | 0 | 0 |
+| 1807 | `namedProperties` | unary | OBJECT → ARRAY | 0x4ac820 | 0 | 0 | 0 | 0 |
+| 1808 | `nearestLocationWithDubbing` | unary | ARRAY → LOCATION | 0xd04d30 | 0 | 0 | 0 | 0 |
+| 1809 | `nearestMines` | unary | ARRAY → ARRAY | 0x4a92c0 | 0 | 0 | 0 | 0 |
+| 1810 | `nearObjectsReady` | binary | OBJECT\|ARRAY · SCALAR → BOOL | 0x4a8d70 | 0 | 0 | 0 | 0 |
+| 1811 | `nearSupplies` | binary | OBJECT\|ARRAY · SCALAR\|ARRAY → ARRAY | 0x4a8fd0 | 0 | 0 | 0 | 0 |
+| 1812 | `needReload` | binary | OBJECT · STRING → SCALAR | 0x56b430 | 0 | 0 | 0 | 0 |
+| 1813 | `needService` | unary | OBJECT → ARRAY | 0x56d720 | 0 | 0 | 0 | 0 |
+| 1814 | `netObjNull` | nular | → NetObject | 0x522c40 | 0 | 0 | 0 | 0 |
+| 1815 | `newOverlay` | binary | CONTROL · CONFIG → NOTHING | 0x13cfd50 | 0 | 0 | 0 | 0 |
+| 1816 | `nextMenuItemIndex` | unary | CONTROL → SCALAR | 0x13cf450 | 0 | 0 | 0 | 0 |
+| 1817 | `nextWeatherChange` | nular | → SCALAR | 0x8a9c90 | 0 | 0 | 0 | 0 |
+| 1818 | `nMenuItems` | binary | CONTROL · STRING\|SCALAR → SCALAR | 0x13cdaf0 | 0 | 0 | 0 | 0 |
+| 1819 | `numberOfEnginesRTD` | unary | OBJECT → SCALAR | 0x893dc0 | 0 | 0 | 0 | 0 |
+| 1820 | `numberOfFiles` | unary | SCALAR → SCALAR | 0x1764b0 | 0 | 0 | 0 | 0 |
+| 1821 | `objStatus` | binary | STRING · STRING → NOTHING | 0x554070 | 0 | 0 | 0 | 0 |
+| 1822 | `onBriefingGroup` | unary | STRING → NOTHING | 0x180f70 | 0 | 0 | 0 | 0 |
+| 1823 | `onBriefingNotes` | unary | STRING → NOTHING | 0x180ff0 | 0 | 0 | 0 | 0 |
+| 1824 | `onBriefingPlan` | unary | STRING → NOTHING | 0x181070 | 0 | 0 | 0 | 0 |
+| 1825 | `onBriefingTeamSwitch` | unary | STRING → NOTHING | 0x1810f0 | 0 | 0 | 0 | 0 |
+| 1826 | `onDoubleClick` | binary | CONTROL · STRING → ANY | 0x13cf4f0 | 0 | 0 | 0 | 0 |
+| 1827 | `onPlayerConnected` | unary | CODE\|STRING → NOTHING | 0x183e10 | 0 | 0 | 0 | 0 |
+| 1828 | `onPlayerDisconnected` | unary | CODE\|STRING → NOTHING | 0x183e70 | 0 | 0 | 0 | 0 |
+| 1829 | `onPreloadStarted` | unary | CODE\|STRING → NOTHING | 0x183f30 | 0 | 0 | 0 | 0 |
+| 1830 | `onShowNewObject` | binary | CONTROL · STRING → ANY | 0x13cf6b0 | 0 | 0 | 0 | 0 |
+| 1831 | `openGPS` | unary | BOOL → BOOL | 0x55ae50 | 0 | 0 | 0 | 0 |
+| 1832 | `overcastForecast` | nular | → SCALAR | 0x8a9dd0 | 0 | 0 | 0 | 0 |
+| 1833 | `parentAttached` | unary | OBJECT → OBJECT | 0x1a64c0 | 0 | 0 | 0 | 0 |
+| 1834 | `particlesQuality` | nular | → SCALAR | 0x8a9e00 | 0 | 0 | 0 | 0 |
+| 1835 | `periscopeElevation` | binary | OBJECT · ARRAY → NOTHING | 0x56b140 | 0 | 0 | 0 | 0 |
+| 1836 | `pickWeaponPool` | unary | OBJECT → NOTHING | 0x8b91a0 | 0 | 0 | 0 | 0 |
+| 1837 | `playGesture` | binary | OBJECT · STRING → NOTHING | 0x538b60 | 0 | 0 | 0 | 0 |
+| 1838 | `pose` | unary | OBJECT → STRING | 0x530410 | 0 | 0 | 0 | 0 |
+| 1839 | `preloadSound` | unary | STRING → BOOL | 0x55c000 | 0 | 0 | 0 | 0 |
+| 1840 | `preloadTitleObj` | unary | ARRAY → BOOL | 0x494400 | 0 | 0 | 0 | 0 |
+| 1841 | `priority` | unary | TASK → SCALAR | 0xe0a8e0 | 0 | 0 | 0 | 0 |
+| 1842 | `putWeaponPool` | unary | OBJECT → NOTHING | 0x8b8f40 | 0 | 0 | 0 | 0 |
+| 1843 | `queryItemsPool` | unary | STRING → SCALAR | 0x8b8ff0 | 0 | 0 | 0 | 0 |
+| 1844 | `queryMagazinePool` | unary | STRING → SCALAR | 0x8b9080 | 0 | 0 | 0 | 0 |
+| 1845 | `queryWeaponPool` | unary | STRING → SCALAR | 0x8b9110 | 0 | 0 | 0 | 0 |
+| 1846 | `radioChannelInfo` | unary | BOOL\|SCALAR → ARRAY | 0x19c4e0 | 0 | 0 | 0 | 0 |
+| 1847 | `radioChannelSetLabel` | binary | SCALAR · STRING → NOTHING | 0x19e410 | 0 | 0 | 0 | 0 |
+| 1848 | `radioEnabled` | nular | → BOOL | 0x89c1f0 | 0 | 0 | 0 | 0 |
+| 1849 | `rainbow` | nular | → SCALAR | 0x8aaad0 | 0 | 0 | 0 | 0 |
+| 1850 | `rainParams` | nular | → ARRAY | 0x89d760 | 0 | 0 | 0 | 0 |
+| 1851 | `registeredTasks` | unary | TEAM_MEMBER → ARRAY | 0xe0be80 | 0 | 0 | 0 | 0 |
+| 1852 | `registerTask` | binary | TEAM_MEMBER · STRING → BOOL | 0xe0c590 | 0 | 0 | 0 | 0 |
+| 1853 | `reload` | binary | OBJECT · ARRAY → BOOL | 0x56e900 | 0 | 0 | 0 | 0 |
+| 1854 | `reloadEnabled` | unary | OBJECT → BOOL | 0x56d130 | 0 | 0 | 0 | 0 |
+| 1855 | `remoteControlled` | unary | OBJECT → OBJECT | 0x4afed0 | 0 | 0 | 0 | 0 |
+| 1856 | `remoteExecCall` | unary | ARRAY → STRING\|NOTHING | 0x8bf9c0 | 0 | 0 | 0 | 0 |
+| 1857 | `remove3DENConnection` | unary | ARRAY → NOTHING | 0x8008c0 | 0 | 0 | 0 | 0 |
+| 1858 | `remove3DENEventHandler` | unary | ARRAY → NOTHING | 0x800a10 | 0 | 0 | 0 | 0 |
+| 1859 | `remove3DENLayer` | unary | SCALAR → BOOL | 0x800bf0 | 0 | 0 | 0 | 0 |
+| 1860 | `removeAll3DENEventHandlers` | unary | STRING → NOTHING | 0x801170 | 0 | 0 | 0 | 0 |
+| 1861 | `removeAllBinocularItems` | unary | OBJECT → NOTHING | 0x844000 | 0 | 0 | 0 | 0 |
+| 1862 | `removeAllCuratorCameraAreas` | unary | OBJECT → NOTHING | 0x82a210 | 0 | 0 | 0 | 0 |
+| 1863 | `removeAllCuratorEditingAreas` | unary | OBJECT → NOTHING | 0x82a340 | 0 | 0 | 0 | 0 |
+| 1864 | `removeAllHandgunItems` | unary | OBJECT → NOTHING | 0x844150 | 0 | 0 | 0 | 0 |
+| 1865 | `removeAllMagazines` | unary | OBJECT → NOTHING | 0x8443f0 | 0 | 0 | 0 | 0 |
+| 1866 | `removeAllMagazinesTurret` | binary | OBJECT · ARRAY → NOTHING | 0x8444c0 | 0 | 0 | 0 | 0 |
+| 1867 | `removeAllSecondaryWeaponItems` | unary | OBJECT → NOTHING | 0x844770 | 0 | 0 | 0 | 0 |
+| 1868 | `removeAllUserActionEventHandlers` | unary | ARRAY → NOTHING | 0x184330 | 0 | 0 | 0 | 0 |
+| 1869 | `removeBinocularItem` | binary | OBJECT · STRING → NOTHING | 0x844840 | 0 | 0 | 0 | 0 |
+| 1870 | `removeDiarySubject` | binary | OBJECT · STRING → NOTHING | 0xdfee10 | 0 | 0 | 0 | 0 |
+| 1871 | `removeDrawIcon` | binary | CONTROL · ARRAY → NOTHING | 0x13d01d0 | 0 | 0 | 0 | 0 |
+| 1872 | `removeDrawLinks` | binary | CONTROL · ARRAY → NOTHING | 0x13d03e0 | 0 | 0 | 0 | 0 |
+| 1873 | `removeMenuItem` | binary | CONTROL · SCALAR → NOTHING<br>CONTROL · STRING → NOTHING | 0x13d0830<br>0x13d0a20 | 0 | 0 | 0 | 0 |
+| 1874 | `removeOwnedMine` | binary | OBJECT · OBJECT → NOTHING | 0x5395e0 | 0 | 0 | 0 | 0 |
+| 1875 | `removeSwitchableUnit` | unary | OBJECT → NOTHING | 0x549160 | 0 | 0 | 0 | 0 |
+| 1876 | `removeTeamMember` | binary | TEAM_MEMBER · TEAM_MEMBER → NOTHING | 0x1973d0 | 0 | 0 | 0 | 0 |
+| 1877 | `removeUserActionEventHandler` | unary | ARRAY → NOTHING | 0x1845e0 | 0 | 0 | 0 | 0 |
+| 1878 | `removeWeaponAttachmentCargo` | binary | OBJECT · ARRAY → NOTHING | 0x846650 | 0 | 0 | 0 | 0 |
+| 1879 | `removeWeaponCargo` | binary | OBJECT · ARRAY → NOTHING | 0x8467d0 | 0 | 0 | 0 | 0 |
+| 1880 | `removeWeaponItem` | binary | OBJECT · ARRAY → NOTHING | 0x846bf0 | 0 | 0 | 0 | 0 |
+| 1881 | `resources` | unary | TEAM_MEMBER → ARRAY | 0x1971a0 | 0 | 0 | 0 | 0 |
+| 1882 | `restartEditorCamera` | unary | CONTROL → NOTHING | 0x13b9090 | 0 | 0 | 0 | 0 |
+| 1883 | `reversedMouseY` | nular | → BOOL | 0x8b15c0 | 0 | 0 | 0 | 0 |
+| 1884 | `roadAt` | unary | OBJECT\|ARRAY → OBJECT | 0x4b0e80 | 0 | 0 | 0 | 0 |
+| 1885 | `roleDescription` | unary | OBJECT → STRING | 0x8b3f40 | 0 | 0 | 0 | 0 |
+| 1886 | `ropeAttachEnabled` | unary | OBJECT → BOOL | 0x1a6830 | 0 | 0 | 0 | 0 |
+| 1887 | `ropeAttachTo` | binary | OBJECT\|ARRAY · OBJECT → NOTHING | 0x1a6890 | 0 | 0 | 0 | 0 |
+| 1888 | `ropeCreate` | unary | ARRAY → OBJECT | 0x1a6fd0 | 0 | 0 | 0 | 0 |
+| 1889 | `ropeCut` | unary | ARRAY → NOTHING | 0x1a88b0 | 0 | 0 | 0 | 0 |
+| 1890 | `ropeDetach` | binary | OBJECT · OBJECT → NOTHING | 0x1a8ac0 | 0 | 0 | 0 | 0 |
+| 1891 | `ropeEndPosition` | unary | OBJECT → ARRAY | 0x1a8bd0 | 0 | 0 | 0 | 0 |
+| 1892 | `ropeLength` | unary | OBJECT → SCALAR | 0x1a4400 | 0 | 0 | 0 | 0 |
+| 1893 | `ropesAttachedTo` | unary | OBJECT → ARRAY | 0x1a9270 | 0 | 0 | 0 | 0 |
+| 1894 | `ropeSegments` | unary | OBJECT → ARRAY | 0x1a8e70 | 0 | 0 | 0 | 0 |
+| 1895 | `ropeUnwind` | unary | ARRAY → NOTHING | 0x1a90e0 | 0 | 0 | 0 | 0 |
+| 1896 | `ropeUnwound` | unary | OBJECT → BOOL | 0x1a8da0 | 0 | 0 | 0 | 0 |
+| 1897 | `rotorsForcesRTD` | unary | OBJECT → ARRAY | 0x893e90 | 0 | 0 | 0 | 0 |
+| 1898 | `save3DENPreferences` | nular | → BOOL | 0x801310 | 0 | 0 | 0 | 0 |
+| 1899 | `saveIdentity` | binary | OBJECT · STRING → BOOL | 0x8b7750 | 0 | 0 | 0 | 0 |
+| 1900 | `saveJoysticks` | nular | → NOTHING | 0x8b1820 | 0 | 0 | 0 | 0 |
+| 1901 | `saveOverlay` | unary | CONTROL → NOTHING | 0x13d00e0 | 0 | 0 | 0 | 0 |
+| 1902 | `screenToWorld` | binary | OBJECT · ARRAY → ARRAY | 0x809f50 | 0 | 0 | 0 | 0 |
+| 1903 | `screenToWorldDirection` | binary | OBJECT · ARRAY → ARRAY | 0x80a390 | 0 | 0 | 0 | 0 |
+| 1904 | `screenToWorldDirection` | unary | ARRAY → ARRAY | 0x80a5c0 | 0 | 0 | 0 | 0 |
+| 1905 | `scudState` | unary | OBJECT → SCALAR | 0x530ee0 | 0 | 0 | 0 | 0 |
+| 1906 | `selectedEditorObjects` | unary | CONTROL → NOTHING | 0x13ce570 | 0 | 0 | 0 | 0 |
+| 1907 | `selectEditorObject` | binary | CONTROL · STRING → ANY | 0x13d0b50 | 0 | 0 | 0 | 0 |
+| 1908 | `selectionNames` | binary | OBJECT · STRING\|SCALAR → ARRAY | 0x4ab830 | 0 | 0 | 0 | 0 |
+| 1909 | `selectionPosition` | unary | ARRAY → ARRAY | 0x531e50 | 0 | 0 | 0 | 0 |
+| 1910 | `selectionVectorDirAndUp` | binary | OBJECT · ARRAY → ARRAY | 0x532550 | 0 | 0 | 0 | 0 |
+| 1911 | `selectThrowable` | binary | OBJECT · STRING → BOOL | 0x53a490 | 0 | 0 | 0 | 0 |
+| 1912 | `sendAUMessage` | unary | ARRAY → NOTHING | 0x54bcc0 | 0 | 0 | 0 | 0 |
+| 1913 | `sendChatMessage` | binary | STRING · STRING → ANY | 0x174960 | 0 | 0 | 0 | 0 |
+| 1914 | `sendSimpleCommand` | binary | OBJECT · STRING → NOTHING | 0x56f740 | 0 | 0 | 0 | 0 |
+| 1915 | `sendTask` | binary | TEAM_MEMBER · ARRAY → TASK | 0xe0c840 | 0 | 0 | 0 | 0 |
+| 1916 | `sendTaskResult` | binary | TASK · ARRAY → NOTHING | 0xe0b270 | 0 | 0 | 0 | 0 |
+| 1917 | `sendUDPMessage` | unary | ARRAY → BOOL | 0x47de70 | 0 | 0 | 0 | 0 |
+| 1918 | `sentencesEnabled` | nular | → BOOL | 0x89c220 | 0 | 0 | 0 | 0 |
+| 1919 | `serverCommand` | binary | STRING · STRING → BOOL | 0x54d6e0 | 0 | 0 | 0 | 0 |
+| 1920 | `serverCommandExecutable` | unary | STRING → BOOL | 0x54d5e0 | 0 | 0 | 0 | 0 |
+| 1921 | `set3DENAttachedCursorEntity` | unary | HASHMAP → NOTHING | 0x801370 | 0 | 0 | 0 | 0 |
+| 1922 | `set3DENLayer` | binary | ANY · SCALAR → BOOL | 0x8024e0 | 0 | 0 | 0 | 0 |
+| 1923 | `set3DENLogicType` | binary | ARRAY · STRING → NOTHING | 0x802980 | 0 | 0 | 0 | 0 |
+| 1924 | `set3DENMissionAttributes` | unary | ARRAY → NOTHING | 0x803050 | 0 | 0 | 0 | 0 |
+| 1925 | `set3DENObjectType` | binary | ARRAY · STRING → NOTHING | 0x8037a0 | 0 | 0 | 0 | 0 |
+| 1926 | `setAirportSide` | binary | OBJECT\|SCALAR · SIDE → NOTHING | 0x47e300 | 0 | 0 | 0 | 0 |
+| 1927 | `setAngularVelocity` | binary | OBJECT · ARRAY → NOTHING | 0x53aee0 | 0 | 0 | 0 | 0 |
+| 1928 | `setAngularVelocityModelSpace` | binary | OBJECT · ARRAY → NOTHING | 0x53b090 | 0 | 0 | 0 | 0 |
+| 1929 | `setArmoryPoints` | unary | SCALAR → NOTHING | 0x54e1b0 | 0 | 0 | 0 | 0 |
+| 1930 | `setAttributes` | binary | TEXT\|STRING · ARRAY → TEXT | 0x564390 | 0 | 0 | 0 | 0 |
+| 1931 | `setBrakesRTD` | binary | OBJECT · ARRAY → NOTHING | 0x895b40 | 0 | 0 | 0 | 0 |
+| 1932 | `setCameraInterest` | binary | OBJECT · SCALAR → NOTHING | 0x56fb80 | 0 | 0 | 0 | 0 |
+| 1933 | `setCamShakeDefParams` | unary | ARRAY → NOTHING | 0x80a740 | 0 | 0 | 0 | 0 |
+| 1934 | `setCamShakeParams` | unary | ARRAY → NOTHING | 0x80aa00 | 0 | 0 | 0 | 0 |
+| 1935 | `setCenterOfMass` | binary | OBJECT · ARRAY → NOTHING | 0x1a5c80 | 0 | 0 | 0 | 0 |
+| 1936 | `setCombatBehaviour` | binary | GROUP · STRING → NOTHING<br>OBJECT · STRING → NOTHING | 0x194ed0<br>0x54e6c0 | 0 | 0 | 0 | 0 |
+| 1937 | `setCompassDeclination` | unary | SCALAR → NOTHING | 0x54e820 | 0 | 0 | 0 | 0 |
+| 1938 | `setCompassOscillation` | unary | ARRAY → NOTHING | 0x54e870 | 0 | 0 | 0 | 0 |
+| 1939 | `setCruiseControl` | binary | OBJECT · ARRAY → NOTHING | 0x53b320 | 0 | 0 | 0 | 0 |
+| 1940 | `setCuratorSelected` | unary | ARRAY → NOTHING | 0x82b5d0 | 0 | 0 | 0 | 0 |
+| 1941 | `setCuratorSelectionPreset` | binary | SCALAR · ARRAY → NOTHING | 0x82b6a0 | 0 | 0 | 0 | 0 |
+| 1942 | `setCuratorWaypointCost` | binary | OBJECT · SCALAR → NOTHING | 0x82bb60 | 0 | 0 | 0 | 0 |
+| 1943 | `setCurrentChannel` | unary | SCALAR → BOOL | 0x19f4d0 | 0 | 0 | 0 | 0 |
+| 1944 | `setDammage` | binary | OBJECT · SCALAR → NOTHING | 0x53b950 | 0 | 0 | 0 | 0 |
+| 1945 | `setDebriefingText` | binary | STRING · ARRAY → NOTHING | 0x54f0b0 | 0 | 0 | 0 | 0 |
+| 1946 | `setDefaultCamera` | unary | ARRAY → NOTHING | 0x80aba0 | 0 | 0 | 0 | 0 |
+| 1947 | `setDetailMapBlendPars` | unary | ARRAY → NOTHING | 0x54f490 | 0 | 0 | 0 | 0 |
+| 1948 | `setDiarySubjectPicture` | binary | OBJECT · ARRAY → NOTHING | 0xdff0f0 | 0 | 0 | 0 | 0 |
+| 1949 | `setDrawIcon` | binary | CONTROL · ARRAY → NOTHING | 0x13d0cf0 | 0 | 0 | 0 | 0 |
+| 1950 | `setEditorMode` | binary | CONTROL · STRING → NOTHING | 0x13d28f0 | 0 | 0 | 0 | 0 |
+| 1951 | `setEditorObjectScope` | binary | CONTROL · ARRAY → NOTHING | 0x13d17d0 | 0 | 0 | 0 | 0 |
+| 1952 | `setEffectiveCommander` | binary | OBJECT · OBJECT → NOTHING | 0x54fdf0 | 0 | 0 | 0 | 0 |
+| 1953 | `setEngineRpmRTD` | binary | OBJECT · ARRAY → NOTHING | 0x895d30 | 0 | 0 | 0 | 0 |
+| 1954 | `setFaceAnimation` | binary | OBJECT · SCALAR → NOTHING | 0x53bbd0 | 0 | 0 | 0 | 0 |
+| 1955 | `setFeatureType` | binary | OBJECT · SCALAR → BOOL | 0x53bd50 | 0 | 0 | 0 | 0 |
+| 1956 | `setFlagSide` | binary | OBJECT · SIDE → NOTHING | 0x53bf70 | 0 | 0 | 0 | 0 |
+| 1957 | `setForceGeneratorRTD` | binary | SCALAR · ARRAY → NOTHING | 0x895e30 | 0 | 0 | 0 | 0 |
+| 1958 | `setFormationTask` | binary | OBJECT · STRING → NOTHING | 0x570110 | 0 | 0 | 0 | 0 |
+| 1959 | `setFromEditor` | binary | TEAM_MEMBER · BOOL → NOTHING | 0x197620 | 0 | 0 | 0 | 0 |
+| 1960 | `setFuelConsumptionCoef` | binary | OBJECT · SCALAR → NOTHING | 0x53c620 | 0 | 0 | 0 | 0 |
+| 1961 | `setHideBehind` | binary | OBJECT · ARRAY → NOTHING | 0x570140 | 0 | 0 | 0 | 0 |
+| 1962 | `setHorizonParallaxCoef` | unary | SCALAR → NOTHING | 0x552600 | 0 | 0 | 0 | 0 |
+| 1963 | `setHumidity` | unary | SCALAR → NOTHING | 0x557620 | 0 | 0 | 0 | 0 |
+| 1964 | `setImportance` | binary | LOCATION · SCALAR → NOTHING | 0xd06390 | 0 | 0 | 0 | 0 |
+| 1965 | `setJointDriveAngularVelocity` | binary | ? · ARRAY → NOTHING | 0x1a4950 | 0 | 0 | 0 | 0 |
+| 1966 | `setJointDriveLinearVelocity` | binary | ? · ARRAY → NOTHING | 0x1a4a30 | 0 | 0 | 0 | 0 |
+| 1967 | `setJointDriveOrientation` | binary | ? · ARRAY → NOTHING | 0x1a4ae0 | 0 | 0 | 0 | 0 |
+| 1968 | `setJointDrivePosition` | binary | ? · ARRAY → NOTHING | 0x1a5080 | 0 | 0 | 0 | 0 |
+| 1969 | `setLeader` | binary | TEAM_MEMBER · TEAM_MEMBER → NOTHING | 0x197690 | 0 | 0 | 0 | 0 |
+| 1970 | `setLightConePars` | binary | OBJECT · ARRAY → NOTHING | 0x51bb60 | 0 | 0 | 0 | 0 |
+| 1971 | `setLightIR` | binary | OBJECT · BOOL → NOTHING | 0x51bf90 | 0 | 0 | 0 | 0 |
+| 1972 | `setLightVolumeShape` | binary | OBJECT · ARRAY → NOTHING | 0x51c0c0 | 0 | 0 | 0 | 0 |
+| 1973 | `setLocalWindParams` | unary | ARRAY → NOTHING | 0x5528c0 | 0 | 0 | 0 | 0 |
+| 1974 | `setMaxLoad` | binary | OBJECT · SCALAR → NOTHING | 0x846c50 | 0 | 0 | 0 | 0 |
+| 1975 | `setMissionOptions` | unary | HASHMAP → NOTHING | 0x552d60 | 0 | 0 | 0 | 0 |
+| 1976 | `setObjectArguments` | binary | CONTROL · ARRAY → ANY | 0x13d2af0 | 0 | 0 | 0 | 0 |
+| 1977 | `setObjectProxy` | binary | CONTROL · ARRAY → ANY | 0x13d2fb0 | 0 | 0 | 0 | 0 |
+| 1978 | `setOpticsMode` | binary | OBJECT · ?\|ARRAY → NOTHING | 0x559410 | 0 | 0 | 0 | 0 |
+| 1979 | `setOxygenRemaining` | binary | OBJECT · SCALAR → NOTHING | 0x554b30 | 0 | 0 | 0 | 0 |
+| 1980 | `setPhysicsCollisionFlag` | binary | OBJECT · BOOL → NOTHING | 0x1a6260 | 0 | 0 | 0 | 0 |
+| 1981 | `setPilotCameraDirection` | binary | OBJECT · ARRAY → NOTHING | 0x80acf0 | 0 | 0 | 0 | 0 |
+| 1982 | `setPilotCameraOpticsMode` | binary | OBJECT · SCALAR → BOOL | 0x80b0f0 | 0 | 0 | 0 | 0 |
+| 1983 | `setPilotCameraRotation` | binary | OBJECT · ARRAY → NOTHING | 0x80af80 | 0 | 0 | 0 | 0 |
+| 1984 | `setPilotCameraTarget` | binary | OBJECT · OBJECT\|ARRAY → BOOL | 0x80add0 | 0 | 0 | 0 | 0 |
+| 1985 | `setPiPViewDistance` | unary | SCALAR → NOTHING | 0x5558b0 | 0 | 0 | 0 | 0 |
+| 1986 | `setPlayable` | unary | OBJECT → NOTHING | 0x555900 | 0 | 0 | 0 | 0 |
+| 1987 | `setPlayerVoNVolume` | binary | OBJECT · SCALAR → NOTHING | 0x5589f0 | 0 | 0 | 0 | 0 |
+| 1988 | `setPosASL2` | binary | OBJECT · ARRAY → NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
+| 1989 | `setPosition` | binary | LOCATION · ARRAY → NOTHING | 0xd06550 | 0 | 0 | 0 | 0 |
+| 1990 | `setPylonsPriority` | binary | OBJECT · ARRAY → NOTHING | 0x547880 | 0 | 0 | 0 | 0 |
+| 1991 | `setRainbow` | binary | SCALAR · SCALAR → NOTHING | 0x556770 | 0 | 0 | 0 | 0 |
+| 1992 | `setRectangular` | binary | LOCATION · BOOL → NOTHING | 0xd06720 | 0 | 0 | 0 | 0 |
+| 1993 | `setSide` | binary | LOCATION · SIDE → NOTHING | 0xd067e0 | 0 | 0 | 0 | 0 |
+| 1994 | `setSimulWeatherLayers` | unary | SCALAR → NOTHING | 0x1bec10 | 0 | 0 | 0 | 0 |
+| 1995 | `setSize` | binary | LOCATION · ARRAY → NOTHING | 0xd068a0 | 0 | 0 | 0 | 0 |
+| 1996 | `setSkyOverlayMaterial` | unary | STRING → NOTHING | 0x556ab0 | 0 | 0 | 0 | 0 |
+| 1997 | `setStaminaScheme` | unary | STRING → NOTHING | 0x557480 | 0 | 0 | 0 | 0 |
+| 1998 | `setSystemOfUnits` | unary | SCALAR → NOTHING | 0x557690 | 0 | 0 | 0 | 0 |
+| 1999 | `setTargetSize` | binary | OBJECT · ARRAY → ARRAY | 0x5712e0 | 0 | 0 | 0 | 0 |
+| 2000 | `setTaskMarkerOffset` | binary | OBJECT · ARRAY → NOTHING | 0x53f9b0 | 0 | 0 | 0 | 0 |
+| 2001 | `setTaskResult` | binary | TASK · ARRAY → NOTHING | 0xe0b5d0 | 0 | 0 | 0 | 0 |
+| 2002 | `setTerrainHeight` | unary | ARRAY → NOTHING | 0x557730 | 0 | 0 | 0 | 0 |
+| 2003 | `setTIParameter` | unary | ARRAY → NOTHING | 0x1a99e0 | 0 | 0 | 0 | 0 |
+| 2004 | `setTowParent` | binary | OBJECT · OBJECT → NOTHING | 0x1a62f0 | 0 | 0 | 0 | 0 |
+| 2005 | `setTrafficDensity` | unary | ARRAY → NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
+| 2006 | `setTrafficDistance` | unary | SCALAR → NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
+| 2007 | `setTrafficGap` | unary | ARRAY → NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
+| 2008 | `setTrafficSpeed` | unary | ARRAY → NOTHING | 0x18b0a0 | 0 | 0 | 0 | 0 |
+| 2009 | `setTriggerInterval` | binary | OBJECT · SCALAR → NOTHING | 0x562390 | 0 | 0 | 0 | 0 |
+| 2010 | `setTurretLimits` | binary | OBJECT · ARRAY → NOTHING | 0x571650 | 0 | 0 | 0 | 0 |
+| 2011 | `setTurretOpticsMode` | binary | OBJECT · ARRAY → NOTHING<br>OBJECT · SCALAR → NOTHING | 0x558180<br>0x558180 | 0 | 0 | 0 | 0 |
+| 2012 | `setType` | binary | LOCATION · STRING → NOTHING | 0xd06c60 | 0 | 0 | 0 | 0 |
+| 2013 | `setUnitCombatMode` | binary | OBJECT · STRING → NOTHING | 0x197c60 | 0 | 0 | 0 | 0 |
+| 2014 | `setUnitFreefallHeight` | binary | OBJECT · SCALAR → NOTHING | 0x558770 | 0 | 0 | 0 | 0 |
+| 2015 | `setUnitRecoilCoefficient` | binary | OBJECT · SCALAR → NOTHING | 0x558970 | 0 | 0 | 0 | 0 |
+| 2016 | `setUserMFDText` | binary | OBJECT · ARRAY → NOTHING | 0x558ac0 | 0 | 0 | 0 | 0 |
+| 2017 | `setVehicleArmor` | binary | OBJECT · SCALAR → NOTHING | 0x56fa90 | 0 | 0 | 0 | 0 |
+| 2018 | `setVehicleId` | binary | OBJECT · SCALAR → NOTHING | 0x570290 | 0 | 0 | 0 | 0 |
+| 2019 | `setVisibleIfTreeCollapsed` | binary | CONTROL · ARRAY → NOTHING | 0x13d3220 | 0 | 0 | 0 | 0 |
+| 2020 | `setWantedRPMRTD` | binary | OBJECT · ARRAY → NOTHING | 0x896270 | 0 | 0 | 0 | 0 |
+| 2021 | `setWaterFillPercentage` | binary | OBJECT · SCALAR → NOTHING | 0x541580 | 0 | 0 | 0 | 0 |
+| 2022 | `setWaterLeakiness` | binary | OBJECT · SCALAR → NOTHING | 0x5416a0 | 0 | 0 | 0 | 0 |
+| 2023 | `setWaypointForceBehaviour` | binary | ARRAY · BOOL → NOTHING | 0x8f9910 | 0 | 0 | 0 | 0 |
+| 2024 | `setWaypointLoiterAltitude` | binary | ARRAY · SCALAR → NOTHING | 0x8f9e70 | 0 | 0 | 0 | 0 |
+| 2025 | `setWeaponZeroing` | binary | OBJECT · ARRAY → BOOL | 0x572930 | 0 | 0 | 0 | 0 |
+| 2026 | `setWindDir` | unary | ARRAY → NOTHING | 0x559d70 | 0 | 0 | 0 | 0 |
+| 2027 | `setWindletParams` | binary | OBJECT · ARRAY → BOOL | 0x20cc20 | 0 | 0 | 0 | 0 |
+| 2028 | `setWingForceScaleRTD` | binary | OBJECT · ARRAY → NOTHING | 0x896400 | 0 | 0 | 0 | 0 |
+| 2029 | `show3DIcons` | binary | CONTROL · BOOL → NOTHING | 0x13d3440 | 0 | 0 | 0 | 0 |
+| 2030 | `showLegend` | binary | CONTROL · BOOL → NOTHING | 0x13d3560 | 0 | 0 | 0 | 0 |
+| 2031 | `shownAction` | nular | → ARRAY | 0x8a34e0 | 0 | 0 | 0 | 0 |
+| 2032 | `shownArtilleryComputer` | nular | → BOOL | 0x8aef80 | 0 | 0 | 0 | 0 |
+| 2033 | `shownCompass` | nular | → BOOL | 0x8af000 | 0 | 0 | 0 | 0 |
+| 2034 | `showNewEditorObject` | binary | CONTROL · ARRAY → ANY | 0x13d3670 | 0 | 0 | 0 | 0 |
+| 2035 | `shownGps` | nular | → BOOL | 0x8af100 | 0 | 0 | 0 | 0 |
+| 2036 | `shownPad` | nular | → BOOL | 0x8af750 | 0 | 0 | 0 | 0 |
+| 2037 | `shownRadio` | nular | → BOOL | 0x8af9d0 | 0 | 0 | 0 | 0 |
+| 2038 | `shownScoretable` | nular | → SCALAR | 0x8aae90 | 0 | 0 | 0 | 0 |
+| 2039 | `shownSubtitles` | nular | → BOOL | 0x89ea10 | 0 | 0 | 0 | 0 |
+| 2040 | `shownUAVFeed` | nular | → BOOL | 0x8a3540 | 0 | 0 | 0 | 0 |
+| 2041 | `shownWarrant` | nular | → BOOL | 0x8afa50 | 0 | 0 | 0 | 0 |
+| 2042 | `shownWatch` | nular | → BOOL | 0x8afad0 | 0 | 0 | 0 | 0 |
+| 2043 | `showSubtitles` | unary | BOOL → BOOL | 0x8cf220 | 0 | 0 | 0 | 0 |
+| 2044 | `showUAVFeed` | unary | BOOL → NOTHING | 0x55b300 | 0 | 0 | 0 | 0 |
+| 2045 | `showWarrant` | unary | BOOL → NOTHING | 0x55b730 | 0 | 0 | 0 | 0 |
+| 2046 | `showWaypoints` | unary | BOOL → NOTHING | 0x55b890 | 0 | 0 | 0 | 0 |
+| 2047 | `simulCloudDensity` | unary | ARRAY → SCALAR | 0x1bf120 | 0 | 0 | 0 | 0 |
+| 2048 | `simulCloudOcclusion` | unary | ARRAY → SCALAR | 0x1bf3e0 | 0 | 0 | 0 | 0 |
+| 2049 | `simulInClouds` | unary | ARRAY → BOOL | 0x1bf800 | 0 | 0 | 0 | 0 |
+| 2050 | `SimulSetHumidity` | unary | SCALAR → NOTHING | 0x1bfac0 | 0 | 0 | 0 | 0 |
+| 2051 | `skillFinal` | binary | OBJECT · STRING → SCALAR | 0x52b990 | 0 | 0 | 0 | 0 |
+| 2052 | `sliderSetPosition` | unary | ARRAY → NOTHING | 0x8eb3b0 | 0 | 0 | 0 | 0 |
+| 2053 | `sliderSetRange` | unary | ARRAY → NOTHING | 0x8eb4b0 | 0 | 0 | 0 | 0 |
+| 2054 | `sliderSetSpeed` | unary | ARRAY → NOTHING | 0x8eb620 | 0 | 0 | 0 | 0 |
+| 2055 | `soldierMagazines` | unary | OBJECT → ARRAY | 0x83ccb0 | 0 | 0 | 0 | 0 |
+| 2056 | `soundParams` | unary | SCALAR → ARRAY | 0x4b2bb0 | 0 | 0 | 0 | 0 |
+| 2057 | `spawn` | unary | STRING → SCRIPT | 0x54a3f0 | 0 | 0 | 0 | 0 |
+| 2058 | `stopEngineRTD` | unary | OBJECT → NOTHING | 0x895810 | 0 | 0 | 0 | 0 |
+| 2059 | `stopSound` | unary | SCALAR → NOTHING | 0x55c6f0 | 0 | 0 | 0 | 0 |
+| 2060 | `surfaceTexture` | unary | ARRAY → STRING | 0x55e9e0 | 0 | 0 | 0 | 0 |
+| 2061 | `swimInDepth` | binary | OBJECT · SCALAR → NOTHING | 0x53f910 | 0 | 0 | 0 | 0 |
+| 2062 | `switchGesture` | binary | OBJECT · ARRAY → NOTHING<br>OBJECT · STRING → NOTHING | 0x541e30<br>0x541d60 | 0 | 0 | 0 | 0 |
+| 2063 | `synchronizedTriggers` | unary | ARRAY → ARRAY | 0x55ef50 | 0 | 0 | 0 | 0 |
+| 2064 | `synchronizedWaypoints` | unary | ARRAY → ARRAY<br>OBJECT → ARRAY | 0x8f5f50<br>0x8f5f50 | 0 | 0 | 0 | 0 |
+| 2065 | `synchronizeTrigger` | binary | OBJECT · ARRAY → NOTHING | 0x562930 | 0 | 0 | 0 | 0 |
+| 2066 | `targetsAggregate` | binary | ARRAY · ARRAY → ARRAY | 0x1599950 | 0 | 0 | 0 | 0 |
+| 2067 | `taskAlwaysVisible` | unary | TASK → BOOL | 0xe09ea0 | 0 | 0 | 0 | 0 |
+| 2068 | `taskChildren` | unary | TASK → ARRAY | 0xe09c70 | 0 | 0 | 0 | 0 |
+| 2069 | `taskCustomData` | unary | TASK → ARRAY | 0xe09f10 | 0 | 0 | 0 | 0 |
+| 2070 | `taskHint` | unary | ARRAY → NOTHING | 0x55aff0 | 0 | 0 | 0 | 0 |
+| 2071 | `taskMarkerOffset` | unary | OBJECT → ARRAY | 0x533160 | 0 | 0 | 0 | 0 |
+| 2072 | `taskName` | unary | TASK → STRING | 0xe0a760 | 0 | 0 | 0 | 0 |
+| 2073 | `taskParent` | unary | TASK → TASK | 0xe0a870 | 0 | 0 | 0 | 0 |
+| 2074 | `taskResult` | unary | TASK → ARRAY | 0xe0a950 | 0 | 0 | 0 | 0 |
+| 2075 | `teamMember` | unary | OBJECT → TEAM_MEMBER | 0x192cc0 | 0 | 0 | 0 | 0 |
+| 2076 | `teamName` | unary | TEAM_MEMBER → STRING | 0x196a00 | 0 | 0 | 0 | 0 |
+| 2077 | `teams` | nular | → ARRAY | 0x897700 | 0 | 0 | 0 | 0 |
+| 2078 | `teamSwitch` | nular | → NOTHING | 0x8b11d0 | 0 | 0 | 0 | 0 |
+| 2079 | `teamSwitchEnabled` | nular | → BOOL | 0x8af930 | 0 | 0 | 0 | 0 |
+| 2080 | `teamType` | unary | TEAM_MEMBER → STRING | 0x196a80 | 0 | 0 | 0 | 0 |
+| 2081 | `terminate` | binary | SCRIPT · ANY → NOTHING | 0x54b0d0 | 0 | 0 | 0 | 0 |
+| 2082 | `terrainIntersectASL` | unary | ARRAY → BOOL | 0x55fb90 | 0 | 0 | 0 | 0 |
+| 2083 | `terrainIntersectAtASL` | unary | ARRAY → ARRAY | 0x55fda0 | 0 | 0 | 0 | 0 |
+| 2084 | `tg` | unary | SCALAR\|NaN → SCALAR\|NaN | 0x2f1430 | 0 | 0 | 0 | 0 |
+| 2085 | `throwables` | unary | OBJECT\|ARRAY → ARRAY | 0x524730 | 0 | 0 | 0 | 0 |
+| 2086 | `titleFadeOut` | unary | SCALAR → NOTHING | 0x494990 | 0 | 0 | 0 | 0 |
+| 2087 | `titleObj` | unary | ARRAY → NOTHING | 0x4949e0 | 0 | 0 | 0 | 0 |
+| 2088 | `triggerAmmo` | unary | OBJECT\|ARRAY → NOTHING | 0x560d40 | 0 | 0 | 0 | 0 |
+| 2089 | `triggerAttachedVehicle` | unary | OBJECT → OBJECT | 0x5618e0 | 0 | 0 | 0 | 0 |
+| 2090 | `triggerAttachObject` | binary | OBJECT · SCALAR → NOTHING | 0x560f90 | 0 | 0 | 0 | 0 |
+| 2091 | `triggerDynamicSimulation` | binary | OBJECT · BOOL → NOTHING | 0x17edf0 | 0 | 0 | 0 | 0 |
+| 2092 | `triggerInterval` | unary | OBJECT → SCALAR | 0x561940 | 0 | 0 | 0 | 0 |
+| 2093 | `tvAdd` | unary | ARRAY → SCALAR | 0x8ec360 | 0 | 0 | 0 | 0 |
+| 2094 | `tvCollapse` | unary | ARRAY → NOTHING | 0x8ec910 | 0 | 0 | 0 | 0 |
+| 2095 | `tvCollapseAll` | unary | CONTROL → NOTHING<br>SCALAR → NOTHING | 0x8f1a60<br>0x8eca10 | 0 | 0 | 0 | 0 |
+| 2096 | `tvCount` | unary | ARRAY → SCALAR | 0x8eccc0 | 0 | 0 | 0 | 0 |
+| 2097 | `tvData` | unary | ARRAY → STRING | 0x8ecf80 | 0 | 0 | 0 | 0 |
+| 2098 | `tvDelete` | unary | ARRAY → NOTHING | 0x8ed240 | 0 | 0 | 0 | 0 |
+| 2099 | `tvExpand` | unary | ARRAY → NOTHING | 0x8ed580 | 0 | 0 | 0 | 0 |
+| 2100 | `tvExpandAll` | unary | CONTROL → NOTHING<br>SCALAR → NOTHING | 0x8f2010<br>0x8ed680 | 0 | 0 | 0 | 0 |
+| 2101 | `tvIsSelected` | binary | CONTROL · ARRAY → BOOL | 0x8f22e0 | 0 | 0 | 0 | 0 |
+| 2102 | `tvPicture` | binary | CONTROL · ARRAY → STRING | 0x8f24c0 | 0 | 0 | 0 | 0 |
+| 2103 | `tvPicture` | unary | ARRAY → STRING | 0x8ee1d0 | 0 | 0 | 0 | 0 |
+| 2104 | `tvPictureRight` | binary | CONTROL · ARRAY → STRING | 0x8f25c0 | 0 | 0 | 0 | 0 |
+| 2105 | `tvPictureRight` | unary | ARRAY → STRING | 0x8ee2d0 | 0 | 0 | 0 | 0 |
+| 2106 | `tvSelection` | unary | CONTROL → ARRAY | 0x8f26c0 | 0 | 0 | 0 | 0 |
+| 2107 | `tvSetCurSel` | unary | ARRAY → NOTHING | 0x8efcb0 | 0 | 0 | 0 | 0 |
+| 2108 | `tvSetData` | unary | ARRAY → NOTHING | 0x8ee9d0 | 0 | 0 | 0 | 0 |
+| 2109 | `tvSetPicture` | unary | ARRAY → NOTHING | 0x8eed80 | 0 | 0 | 0 | 0 |
+| 2110 | `tvSetPictureColor` | unary | ARRAY → NOTHING | 0x8eeed0 | 0 | 0 | 0 | 0 |
+| 2111 | `tvSetPictureRight` | unary | ARRAY → NOTHING | 0x8ef220 | 0 | 0 | 0 | 0 |
+| 2112 | `tvSetPictureRightColor` | binary | CONTROL · ARRAY → NOTHING | 0x8f2eb0 | 0 | 0 | 0 | 0 |
+| 2113 | `tvSetPictureRightColor` | unary | ARRAY → NOTHING | 0x8ef370 | 0 | 0 | 0 | 0 |
+| 2114 | `tvSetPictureRightColorDisabled` | binary | CONTROL · ARRAY → NOTHING | 0x8f2ee0 | 0 | 0 | 0 | 0 |
+| 2115 | `tvSetPictureRightColorSelected` | binary | CONTROL · ARRAY → NOTHING | 0x8f2f10 | 0 | 0 | 0 | 0 |
+| 2116 | `tvSetSelectColor` | binary | CONTROL · ARRAY → NOTHING | 0x8f2f40 | 0 | 0 | 0 | 0 |
+| 2117 | `tvSetSelected` | binary | CONTROL · ARRAY → NOTHING | 0x8f30d0 | 0 | 0 | 0 | 0 |
+| 2118 | `tvSetText` | unary | ARRAY → STRING | 0x8effa0 | 0 | 0 | 0 | 0 |
+| 2119 | `tvSetTooltip` | unary | ARRAY → NOTHING | 0x8f0320 | 0 | 0 | 0 | 0 |
+| 2120 | `tvSetValue` | unary | ARRAY → NOTHING | 0x8f0500 | 0 | 0 | 0 | 0 |
+| 2121 | `tvSort` | unary | ARRAY → NOTHING | 0x8f0820 | 0 | 0 | 0 | 0 |
+| 2122 | `tvSortAll` | binary | CONTROL · ARRAY → NOTHING | 0x8f39a0 | 0 | 0 | 0 | 0 |
+| 2123 | `tvSortByValue` | unary | ARRAY → NOTHING | 0x8f09a0 | 0 | 0 | 0 | 0 |
+| 2124 | `tvSortByValueAll` | binary | CONTROL · ARRAY → NOTHING | 0x8f3dd0 | 0 | 0 | 0 | 0 |
+| 2125 | `tvText` | unary | ARRAY → STRING | 0x8f1000 | 0 | 0 | 0 | 0 |
+| 2126 | `tvTooltip` | binary | CONTROL · ARRAY → STRING | 0x8f20e0 | 0 | 0 | 0 | 0 |
+| 2127 | `tvTooltip` | unary | ARRAY → STRING | 0x8edea0 | 0 | 0 | 0 | 0 |
+| 2128 | `tvValue` | unary | ARRAY → SCALAR | 0x8f12c0 | 0 | 0 | 0 | 0 |
+| 2129 | `unban` | unary | STRING\|SCALAR → NOTHING | 0x1765c0 | 0 | 0 | 0 | 0 |
+| 2130 | `uniformMagazines` | unary | OBJECT → ARRAY | 0x8473e0 | 0 | 0 | 0 | 0 |
+| 2131 | `uniqueUnitItems` | unary | OBJECT\|ARRAY → HASHMAP | 0x841300 | 0 | 0 | 0 | 0 |
+| 2132 | `unitCombatMode` | unary | OBJECT → STRING | 0x1977b0 | 0 | 0 | 0 | 0 |
+| 2133 | `unitRecoilCoefficient` | unary | OBJECT → SCALAR | 0x4b7340 | 0 | 0 | 0 | 0 |
+| 2134 | `unitsBelowHeight` | binary | ARRAY · SCALAR → ARRAY<br>GROUP · SCALAR → ARRAY | 0x5660e0<br>0x18f890 | 0 | 0 | 0 | 0 |
+| 2135 | `unkick` | unary | STRING\|SCALAR → NOTHING | 0x176910 | 0 | 0 | 0 | 0 |
+| 2136 | `unlockAchievement` | unary | STRING → BOOL | 0x1c1b60 | 0 | 0 | 0 | 0 |
+| 2137 | `unregisterTask` | binary | TEAM_MEMBER · STRING → BOOL | 0xe0cfd0 | 0 | 0 | 0 | 0 |
+| 2138 | `updateDrawIcon` | binary | CONTROL · ARRAY → NOTHING | 0x13cba30 | 0 | 0 | 0 | 0 |
+| 2139 | `updateMenuItem` | binary | CONTROL · ARRAY → NOTHING | 0x13d3940 | 0 | 0 | 0 | 0 |
+| 2140 | `updateObjectTree` | unary | CONTROL → NOTHING | 0x13d3d10 | 0 | 0 | 0 | 0 |
+| 2141 | `useAIOperMapObstructionTest` | unary | BOOL → NOTHING | 0x48c980 | 0 | 0 | 0 | 0 |
+| 2142 | `useAISteeringComponent` | binary | OBJECT · BOOL → NOTHING | 0x527570 | 0 | 0 | 0 | 0 |
+| 2143 | `useAISteeringComponent` | unary | BOOL → NOTHING | 0x48ca30 | 0 | 0 | 0 | 0 |
+| 2144 | `userInputDisabled` | nular | → BOOL | 0x8af9a0 | 0 | 0 | 0 | 0 |
+| 2145 | `users` | nular | → ARRAY | 0x176ac0 | 0 | 0 | 0 | 0 |
+| 2146 | `vectorSideVisual` | unary | OBJECT → ARRAY | 0x5338e0 | 0 | 0 | 0 | 0 |
+| 2147 | `vehicleCargoEnabled` | unary | OBJECT → BOOL | 0x5721a0 | 0 | 0 | 0 | 0 |
+| 2148 | `vehicleMoveInfo` | unary | OBJECT → ARRAY | 0x4b7e70 | 0 | 0 | 0 | 0 |
+| 2149 | `verifySignature` | unary | STRING → BOOL | 0x55be00 | 0 | 0 | 0 | 0 |
+| 2150 | `vestMagazines` | unary | OBJECT → ARRAY | 0x847830 | 0 | 0 | 0 | 0 |
+| 2151 | `waterDamaged` | unary | OBJECT → BOOL | 0x52b8d0 | 0 | 0 | 0 | 0 |
+| 2152 | `waves` | nular | → SCALAR | 0x8ab4e0 | 0 | 0 | 0 | 0 |
+| 2153 | `waypointAttachedObject` | unary | ARRAY → OBJECT | 0x8f70c0 | 0 | 0 | 0 | 0 |
+| 2154 | `waypointForceBehaviour` | unary | ARRAY → BOOL | 0x8f7930 | 0 | 0 | 0 | 0 |
+| 2155 | `waypointLoiterAltitude` | unary | ARRAY → SCALAR | 0x8f7cf0 | 0 | 0 | 0 | 0 |
+| 2156 | `waypointsEnabledUAV` | unary | OBJECT → BOOL | 0x8fbf40 | 0 | 0 | 0 | 0 |
+| 2157 | `waypointTimeoutCurrent` | unary | GROUP → SCALAR | 0x8f8d20 | 0 | 0 | 0 | 0 |
+| 2158 | `weaponAccessoriesCargo` | binary | OBJECT · ARRAY → ARRAY | 0x83d550 | 0 | 0 | 0 | 0 |
+| 2159 | `weaponDisassemblyEnabled` | unary | OBJECT → BOOL | 0x4b8210 | 0 | 0 | 0 | 0 |
+| 2160 | `weaponInertia` | unary | OBJECT → ARRAY | 0x896ad0 | 0 | 0 | 0 | 0 |
+| 2161 | `weaponReloadingTime` | binary | OBJECT · ARRAY → SCALAR | 0x4b8270 | 0 | 0 | 0 | 0 |
+| 2162 | `weaponsInfo` | binary | OBJECT · ARRAY → ARRAY | 0x4b83e0 | 0 | 0 | 0 | 0 |
+| 2163 | `weaponState` | binary | OBJECT · STRING → ARRAY | 0x534750 | 0 | 0 | 0 | 0 |
+| 2164 | `WFSideText` | unary | GROUP → STRING<br>OBJECT → STRING<br>SIDE → STRING | 0x572310<br>0x572560<br>0x572750 | 0 | 0 | 0 | 0 |
+| 2165 | `windRTD` | nular | → ARRAY | 0x8947d0 | 0 | 0 | 0 | 0 |
+| 2166 | `wingsForcesRTD` | unary | OBJECT → ARRAY | 0x8948b0 | 0 | 0 | 0 | 0 |
+| 2167 | `worldToScreen` | binary | OBJECT · ARRAY → ARRAY | 0x80b1b0 | 0 | 0 | 0 | 0 |
 
 ## All overloads
 
@@ -2349,7 +2283,7 @@ A name counts under the least complete status among its overloads.
 | `add3DENEventHandler` | unary | ARRAY → SCALAR | 0x7f3bf0 | missing |  |  | 0 |
 | `add3DENLayer` | binary | SCALAR · STRING → SCALAR | 0x7f4050 | missing |  |  | 0 |
 | `addAction` | binary | OBJECT · ARRAY → NOTHING\|SCALAR | 0x5677c0 | missing |  |  | 57 |
-| `addBackpack` | binary | OBJECT · STRING → NOTHING | 0x8319f0 | missing |  |  | 107 |
+| `addBackpack` | binary | OBJECT · STRING → NOTHING | 0x8319f0 | verified | a3-world | decompiled 0x8319f0 + oracle | 107 |
 | `addBackpackCargo` | binary | OBJECT · ARRAY → NOTHING | 0x838af0 | missing |  |  | 10 |
 | `addBackpackCargoGlobal` | binary | OBJECT · ARRAY → NOTHING | 0x838e30 | missing |  |  | 26 |
 | `addBackpackGlobal` | binary | OBJECT · STRING → NOTHING | 0x831b10 | missing |  |  | 0 |
@@ -2366,26 +2300,26 @@ A name counts under the least complete status among its overloads.
 | `addEventHandler` | binary | OBJECT · ARRAY → NOTHING\|SCALAR | 0x185470 | implemented | a3-world | unrecorded | 980 |
 | `addForce` | binary | OBJECT · ARRAY → NOTHING | 0x1a5130 | missing |  |  | 3 |
 | `addForceGeneratorRTD` | unary | ARRAY → SCALAR | 0x891e00 | missing |  |  | 0 |
-| `addGoggles` | binary | OBJECT · STRING → NOTHING | 0x8436b0 | missing |  |  | 93 |
+| `addGoggles` | binary | OBJECT · STRING → NOTHING | 0x8436b0 | verified | a3-world | decompiled 0x8436b0 + oracle | 93 |
 | `addGroupIcon` | binary | GROUP · ARRAY → SCALAR | 0x18d2f0 | missing |  |  | 37 |
-| `addHandgunItem` | binary | OBJECT · STRING → NOTHING | 0x839670 | missing |  |  | 54 |
-| `addHeadgear` | binary | OBJECT · STRING → NOTHING | 0x8436e0 | missing |  |  | 190 |
-| `addItem` | binary | OBJECT · STRING → NOTHING | 0x839160 | missing |  |  | 44 |
+| `addHandgunItem` | binary | OBJECT · STRING → NOTHING | 0x839670 | verified | a3-world | decompiled 0x839670 + oracle | 54 |
+| `addHeadgear` | binary | OBJECT · STRING → NOTHING | 0x8436e0 | verified | a3-world | decompiled 0x8436e0 + oracle | 190 |
+| `addItem` | binary | OBJECT · STRING → NOTHING | 0x839160 | verified | a3-world | decompiled 0x839160 + oracle | 44 |
 | `addItemCargo` | binary | OBJECT · ARRAY → NOTHING | 0x8391e0 | missing |  |  | 125 |
 | `addItemCargoGlobal` | binary | OBJECT · ARRAY → NOTHING | 0x839420 | missing |  |  | 132 |
 | `addItemPool` | unary | ARRAY → NOTHING | 0x8b89d0 | missing |  |  | 1 |
-| `addItemToBackpack` | binary | OBJECT · STRING → NOTHING | 0x839180 | missing |  |  | 145 |
-| `addItemToUniform` | binary | OBJECT · STRING → NOTHING | 0x8391a0 | missing |  |  | 312 |
-| `addItemToVest` | binary | OBJECT · STRING → NOTHING | 0x8391c0 | missing |  |  | 404 |
+| `addItemToBackpack` | binary | OBJECT · STRING → NOTHING | 0x839180 | verified | a3-world | decompiled 0x839180 + oracle | 145 |
+| `addItemToUniform` | binary | OBJECT · STRING → NOTHING | 0x8391a0 | verified | a3-world | decompiled 0x8391a0 + oracle | 312 |
+| `addItemToVest` | binary | OBJECT · STRING → NOTHING | 0x8391c0 | verified | a3-world | decompiled 0x8391c0 + oracle | 404 |
 | `addLiveStats` | binary | OBJECT · SCALAR → NOTHING | 0x523490 | missing |  |  | 0 |
-| `addMagazine` | binary | OBJECT · ARRAY → NOTHING | 0x83a4a0 | missing |  |  | 185 |
-| `addMagazine` | binary | OBJECT · STRING → NOTHING | 0x839ba0 | missing |  |  | 185 |
+| `addMagazine` | binary | OBJECT · ARRAY → NOTHING | 0x83a4a0 | verified | a3-world | decompiled 0x83a4a0 + oracle | 185 |
+| `addMagazine` | binary | OBJECT · STRING → NOTHING | 0x839ba0 | verified | a3-world | decompiled 0x839ba0 + oracle | 185 |
 | `addMagazineAmmoCargo` | binary | OBJECT · ARRAY → NOTHING | 0x83a020 | missing |  |  | 0 |
 | `addMagazineCargo` | binary | OBJECT · ARRAY → NOTHING | 0x83a8f0 | missing |  |  | 95 |
 | `addMagazineCargoGlobal` | binary | OBJECT · ARRAY → NOTHING | 0x83ab60 | missing |  |  | 126 |
 | `addMagazineGlobal` | binary | OBJECT · STRING → NOTHING | 0x83ae00 | missing |  |  | 6 |
 | `addMagazinePool` | unary | ARRAY → NOTHING | 0x8b8b20 | missing |  |  | 1 |
-| `addMagazines` | binary | OBJECT · ARRAY → NOTHING | 0x83b290 | missing |  |  | 32 |
+| `addMagazines` | binary | OBJECT · ARRAY → NOTHING | 0x83b290 | verified | a3-world | decompiled 0x83b290 + oracle | 32 |
 | `addMagazinesTurret` | binary | OBJECT · ARRAY → NOTHING | 0x523b20 | missing |  |  | 0 |
 | `addMagazineTurret` | binary | OBJECT · ARRAY → NOTHING | 0x5235c0 | missing |  |  | 10 |
 | `addMenu` | binary | CONTROL · ARRAY → SCALAR | 0x13ca740 | missing |  |  | 0 |
@@ -2396,24 +2330,24 @@ A name counts under the least complete status among its overloads.
 | `addonFiles` | unary | ARRAY → ARRAY | 0x498010 | missing |  |  | 0 |
 | `addOwnedMine` | binary | OBJECT · OBJECT → NOTHING | 0x523ed0 | missing |  |  | 1 |
 | `addPlayerScores` | binary | OBJECT · ARRAY → NOTHING | 0x523f90 | missing |  |  | 0 |
-| `addPrimaryWeaponItem` | binary | OBJECT · STRING → NOTHING | 0x8396a0 | missing |  |  | 381 |
+| `addPrimaryWeaponItem` | binary | OBJECT · STRING → NOTHING | 0x8396a0 | verified | a3-world | decompiled 0x8396a0 + oracle | 381 |
 | `addPublicVariableEventHandler` | binary | STRING · ARRAY → NOTHING | 0x1809f0 | missing |  |  | 17 |
 | `addPublicVariableEventHandler` | binary | STRING · CODE → NOTHING | 0x1809f0 | missing |  |  | 17 |
 | `addRating` | binary | OBJECT · SCALAR → NOTHING | 0x5233d0 | missing |  |  | 94 |
 | `addResources` | binary | TEAM_MEMBER · ARRAY → NOTHING | 0x196b70 | missing |  |  | 0 |
 | `addScore` | binary | OBJECT · SCALAR → NOTHING | 0x524280 | missing |  |  | 3 |
 | `addScoreSide` | binary | SIDE · SCALAR → NOTHING | 0x5243b0 | missing |  |  | 4 |
-| `addSecondaryWeaponItem` | binary | OBJECT · STRING → NOTHING | 0x8396d0 | missing |  |  | 17 |
+| `addSecondaryWeaponItem` | binary | OBJECT · STRING → NOTHING | 0x8396d0 | verified | a3-world | decompiled 0x8396d0 | 17 |
 | `addSwitchableUnit` | unary | OBJECT → NOTHING | 0x47d8c0 | missing |  |  | 0 |
 | `addTeamMember` | binary | TEAM_MEMBER · TEAM_MEMBER → NOTHING | 0x196b00 | missing |  |  | 0 |
 | `addToRemainsCollector` | unary | ARRAY → NOTHING | 0x47d940 | missing |  |  | 10 |
 | `addTorque` | binary | OBJECT · ARRAY → NOTHING | 0x1a53e0 | missing |  |  | 6 |
-| `addUniform` | binary | OBJECT · STRING → NOTHING | 0x843f80 | missing |  |  | 30 |
+| `addUniform` | binary | OBJECT · STRING → NOTHING | 0x843f80 | verified | a3-world | decompiled 0x843f80 + oracle | 30 |
 | `addUserActionEventHandler` | unary | ARRAY → SCALAR | 0x180be0 | missing |  |  | 0 |
 | `addVehicle` | binary | GROUP · OBJECT → NOTHING | 0x190740 | missing |  |  | 22 |
-| `addVest` | binary | OBJECT · STRING → NOTHING | 0x843fb0 | missing |  |  | 161 |
+| `addVest` | binary | OBJECT · STRING → NOTHING | 0x843fb0 | verified | a3-world | decompiled 0x843fb0 + oracle | 161 |
 | `addWaypoint` | binary | GROUP · ARRAY → ARRAY | 0x8f61b0 | implemented | a3-world | unrecorded | 3035 |
-| `addWeapon` | binary | OBJECT · STRING\|ARRAY → NOTHING | 0x83b700 | missing |  |  | 415 |
+| `addWeapon` | binary | OBJECT · STRING\|ARRAY → NOTHING | 0x83b700 | verified | a3-world | decompiled 0x83b700 + oracle | 415 |
 | `addWeaponCargo` | binary | OBJECT · ARRAY → NOTHING | 0x83b720 | missing |  |  | 72 |
 | `addWeaponCargoGlobal` | binary | OBJECT · ARRAY → NOTHING | 0x83b980 | missing |  |  | 59 |
 | `addWeaponGlobal` | binary | OBJECT · STRING\|ARRAY → NOTHING | 0x83bff0 | missing |  |  | 8 |
@@ -2522,13 +2456,13 @@ A name counts under the least complete status among its overloads.
 | `assignedDriver` | unary | OBJECT → OBJECT | 0x52b860 | missing |  |  | 3 |
 | `assignedGroup` | unary | OBJECT → GROUP | 0x197da0 | missing |  |  | 0 |
 | `assignedGunner` | unary | OBJECT → OBJECT | 0x52bff0 | missing |  |  | 2 |
-| `assignedItems` | unary | OBJECT\|ARRAY → ARRAY | 0x83c530 | missing |  |  | 58 |
+| `assignedItems` | unary | OBJECT\|ARRAY → ARRAY | 0x83c530 | verified | a3-world | decompiled 0x83c530 + oracle | 58 |
 | `assignedTarget` | unary | OBJECT → OBJECT | 0x1cc160 | missing |  |  | 6 |
 | `assignedTeam` | unary | OBJECT → STRING | 0x47ee80 | missing |  |  | 1 |
 | `assignedVehicle` | unary | OBJECT → OBJECT | 0x529220 | missing |  |  | 18 |
 | `assignedVehicleRole` | unary | OBJECT → ARRAY | 0x529290 | missing |  |  | 13 |
 | `assignedVehicles` | unary | GROUP → ARRAY | 0x190bd0 | missing |  |  | 0 |
-| `assignItem` | binary | OBJECT · STRING → NOTHING | 0x83ccd0 | missing |  |  | 38 |
+| `assignItem` | binary | OBJECT · STRING → NOTHING | 0x83ccd0 | verified | a3-world | decompiled 0x83ccd0 + oracle | 38 |
 | `assignTeam` | binary | OBJECT · STRING → NOTHING | 0x55f120 | missing |  |  | 0 |
 | `assignToAirport` | binary | OBJECT · OBJECT\|SCALAR → NOTHING | 0x5256f0 | missing |  |  | 0 |
 | `atan` | unary | SCALAR\|NaN → SCALAR\|NaN | 0x2cdf80 | implemented | a3-sqf | unrecorded | 23 |
@@ -2543,10 +2477,10 @@ A name counts under the least complete status among its overloads.
 | `attachTo` | binary | OBJECT · ARRAY → NOTHING | 0x525790 | implemented | a3-world | unrecorded | 998 |
 | `attackEnabled` | unary | OBJECT\|GROUP → BOOL | 0x1910a0 | missing |  |  | 0 |
 | `awake` | binary | OBJECT · BOOL → NOTHING | 0x1a54b0 | missing |  |  | 0 |
-| `backpack` | unary | OBJECT → STRING | 0x83d3f0 | missing |  |  | 59 |
+| `backpack` | unary | OBJECT → STRING | 0x83d3f0 | verified | a3-world | decompiled 0x83d3f0 + oracle | 59 |
 | `backpackCargo` | unary | OBJECT → ARRAY | 0x83d0e0 | missing |  |  | 9 |
 | `backpackContainer` | unary | OBJECT → OBJECT | 0x83d100 | missing |  |  | 10 |
-| `backpackItems` | unary | OBJECT → ARRAY | 0x83d120 | missing |  |  | 21 |
+| `backpackItems` | unary | OBJECT → ARRAY | 0x83d120 | verified | a3-world | decompiled 0x83d120 + oracle | 21 |
 | `backpackMagazines` | unary | OBJECT → ARRAY | 0x83d3d0 | missing |  |  | 0 |
 | `backpacks` | unary | OBJECT → ARRAY | 0x83f2d0 | missing |  |  | 0 |
 | `backpackSpaceFor` | binary | OBJECT · STRING → ARRAY | 0x49caf0 | missing |  |  | 0 |
@@ -2554,7 +2488,7 @@ A name counts under the least complete status among its overloads.
 | `behaviour` | unary | OBJECT → STRING | 0x525e10 | implemented | a3-world | unrecorded | 121 |
 | `benchmark` | nular | → SCALAR | 0x8a5b70 | missing |  |  | 0 |
 | `bezierInterpolation` | binary | SCALAR · ARRAY → ARRAY | 0x49ce30 | implemented | a3-sqf | unrecorded | 10 |
-| `binocular` | unary | OBJECT → STRING | 0x83f340 | missing |  |  | 17 |
+| `binocular` | unary | OBJECT → STRING | 0x83f340 | verified | a3-world | decompiled 0x83f340 | 17 |
 | `binocularItems` | unary | OBJECT → ARRAY | 0x83d4b0 | missing |  |  | 0 |
 | `binocularMagazine` | unary | OBJECT → STRING | 0x84c970 | missing |  |  | 0 |
 | `blufor` | nular | → SIDE | 0x8b1ae0 | implemented | a3-sqf | unrecorded | 8 |
@@ -3291,7 +3225,7 @@ A name counts under the least complete status among its overloads.
 | `fogParams` | nular | → ARRAY | 0x8a9000 | missing |  |  | 30 |
 | `for` | unary | ARRAY → FOR | 0x2f4650 | implemented | a3-sqf | unrecorded | 1761 |
 | `for` | unary | STRING → FOR | 0x2f4530 | implemented | a3-sqf | unrecorded | 1761 |
-| `forceAddUniform` | binary | OBJECT · STRING → NOTHING | 0x83dd50 | missing |  |  | 158 |
+| `forceAddUniform` | binary | OBJECT · STRING → NOTHING | 0x83dd50 | verified | a3-world | decompiled 0x83dd50 + oracle | 158 |
 | `forceAtPositionRTD` | unary | ARRAY → ARRAY | 0x892310 | missing |  |  | 0 |
 | `forceCadetDifficulty` | unary | ARRAY → ARRAY | 0x492cf0 | missing |  |  | 0 |
 | `forcedMap` | nular | → ARRAY | 0x8a9220 | missing |  |  | 0 |
@@ -3598,7 +3532,7 @@ A name counts under the least complete status among its overloads.
 | `glanceAt` | binary | OBJECT\|ARRAY · OBJECT\|ARRAY → NOTHING | 0x56cab0 | missing |  |  | 23 |
 | `globalChat` | binary | OBJECT · STRING → NOTHING | 0x19d190 | missing |  |  | 8 |
 | `globalRadio` | binary | OBJECT · STRING → NOTHING | 0x19d290 | missing |  |  | 4 |
-| `goggles` | unary | OBJECT → STRING | 0x842690 | missing |  |  | 49 |
+| `goggles` | unary | OBJECT → STRING | 0x842690 | verified | a3-world | decompiled 0x842690 + oracle | 49 |
 | `goto` | unary | STRING → NOTHING | 0x10d3dd0 | missing |  |  | 0 |
 | `group` | unary | OBJECT → GROUP | 0x192d30 | implemented | a3-world | unrecorded | 6993 |
 | `groupChat` | binary | OBJECT · STRING → NOTHING | 0x19d2f0 | missing |  |  | 8 |
@@ -3616,15 +3550,15 @@ A name counts under the least complete status among its overloads.
 | `gunner` | unary | OBJECT → OBJECT | 0x5352d0 | missing |  |  | 176 |
 | `gusts` | nular | → SCALAR | 0x8a9420 | missing |  |  | 0 |
 | `halt` | nular | → NOTHING | 0x2cf7b0 | missing |  |  | 0 |
-| `handgunItems` | unary | OBJECT → ARRAY | 0x8428b0 | missing |  |  | 18 |
-| `handgunMagazine` | unary | OBJECT → ARRAY | 0x84d3c0 | missing |  |  | 0 |
-| `handgunWeapon` | unary | OBJECT → STRING | 0x83fc30 | missing |  |  | 75 |
+| `handgunItems` | unary | OBJECT → ARRAY | 0x8428b0 | verified | a3-world | decompiled 0x8428b0 + oracle | 18 |
+| `handgunMagazine` | unary | OBJECT → ARRAY | 0x84d3c0 | verified | a3-world | decompiled 0x84d3c0 + oracle | 0 |
+| `handgunWeapon` | unary | OBJECT → STRING | 0x83fc30 | verified | a3-world | decompiled 0x83fc30 + oracle | 75 |
 | `handsHit` | unary | OBJECT → SCALAR | 0x535370 | missing |  |  | 0 |
 | `hasCustomFace` | unary | OBJECT → BOOL | 0x4b94b0 | missing |  |  | 0 |
 | `hashValue` | unary | ?\|SCRIPT → STRING | 0x4a32a0 | missing |  |  | 1 |
 | `hasInterface` | nular | → BOOL | 0x8ab840 | stub | a3-gamedata (headless) | headless stand-in | 123 |
 | `hasPilotCamera` | unary | OBJECT → BOOL | 0x809170 | missing |  |  | 0 |
-| `hasWeapon` | binary | OBJECT · STRING → BOOL | 0x5353e0 | missing |  |  | 10 |
+| `hasWeapon` | binary | OBJECT · STRING → BOOL | 0x5353e0 | verified | a3-world | decompiled 0x5353e0 + oracle | 10 |
 | `hcAllGroups` | unary | OBJECT → ARRAY | 0x1990d0 | missing |  |  | 14 |
 | `hcGroupParams` | binary | OBJECT · GROUP → ARRAY | 0x1994c0 | missing |  |  | 0 |
 | `hcLeader` | unary | GROUP → OBJECT | 0x199650 | missing |  |  | 5 |
@@ -3635,7 +3569,7 @@ A name counts under the least complete status among its overloads.
 | `hcSetGroup` | binary | OBJECT · ARRAY → NOTHING | 0x198810 | missing |  |  | 2 |
 | `hcShowBar` | unary | BOOL → NOTHING | 0x199da0 | missing |  |  | 0 |
 | `hcShownBar` | nular | → BOOL | 0x8af390 | missing |  |  | 7 |
-| `headgear` | unary | OBJECT → STRING | 0x8428d0 | missing |  |  | 39 |
+| `headgear` | unary | OBJECT → STRING | 0x8428d0 | verified | a3-world | decompiled 0x8428d0 + oracle | 39 |
 | `hiddenActions` | unary | ARRAY → ARRAY | 0x4ba360 | missing |  |  | 1 |
 | `hideActions` | unary | ARRAY → NOTHING | 0x4ba680 | missing |  |  | 2 |
 | `hideBody` | unary | OBJECT → NOTHING | 0x535510 | missing |  |  | 5 |
@@ -3820,7 +3754,7 @@ A name counts under the least complete status among its overloads.
 | `isWeaponDeployed` | unary | OBJECT → BOOL | 0x896cc0 | missing |  |  | 2 |
 | `isWeaponRested` | unary | OBJECT → BOOL | 0x896e40 | missing |  |  | 2 |
 | `itemCargo` | unary | OBJECT → ARRAY | 0x842c00 | missing |  |  | 17 |
-| `items` | unary | OBJECT → ARRAY | 0x83cc40 | missing |  |  | 72 |
+| `items` | unary | OBJECT → ARRAY | 0x83cc40 | verified | a3-world | decompiled 0x83cc40 + oracle | 72 |
 | `itemsWithMagazines` | unary | OBJECT → ARRAY | 0x83cbd0 | missing |  |  | 2 |
 | `join` | binary | ARRAY · OBJECT\|GROUP → NOTHING | 0x192bd0 | implemented | a3-world | unrecorded | 81 |
 | `joinAs` | binary | OBJECT · ARRAY → NOTHING | 0x197c40 | missing |  |  | 2 |
@@ -3946,7 +3880,7 @@ A name counts under the least complete status among its overloads.
 | `lineIntersectsObjs` | unary | ARRAY → ARRAY | 0x51c480 | missing |  |  | 4 |
 | `lineIntersectsSurfaces` | unary | ARRAY → ARRAY | 0x51c4a0 | missing |  |  | 13 |
 | `lineIntersectsWith` | unary | ARRAY → ARRAY | 0x51c480 | missing |  |  | 9 |
-| `linkItem` | binary | OBJECT · STRING → NOTHING | 0x842c20 | missing |  |  | 593 |
+| `linkItem` | binary | OBJECT · STRING → NOTHING | 0x842c20 | verified | a3-world | decompiled 0x842c20 + oracle | 593 |
 | `list` | unary | OBJECT → ARRAY | 0x5366e0 | missing |  |  | 225 |
 | `listObjects` | binary | CONTROL · STRING → ARRAY | 0x13cee70 | missing |  |  | 0 |
 | `listRemoteTargets` | unary | SIDE → ARRAY | 0x1c8c70 | missing |  |  | 0 |
@@ -4020,10 +3954,10 @@ A name counts under the least complete status among its overloads.
 | `lnbTextRight` | unary | ARRAY → STRING | 0x8e2100 | missing |  |  | 0 |
 | `lnbValue` | binary | CONTROL · ARRAY → SCALAR | 0x8e5240 | missing |  |  | 7 |
 | `lnbValue` | unary | ARRAY → SCALAR | 0x8e2120 | missing |  |  | 0 |
-| `load` | unary | OBJECT → SCALAR | 0x83dd80 | missing |  |  | 1 |
+| `load` | unary | OBJECT → SCALAR | 0x83dd80 | verified | a3-world | decompiled 0x83dd80 + oracle | 1 |
 | `load3DENScenario` | unary | STRING → BOOL | 0x7ff250 | missing |  |  | 0 |
-| `loadAbs` | unary | OBJECT → SCALAR | 0x83dee0 | missing |  |  | 0 |
-| `loadBackpack` | unary | OBJECT → SCALAR | 0x840ed0 | missing |  |  | 2 |
+| `loadAbs` | unary | OBJECT → SCALAR | 0x83dee0 | verified | a3-world | decompiled 0x83dee0 + oracle | 0 |
+| `loadBackpack` | unary | OBJECT → SCALAR | 0x840ed0 | verified | a3-world | decompiled 0x840ed0 + oracle | 2 |
 | `loadConfig` | unary | STRING → CONFIG | 0x813470 | missing |  |  | 0 |
 | `loadCuratorSelectionPreset` | unary | SCALAR → NOTHING | 0x82ae00 | missing |  |  | 0 |
 | `loadFile` | unary | STRING → STRING | 0x55de30 | implemented | a3-sqf | unrecorded | 9 |
@@ -4032,8 +3966,8 @@ A name counts under the least complete status among its overloads.
 | `loadMagazine` | binary | OBJECT · ARRAY → NOTHING | 0x51e8c0 | missing |  |  | 0 |
 | `loadOverlay` | binary | CONTROL · CONFIG → NOTHING | 0x13cf9c0 | missing |  |  | 0 |
 | `loadStatus` | binary | OBJECT · STRING → BOOL | 0x8b6f60 | missing |  |  | 1 |
-| `loadUniform` | unary | OBJECT → SCALAR | 0x840f60 | missing |  |  | 2 |
-| `loadVest` | unary | OBJECT → SCALAR | 0x840ff0 | missing |  |  | 2 |
+| `loadUniform` | unary | OBJECT → SCALAR | 0x840f60 | verified | a3-world | decompiled 0x840f60 + oracle | 2 |
+| `loadVest` | unary | OBJECT → SCALAR | 0x840ff0 | verified | a3-world | decompiled 0x840ff0 + oracle | 2 |
 | `local` | unary | GROUP → BOOL | 0x4b8f40 | implemented | a3-world | unrecorded | 221 |
 | `local` | unary | OBJECT → BOOL | 0x5359e0 | implemented | a3-world | unrecorded | 221 |
 | `localize` | unary | STRING → STRING | 0x55d440 | implemented | a3-sqf | unrecorded | 7133 |
@@ -4064,9 +3998,9 @@ A name counts under the least complete status among its overloads.
 | `lookAt` | binary | OBJECT\|ARRAY · OBJECT\|ARRAY → NOTHING | 0x56d700 | missing |  |  | 71 |
 | `lookAtPos` | binary | CONTROL · ARRAY → NOTHING | 0x13cf1b0 | missing |  |  | 0 |
 | `magazineCargo` | unary | OBJECT → ARRAY | 0x842f30 | missing |  |  | 13 |
-| `magazines` | unary | OBJECT\|ARRAY → ARRAY | 0x83dfa0 | missing |  |  | 66 |
+| `magazines` | unary | OBJECT\|ARRAY → ARRAY | 0x83dfa0 | partial | a3-world | decompiled 0x83dfa0 + oracle | 66 |
 | `magazinesAllTurrets` | unary | OBJECT\|ARRAY → ARRAY | 0x840b90 | missing |  |  | 1 |
-| `magazinesAmmo` | unary | OBJECT\|ARRAY → ARRAY | 0x83e090 | missing |  |  | 6 |
+| `magazinesAmmo` | unary | OBJECT\|ARRAY → ARRAY | 0x83e090 | verified | a3-world | decompiled 0x83e090 + oracle | 6 |
 | `magazinesAmmoCargo` | unary | OBJECT → ARRAY | 0x83e330 | missing |  |  | 5 |
 | `magazinesAmmoFull` | unary | OBJECT\|ARRAY → ARRAY | 0x83e510 | missing |  |  | 1 |
 | `magazinesDetail` | unary | OBJECT\|ARRAY → ARRAY | 0x83dfd0 | missing |  |  | 0 |
@@ -4348,9 +4282,9 @@ A name counts under the least complete status among its overloads.
 | `preloadTitleRsc` | unary | ARRAY → BOOL | 0x4946d0 | missing |  |  | 2 |
 | `preprocessFile` | unary | STRING → STRING | 0x55dee0 | implemented | a3-sqf | unrecorded | 64 |
 | `preprocessFileLineNumbers` | unary | STRING → STRING | 0x55df90 | implemented | a3-sqf | unrecorded | 381 |
-| `primaryWeapon` | unary | OBJECT → STRING | 0x841160 | missing |  |  | 251 |
-| `primaryWeaponItems` | unary | OBJECT → ARRAY | 0x843fe0 | missing |  |  | 45 |
-| `primaryWeaponMagazine` | unary | OBJECT → ARRAY | 0x84d700 | missing |  |  | 3 |
+| `primaryWeapon` | unary | OBJECT → STRING | 0x841160 | verified | a3-world | decompiled 0x841160 + oracle | 251 |
+| `primaryWeaponItems` | unary | OBJECT → ARRAY | 0x843fe0 | verified | a3-world | decompiled 0x843fe0 + oracle | 45 |
+| `primaryWeaponMagazine` | unary | OBJECT → ARRAY | 0x84d700 | verified | a3-world | decompiled 0x84d700 + oracle | 3 |
 | `priority` | unary | TASK → SCALAR | 0xe0a8e0 | missing |  |  | 0 |
 | `private` | unary | STRING\|ARRAY → NOTHING | 0x2ee6a0 | implemented | a3-sqf | unrecorded | 7883 |
 | `privateAll` | nular | → NOTHING | 0x8a3220 | implemented | a3-sqf | unrecorded | 0 |
@@ -4413,17 +4347,17 @@ A name counts under the least complete status among its overloads.
 | `removeAction` | binary | OBJECT · SCALAR → NOTHING | 0x56f0d0 | missing |  |  | 18 |
 | `removeAll3DENEventHandlers` | unary | STRING → NOTHING | 0x801170 | missing |  |  | 0 |
 | `removeAllActions` | unary | OBJECT → NOTHING | 0x539570 | missing |  |  | 1 |
-| `removeAllAssignedItems` | unary | OBJECT\|ARRAY → NOTHING | 0x84b460 | missing |  |  | 89 |
+| `removeAllAssignedItems` | unary | OBJECT\|ARRAY → NOTHING | 0x84b460 | verified | a3-world | decompiled 0x84b460 + oracle | 89 |
 | `removeAllBinocularItems` | unary | OBJECT → NOTHING | 0x844000 | missing |  |  | 0 |
-| `removeAllContainers` | unary | OBJECT → NOTHING | 0x844020 | missing |  |  | 0 |
+| `removeAllContainers` | unary | OBJECT → NOTHING | 0x844020 | verified | a3-world | decompiled 0x844020 + oracle | 0 |
 | `removeAllCuratorAddons` | unary | OBJECT → NOTHING | 0x82a020 | missing |  |  | 8 |
 | `removeAllCuratorCameraAreas` | unary | OBJECT → NOTHING | 0x82a210 | missing |  |  | 0 |
 | `removeAllCuratorEditingAreas` | unary | OBJECT → NOTHING | 0x82a340 | missing |  |  | 0 |
 | `removeAllEventHandlers` | binary | GROUP · STRING → NOTHING | 0x1912b0 | implemented | a3-world | unrecorded | 119 |
 | `removeAllEventHandlers` | binary | OBJECT · STRING → NOTHING | 0x185af0 | implemented | a3-world | unrecorded | 119 |
 | `removeAllHandgunItems` | unary | OBJECT → NOTHING | 0x844150 | missing |  |  | 0 |
-| `removeAllItems` | unary | OBJECT → NOTHING | 0x844240 | missing |  |  | 100 |
-| `removeAllItemsWithMagazines` | unary | OBJECT → NOTHING | 0x844170 | missing |  |  | 0 |
+| `removeAllItems` | unary | OBJECT → NOTHING | 0x844240 | verified | a3-world | decompiled 0x844240 + oracle | 100 |
+| `removeAllItemsWithMagazines` | unary | OBJECT → NOTHING | 0x844170 | verified | a3-world | decompiled 0x844170 + oracle | 0 |
 | `removeAllMagazines` | unary | OBJECT → NOTHING | 0x8443f0 | missing |  |  | 0 |
 | `removeAllMagazinesTurret` | binary | OBJECT · ARRAY → NOTHING | 0x8444c0 | missing |  |  | 0 |
 | `removeAllMissionEventHandlers` | unary | STRING → NOTHING | 0x1833c0 | implemented | a3-world | unrecorded | 3 |
@@ -4433,8 +4367,8 @@ A name counts under the least complete status among its overloads.
 | `removeAllPrimaryWeaponItems` | unary | OBJECT → NOTHING | 0x844750 | missing |  |  | 1 |
 | `removeAllSecondaryWeaponItems` | unary | OBJECT → NOTHING | 0x844770 | missing |  |  | 0 |
 | `removeAllUserActionEventHandlers` | unary | ARRAY → NOTHING | 0x184330 | missing |  |  | 0 |
-| `removeAllWeapons` | unary | OBJECT → NOTHING | 0x844790 | missing |  |  | 171 |
-| `removeBackpack` | unary | OBJECT → NOTHING | 0x84b730 | missing |  |  | 113 |
+| `removeAllWeapons` | unary | OBJECT → NOTHING | 0x844790 | verified | a3-world | decompiled 0x844790 + oracle | 171 |
+| `removeBackpack` | unary | OBJECT → NOTHING | 0x84b730 | verified | a3-world | decompiled 0x84b730 + oracle | 113 |
 | `removeBackpackGlobal` | unary | OBJECT → NOTHING | 0x84b7d0 | missing |  |  | 2 |
 | `removeBinocularItem` | binary | OBJECT · STRING → NOTHING | 0x844840 | missing |  |  | 0 |
 | `removeCuratorAddons` | binary | OBJECT · ARRAY → NOTHING | 0x82a470 | missing |  |  | 4 |
@@ -4448,18 +4382,18 @@ A name counts under the least complete status among its overloads.
 | `removeEventHandler` | binary | GROUP · ARRAY → NOTHING | 0x1913f0 | implemented | a3-world | unrecorded | 370 |
 | `removeEventHandler` | binary | OBJECT · ARRAY → NOTHING | 0x185ea0 | implemented | a3-world | unrecorded | 370 |
 | `removeFromRemainsCollector` | unary | ARRAY → NOTHING | 0x549130 | missing |  |  | 7 |
-| `removeGoggles` | unary | OBJECT → NOTHING | 0x84b890 | missing |  |  | 120 |
+| `removeGoggles` | unary | OBJECT → NOTHING | 0x84b890 | verified | a3-world | decompiled 0x84b890 + oracle | 120 |
 | `removeGroupIcon` | binary | GROUP · SCALAR → NOTHING | 0x1944d0 | missing |  |  | 1 |
-| `removeHandgunItem` | binary | OBJECT · STRING → NOTHING | 0x844860 | missing |  |  | 5 |
-| `removeHeadgear` | unary | OBJECT → NOTHING | 0x84b8b0 | missing |  |  | 128 |
-| `removeItem` | binary | OBJECT · STRING → NOTHING | 0x844880 | missing |  |  | 84 |
+| `removeHandgunItem` | binary | OBJECT · STRING → NOTHING | 0x844860 | verified | a3-world | decompiled 0x844860 + oracle | 5 |
+| `removeHeadgear` | unary | OBJECT → NOTHING | 0x84b8b0 | verified | a3-world | decompiled 0x84b8b0 + oracle | 128 |
+| `removeItem` | binary | OBJECT · STRING → NOTHING | 0x844880 | verified | a3-world | decompiled 0x844880 + oracle | 84 |
 | `removeItemFromBackpack` | binary | OBJECT · STRING → NOTHING | 0x844a00 | missing |  |  | 2 |
 | `removeItemFromUniform` | binary | OBJECT · STRING → NOTHING | 0x844a20 | missing |  |  | 2 |
 | `removeItemFromVest` | binary | OBJECT · STRING → NOTHING | 0x844a40 | missing |  |  | 2 |
-| `removeItems` | binary | OBJECT · STRING → NOTHING | 0x844a60 | missing |  |  | 0 |
-| `removeMagazine` | binary | OBJECT · STRING\|ARRAY → NOTHING | 0x844c90 | missing |  |  | 42 |
+| `removeItems` | binary | OBJECT · STRING → NOTHING | 0x844a60 | verified | a3-world | decompiled 0x844a60 + oracle | 0 |
+| `removeMagazine` | binary | OBJECT · STRING\|ARRAY → NOTHING | 0x844c90 | verified | a3-world | decompiled 0x844c90 + oracle | 42 |
 | `removeMagazineGlobal` | binary | OBJECT · STRING → NOTHING | 0x844e30 | missing |  |  | 8 |
-| `removeMagazines` | binary | OBJECT · STRING → NOTHING | 0x845940 | missing |  |  | 41 |
+| `removeMagazines` | binary | OBJECT · STRING → NOTHING | 0x845940 | verified | a3-world | decompiled 0x845940 + oracle | 41 |
 | `removeMagazinesTurret` | binary | OBJECT · ARRAY → NOTHING | 0x845a80 | missing |  |  | 6 |
 | `removeMagazineTurret` | binary | OBJECT · ARRAY → NOTHING | 0x845120 | missing |  |  | 5 |
 | `removeMenuItem` | binary | CONTROL · SCALAR → NOTHING | 0x13d0830 | missing |  |  | 0 |
@@ -4468,15 +4402,15 @@ A name counts under the least complete status among its overloads.
 | `removeMPEventHandler` | binary | OBJECT · ARRAY → NOTHING | 0x186100 | implemented | a3-world | unrecorded | 9 |
 | `removeMusicEventHandler` | unary | ARRAY → NOTHING | 0x183a10 | missing |  |  | 36 |
 | `removeOwnedMine` | binary | OBJECT · OBJECT → NOTHING | 0x5395e0 | missing |  |  | 0 |
-| `removePrimaryWeaponItem` | binary | OBJECT · STRING → NOTHING | 0x846290 | missing |  |  | 101 |
-| `removeSecondaryWeaponItem` | binary | OBJECT · STRING → NOTHING | 0x8462b0 | missing |  |  | 1 |
+| `removePrimaryWeaponItem` | binary | OBJECT · STRING → NOTHING | 0x846290 | verified | a3-world | decompiled 0x846290 + oracle | 101 |
+| `removeSecondaryWeaponItem` | binary | OBJECT · STRING → NOTHING | 0x8462b0 | verified | a3-world | decompiled 0x8462b0 | 1 |
 | `removeSimpleTask` | binary | OBJECT · TASK → NOTHING | 0xe04d30 | missing |  |  | 6 |
 | `removeSwitchableUnit` | unary | OBJECT → NOTHING | 0x549160 | missing |  |  | 0 |
 | `removeTeamMember` | binary | TEAM_MEMBER · TEAM_MEMBER → NOTHING | 0x1973d0 | missing |  |  | 0 |
-| `removeUniform` | unary | OBJECT → NOTHING | 0x84bce0 | missing |  |  | 95 |
+| `removeUniform` | unary | OBJECT → NOTHING | 0x84bce0 | verified | a3-world | decompiled 0x84bce0 + oracle | 95 |
 | `removeUserActionEventHandler` | unary | ARRAY → NOTHING | 0x1845e0 | missing |  |  | 0 |
-| `removeVest` | unary | OBJECT → NOTHING | 0x84bd00 | missing |  |  | 115 |
-| `removeWeapon` | binary | OBJECT · STRING\|ARRAY → NOTHING | 0x8462d0 | missing |  |  | 83 |
+| `removeVest` | unary | OBJECT → NOTHING | 0x84bd00 | verified | a3-world | decompiled 0x84bd00 + oracle | 115 |
+| `removeWeapon` | binary | OBJECT · STRING\|ARRAY → NOTHING | 0x8462d0 | verified | a3-world | decompiled 0x8462d0 + oracle | 83 |
 | `removeWeaponAttachmentCargo` | binary | OBJECT · ARRAY → NOTHING | 0x846650 | missing |  |  | 0 |
 | `removeWeaponCargo` | binary | OBJECT · ARRAY → NOTHING | 0x8467d0 | missing |  |  | 0 |
 | `removeWeaponGlobal` | binary | OBJECT · STRING\|ARRAY → NOTHING | 0x846900 | missing |  |  | 3 |
@@ -4553,9 +4487,9 @@ A name counts under the least complete status among its overloads.
 | `scriptName` | unary | STRING → NOTHING | 0x2ebd80 | implemented | a3-sqf | unrecorded | 1582 |
 | `scriptNull` | nular | → SCRIPT | 0x8b1960 | implemented | a3-sqf | unrecorded | 110 |
 | `scudState` | unary | OBJECT → SCALAR | 0x530ee0 | missing |  |  | 0 |
-| `secondaryWeapon` | unary | OBJECT → STRING | 0x841230 | missing |  |  | 50 |
-| `secondaryWeaponItems` | unary | OBJECT → ARRAY | 0x846c30 | missing |  |  | 10 |
-| `secondaryWeaponMagazine` | unary | OBJECT → ARRAY | 0x84d720 | missing |  |  | 0 |
+| `secondaryWeapon` | unary | OBJECT → STRING | 0x841230 | verified | a3-world | decompiled 0x841230 + oracle | 50 |
+| `secondaryWeaponItems` | unary | OBJECT → ARRAY | 0x846c30 | verified | a3-world | decompiled 0x846c30 + oracle | 10 |
+| `secondaryWeaponMagazine` | unary | OBJECT → ARRAY | 0x84d720 | verified | a3-world | decompiled 0x84d720 | 0 |
 | `select` | binary | ARRAY · ARRAY → ARRAY | 0x2e4b80 | implemented | a3-sqf | unrecorded | 22637 |
 | `select` | binary | ARRAY · BOOL → ANY | 0x2e4aa0 | implemented | a3-sqf | unrecorded | 22637 |
 | `select` | binary | ARRAY · CODE → ARRAY | 0x2e4d40 | implemented | a3-sqf | unrecorded | 22637 |
@@ -5242,14 +5176,14 @@ A name counts under the least complete status among its overloads.
 | `uiSleep` | unary | SCALAR → NOTHING | 0x564770 | implemented | a3-sqf | unrecorded | 205 |
 | `uiTime` | nular | → SCALAR | 0x89a970 | implemented | a3-sqf | unrecorded | 0 |
 | `unassignCurator` | unary | OBJECT → NOTHING | 0x82c060 | missing |  |  | 3 |
-| `unassignItem` | binary | OBJECT · STRING → NOTHING | 0x847170 | missing |  |  | 64 |
+| `unassignItem` | binary | OBJECT · STRING → NOTHING | 0x847170 | verified | a3-world | decompiled 0x847170 + oracle | 64 |
 | `unassignTeam` | unary | OBJECT → NOTHING | 0x55f8a0 | missing |  |  | 2 |
 | `unassignVehicle` | unary | OBJECT → NOTHING | 0x542400 | missing |  |  | 135 |
 | `unban` | unary | STRING\|SCALAR → NOTHING | 0x1765c0 | missing |  |  | 0 |
 | `underwater` | unary | OBJECT → BOOL | 0x536220 | missing |  |  | 8 |
-| `uniform` | unary | OBJECT → STRING | 0x847400 | missing |  |  | 46 |
+| `uniform` | unary | OBJECT → STRING | 0x847400 | verified | a3-world | decompiled 0x847400 + oracle | 46 |
 | `uniformContainer` | unary | OBJECT → OBJECT | 0x847190 | missing |  |  | 5 |
-| `uniformItems` | unary | OBJECT → ARRAY | 0x8471b0 | missing |  |  | 18 |
+| `uniformItems` | unary | OBJECT → ARRAY | 0x8471b0 | verified | a3-world | decompiled 0x8471b0 + oracle | 18 |
 | `uniformMagazines` | unary | OBJECT → ARRAY | 0x8473e0 | missing |  |  | 0 |
 | `uniqueUnitItems` | unary | OBJECT\|ARRAY → HASHMAP | 0x841300 | missing |  |  | 0 |
 | `unitAddons` | unary | STRING → ARRAY | 0x4b62d0 | missing |  |  | 12 |
@@ -5268,7 +5202,7 @@ A name counts under the least complete status among its overloads.
 | `unitsBelowHeight` | binary | GROUP · SCALAR → ARRAY | 0x18f890 | missing |  |  | 0 |
 | `unitTurret` | binary | OBJECT · OBJECT → ARRAY | 0x56c420 | missing |  |  | 2 |
 | `unkick` | unary | STRING\|SCALAR → NOTHING | 0x176910 | missing |  |  | 0 |
-| `unlinkItem` | binary | OBJECT · STRING → NOTHING | 0x847510 | missing |  |  | 56 |
+| `unlinkItem` | binary | OBJECT · STRING → NOTHING | 0x847510 | verified | a3-world | decompiled 0x847510 + oracle | 56 |
 | `unlockAchievement` | unary | STRING → BOOL | 0x1c1b60 | missing |  |  | 0 |
 | `unregisterTask` | binary | TEAM_MEMBER · STRING → BOOL | 0xe0cfd0 | missing |  |  | 0 |
 | `updateDrawIcon` | binary | CONTROL · ARRAY → NOTHING | 0x13cba30 | missing |  |  | 0 |
@@ -5317,9 +5251,9 @@ A name counts under the least complete status among its overloads.
 | `velocity` | unary | OBJECT → ARRAY | 0x533940 | implemented | a3-world | unrecorded | 127 |
 | `velocityModelSpace` | unary | OBJECT → ARRAY | 0x533a40 | missing |  |  | 6 |
 | `verifySignature` | unary | STRING → BOOL | 0x55be00 | missing |  |  | 0 |
-| `vest` | unary | OBJECT → STRING | 0x847850 | missing |  |  | 34 |
+| `vest` | unary | OBJECT → STRING | 0x847850 | verified | a3-world | decompiled 0x847850 + oracle | 34 |
 | `vestContainer` | unary | OBJECT → OBJECT | 0x847530 | missing |  |  | 2 |
-| `vestItems` | unary | OBJECT → ARRAY | 0x847550 | missing |  |  | 14 |
+| `vestItems` | unary | OBJECT → ARRAY | 0x847550 | verified | a3-world | decompiled 0x847550 + oracle | 14 |
 | `vestMagazines` | unary | OBJECT → ARRAY | 0x847830 | missing |  |  | 0 |
 | `viewDistance` | nular | → SCALAR | 0x8ab480 | missing |  |  | 22 |
 | `visibleCompass` | nular | → BOOL | 0x8af080 | missing |  |  | 3 |
@@ -5367,7 +5301,7 @@ A name counts under the least complete status among its overloads.
 | `weaponInertia` | unary | OBJECT → ARRAY | 0x896ad0 | missing |  |  | 0 |
 | `weaponLowered` | unary | OBJECT → BOOL | 0x536270 | missing |  |  | 3 |
 | `weaponReloadingTime` | binary | OBJECT · ARRAY → SCALAR | 0x4b8270 | missing |  |  | 0 |
-| `weapons` | unary | OBJECT → ARRAY | 0x83e540 | missing |  |  | 57 |
+| `weapons` | unary | OBJECT → ARRAY | 0x83e540 | verified | a3-world | decompiled 0x83e540 + oracle | 57 |
 | `weaponsInfo` | binary | OBJECT · ARRAY → ARRAY | 0x4b83e0 | missing |  |  | 0 |
 | `weaponsItems` | unary | OBJECT\|ARRAY → ARRAY | 0x83e560 | missing |  |  | 8 |
 | `weaponsItemsCargo` | unary | OBJECT\|ARRAY → ARRAY | 0x83e910 | missing |  |  | 8 |

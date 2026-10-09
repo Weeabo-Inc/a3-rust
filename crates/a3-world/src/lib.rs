@@ -101,6 +101,8 @@ mod fire;
 mod groups;
 mod handlers;
 mod id;
+pub mod gear;
+pub mod inventory;
 mod loadout;
 mod markers;
 mod moves;

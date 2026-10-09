@@ -1,0 +1,99 @@
+// Unit inventory: the default loadout of a rifleman, and how the gear commands change it.
+// Every probe makes its own unit and deletes it.
+@world VR
+## inv.default_weapons
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = weapons _u; deleteVehicle _u; _r
+## inv.default_slots
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = [primaryWeapon _u, secondaryWeapon _u, handgunWeapon _u, binocular _u, uniform _u, vest _u, backpack _u, headgear _u, goggles _u]; deleteVehicle _u; _r
+## inv.default_weapon_items
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = [primaryWeaponItems _u, secondaryWeaponItems _u, handgunItems _u]; deleteVehicle _u; _r
+## inv.default_magazines
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = magazines _u; deleteVehicle _u; _r
+## inv.default_items
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = items _u; deleteVehicle _u; _r
+## inv.default_assigned
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = assignedItems _u; deleteVehicle _u; _r
+## inv.default_assigned_array
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = [assignedItems [_u, true, true], assignedItems [_u, true, false], assignedItems [_u, false, true], assignedItems [_u]]; deleteVehicle _u; _r
+## inv.default_containers
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = [uniformItems _u, vestItems _u, backpackItems _u]; deleteVehicle _u; _r
+## inv.default_backpack_unit
+private _u = (createGroup west) createUnit ["B_Soldier_AR_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = [weapons _u, backpack _u, backpackItems _u, magazines _u]; deleteVehicle _u; _r
+## inv.default_at_unit
+private _u = (createGroup west) createUnit ["B_soldier_LAT_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = [weapons _u, secondaryWeapon _u, secondaryWeaponItems _u, backpack _u, backpackItems _u]; deleteVehicle _u; _r
+## inv.remove_all_weapons
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; removeAllWeapons _u; private _r = [weapons _u, magazines _u, items _u, primaryWeapon _u]; deleteVehicle _u; _r
+## inv.remove_all_items
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; removeAllItems _u; private _r = [items _u, magazines _u, assignedItems _u, weapons _u]; deleteVehicle _u; _r
+## inv.remove_all_items_with_magazines
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; removeAllItemsWithMagazines _u; private _r = [items _u, magazines _u, assignedItems _u, weapons _u, uniformItems _u]; deleteVehicle _u; _r
+## inv.remove_all_assigned
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; removeAllAssignedItems _u; private _r = [assignedItems _u, items _u, headgear _u, goggles _u]; deleteVehicle _u; _r
+## inv.remove_all_containers
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; removeAllContainers _u; private _r = [uniform _u, vest _u, backpack _u, items _u, magazines _u]; deleteVehicle _u; _r
+## inv.unlink_item
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u unlinkItem "ItemMap"; _u unlinkItem "NVGoggles"; _u unlinkItem "ItemGPS"; private _r = [assignedItems _u, items _u]; deleteVehicle _u; _r
+## inv.unassign_item
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u unassignItem "ItemMap"; _u unassignItem "NVGoggles"; private _r = [assignedItems _u, items _u]; deleteVehicle _u; _r
+## inv.assign_item
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u unassignItem "ItemMap"; _u assignItem "ItemMap"; _u addItem "ItemGPS"; _u assignItem "ItemGPS"; _u assignItem "ItemWatch"; private _r = [assignedItems _u, items _u]; deleteVehicle _u; _r
+## inv.link_item_replace
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u linkItem "ItemGPS"; _u linkItem "NVGoggles_OPFOR"; _u linkItem "H_Cap_red"; _u linkItem "G_Aviator"; private _r = [assignedItems _u, items _u, headgear _u, goggles _u]; deleteVehicle _u; _r
+## inv.link_item_wrong
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u linkItem "FirstAidKit"; _u linkItem "arifle_MX_F"; _u linkItem "NoSuchItem"; _u linkItem ""; private _r = [assignedItems _u, items _u, weapons _u]; deleteVehicle _u; _r
+## inv.headgear_goggles
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u addHeadgear "H_Booniehat_khk"; _u addGoggles "G_Shades_Black"; private _r = [headgear _u, goggles _u, items _u]; removeHeadgear _u; removeGoggles _u; _r pushBack [headgear _u, goggles _u]; deleteVehicle _u; _r
+## inv.add_headgear_wrong_type
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u addHeadgear "ItemMap"; private _r = headgear _u; deleteVehicle _u; _r
+## inv.uniform_vest
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; removeUniform _u; removeVest _u; private _r = [uniform _u, vest _u, items _u, magazines _u]; _u addUniform "U_B_CombatUniform_mcam_vest"; _u addVest "V_TacVest_khk"; _r append [uniform _u, vest _u, uniformItems _u, vestItems _u]; deleteVehicle _u; _r
+## inv.add_uniform_replaces
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u addUniform "U_B_CombatUniform_mcam_tshirt"; private _r = [uniform _u, uniformItems _u]; deleteVehicle _u; _r
+## inv.add_uniform_wrong_side
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u addUniform "U_O_CombatUniform_ocamo"; private _r = [uniform _u]; _u forceAddUniform "U_O_CombatUniform_ocamo"; _r pushBack (uniform _u); deleteVehicle _u; _r
+## inv.add_vest_replaces
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u addVest "V_Rangemaster_belt"; private _r = [vest _u, vestItems _u, magazines _u]; deleteVehicle _u; _r
+## inv.backpack
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u addBackpack "B_AssaultPack_mcamo"; private _r = [backpack _u, backpackItems _u]; _u addBackpack "B_AssaultPack_mcamo_Ammo"; _r append [backpack _u, backpackItems _u]; removeBackpack _u; _r pushBack (backpack _u); deleteVehicle _u; _r
+## inv.add_item_order
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u addBackpack "B_AssaultPack_mcamo"; _u addItem "ToolKit"; _u addItem "FirstAidKit"; _u addItemToBackpack "Medikit"; _u addItemToVest "ItemGPS"; _u addItemToUniform "ItemGPS"; private _r = [uniformItems _u, vestItems _u, backpackItems _u]; deleteVehicle _u; _r
+## inv.add_item_capacity
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; removeAllItems _u; removeAllItemsWithMagazines _u; private _n = 0; for "_i" from 1 to 40 do { _u addItemToUniform "FirstAidKit" }; private _r = [count uniformItems _u, loadUniform _u]; deleteVehicle _u; _r
+## inv.add_item_full
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; for "_i" from 1 to 60 do { _u addItem "FirstAidKit" }; private _r = [count uniformItems _u, count vestItems _u, count items _u]; deleteVehicle _u; _r
+## inv.add_item_weapon_magazine
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u addBackpack "B_Carryall_mcamo"; _u addItem "hgun_Pistol_heavy_01_F"; _u addItem "11Rnd_45ACP_Mag"; _u addItem "optic_Hamr"; private _r = [items _u, magazines _u, backpackItems _u, weapons _u]; deleteVehicle _u; _r
+## inv.remove_item
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u addItem "FirstAidKit"; _u addItem "FirstAidKit"; _u removeItem "FirstAidKit"; _u removeItem "ItemMap"; _u removeItem "30Rnd_65x39_caseless_mag"; private _r = [items _u, assignedItems _u, count magazines _u]; deleteVehicle _u; _r
+## inv.remove_items
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u addItem "FirstAidKit"; _u addItem "FirstAidKit"; _u removeItems "FirstAidKit"; _u removeItems "30Rnd_65x39_caseless_mag"; private _r = [items _u, count magazines _u]; deleteVehicle _u; _r
+## inv.add_weapon
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; removeAllWeapons _u; _u addMagazine "30Rnd_65x39_caseless_mag"; _u addWeapon "arifle_MX_F"; _u addWeapon "launch_NLAW_F"; _u addWeapon "hgun_P07_F"; _u addWeapon "Binocular"; private _r = [weapons _u, primaryWeaponMagazine _u, magazines _u, primaryWeaponItems _u]; deleteVehicle _u; _r
+## inv.add_weapon_replace
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u addWeapon "arifle_Katiba_F"; private _r = [weapons _u, primaryWeapon _u, primaryWeaponItems _u, primaryWeaponMagazine _u, count magazines _u]; deleteVehicle _u; _r
+## inv.add_weapon_linked
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; removeAllWeapons _u; _u addWeapon "arifle_MX_ACO_pointer_F"; _u addWeapon "ItemGPS"; _u addWeapon "NoSuchWeapon"; private _r = [weapons _u, primaryWeaponItems _u, assignedItems _u]; deleteVehicle _u; _r
+## inv.remove_weapon
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u removeWeapon "hgun_P07_F"; _u removeWeapon "Throw"; _u removeWeapon "NoSuch"; _u removeWeapon "ItemMap"; private _r = [weapons _u, handgunWeapon _u, handgunItems _u, assignedItems _u, magazines _u]; deleteVehicle _u; _r
+## inv.has_weapon
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = [_u hasWeapon "arifle_MX_ACO_pointer_F", _u hasWeapon "ARIFLE_MX_ACO_POINTER_F", _u hasWeapon "Throw", _u hasWeapon "ItemMap", _u hasWeapon "optic_ACO", _u hasWeapon "arifle_MX_F"]; deleteVehicle _u; _r
+## inv.weapon_items
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u addPrimaryWeaponItem "optic_Hamr"; _u addPrimaryWeaponItem "muzzle_snds_H"; _u addPrimaryWeaponItem "bipod_01_F_snd"; _u addHandgunItem "muzzle_snds_L"; _u addPrimaryWeaponItem "FirstAidKit"; private _r = [primaryWeaponItems _u, handgunItems _u, items _u]; _u removePrimaryWeaponItem "optic_Hamr"; _u removeHandgunItem "muzzle_snds_L"; _r append [primaryWeaponItems _u, handgunItems _u, items _u]; deleteVehicle _u; _r
+## inv.weapon_items_magazine
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u addPrimaryWeaponItem "100Rnd_65x39_caseless_mag"; private _r = [primaryWeaponMagazine _u, count magazines _u, primaryWeaponItems _u]; _u removePrimaryWeaponItem "100Rnd_65x39_caseless_mag"; _r append [primaryWeaponMagazine _u, count magazines _u]; deleteVehicle _u; _r
+## inv.add_magazine
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; removeAllItemsWithMagazines _u; _u addMagazine "30Rnd_65x39_caseless_mag"; _u addMagazine ["30Rnd_65x39_caseless_mag", 5]; _u addMagazines ["HandGrenade", 3]; private _r = [magazines _u, magazinesAmmo _u, magazinesAmmo [_u, true]]; deleteVehicle _u; _r
+## inv.add_magazine_bad
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; removeAllItemsWithMagazines _u; _u addMagazine "NoSuchMag"; _u addMagazine "FirstAidKit"; _u addMagazine ["30Rnd_65x39_caseless_mag", 500]; _u addMagazine ["30Rnd_65x39_caseless_mag", -2]; _u addMagazine ["30Rnd_65x39_caseless_mag", 0]; private _r = magazinesAmmo _u; deleteVehicle _u; _r
+## inv.remove_magazine
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u removeMagazine "30Rnd_65x39_caseless_mag"; _u removeMagazines "HandGrenade"; _u removeMagazine "16Rnd_9x21_Mag"; private _r = [magazines _u, primaryWeaponMagazine _u, handgunMagazine _u]; deleteVehicle _u; _r
+## inv.remove_magazine_loaded
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; _u removeMagazines "30Rnd_65x39_caseless_mag"; private _r = [primaryWeaponMagazine _u, count magazines _u]; deleteVehicle _u; _r
+## inv.null_and_vehicle
+private _c = createVehicle ["B_MRAP_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; private _r = [weapons objNull, primaryWeapon objNull, magazines objNull, items objNull, assignedItems objNull, uniform objNull, headgear _c, weapons _c, magazines _c, items _c, uniformItems _c]; deleteVehicle _c; _r
+## inv.vehicle_add
+private _c = createVehicle ["B_MRAP_01_F", [200, 200, 0], [], 0, "CAN_COLLIDE"]; _c addWeapon "arifle_MX_F"; _c addMagazine "30Rnd_65x39_caseless_mag"; _c addItem "FirstAidKit"; private _r = [weapons _c, magazines _c, itemCargo _c, weaponCargo _c]; deleteVehicle _c; _r
+## inv.civilian
+private _u = (createGroup civilian) createUnit ["C_man_1", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = [weapons _u, magazines _u, items _u, assignedItems _u, uniform _u, vest _u, headgear _u]; deleteVehicle _u; _r
+## inv.load
+private _u = (createGroup west) createUnit ["B_Soldier_F", [100, 100, 0], [], 0, "CAN_COLLIDE"]; private _r = [load _u, loadUniform _u, loadVest _u, loadBackpack _u, loadAbs _u]; deleteVehicle _u; _r
