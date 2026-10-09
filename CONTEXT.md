@@ -502,6 +502,13 @@ The machine (identified by its client ID; the server is 2) on which an Object is
 can move between machines during a session.
 _Avoid_: host, authority
 
+**Update error**:
+The measure of how far an Object's state has moved from the state a receiving player was last
+sent, tracked per update class — transform, damage, the destroyed/hidden state flags — and per
+player; it decides when and how often the object is sent to that player. A changed state flag
+adds 10000, damage adds 10 × |Δdamage|.
+_Avoid_: priority (that is the order that comes out of it), delta
+
 **verifySignatures**:
 The server setting that decides whether clients' addons must match Bisigns under the server's
 Bikeys; value 0 disables the check.
