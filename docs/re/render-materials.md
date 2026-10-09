@@ -256,6 +256,30 @@ elevation, and the p3d's memory points are the only place the positions live. Th
 model *path* per placed object, not a class, so discovery is: scan `CfgVehicles` for classes
 with `Reflectors` keyed by their `model`, then match the terrain's placed objects against it.
 
+**The memory points are points, not vectors (measured on the shipped lamps).** `position` and
+`direction` each name a *single-vertex* Memory LOD selection, and the direction is the
+difference between them:
+
+| model | `light_1_pos` | `light_1_dir` | normalised difference |
+|---|---|---|---|
+| `LampStreet_F.p3d` | (0, 6.201, 1.460) | (0.0002, 5.772, 1.574) | (0.0005, −0.967, 0.256) |
+| `LampHarbour_F.p3d` | (0.0008, 3.101, 0.168) | (0.0008, 2.891, 0.230) | (0, −0.959, 0.284) |
+
+Both point down out of the head, which is what a lamp does. The model stores the names in lower
+case (`light_1_dir`) while the config writes `Light_1_dir`, so matching has to ignore case.
+
+**What is still open (#294's shading pass):**
+
+- Drawing them: a light list in the frame uniforms, the loop of §3.4 in the terrain, road and
+  model shaders, the nearest-N selection per frame, and the oracle shot that proves a lamp lights
+  the road at night.
+- The day/night switch, and the `Light_1_hide` selection that goes with it: the engine's
+  threshold is not in the config and has not been traced.
+- Flares (`useFlare`, `flareSize`, `flareMaxDistance`) and whether these lights cast shadows.
+- `intensity`'s place in the units: `color × intensity` is what the field suggests, but the
+  shader's own scale for `L2.rgb` has not been checked against a rendered lamp.
+
+
 
 ## 4. Per-shader stage meanings (shader; texture suffixes as used in the data)
 
