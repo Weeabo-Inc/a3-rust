@@ -1,0 +1,339 @@
+//! `CfgWeapons` / `CfgMagazines` / `CfgAmmo` parameters, from a synthetic config.
+//!
+//! Vocabulary and sources: `docs/re/sim-ballistics.md` §1 (ammo), the offline Arma wiki
+//! (`CfgWeapons Config Reference`: `muzzles[]`, `modes[]`, `initSpeed`, `dispersion`, `recoil`).
+
+use std::sync::Arc;
+
+use a3_config::{ConfigTree, parse_text};
+use a3_world::Error;
+use a3_world::SimulationClass;
+use a3_world::weapons::{AmmoType, WeaponBank, WeaponType};
+
+const CONFIG: &str = r#"
+class Mode_SemiAuto {
+    dispersion = 0.001;
+    recoil = "recoil_semi";
+    recoilProne = "recoil_semi_prone";
+    initSpeed = 0;
+};
+class CfgAmmo {
+    class Default { simulation = ""; };
+    class BulletCore: Default { simulation = "shotBullet"; simulationStep = 0.001; };
+    class B_65x39_Ball: BulletCore {
+        hit = 8;
+        indirectHit = 0;
+        indirectHitRange = 0;
+        caliber = 0.9;
+        deflecting = 15;
+        deflectionSlowDown = 1;
+        airFriction = -0.0012;
+        coefGravity = 1;
+        typicalSpeed = 800;
+        timeToLive = 6;
+    };
+    class G_20mm_HE: BulletCore {
+        hit = 30;
+        indirectHit = 12;
+        indirectHitRange = 2.5;
+        explosive = 0.6;
+        caliber = 2.5;
+        deflecting = 0;
+        deflectionSlowDown = 1;
+        airFriction = -0.0005;
+        typicalSpeed = 900;
+        timeToLive = 20;
+        simulation = "shotShell";
+        explosionTime = 0.5;
+        fuseDistance = 10;
+        penetrationDirDistribution = 0.25;
+        deflectionDirDistribution = 0.5;
+    };
+};
+class CfgMagazines {
+    class 30Rnd_65x39_Mag {
+        ammo = "B_65x39_Ball";
+        count = 30;
+        initSpeed = 800;
+    };
+    class 1Rnd_20mm_HE_Mag {
+        ammo = "G_20mm_HE";
+        count = 1;
+        initSpeed = 1000;
+    };
+};
+class CfgWeapons {
+    class arifle_MX_F {
+        muzzles[] = { "this" };
+        magazines[] = { "30Rnd_65x39_Mag" };
+        modes[] = { "Single" };
+        class Single: Mode_SemiAuto {
+            dispersion = 0.0007;
+            recoil = "recoil_arifle_MX";
+        };
+    };
+    class launcher_20mm_F {
+        muzzles[] = { "this", "EGLM" };
+        magazines[] = { "1Rnd_20mm_HE_Mag" };
+        initSpeed = -1.1;
+        class EGLM {
+            magazines[] = { "1Rnd_20mm_HE_Mag" };
+            initSpeed = 78;
+            dispersion = 0.005;
+            recoil = "recoil_eglm";
+            modes[] = { "EGLM_Single" };
+            class EGLM_Single: Mode_SemiAuto {
+                initSpeed = 250;
+            };
+        };
+    };
+    class mode_speed_F {
+        magazines[] = { "30Rnd_65x39_Mag" };
+        modes[] = { "Single" };
+        class Single: Mode_SemiAuto {
+            initSpeed = 700;
+        };
+    };
+    class simple_F {
+        magazines[] = { "30Rnd_65x39_Mag" };
+        dispersion = 0.002;
+        initSpeed = 950;
+    };
+};
+"#;
+
+/// The `f64` a config number literal reads as: config numbers are stored as `f32`, and the types
+/// report them as `f64`, so an expected value written as a plain `f64` literal would not be the
+/// value the config holds.
+fn f32v(v: f32) -> f64 {
+    f64::from(v)
+}
+
+fn bank() -> WeaponBank {
+    let config = parse_text(CONFIG).unwrap();
+    WeaponBank::new(Arc::new(ConfigTree::from_config(&config)))
+}
+
+fn weapon(bank: &mut WeaponBank, name: &str) -> Arc<WeaponType> {
+    bank.weapon(name).unwrap()
+}
+
+#[test]
+fn the_weapon_body_is_the_default_muzzle() {
+    let mut bank = bank();
+
+    let w = weapon(&mut bank, "arifle_MX_F");
+
+    assert_eq!(w.name, "arifle_MX_F");
+    let muzzle = w.muzzle(None).expect("the default muzzle");
+    assert_eq!(muzzle.name, "this");
+    assert_eq!(muzzle.class, "arifle_MX_F");
+    assert_eq!(muzzle.magazines, ["30Rnd_65x39_Mag"]);
+    // The body's modes[] are the muzzle's modes.
+    let mode = muzzle.mode(None).expect("the default mode");
+    assert_eq!(mode.name, "Single");
+    assert_eq!(mode.dispersion, f32v(0.0007));
+    assert_eq!(mode.recoil.as_deref(), Some("recoil_arifle_MX"));
+    // Inherited from the mode base class.
+    assert_eq!(mode.recoil_prone.as_deref(), Some("recoil_semi_prone"));
+}
+
+#[test]
+fn a_weapon_with_no_muzzles_or_modes_is_its_own_muzzle_and_mode() {
+    let mut bank = bank();
+
+    let w = weapon(&mut bank, "simple_F");
+
+    let muzzle = w.muzzle(None).expect("the default muzzle");
+    assert_eq!(muzzle.name, "this");
+    assert_eq!(muzzle.class, "simple_F");
+    let mode = muzzle.mode(None).expect("the default mode");
+    assert_eq!(mode.name, "this");
+    assert_eq!(mode.dispersion, f32v(0.002));
+    assert!((muzzle.init_speed.expect("a declared initSpeed") - 950.0).abs() < 1e-9);
+}
+
+#[test]
+fn a_named_muzzle_is_a_sub_class_with_its_own_parameters() {
+    let mut bank = bank();
+
+    let w = weapon(&mut bank, "launcher_20mm_F");
+
+    let names: Vec<&str> = w.muzzles.iter().map(|m| m.name.as_str()).collect();
+    assert_eq!(names, ["this", "EGLM"]);
+    let eglm = w.muzzle(Some("EGLM")).expect("the EGLM muzzle");
+    assert_eq!(eglm.class, "EGLM");
+    assert_eq!(eglm.magazines, ["1Rnd_20mm_HE_Mag"]);
+    assert!((eglm.init_speed.expect("the EGLM initSpeed") - 78.0).abs() < 1e-9);
+    // The EGLM declares its own mode, which inherits `dispersion` from Mode_SemiAuto here.
+    let mode = eglm.mode(None).expect("the EGLM's first mode");
+    assert_eq!(mode.name, "EGLM_Single");
+    assert_eq!(mode.dispersion, f32v(0.001));
+    // Unknown muzzle names are None, not the default muzzle.
+    assert!(w.muzzle(Some("nope")).is_none());
+}
+
+#[test]
+fn a_muzzle_with_no_modes_uses_itself_as_the_mode() {
+    let mut bank = bank();
+
+    // The EGLM of the launcher declares modes, so use a weapon whose only muzzle has none.
+    let w = weapon(&mut bank, "simple_F");
+
+    let mode = w.muzzle(None).and_then(|m| m.mode(None)).unwrap();
+
+    assert_eq!(mode.name, "this");
+    assert_eq!(mode.recoil.as_deref(), None);
+}
+
+#[test]
+fn a_positive_init_speed_overrides_the_magazine() {
+    let mut bank = bank();
+    let w = weapon(&mut bank, "simple_F");
+    let mag = bank.magazine("30Rnd_65x39_Mag").unwrap();
+
+    let shot = w.shot_params(None, None).unwrap();
+
+    assert!((shot.init_speed(&mag) - 950.0).abs() < 1e-9);
+}
+
+#[test]
+fn a_negative_init_speed_multiplies_the_magazine() {
+    let mut bank = bank();
+    let w = weapon(&mut bank, "launcher_20mm_F");
+    let mag = bank.magazine("1Rnd_20mm_HE_Mag").unwrap();
+
+    // The "this" muzzle: initSpeed = -1.1 → 1.1 × the magazine's 1000.
+    let shot = w.shot_params(None, None).unwrap();
+
+    assert_eq!(shot.init_speed(&mag), f32v(1.1) * 1000.0);
+}
+
+#[test]
+fn init_speed_zero_takes_the_magazine_value() {
+    let mut bank = bank();
+    let w = weapon(&mut bank, "arifle_MX_F");
+    let mag = bank.magazine("30Rnd_65x39_Mag").unwrap();
+
+    // Neither the muzzle nor the Single mode declares one; the mode inherits `initSpeed = 0`.
+    let shot = w.shot_params(None, None).unwrap();
+
+    assert_eq!(mag.init_speed, 800.0);
+    assert!((shot.init_speed(&mag) - 800.0).abs() < 1e-9);
+}
+
+#[test]
+fn a_muzzles_init_speed_wins_over_its_modes() {
+    let mut bank = bank();
+    let w = weapon(&mut bank, "launcher_20mm_F");
+    let mag = bank.magazine("1Rnd_20mm_HE_Mag").unwrap();
+
+    // EGLM muzzle 78, its mode 250.
+    let shot = w.shot_params(Some("EGLM"), None).unwrap();
+
+    assert!((shot.init_speed(&mag) - 78.0).abs() < 1e-9);
+}
+
+#[test]
+fn a_modes_init_speed_is_used_when_the_muzzle_declares_none() {
+    let mut bank = bank();
+    let w = weapon(&mut bank, "mode_speed_F");
+    let mag = bank.magazine("30Rnd_65x39_Mag").unwrap();
+
+    let shot = w.shot_params(None, None).unwrap();
+
+    assert!((shot.init_speed(&mag) - 700.0).abs() < 1e-9);
+}
+
+#[test]
+fn ammo_parameters_come_from_cfg_ammo() {
+    let mut bank = bank();
+
+    let ammo: Arc<AmmoType> = bank.ammo("B_65x39_Ball").unwrap();
+
+    assert_eq!(ammo.name, "B_65x39_Ball");
+    assert!((ammo.hit - 8.0).abs() < 1e-9);
+    assert!((ammo.indirect_hit - 0.0).abs() < 1e-9);
+    assert!((ammo.indirect_hit_range - 0.0).abs() < 1e-9);
+    assert!((ammo.explosive - 0.0).abs() < 1e-9);
+    assert_eq!(ammo.caliber, f32v(0.9));
+    assert!((ammo.deflection_slow_down - 1.0).abs() < 1e-9);
+    assert_eq!(ammo.air_friction, f32v(-0.0012));
+    assert!((ammo.coef_gravity - 1.0).abs() < 1e-9);
+    assert!((ammo.typical_speed - 800.0).abs() < 1e-9);
+    assert!((ammo.time_to_live - 6.0).abs() < 1e-9);
+    assert!((ammo.explosion_time - 0.0).abs() < 1e-9);
+    assert!((ammo.fuse_distance - 0.0).abs() < 1e-9);
+    assert_eq!(ammo.simulation, Some(SimulationClass::ShotBullet));
+    assert_eq!(ammo.simulation_step, Some(f32v(0.001)));
+}
+
+#[test]
+fn deflecting_is_degrees_in_config_and_radians_in_the_type() {
+    let mut bank = bank();
+
+    let ball = bank.ammo("B_65x39_Ball").unwrap();
+    let he = bank.ammo("G_20mm_HE").unwrap();
+
+    assert!((ball.deflecting - 15_f64.to_radians()).abs() < 1e-12);
+    assert!((he.deflecting - 0.0).abs() < 1e-12);
+}
+
+#[test]
+fn an_explosive_ammo_keeps_its_explosion_parameters() {
+    let mut bank = bank();
+
+    let he = bank.ammo("G_20mm_HE").unwrap();
+
+    assert!((he.hit - 30.0).abs() < 1e-9);
+    assert!((he.indirect_hit - 12.0).abs() < 1e-9);
+    assert!((he.indirect_hit_range - 2.5).abs() < 1e-9);
+    assert_eq!(he.explosive, f32v(0.6));
+    assert!((he.caliber - 2.5).abs() < 1e-9);
+    assert!((he.explosion_time - 0.5).abs() < 1e-9);
+    assert!((he.fuse_distance - 10.0).abs() < 1e-9);
+    assert_eq!(he.penetration_dir_distribution, f32v(0.25));
+    assert_eq!(he.deflection_dir_distribution, f32v(0.5));
+    assert_eq!(he.simulation, Some(SimulationClass::ShotShell));
+}
+
+#[test]
+fn a_magazine_names_its_ammo_and_carries_the_base_muzzle_velocity() {
+    let mut bank = bank();
+
+    let mag = bank.magazine("1Rnd_20mm_HE_Mag").unwrap();
+
+    assert_eq!(mag.name, "1Rnd_20mm_HE_Mag");
+    assert_eq!(mag.ammo, "G_20mm_HE");
+    assert_eq!(mag.count, 1);
+    assert!((mag.init_speed - 1000.0).abs() < 1e-9);
+}
+
+#[test]
+fn lookups_are_case_insensitive_and_cached() {
+    let mut bank = bank();
+
+    let a = bank.weapon("ARIFLE_mx_f").unwrap();
+    let b = bank.weapon("arifle_MX_F").unwrap();
+
+    assert!(Arc::ptr_eq(&a, &b));
+    assert_eq!(a.name, "arifle_MX_F");
+}
+
+#[test]
+fn unknown_names_are_errors() {
+    let mut bank = bank();
+
+    assert_eq!(
+        bank.weapon("nope").unwrap_err(),
+        Error::UnknownWeapon("nope".to_owned())
+    );
+    assert_eq!(
+        bank.magazine("nope").unwrap_err(),
+        Error::UnknownMagazine("nope".to_owned())
+    );
+    assert_eq!(
+        bank.ammo("nope").unwrap_err(),
+        Error::UnknownAmmo("nope".to_owned())
+    );
+}

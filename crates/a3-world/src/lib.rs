@@ -96,6 +96,7 @@ mod sim;
 mod statics;
 mod terrain;
 mod types;
+pub mod weapons;
 mod world;
 
 pub use class::{EntityClass, SimulationClass};
@@ -128,6 +129,19 @@ pub enum Error {
     /// No class of this name in CfgVehicles, CfgAmmo or CfgNonAIVehicles.
     #[error("no config class {0:?} in CfgVehicles, CfgAmmo or CfgNonAIVehicles")]
     UnknownType(String),
+    /// No class of this name in CfgWeapons.
+    #[error("no CfgWeapons class {0:?}")]
+    UnknownWeapon(String),
+    /// No class of this name in CfgMagazines.
+    #[error("no CfgMagazines class {0:?}")]
+    UnknownMagazine(String),
+    /// No class of this name in CfgAmmo.
+    #[error("no CfgAmmo class {0:?}")]
+    UnknownAmmo(String),
+    /// The World has no config (`World::set_config`), so it cannot read weapon, magazine or ammo
+    /// parameters.
+    #[error("the world has no config; call World::set_config first")]
+    NoConfig,
     /// The class's `simulation` value has no engine class (yet).
     #[error("config class {type_name:?} has unknown simulation {simulation:?}")]
     UnknownSimulation {
