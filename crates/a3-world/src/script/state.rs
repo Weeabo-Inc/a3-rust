@@ -10,6 +10,9 @@ use crate::{
     ClientId, DamageHit, EntityId, Locality, NetworkId, ObjectRef, SimulationClass, World,
 };
 
+/// The `InjuredTreshold` a unit's `lifeState` turns `INJURED` at (config default 0.1).
+const INJURED_THRESHOLD: f32 = 0.1;
+
 pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     // AL EG. `engineOn`: starts or stops an aircraft's engine (other vehicles have no engine
     // model yet, #125).
@@ -61,6 +64,37 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
         );
         Ok(Value::Bool(ctx.host.types().is_kind_of(&name, &base)))
     });
+
+    // `lifeState`: `"HEALTHY"`, `"INJURED"`, `"DEAD"`. The engine moves to `INJURED` at
+    // `InjuredTreshold` (0.1 by default, the wiki's measurement) and to `DEAD` when the unit is
+    // no longer alive.
+    r.unary("lifeState", OBJ, STR, |ctx, a| {
+        let w = ctx.host.world();
+        let state = match object_arg(w, &a) {
+            Some(ObjectRef::Entity(id)) => {
+                let e = w.entity(id).expect("exists");
+                if !e.is_alive() {
+                    "DEAD"
+                } else if e.damage() >= INJURED_THRESHOLD {
+                    "INJURED"
+                } else {
+                    "HEALTHY"
+                }
+            }
+            // A Static object has no life state; the engine answers HEALTHY for a live one.
+            Some(ObjectRef::Static(_)) => "HEALTHY",
+            None => "HEALTHY",
+        };
+        Ok(Value::string(state))
+    });
+    // `getFatigue` / `getOxygenRemaining` / `isBurning`: the unit subsystems behind these
+    // (stamina, diving, fire) do not exist yet, so they answer their value for an unexhausted,
+    // unsubmerged, unburnt unit. Recorded as `stub` in `docs/fidelity/sqf-verified.tsv`.
+    r.unary("getFatigue", OBJ, NUM, |_, _| Ok(Value::Number(0.0)));
+    r.unary("getOxygenRemaining", OBJ, NUM, |_, _| {
+        Ok(Value::Number(1.0))
+    });
+    r.unary("isBurning", OBJ, BOOL, |_, _| Ok(Value::Bool(false)));
 
     // Damage. The formulas and the locality rules are in `docs/re/sim-damage.md`; a hit point
     // is addressed by config name (`HitHead`) or by model selection (`head`).

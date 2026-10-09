@@ -235,6 +235,16 @@ fn handles_value(hs: Vec<Handle>) -> Value {
     Value::array(hs.into_iter().map(Value::Handle))
 }
 
+/// The sub-classes of `c`: its own entries, plus the inherited ones when `inherit` is set.
+fn child_classes<'a>(c: &ConfigRef<'a>, inherit: bool) -> Vec<ConfigRef<'a>> {
+    let entries = if inherit {
+        c.entries_with_inherited()
+    } else {
+        c.entries()
+    };
+    entries.into_iter().filter(|x| x.is_class()).collect()
+}
+
 /// Converts a config value to SQF (`getArray`, `getMissionConfigValue`).
 fn to_sqf(v: &CfgValue) -> Value {
     match v {
@@ -452,6 +462,54 @@ pub fn register_config_commands<H: ConfigHost>(r: &mut Registry<H>) {
             }
             e.entry_at(i as usize).node_path().to_vec()
         }))
+    });
+    // `configClasses [config, depth, includeInherited, allSubclasses, classNames]` (the array
+    // form, `0x811360`). `depth` is how many levels below `config` to walk; `allSubclasses` keeps
+    // every tier walked, otherwise only the last one; `classNames` returns class-name strings
+    // instead of configs. `configClasses [configFile >> "CfgGroups", 0, true, true, true]` is the
+    // wiki's own example and reads `["West", "East", "Indep", "Empty"]`.
+    r.unary("configClasses", ARR, ARR, |ctx, a| {
+        let Value::Array(args) = &a else {
+            return Err(SqfError::type_error(&a, ARR));
+        };
+        let args = args.borrow().clone();
+        let config = args.first().cloned().unwrap_or(Value::Nil);
+        if !matches!(config, Value::Handle(_)) {
+            return Err(SqfError::type_error(&config, CONFIG));
+        }
+        let depth = args.get(1).and_then(|v| v.as_number()).unwrap_or(0.0);
+        let depth = if depth.is_finite() && depth > 0.0 {
+            depth as usize
+        } else {
+            0
+        };
+        let inherit = matches!(args.get(2), Some(Value::Bool(true)));
+        let all = matches!(args.get(3), Some(Value::Bool(true)));
+        let names = matches!(args.get(4), Some(Value::Bool(true)));
+        let class_names: std::cell::RefCell<Vec<String>> = std::cell::RefCell::new(Vec::new());
+        let paths = related(ctx, &config, |e| {
+            let mut tiers: Vec<Vec<ConfigRef<'_>>> = vec![child_classes(e, inherit)];
+            for i in 0..depth {
+                let mut next = Vec::new();
+                for c in &tiers[i] {
+                    next.extend(child_classes(c, inherit));
+                }
+                tiers.push(next);
+            }
+            let picked: Vec<ConfigRef<'_>> = if all {
+                tiers.into_iter().flatten().collect()
+            } else {
+                tiers.pop().unwrap_or_default()
+            };
+            *class_names.borrow_mut() = picked.iter().map(|c| c.name().to_owned()).collect();
+            picked.into_iter().map(|c| c.node_path().to_vec()).collect()
+        });
+        if names {
+            return Ok(Value::array(
+                class_names.into_inner().into_iter().map(Value::string),
+            ));
+        }
+        Ok(handles_value(paths))
     });
     r.binary("configClasses", STR, CONFIG, ARR, |ctx, a, b| {
         let classes = related(ctx, &b, |e| {
