@@ -30,14 +30,6 @@ pub enum LoadError {
         /// The parse error.
         source: SqmError,
     },
-    /// `description.ext` did not preprocess or parse.
-    #[error("{path}: {message}")]
-    Description {
-        /// The virtual path.
-        path: String,
-        /// The preprocessor's or parser's message.
-        message: String,
-    },
     /// The parsed `mission.sqm` is not usable.
     #[error("{0}")]
     Mission(#[from] MissionError),
@@ -62,6 +54,11 @@ fn terrain_of(folder: &str) -> Option<String> {
 
 /// Reads `folder\mission.sqm` and, when it exists, `folder\description.ext`, and returns the
 /// [`Mission`].
+///
+/// A `description.ext` that does not preprocess or parse is logged (as the engine logs
+/// `Preprocessor failed on file '<path>'`) and the mission is loaded without it: the engine starts
+/// the mission with an empty mission config, it does not drop the mission
+/// (`tools/oracle/probes/missing_include.py`, #348).
 ///
 /// `folder` is a virtual path (`a3\missions_f_bootcamp\campaign\missions\boot_m02.altis`); a
 /// trailing separator and forward slashes are accepted. Folders on disk are loaded by mounting
@@ -89,13 +86,13 @@ pub fn load_mission<H: Host>(
     mission.terrain = terrain_of(&folder);
     let description_path = format!("{folder}\\description.ext");
     if vfs.exists(&description_path) {
-        let description = load_text_config(vfs, vm, &description_path).map_err(|message| {
-            LoadError::Description {
-                path: description_path.clone(),
-                message,
-            }
-        })?;
-        mission.description = Some(description);
+        match load_text_config(vfs, vm, &description_path) {
+            Ok(description) => mission.description = Some(description),
+            // Nothing of the failed config is installed, not even the entries before the error.
+            Err(message) => vm
+                .host
+                .diag_log(&format!("Warning: preprocessor: {message}")),
+        }
     }
     Ok(mission)
 }

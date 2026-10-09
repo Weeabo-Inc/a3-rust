@@ -14,6 +14,51 @@ use a3_world::{ClientId, TypeBank, World};
 /// with vehicles, waypoints and triggers.
 const FOLDER: &str = r"a3\missions_f_bootcamp\campaign\missions\boot_m02.altis";
 
+/// The Expansion (Old Man) Mission of issue #348: its `description.ext` includes
+/// `...\Systems\UI\Sleeping\RscTestControlTypes.inc` and `...\RscRestUI.inc`, neither of which is
+/// anywhere in the install.
+const OLD_MAN_FOLDER: &str = r"a3\missions_f_oldman\missions\repro_objectsimulationloadgame.tanoa";
+
+/// The engine logs `Preprocessor failed on file '<path>' - error 1` for that `description.ext`
+/// and starts the mission with an empty mission config, as the oracle probe shows
+/// (`tools/oracle/probes/missing_include.py`). The mission itself must not be lost.
+#[test]
+fn a_mission_whose_description_ext_cannot_be_included_still_loads() {
+    let Some(root) = std::env::var_os("A3_ROOT") else {
+        eprintln!("skipping: A3_ROOT not set");
+        return;
+    };
+    let game = GameData::load(&LoadOptions::new(root)).expect("the game loads");
+
+    let mut loader = Vm::new(VfsHost::for_game(&game));
+    let mission = load_mission(&game.vfs, OLD_MAN_FOLDER, &mut loader).expect("the mission loads");
+
+    assert_eq!(mission.terrain.as_deref(), Some("tanoa"));
+    assert_eq!(mission.version, 53, "mission.sqm parsed");
+    assert!(
+        mission.description.is_none(),
+        "the failed config installs nothing"
+    );
+    assert!(
+        loader
+            .host
+            .log
+            .iter()
+            .any(|line| line.contains("RscTestControlTypes.inc")),
+        "the include the engine reports is logged: {:?}",
+        loader.host.log
+    );
+    eprintln!(
+        "{}: version {}, {} groups, {} units, {} markers, description.ext loaded: {}",
+        mission.folder,
+        mission.version,
+        mission.groups.len(),
+        mission.units().count(),
+        mission.markers.len(),
+        mission.description.is_some(),
+    );
+}
+
 #[test]
 fn loads_a_shipped_campaign_mission() {
     let Some(root) = std::env::var_os("A3_ROOT") else {
