@@ -492,12 +492,20 @@ fn an_explosive_shell_explodes_on_impact_and_blasts_nearby_objects() {
         direct.3
     );
 
-    // Blast: 2.0 m from a 2.5 m radius is f = 1 → 0.33·(1+1+1)·indirectHit 12 = 11.88.
+    // Blast (`sim-ballistics.md` §6): `fn = f(max(d − R, 0))`, `fc = f(d)`, `ff = f(d + R)` with
+    // `R` the crate's extent (`sim-weapons.md` §5: the Geometry LOD's sphere; these synthetic
+    // models store none, so their layer's farthest corner stands in) and `f(x) = 1` inside
+    // `r = 2.5`. The crate is a 1 m cube at 2.0 m: `fn = fc = 1` (1.13 and 2.0 are inside `r`) and
+    // `ff = f(2.866)`, so `0.33·(1 + 1 + 2.5⁴/2.866⁴)·12`.
     let indirect = h
         .iter()
         .find(|(t, ..)| *t == near_key)
         .expect("the near crate is in the blast");
-    assert!((indirect.3 - 11.88).abs() < 1e-9, "value {}", indirect.3);
+    assert!(
+        (indirect.3 - 10.212_635_845_564_817).abs() < 1e-9,
+        "value {}",
+        indirect.3
+    );
     assert!(
         h.iter().all(|(t, ..)| *t != far_key),
         "16 m away is outside 4·r = 10 m"

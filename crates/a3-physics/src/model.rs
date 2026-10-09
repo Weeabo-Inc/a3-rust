@@ -33,9 +33,12 @@ pub struct LayerShape {
     components: Vec<Component>,
     /// Mesh layers: the surface of each triangle.
     triangle_surfaces: Vec<Option<SurfaceId>>,
-    /// The model's bounding sphere radius (ODOL `ModelInfo::bounding_sphere`; 0 for an MLOD,
-    /// which does not store it).
+    /// The model's bounding sphere radius, around its visual LODs (ODOL
+    /// `ModelInfo::bounding_sphere`; 0 for an MLOD, which does not store it).
     model_sphere: f64,
+    /// The radius of the sphere around the model's Geometry LOD (ODOL
+    /// `ModelInfo::geometry_sphere`; 0 when the model has none).
+    geometry_sphere: f64,
 }
 
 impl std::fmt::Debug for LayerShape {
@@ -62,18 +65,24 @@ impl LayerShape {
         self.shape.as_trimesh().is_some()
     }
 
-    /// The bounding sphere radius of the model the layer belongs to (ODOL
-    /// `ModelInfo::bounding_sphere`, the engine's `shape+0x7c`); 0 for an MLOD model, which does
-    /// not store one. Explosions measure the near and far side of an Object by it
-    /// (`docs/re/sim-ballistics.md` §6).
+    /// The bounding sphere radius of the model's visual LODs (ODOL
+    /// `ModelInfo::bounding_sphere`, the engine's `shape+0x78`); 0 for an MLOD model, which does
+    /// not store one.
     pub fn model_bounding_sphere(&self) -> f64 {
         self.model_sphere
     }
 
-    /// The radius of the sphere around the model origin that holds the whole layer: the farthest
-    /// corner of its model-space bounding box. The explosion falloff measures objects by it
-    /// (`docs/re/sim-ballistics.md` §6).
+    /// The radius the engine measures an Object by when a shot hits it or a blast reaches it:
+    /// the sphere around its Geometry LOD (ODOL `ModelInfo::geometry_sphere`, the engine's
+    /// `shape+0x7c`; `docs/re/sim-weapons.md` §5). A model with no Geometry LOD is measured by
+    /// its whole-model sphere, and an MLOD, which stores neither, by the layer's own extent.
     pub fn bounding_radius(&self) -> f64 {
+        if self.geometry_sphere > 0.0 {
+            return self.geometry_sphere;
+        }
+        if self.model_sphere > 0.0 {
+            return self.model_sphere;
+        }
         let aabb = self.shape.compute_local_aabb();
         conv::dvec(aabb.mins)
             .abs()
@@ -118,6 +127,7 @@ impl LayerShape {
             components,
             triangle_surfaces: Vec::new(),
             model_sphere: 0.0,
+            geometry_sphere: 0.0,
         })
     }
 
@@ -137,6 +147,7 @@ impl LayerShape {
             components: Vec::new(),
             triangle_surfaces,
             model_sphere: 0.0,
+            geometry_sphere: 0.0,
         })
     }
 
@@ -167,6 +178,7 @@ impl LayerShape {
             components: self.components.clone(),
             triangle_surfaces: self.triangle_surfaces.clone(),
             model_sphere: self.model_sphere * s,
+            geometry_sphere: self.geometry_sphere * s,
         })
     }
 }
@@ -215,8 +227,10 @@ impl ModelCollision {
         let physx = index(special.geometry_physx).or_else(|| by_kind(&[LodKind::GeometryPhysx]));
 
         let sphere = f64::from(model.info.bounding_sphere);
+        let geometry_sphere = f64::from(model.info.geometry_sphere);
         let with_sphere = |mut l: LayerShape| {
             l.model_sphere = sphere;
+            l.geometry_sphere = geometry_sphere;
             Arc::new(l)
         };
         let mut built: HashMap<usize, Option<Arc<LayerShape>>> = HashMap::new();

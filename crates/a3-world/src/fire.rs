@@ -387,8 +387,8 @@ impl World {
         if ammo.indirect_hit <= 0.0 || reach <= 0.0 {
             return Vec::new();
         }
-        // The bounding sphere of each Object around the blast (`shape+0x7c`: the model's
-        // `ModelInfo::bounding_sphere`), found through its Fire Geometry.
+        // The radius of each Object around the blast (`shape+0x7c`: the Geometry LOD's sphere,
+        // `sim-weapons.md` §5), found through its Fire Geometry.
         let mut radii: HashMap<ObjectKey, f64> = HashMap::new();
         if let Some(collision) = self.collision_world() {
             for o in collision.overlaps(
@@ -402,7 +402,7 @@ impl World {
                 let radius = o
                     .shape
                     .and_then(|s| collision.shape(s))
-                    .map_or(0.0, |s| s.model_bounding_sphere());
+                    .map_or(0.0, |s| s.bounding_radius());
                 let entry = radii.entry(o.object).or_insert(0.0);
                 *entry = entry.max(radius);
             }

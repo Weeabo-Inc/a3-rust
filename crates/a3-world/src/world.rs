@@ -134,9 +134,9 @@ pub enum WorldEvent {
         direct: bool,
         /// The Fire Geometry component hit (`componentNN`), when known.
         component: Option<String>,
-        /// The surface material hit (a `.bisurf` path or `#Class`), when known.
+        /// The Surface info of the face hit (a `.bisurf` path or `#Class`), when known.
         surface: Option<String>,
-        /// The hit layer's bounding radius for a direct hit; the blast radius for an indirect one.
+        /// The hit Object's radius `R` for a direct hit; the blast radius for an indirect one.
         radius: f64,
         /// The total damage the hit added to the target (0 when it did none).
         damage: f64,

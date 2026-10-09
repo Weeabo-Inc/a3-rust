@@ -129,7 +129,7 @@ pub(crate) struct HitRecord {
     pub value: f64,
     /// The Fire Geometry component that was hit (`componentNN`), when known.
     pub component: Option<String>,
-    /// The surface material that was hit (`.bisurf` path or `#Class`), when known.
+    /// The Surface info of the face that was hit (its `.bisurf` path or `#Class`), when known.
     pub surface: Option<String>,
     /// The bounding radius of the hit layer (§5's `R`), 0 when unknown.
     pub radius: f64,
@@ -451,7 +451,7 @@ impl Flight<'_> {
         // The length of the flight inside the hit component.
         let mut length = component_depth(collision, hit, dir, speed * remaining.max(0.0));
         if let Some(thickness) = surface.thickness.map(f64::from).filter(|t| *t > 0.0) {
-            // A plate material: the declared thickness along the flight, not the geometry.
+            // A sheet with a declared thickness: it, not the geometry, gives the loss.
             let cos = hit.normal.dot(dir);
             if cos != 0.0 {
                 length = (thickness / cos).abs();
@@ -526,16 +526,11 @@ impl Flight<'_> {
             Some(c.component(shape, hit.component?)?.name.clone())
         });
         let surface = collision.and_then(|c| hit.surface.map(|s| c.surface(s).name.clone()));
-        // `R`: the model's bounding sphere; an MLOD model stores none, so its layer's extent
-        // stands in rather than dividing by zero. _Deviation_: the engine's value is derived at
-        // load as half the Geometry LOD's bounding-box diagonal (`sim-weapons.md` §5), which is
-        // the same quantity only for a model whose geometry is centred on its origin.
+        // `R`: the sphere the engine measures the Object by, the Geometry LOD's (with the
+        // whole-model sphere and, for an MLOD that stores neither, the layer's extent behind it).
         let radius = collision
             .and_then(|c| c.shape(hit.shape?))
-            .map(|s| match s.model_bounding_sphere() {
-                r if r > 0.0 => r,
-                _ => s.bounding_radius(),
-            })
+            .map(|s| s.bounding_radius())
             .unwrap_or(0.0);
         ctx.push(Command::Hit(Box::new(HitRecord {
             shot: self.entity.id,
