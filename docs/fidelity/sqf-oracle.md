@@ -7,9 +7,9 @@ Reproduce (Windows, game install in `A3_ROOT`): `cargo build --release -p a3-too
 `python tools/oracle/oracle.py run` (add `--filter <regex>` for a subset). Raw results go to
 `.work/oracle/results/` (`oracle.json`, `ours.json`, `diff.json`).
 
-Run: 2026-10-09, ours at commit `31679d7`.
+Run: 2026-10-09, ours at commit `82ebba7`.
 
-**667 of 787 comparable probes match (84.8%)**; 824 probes in total.
+**728 of 787 comparable probes match (92.5%)**; 872 probes in total.
 
 Categories: `match` same type and `str`, and the same float32 for numbers; `precision` same
 `str` but a different float32; `mismatch` different type or `str`; `ours-error` the
@@ -19,97 +19,37 @@ errors on the original (the probe is wrong or the command is absent; not compare
 
 | Area | match | mismatch | precision | ours-error | oracle-error | both-error | missing |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| arr | 75 | 7 | 0 | 5 | 0 | 1 | 0 |
-| bis | 66 | 1 | 0 | 6 | 0 | 0 | 0 |
+| arr | 86 | 1 | 0 | 0 | 0 | 1 | 0 |
+| bis | 72 | 0 | 0 | 1 | 0 | 0 | 0 |
 | cfg | 65 | 0 | 0 | 2 | 0 | 0 | 0 |
-| ctl | 50 | 3 | 0 | 7 | 0 | 2 | 0 |
-| hash | 33 | 6 | 0 | 4 | 1 | 1 | 0 |
+| ctl | 60 | 0 | 0 | 0 | 0 | 2 | 0 |
+| hash | 39 | 1 | 0 | 3 | 1 | 1 | 0 |
+| inv | 0 | 0 | 0 | 0 | 0 | 0 | 48 |
 | loc | 9 | 0 | 0 | 0 | 0 | 0 | 0 |
-| num | 98 | 8 | 0 | 4 | 0 | 1 | 0 |
+| num | 110 | 0 | 0 | 0 | 0 | 1 | 0 |
 | num2 | 0 | 0 | 0 | 0 | 0 | 0 | 32 |
-| rex | 14 | 0 | 0 | 1 | 0 | 0 | 0 |
+| rex | 15 | 0 | 0 | 0 | 0 | 0 | 0 |
 | rnd | 7 | 0 | 0 | 0 | 0 | 2 | 4 |
-| str | 70 | 5 | 0 | 2 | 0 | 4 | 0 |
-| type | 74 | 8 | 0 | 0 | 0 | 1 | 0 |
-| vec | 33 | 1 | 0 | 0 | 0 | 0 | 0 |
+| str | 76 | 0 | 0 | 1 | 0 | 4 | 0 |
+| type | 82 | 0 | 0 | 0 | 0 | 1 | 0 |
+| vec | 34 | 0 | 0 | 0 | 0 | 0 | 0 |
 | wstr | 52 | 26 | 3 | 5 | 0 | 0 | 0 |
 | wvr | 21 | 3 | 0 | 1 | 0 | 0 | 0 |
-| **total** | **667** | **68** | **3** | **37** | **1** | **12** | **36** |
+| **total** | **728** | **31** | **3** | **13** | **1** | **12** | **84** |
 
 ## Failing probes
 
 | Probe | Category | Issue |
 |---|---|---|
-| `num.div_by_zero` | ours-error | #271 |
-| `num.atan2_neg` | ours-error | #271 |
-| `num.finite_inf` | ours-error | #271 |
-| `num.bitand` | mismatch | #270 |
-| `num.bitor` | mismatch | #270 |
-| `num.bitxor` | mismatch | #270 |
-| `num.bitnot` | mismatch | #270 |
-| `num.bitshl` | mismatch | #270 |
-| `num.bitshr` | mismatch | #270 |
-| `num.bitand_float` | mismatch | #270 |
-| `num.bitand_neg` | mismatch | #270 |
-| `num.neg_mod_zero` | ours-error | #271 |
-| `str.select_neg_start` | mismatch | #275 |
-| `str.format_percent` | mismatch | #276 |
-| `str.format_double_percent` | mismatch | #276 |
-| `str.lineBreak` | mismatch | #276 |
-| `str.parsesimplearray_bad` | mismatch | #276 |
-| `str.encodeURIComponent` | ours-error | #270 |
 | `str.keyname_letter` | ours-error | #282 |
-| `arr.select_out_of_range_far` | ours-error | #271 |
-| `arr.hash_out_of_range` | ours-error | #271 |
-| `arr.set` | mismatch | #274 |
-| `arr.set_neg` | ours-error | #275 |
-| `arr.resize_grow` | mismatch | #274 |
-| `arr.deleteat_out` | mismatch | #274 |
-| `arr.deleteat_neg` | mismatch | #274 |
-| `arr.apply_index` | ours-error | #271 |
-| `arr.sort_strings_case` | mismatch | #275 |
-| `arr.sort_mixed` | ours-error | #275 |
-| `arr.sort_unicode` | mismatch | #275 |
-| `arr.sort_return` | mismatch | #274 |
-| `hash.from_two_arrays_short` | mismatch | #274 |
-| `hash.key_case` | mismatch | #274 |
-| `hash.number_key` | mismatch | #274 |
-| `hash.set_insert_only` | mismatch | #275 |
-| `hash.deleteat` | mismatch | #274 |
+| `arr.sort_mixed` | mismatch | #275 |
 | `hash.keys_order` | mismatch | #275 |
-| `hash.object_key` | ours-error | #271 |
 | `hash.hashvalue_string` | ours-error | #282 |
 | `hash.hashvalue_number` | ours-error | #282 |
 | `hash.hashvalue_array` | ours-error | #282 |
-| `type.typename_nil` | mismatch | #274 |
-| `type.typename_nothing_call` | mismatch | #274 |
-| `type.str_nil` | mismatch | #274 |
-| `type.str_namespace` | mismatch | #276 |
-| `type.str_uinamespace` | mismatch | #276 |
-| `type.str_profilenamespace` | mismatch | #276 |
-| `type.isequalto_nil` | mismatch | #274 |
-| `type.eq_objnull` | mismatch | #275 |
-| `ctl.if_no_else` | mismatch | #274 |
-| `ctl.count_return` | mismatch | #274 |
-| `ctl.params_bad_name` | ours-error | #271 |
-| `ctl.error_undefined_var` | ours-error | #271 |
-| `ctl.error_zero_div` | ours-error | #271 |
-| `ctl.error_missing_semicolon` | ours-error | #271 |
-| `ctl.error_continue_after` | ours-error | #271 |
-| `ctl.isnil_unscheduled` | mismatch | #280 |
-| `ctl.select_code_index` | ours-error | #271 |
-| `ctl.count_code_bool_required` | ours-error | #271 |
-| `vec.add_2d` | mismatch | #275 |
-| `rex.bad_pattern` | ours-error | #271 |
 | `cfg.sourcemod` | ours-error | #277 |
 | `cfg.sourceaddonlist` | ours-error | #277 |
-| `bis.sortalphabetically` | mismatch | #275 |
-| `bis.arrayshift` | ours-error | #281 |
-| `bis.removedupes` | ours-error | #281 |
-| `bis.trimstring` | ours-error | #281 |
 | `bis.typetext` | ours-error | #281 |
-| `bis.isinfrontof` | ours-error | #281 |
-| `bis.encodeflags` | ours-error | #281 |
 | `wstr.height_airfield` | precision | #283 |
 | `wstr.height_cell_mid` | precision | #283 |
 | `wstr.surfacetype_land` | ours-error | #283 |
