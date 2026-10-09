@@ -120,6 +120,11 @@ struct Cli {
     /// Fog view distance in metres: the linear fog ends there.
     #[arg(long, value_name = "METRES", requires = "world")]
     fog_distance: Option<f32>,
+    /// Camera field of view as RV's `fovTop` (tangent of half the vertical angle). A
+    /// `camSetFov f` camera renders at `fovTop = f * 0.75` (docs/fidelity/render-oracle.md).
+    /// Default 0.75.
+    #[arg(long, value_name = "TOP", requires = "world")]
+    fov: Option<f32>,
     /// Leave out the debug text overlay, for frames to compare with the original game.
     #[arg(long)]
     no_overlay: bool,
@@ -142,6 +147,7 @@ fn main() -> anyhow::Result<()> {
         },
         world: cli.world.clone(),
         camera: cli.camera,
+        fov: cli.fov,
         play: cli.play,
         camera_mode: cli.camera_mode,
         objects: models::ObjectOptions {
@@ -265,6 +271,27 @@ mod tests {
         assert_eq!(cli.world.as_deref(), Some("altis"));
         assert_eq!(cli.camera.map(|c| c.altitude), Some(200.0));
         assert!(Cli::try_parse_from(["arma3", "--camera", "1,2"]).is_err());
+    }
+
+    #[test]
+    fn oracle_flags_are_parsed() {
+        let cli = Cli::try_parse_from([
+            "arma3",
+            "--world",
+            "altis",
+            "--fov",
+            "0.5",
+            "--screenshot",
+            "out.png",
+            "--no-overlay",
+        ])
+        .unwrap();
+        assert_eq!(cli.fov, Some(0.5));
+        assert!(cli.no_overlay);
+        assert!(
+            Cli::try_parse_from(["arma3", "--fov", "0.5"]).is_err(),
+            "--fov needs a world"
+        );
     }
 
     #[test]

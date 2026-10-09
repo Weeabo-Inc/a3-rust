@@ -189,7 +189,7 @@ pub fn to_png(
     Ok(())
 }
 
-fn write_png(path: &Path, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+pub(crate) fn write_png(path: &Path, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
     let file = File::create(path).with_context(|| format!("cannot create {}", path.display()))?;
     let mut encoder = png::Encoder::new(BufWriter::new(file), width, height);
     encoder.set_color(png::ColorType::Rgba);
@@ -201,7 +201,7 @@ fn write_png(path: &Path, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
 }
 
 /// Reads a PNG as RGBA8.
-fn read_png(path: &Path) -> Result<(u32, u32, Vec<u8>)> {
+pub(crate) fn read_png(path: &Path) -> Result<(u32, u32, Vec<u8>)> {
     let file = File::open(path).with_context(|| format!("cannot open {}", path.display()))?;
     let mut decoder = png::Decoder::new(std::io::BufReader::new(file));
     decoder.set_transformations(png::Transformations::normalize_to_color8());

@@ -1,0 +1,68 @@
+{
+  "comment": "Render oracle shot set. camera: east, north (metres), altitude above max(terrain, sea level) in metres, heading (degrees clockwise from north), pitch (degrees, positive up). fov is RV's fovTop (tan of the half vertical angle), the camSetFov value. time is local hh:mm. fog is setFog [value, decay, base].",
+  "defaults": {
+    "date": [2035, 6, 24],
+    "time": "12:00",
+    "overcast": 0.0,
+    "fog": [0.0, 0.0, 0.0],
+    "fov": 0.75,
+    "view_distance": 3000,
+    "object_view_distance": 2000
+  },
+  "shots": [
+    {
+      "name": "altis_kavala_noon",
+      "world": "Altis",
+      "camera": [3150, 12650, 250, 45, -25],
+      "what": "Kavala from 250 m at noon, clear: terrain colours, buildings at distance, sky, exposure"
+    },
+    {
+      "name": "altis_kavala_sunset",
+      "world": "Altis",
+      "camera": [3150, 12650, 250, 45, -25],
+      "time": "19:15",
+      "what": "same view at sunset: low sun colour, sky gradient, long shadows, adaptation"
+    },
+    {
+      "name": "altis_hills_ground",
+      "world": "Altis",
+      "camera": [4400, 13500, 3, 45, -6],
+      "what": "hills from 3 m: terrain detail layers, satellite blend, clutter/grass"
+    },
+    {
+      "name": "stratis_coast",
+      "world": "Stratis",
+      "camera": [1350, 5280, 10, 170, -5],
+      "what": "Stratis coast looking out to sea: water colour, reflections, shore, horizon"
+    },
+    {
+      "name": "altis_building_close",
+      "world": "Altis",
+      "camera": [3770.7, 12095.1, 2, 270, 6],
+      "time": "10:00",
+      "what": "a house from a few metres: Super shader materials (normal, specular, AO)"
+    },
+    {
+      "name": "altis_vegetation_close",
+      "world": "Altis",
+      "camera": [3066.9, 12363.6, 2, 0, 14],
+      "what": "trees from a few metres: Tree shaders, alpha test, translucency"
+    },
+    {
+      "name": "altis_kavala_night_moon",
+      "world": "Altis",
+      "camera": [3150, 12650, 250, 45, -25],
+      "date": [2035, 6, 6],
+      "time": "23:30",
+      "what": "night under a full moon: moon light, night sky, stars, night adaptation"
+    },
+    {
+      "name": "altis_kavala_overcast_fog",
+      "world": "Altis",
+      "camera": [3150, 12650, 250, 45, -25],
+      "overcast": 0.9,
+      "fog": [0.25, 0.01, 0.0],
+      "what": "overcast + fog (last: a weather change stalls the client): cloud layer, fog density and colour, diffuse-only lighting"
+    }
+  ]
+}
