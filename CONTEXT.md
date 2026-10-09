@@ -505,7 +505,8 @@ _Avoid_: simplification, decimation
 The indoor navigation of one building model, from its Paths LOD (its Roadway LOD when it has
 none): a small triangle graph an outdoor path ends at (via a door position) and a ladder
 (`PathActionLadderBottom`/`PathActionLadderTop`) changes floor through. The engine's interface
-is `IPaths`; ours is `a3-nav`'s `PathMesh`.
+is `IPaths`; ours is `a3-nav`'s `PathMesh`, which routes within one floor plan — where a
+`PathAction` sits in the LOD is not read yet (`docs/re/navigation.md` §8).
 _Avoid_: house path index (the engine's terrain-wide lookup of building paths, not the graph)
 
 ## Multiplayer and server
