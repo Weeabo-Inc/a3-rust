@@ -82,7 +82,12 @@ pub fn screenshot(
     if let Some((vfs, spec)) = engine.load_model_vfs()? {
         scene.load_model(&gpu, &mut renderer, vfs, spec);
     }
-    let input = InputState::new();
+    let mut input = InputState::new();
+    if engine.play {
+        // An offscreen run has no keyboard, so a `--play` capture holds the forward key: the
+        // Man is caught mid-stride rather than standing in his idle Move.
+        input.press(InputCode::Key(Dik::W));
+    }
     let mut fps = FpsCounter::default();
     let mut draws = DrawList::default();
     let start = Instant::now();

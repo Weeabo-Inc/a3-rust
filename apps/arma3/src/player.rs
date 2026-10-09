@@ -656,7 +656,11 @@ mod tests {
         assert_eq!(Direction::of(-1.0, -1.0), Some(Direction::BackLeft));
         assert_eq!(Direction::of(0.0, -1.0), Some(Direction::Left));
         assert_eq!(Direction::of(1.0, -1.0), Some(Direction::ForwardLeft));
-        assert_eq!(Direction::of(0.0, 0.0), None, "at rest there is no direction");
+        assert_eq!(
+            Direction::of(0.0, 0.0),
+            None,
+            "at rest there is no direction"
+        );
     }
 
     #[test]

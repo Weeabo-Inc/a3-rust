@@ -244,7 +244,11 @@ mod tests {
     fn a_profile_cannot_make_a_key_that_moves_the_man_turn_him() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("Test.Arma3Profile");
-        std::fs::write(&path, "version=1;\nkeyTurnLeft[]={30};\nkeyTurnRight[]={32};\n").unwrap();
+        std::fs::write(
+            &path,
+            "version=1;\nkeyTurnLeft[]={30};\nkeyTurnRight[]={32};\n",
+        )
+        .unwrap();
         let loaded = load(&KeySources {
             profile: Some(path),
             ..KeySources::default()

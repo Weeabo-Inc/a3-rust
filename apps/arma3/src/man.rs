@@ -230,10 +230,7 @@ impl ManAnimation {
     /// Read the RTMs of `ids` that are not loaded yet.
     fn load_clips(&mut self, ids: impl IntoIterator<Item = MoveId>) {
         let ManAnimation {
-            clips,
-            moves,
-            vfs,
-            ..
+            clips, moves, vfs, ..
         } = self;
         let report = clips.load(moves, ids, |path| vfs.open(path).ok().map(|b| b.to_vec()));
         for path in &report.missing {
@@ -295,9 +292,18 @@ mod tests {
         // Prone has no walk, only the crawl (`Mrun`), and a direction may be missing too.
         let names = move_names(Stance::Prone, walking(Pace::Walk, Direction::Right));
         assert_eq!(names[0], "AmovPpneMwlkSnonWnonDr", "asked for first");
-        assert!(names.contains(&"AmovPpneMrunSnonWnonDr".to_owned()), "the crawl, sideway");
-        assert!(names.contains(&"AmovPpneMrunSnonWnonDf".to_owned()), "the crawl, forward");
-        assert!(names.contains(&"AmovPpneMstpSnonWnonDnon".to_owned()), "prone idle as is");
+        assert!(
+            names.contains(&"AmovPpneMrunSnonWnonDr".to_owned()),
+            "the crawl, sideway"
+        );
+        assert!(
+            names.contains(&"AmovPpneMrunSnonWnonDf".to_owned()),
+            "the crawl, forward"
+        );
+        assert!(
+            names.contains(&"AmovPpneMstpSnonWnonDnon".to_owned()),
+            "prone idle as is"
+        );
         assert_eq!(
             names.last().unwrap(),
             "AmovPercMstpSnonWnonDnon",
@@ -336,7 +342,10 @@ class CfgMovesMaleSdr {
         ];
         let id = resolve(&moves, &names).expect("the walk is in the fixture");
         assert_eq!(moves.get(id).name, "AmovPercMwlkSnonWnonDf");
-        assert_eq!(resolve(&moves, &["AmovPercMsprSnonWnonDf".to_owned()]), None);
+        assert_eq!(
+            resolve(&moves, &["AmovPercMsprSnonWnonDf".to_owned()]),
+            None
+        );
     }
 
     #[test]
@@ -363,7 +372,11 @@ class CfgMovesMaleSdr {
         clock.advance(walk, 0.35, BLEND_TIME / 4.0);
         assert_eq!(clock.current, walk);
         assert_eq!(clock.previous, idle, "the idle is what he is leaving");
-        assert!((clock.blend - 0.25).abs() < 1e-6, "a quarter across: {}", clock.blend);
+        assert!(
+            (clock.blend - 0.25).abs() < 1e-6,
+            "a quarter across: {}",
+            clock.blend
+        );
         assert!((clock.current_phase - 0.35 * BLEND_TIME / 4.0).abs() < 1e-6);
         // Long enough for the blend to finish, he is in the walk alone.
         clock.advance(walk, 0.35, BLEND_TIME);
@@ -377,7 +390,11 @@ class CfgMovesMaleSdr {
         clock.advance(idle, 0.5, 1.0);
         assert!((clock.current_phase - 0.5).abs() < 1e-6);
         clock.advance(idle, 0.5, 1.0);
-        assert!(clock.current_phase.abs() < 1e-6, "phase wrapped: {}", clock.current_phase);
+        assert!(
+            clock.current_phase.abs() < 1e-6,
+            "phase wrapped: {}",
+            clock.current_phase
+        );
     }
 
     #[test]
@@ -387,7 +404,15 @@ class CfgMovesMaleSdr {
         clock.advance(walk, 0.4, 0.25);
         clock.advance(run, 1.0, 0.25);
         assert_eq!(clock.previous, walk);
-        assert!((clock.previous_phase - 0.2).abs() < 1e-6, "{}", clock.previous_phase);
-        assert!((clock.current_phase - 0.25).abs() < 1e-6, "{}", clock.current_phase);
+        assert!(
+            (clock.previous_phase - 0.2).abs() < 1e-6,
+            "{}",
+            clock.previous_phase
+        );
+        assert!(
+            (clock.current_phase - 0.25).abs() < 1e-6,
+            "{}",
+            clock.current_phase
+        );
     }
 }
