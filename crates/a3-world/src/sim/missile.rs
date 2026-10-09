@@ -133,12 +133,10 @@ pub(crate) fn step(
 
     // 2. The unguided-rocket model (lock type 0x40).
     if ammo.uses_advanced_drag() {
-        accel.x += (model_velocity.x * -0.005
-            - model_velocity.x.abs() * model_velocity.x * 0.00033)
-            * K;
-        accel.y += (model_velocity.y * -0.005
-            - model_velocity.y.abs() * model_velocity.y * 0.00033)
-            * K;
+        accel.x +=
+            (model_velocity.x * -0.005 - model_velocity.x.abs() * model_velocity.x * 0.00033) * K;
+        accel.y +=
+            (model_velocity.y * -0.005 - model_velocity.y.abs() * model_velocity.y * 0.00033) * K;
         guide.x += drag.y * -0.03;
         guide.y += drag.x * 0.03;
     }

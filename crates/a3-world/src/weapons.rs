@@ -482,9 +482,9 @@ impl WeaponBank {
             last_rounds_tracer: number_or(&cfg, "lastRoundsTracer", 0.0).max(0.0) as u32,
             quick_reload: number_or(&cfg, "quickReload", 0.0) != 0.0,
             delete_if_empty: number(&cfg, "deleteIfEmpty").map(|v| v != 0.0),
-            max_throw_hold_time: number_or(&cfg, "maxThrowHoldTime", 0.0),
-            min_throw_intensity_coef: number_or(&cfg, "minThrowIntensityCoef", 0.0),
-            max_throw_intensity_coef: number_or(&cfg, "maxThrowIntensityCoef", 1.0),
+            max_throw_hold_time: number_or(&cfg, "maxThrowHoldTime", 2.0),
+            min_throw_intensity_coef: number_or(&cfg, "minThrowIntensityCoef", 0.3),
+            max_throw_intensity_coef: number_or(&cfg, "maxThrowIntensityCoef", 1.5),
         });
         self.magazines.insert(key, m.clone());
         Ok(m)

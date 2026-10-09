@@ -32,10 +32,15 @@ fn a_missile_weapon(world: &mut World) -> Option<(String, String, String)> {
             if !class.is_class() {
                 continue;
             }
-            for magazine in class.get("magazines").array().iter().filter_map(|v| match v {
-                Value::String(s) | Value::Expression(s) => Some(s.clone()),
-                _ => None,
-            }) {
+            for magazine in class
+                .get("magazines")
+                .array()
+                .iter()
+                .filter_map(|v| match v {
+                    Value::String(s) | Value::Expression(s) => Some(s.clone()),
+                    _ => None,
+                })
+            {
                 let ammo = config
                     .root()
                     .get("CfgMagazines")
@@ -146,7 +151,13 @@ fn a_shipped_missile_loads_flies_and_explodes_on_its_target() {
         return;
     };
     // A flat terrain well below the flight so the missile only meets the target's box.
-    let mut world = common::scene_with_models(&[], &[("box.p3d", common::box_model([6.0, 6.0, 6.0], "plank.bisurf"))]);
+    let mut world = common::scene_with_models(
+        &[],
+        &[(
+            "box.p3d",
+            common::box_model([6.0, 6.0, 6.0], "plank.bisurf"),
+        )],
+    );
     world.set_config(config);
     let Some((weapon, magazine, ammo)) = a_missile_weapon(&mut world) else {
         panic!("no missile weapon in the shipped config");
@@ -245,7 +256,11 @@ fn every_shipped_missile_class_reads_a_lock_type() {
         match ammo.lock_type() {
             LockType::GuidedMissile => {
                 guided += 1;
-                assert!(ammo.thrust > 0.0, "{}: a guided missile has a motor", ammo.name);
+                assert!(
+                    ammo.thrust > 0.0,
+                    "{}: a guided missile has a motor",
+                    ammo.name
+                );
                 assert!(
                     ammo.thrust_time > 0.0,
                     "{}: a guided missile burns",

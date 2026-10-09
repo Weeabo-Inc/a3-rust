@@ -57,6 +57,8 @@ pub struct ProjectileState {
     pub magazine: String,
     /// Seconds left before the shot is deleted (`+0x5e8`); infinite when `timeToLive ≤ 0`.
     pub time_to_live: f64,
+    /// Seconds left of `initTime` (`+0x644`, from `AmmoType+0x3a0`) before any other timer ticks.
+    pub init_timer: f64,
     /// Seconds left before the shot explodes (`+0x648`); infinite when `explosionTime ≤ 0`.
     pub explosion_timer: f64,
     /// Metres left to fly before the shot is armed (`fuseDistance`, `+0x64c`).
@@ -79,6 +81,7 @@ impl Default for ProjectileState {
             mode: String::new(),
             magazine: String::new(),
             time_to_live: f64::INFINITY,
+            init_timer: 0.0,
             explosion_timer: f64::INFINITY,
             fuse_distance: 0.0,
             exploded: false,
@@ -106,6 +109,7 @@ impl ProjectileState {
                 f64::INFINITY
             },
             fuse_distance: ammo.fuse_distance.max(0.0),
+            init_timer: ammo.init_time.max(0.0),
             ammo: Some(ammo),
             missile,
             ..Self::default()
@@ -165,20 +169,25 @@ pub(crate) fn simulate(entity: &mut Entity, ctx: &mut StepContext<'_>, dt: f64) 
     };
     let mut state = state.clone();
 
-    // 1. Timers.
-    state.time_to_live -= dt;
-    if state.time_to_live <= 0.0 {
-        ctx.delete(entity.id);
-        entity.class_state = ClassState::Projectile(state);
-        return;
-    }
-    if state.explosion_timer < f64::MAX {
-        state.explosion_timer -= dt;
-        if state.explosion_timer <= 0.0 {
-            explode(entity, &mut state, &ammo, ctx);
+    // 1. Timers (`ShotShell`'s ctor copies them once, `docs/re/sim-grenades.md` §5). Nothing ticks
+    // until `initTime` at `+0x644` has run out.
+    if state.init_timer > 0.0 {
+        state.init_timer -= dt;
+    } else {
+        state.time_to_live -= dt;
+        if state.time_to_live <= 0.0 {
             ctx.delete(entity.id);
             entity.class_state = ClassState::Projectile(state);
             return;
+        }
+        if state.explosion_timer < f64::MAX {
+            state.explosion_timer -= dt;
+            if state.explosion_timer <= 0.0 {
+                explode(entity, &mut state, &ammo, ctx);
+                ctx.delete(entity.id);
+                entity.class_state = ClassState::Projectile(state);
+                return;
+            }
         }
     }
 
@@ -354,22 +363,28 @@ impl Flight<'_> {
     }
 
     /// §4.1's slow-shot branch (`0x140e65820`, high): a shot with a fuse running — or still inside
-    /// its arming distance — that lands **grazing** the surface (within 5.7°, `sinG < 0.1`) with a
-    /// normal speed under 2 m/s does not ricochet. It loses its normal velocity and slides,
-    /// decelerating by about 3 m/s² plus a tenth of its speed per second; a grenade or a shell
-    /// rolls to a stop.
+    /// its arming distance — whose contact is at its own feet (`distToContact < 0.1`) with a normal
+    /// speed under 2 m/s does not ricochet. It loses its normal velocity and slides, decelerating
+    /// by about 3 m/s² plus a tenth of its speed per second; a grenade or a shell rolls to a stop.
+    ///
+    /// `contact` is the distance from the step's start to the contact; the continuation offset is
+    /// counted in, because the object test of a continued move already starts 0.1 m along.
     fn roll(
         &mut self,
         ctx: &mut StepContext<'_>,
         normal: DVec3,
-        sin_g: f64,
+        contact: f64,
         remaining: f64,
         depth: u32,
     ) -> bool {
         let v = self.entity.velocity;
         let speed = v.length();
         let normal_speed = -v.dot(normal);
-        if self.state.armed() || normal_speed >= 2.0 || !(sin_g < 0.1) || speed <= 0.0 {
+        if self.state.armed()
+            || normal_speed >= 2.0
+            || contact > CONTINUE_OFFSET + 1e-6
+            || speed <= 0.0
+        {
             return false;
         }
         // The friction coefficient is `clamp(-100·cos(v, n), 0, 1)` of the **incoming** velocity:
@@ -467,12 +482,12 @@ impl Flight<'_> {
         let rng = ctx.random();
         let jitter = DVec3::new(rng.spread(d), rng.spread(d), rng.spread(d));
         let n = (normal + jitter).normalize_or_zero();
-        // A fused shot that lands steeply does not ricochet: it loses its normal velocity and
-        // slides. This is grenade and shell rolling.
-        if self.roll(ctx, normal, sin_g, remaining, depth) {
+        // A live shot whose contact is at its own feet is rolling, not ricocheting: it loses its
+        // normal velocity and slides. This is grenade and shell rolling.
+        if self.roll(ctx, normal, along, remaining, depth) {
             return true;
         }
-        let _ = along; // the original's slow-shot branch reads it; rolling is done above
+        let _ = along;
         if !(sin_g >= 0.0 && sin_g < max_sin && sin_g < object_limit)
             || v.length_squared() <= RICOCHET_MIN_SPEED_SQ
         {

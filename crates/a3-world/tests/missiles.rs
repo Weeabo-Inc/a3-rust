@@ -279,7 +279,11 @@ fn the_lateral_drag_and_the_unguided_model_are_the_decompiled_terms() {
         "the fin-stability turn: {:?}",
         missile(&world, shot).angular_velocity
     );
-    assert_eq!(missile(&world, shot).guidance, [0.0, 0.0], "no target to steer at");
+    assert_eq!(
+        missile(&world, shot).guidance,
+        [0.0, 0.0],
+        "no target to steer at"
+    );
 }
 
 #[test]

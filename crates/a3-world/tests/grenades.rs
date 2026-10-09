@@ -197,46 +197,43 @@ fn a_grenade_lands_slides_and_explodes_when_its_fuse_runs_out() {
 }
 
 #[test]
-fn a_fused_shell_that_lands_grazing_slides_instead_of_stopping() {
+fn a_live_shell_touching_the_ground_slides_instead_of_stopping() {
     let mut world = world();
     let s = thrower(&mut world, DVec3::ZERO);
+    // Thrown along the ground, a hair above it: the contact is at the shot's own feet, which is
+    // what makes it roll rather than ricochet or stop.
     let shot = throw(
         &mut world,
         s,
         "Fused_Mag",
-        DVec3::new(0.0, -4.95, 0.0),
-        DVec3::new(1.0, -0.033_333, 0.0),
+        DVec3::new(0.0, -4.9999, 0.0),
+        DVec3::new(1.0, -0.016_667, 0.0),
         1.0,
     );
-    // Fly until it meets the ground.
-    for _ in 0..200 {
-        world.simulate(h());
-        if position(&world, shot).y <= -4.99 {
-            break;
-        }
-    }
-    let landed = position(&world, shot);
-    assert!(landed.y > -5.2, "it landed: {landed:?}");
+    world.simulate(h());
     let before = velocity(&world, shot);
+    let at = position(&world, shot);
+    assert!(at.y <= -4.99 && at.y > -5.05, "on the surface: {at:?}");
+    assert!(
+        before.y.abs() < 0.3,
+        "the normal velocity is gone: {before:?}"
+    );
     world.simulate(h());
     let after = velocity(&world, shot);
-    assert!(
-        after.y.abs() < 0.2,
-        "the normal velocity goes: {before:?} -> {after:?}"
-    );
-    // The slide loses `0.1*v + 3` m/s per second, so about 6 m/s² at 30 m/s.
+    // The slide loses `(0.1*v_i + 3*sign(v_i)) * clamp01(-100*cos(v, n))` per second.
+    let coef = (-100.0 * before.dot(DVec3::Y) / before.length()).clamp(0.0, 1.0);
+    let expected = (before.x * 0.1 + 3.0) * coef * h();
     let loss = before.x - after.x;
-    let expected = (before.x * 0.1 + 3.0) * h();
     assert!(
-        (loss - expected).abs() < 0.05,
+        (loss - expected).abs() < 0.01,
         "the rolling friction: lost {loss}, expected {expected}"
     );
     // And it keeps going rather than stopping dead on the first touch.
     assert!(world.entity(shot).is_some());
-    assert!(position(&world, shot).x - landed.x > 0.1, "it slid on");
-    // Gravity keeps the shot on the surface without letting it sink.
+    assert!(position(&world, shot).x - at.x > 0.1, "it slid on");
+    // It stays on the surface instead of sinking into it.
     assert!(
-        position(&world, shot).y >= -5.2,
+        position(&world, shot).y > -5.05,
         "still on the surface: {:?}",
         position(&world, shot)
     );

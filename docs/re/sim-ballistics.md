@@ -78,10 +78,12 @@ constants. (medium) means the formula is certain but the meaning of an input is 
 `ShotShell::Simulate` is `0x140e65000`; `ShotBullet` (`0x140e64d00`) adds tracer/sound
 bookkeeping. Each step `dt`:
 
-- Timers count down:
-  - the arming delay at `+0x644`;
-  - `timeToLive` at `+0x5e8`: at ≤ 0 the shot is deleted;
-  - the explosion timer at `+0x648`: at ≤ 0 the shot explodes.
+- Timers count down (the labels corrected in the third pass, `docs/re/sim-grenades.md` §5):
+  - `initTime` at `+0x644` (from `AmmoType+0x3a0`): nothing else ticks until it runs out;
+  - `timeToLive` at `+0x5e8`: at ≤ 0 the shot is **silently deleted** — no explosion;
+  - `explosionTime` at `+0x648`: at ≤ 0 the shot explodes where it is, with its current velocity;
+  - `fuseDistance` at `+0x64c` is a distance budget, decremented by `|Δposition|`; the water branch
+    is its only reader, it does not gate the explosion.
 - The move is `0x140e66ea0`:
   1. If the friction coefficient is below −0.99, `dt` is limited to `4/|v|`.
   2. Segment test from `p` to `p + v·dt` against terrain (`0x1412236c0`) and objects
@@ -209,12 +211,15 @@ guide.y += k·s·steer_y·0.04·maneuvrability
 `t` comes back from the seeker as `min(0.3, distance/speed)` with
 `speed = max(vz, 0.3·maxSpeed + 0.7·vz)`; the aim point is the target's centre (`vfunc +0x6c0`,
 plus `AmmoType+0xf70` on y for one lock mode) led by `t·trackLead·target_velocity`
-(`trackLead` = `AmmoType+0x384`). **The two lateral components are cross-coupled** (`p_y` drives
-`guide.x` with a minus, `p_x` drives `guide.y` with a plus), i.e. the command is
-`ẑ × (p − b)` rather than `p − b`; the engine's missiles do converge on their target, so the
-model frame's lateral axes are not the `(right, up)` pair we assume, and `a3-world` implements the
-uncoupled form `guide += (p − b)` (see the implementation note below). The result is a **velocity
-correction in the model frame**, added to the two lateral axes only, never to the axial one.
+(`trackLead` = `AmmoType+0x384`).
+
+The two components are **not** cross-coupled once the command's meaning is clear: `guide` is an
+**angular acceleration** about the body's x and y axes (it is integrated below as `ω' = guide − 5ω`),
+so a target above the nose has to pitch up — a negative turn about x — and a target to the right
+has to yaw right, a positive turn about y. That is exactly `guide.x ∝ −(p_y − b_y)`,
+`guide.y ∝ +(p_x − b_x)` in a right-handed body frame with x right, y up and z forward. For the
+lock type whose guidance is a force instead (`0x40`, below) the same errors drive a lateral
+acceleration straight at the target: `accel.x += k·s·steer_y`, `accel.y += k·s·steer_x`.
 
 **Integration** (`FUN_140e75130`, `0x140e75130`, called at the end of `Missile::Simulate`):
 
@@ -227,11 +232,15 @@ block+0x54 = Aᵀ·(v_m + N·(0, −9.8066·k, 0))   // gravity is added in worl
 position  += (block+0x54) · dt
 ```
 
+The step's angular command reaches the body through `FUN_140e845f0(shot+0x2cc, 5·ω, guide_world,
+dt)`: `ω += dt·guide`, then `ω -= 5·ω·dt` per axis with the same never-reverse clamp, i.e. `ω`
+settles at `guide/5` (up to `0.006·maneuvrability²` rad/s — about 111°/s for `maneuvrability` 18).
+
 Both the acceleration and the drag are scaled by a factor from the shot's virtual `+0x620` slot
 (the same call guards the missile's axis update); it is not identified and `a3-world` takes it as
 1. **Open:** that factor, `AmmoType+0xf88` (a scale on the guidance command when positive, medium),
 `+0xe00`/`+0xda8`/`+0xe30`/`+0xe2c`/`+0xe3c` (the seeker's ranges, flags and lock limits, not
-traced), and the exact lateral axis convention.
+traced), and how the body's turn reaches the flight path (`a3-world` turns both).
 
 **Lock types** (`FUN_1410f5830(AmmoType)`, high):
 
@@ -256,10 +265,12 @@ axial:   drag_z = (vz·−0.005 − |vz|·vz·0.00033)·k       // replaces the 
 **Implementation note (`a3-world`).** The engine's PhysX body is replaced by the shot's own
 integration: the model frame is the Entity's orientation (+z forward), the world velocity is
 `A`-transformed into it once per step, and the position advance runs through the same segment test
-as every other shot, so a missile still ricochets, penetrates and explodes by §4. The guidance
-uses the uncoupled `guide += (p − b)` form: with the cross-coupled form the command is
-perpendicular to the error and a missile circles its target instead of flying into it, which the
-synthetic convergence test in `crates/a3-world/tests/missiles.rs` pins down.
+as every other shot, so a missile still ricochets, penetrates and explodes by §4. Because a
+Kinematic shot has no rigid body, the flight path turns with the body — a coordinated turn at the
+body's own rate — where the engine's velocity follows the body through the thrust and PhysX's
+aerodynamic coupling. The synthetic convergence test in `crates/a3-world/tests/missiles.rs` pins
+that a missile told to steer at a target 17° off its launch axis flies into it, and the real-data
+smoke in `weapons_real_data.rs` does the same with a shipped missile.
 
 ## 4. Impact: ricochet → penetration → stop (high)
 
@@ -292,10 +303,11 @@ was wrong (the third argument, 1.0, is passed in XMM3).
   `0x1410dfd80`. Medium confidence on which of these two fields is used here.
 - `objLimit` comes from the hit object (`vfunc +0x350`, not decoded; `a3-world` uses 1 for every
   Object, so the surface alone decides). For the terrain it is 1.
-- **Rolling** (high, `0x140e65820`, decoded 2026-10-09): a shot whose **fuse is running**
-  (`0 < +0x648 < FLT_MAX`) or that is **inside its arming distance** (`+0x64c > 0`) — i.e. not
-  armed — and that lands **grazing** the surface (`sinG < 0.1`, within 5.7°) with a normal speed
-  under 2 m/s does not ricochet. It loses its normal velocity (`v += |v·n|·n`) and slides:
+- **Rolling** (high, `0x140e65820`, decoded 2026-10-09): a shot whose fuse is running
+  (`0 < +0x648 < FLT_MAX`) or that is inside its arming distance (`+0x64c > 0`) — i.e. not armed —
+  and whose **contact is at its own feet** (`distToContact < 0.1`, the distance from the step's
+  start to the contact) with a normal speed under 2 m/s does not ricochet. It loses its normal
+  velocity (`v -= (v·n)·n`) and slides:
   ```
   coef = clamp(−100·cos(v, n), 0, 1)          // n = the surface normal, v the *incoming* velocity
   for each axis i:                            // FUN_140e845f0, never reverses a component
@@ -466,6 +478,5 @@ Then:
 - Hit-point dependencies: total damage from hit points, `depends`, the fatal Man hit points —
   now traced, see `sim-damage.md`.
 - `g` in §7.2, `shotCoef`, and the type component behind `vfunc +0x640` (`+0x2a4`, `+0x2a8`).
-- Which surface field feeds the ricochet coefficient; the meaning of the penetration component
-  flags.
+- The meaning of the penetration component flags.
 - Simulation enum value 16.
