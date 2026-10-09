@@ -23,10 +23,10 @@ Network items are out of scope for this track (deferred with Phase 6).
 
 | id | doc § | gap | guessing code | impact | status |
 |---|---|---|---|---|---|
-| R1 | render-lod §5 | per-LOD comparison value `level+0xac` in the LOD index search | `a3-render-models::lod::stand_in_lod_index` | high | open (#183) |
-| R2 | render-lod §3 | global area multiplier `scene+0x8c4` | `a3-render-models::lod::LodSelector::area_scale` | high | open (#183) |
-| R3 | render-lod §5 | shadow LOD choice (shadow volume LOD vs a visual LOD for shadow maps) | `a3-render-models` shadow pass (draws the visual LOD) | med | open (#183) |
-| R4 | render-lod §4 | shadow-cast distance `d'` pushed out by a size term | `a3-render-models::lod` shadow test | low | open |
+| R1 | render-lod §6 | how the Resolution LOD is picked (was read as a per-LOD value `level+0xac`; it is a frame-wide face budget) | `a3-render-models::lod::LodSelector::assign` | high | closed in this PR; frame-to-frame hysteresis not yet kept |
+| R2 | render-lod §3 | global area multiplier `scene+0x8c4` (= render target width · height) | `a3-render-models::lod::ViewScale` | high | closed in this PR |
+| R3 | render-lod §7 | shadow LOD: per-model table from the visual LOD, normally a Shadow Buffer LOD | `a3-render-models` shadow pass (draws the visual LOD) | med | doc closed → #306 |
+| R4 | render-lod §5 | shadow test distance `d'` (to the bounding sphere surface) and `K·r²` without drawImportance | `a3-render-models::lod::LodSelector::casts_shadow` | low | closed in this PR |
 | R5 | render-lod §7 | super-LODs (FOREST_LOD1/2, TOWN_LOD1) | not implemented | med | open |
 | C1 | render-materials §6 | which stages bind the sRGB vs the linear SRV (`0x1416d7e10`) | `a3-render-models::material` (colour types sRGB by suffix), `a3-landscape-render` satellite / detail layers | high | open (#173) |
 | C2 | render-materials §2, render-atmosphere §5 | CfgWorlds lighting and rvmat colours → `PSC_AE/GE/AmbientMid/Diffuse/DForced/Specular` | `a3-render-models` hemisphere ambient from a3-render sky colours | high | open (#173) |
