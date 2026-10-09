@@ -11,6 +11,7 @@
 //! `(x, z, y)`.
 
 mod ai;
+mod ai_unit;
 mod animation;
 mod cargo_ops;
 mod create;
@@ -55,6 +56,7 @@ pub trait WorldHost: Host {
 /// Registers every world command implemented so far.
 pub fn register_world_commands<H: WorldHost>(r: &mut Registry<H>) {
     ai::register(r);
+    ai_unit::register(r);
     animation::register(r);
     create::register(r);
     general::register(r);

@@ -8,10 +8,12 @@ lists them in; a `0x14…` address is the Ghidra VA (image base `0x140000000`). 
 `world-object-model.md`.
 
 **Status.** High: the waypoint array's binary layout, the `addWaypoint`/`deleteWaypoint`
-handlers, the delete re-index rule, and every handler address below (from `sqf-commands.tsv`).
-Medium: the queue semantics a mission sees (`currentWaypoint`, index 0, re-indexing), which come
-from the wiki and are consistent with the handlers. Low, and marked as ours: the steering, the
-formation offsets and the knowledge constants — the engine's values were not traced.
+handlers, the delete re-index rule, every handler address below (from `sqf-commands.tsv`), the
+formation table and slot computation, the leader's speed control and the waypoint arrival rule
+(`docs/re/ai-formation.md`), and the FSM interpreters (`docs/re/ai-fsm.md`). Medium: the queue
+semantics a mission sees (`currentWaypoint`, index 0, re-indexing), which come from the wiki and
+are consistent with the handlers. Low, and marked as ours: the gait choice, the path following
+and the knowledge constants of §5 (the engine's model is in `docs/re/ai-detection.md`).
 
 ## 1. Where the AI runs in the frame
 
@@ -106,75 +108,53 @@ one. Recorded again under §7.
 `perform_ai` walks every group; `tick_group` returns early for a group that is not local or has
 no units. Order per tick:
 
-1. **Targets** (`update_targets`, §5) — what the group sees, before it decides anything.
-2. **Steering** — the active waypoint's orders (`active_orders`) are read once, then
-   `steer_group` fills every unit's `ManInput`; a group with no active waypoint (queue done, or
-   empty) uses `stand_group`.
-3. **Arrival checks** — `check_orders` moves the queue on.
+1. **Targets** (`update_targets`, §5): what the group sees, before it decides anything.
+2. **Turn** (`turn_to_waypoint`): the first tick on a new active waypoint turns the formation
+   towards it and drops the leader's path, so he plans to it (the engine's `Turn` state).
+3. **Formation slots** (`formation_positions`) and the **leader's speed** (`leader_speed`).
+4. **Each unit**: his formation FSM (`think_unit`, `docs/re/ai-fsm.md` §3), then his steering
+   (`steer_unit`), then his trail point (`record_trail`).
+5. **Waypoint** (`check_waypoint`): arrival, the type's wait, the countdown.
 
-`Orders` is the tick's view of the active waypoint: its position, `effective_completion_radius()`
-(the mission's radius, or `DEFAULT_COMPLETION_RADIUS = 3.0` when it set none), `timeout[1]` for
-the timeout, and the two type predicates:
-
-- `completes_on_arrival()`: HOLD, SENTRY, GUARD, SUPPORT, AND, OR are never finished by
-  arriving, and neither are the vehicle waypoints (GETIN, GETOUT, LOAD, UNLOAD, TR UNLOAD, HOOK,
-  UNHOOK, GETIN NEAREST) — until #124/#127 exist, a group sent to one waits on the spot.
-- `needs_a_clear_area()`: SAD and DESTROY also need the group's contact list empty.
-
-A waypoint completes when the **leader** is within the radius (flat distance) and the clear-area
-condition holds, or when its timeout has elapsed. Completing marks the queue:
-
-- `advance_waypoint` sets `current` to 0 after a CYCLE waypoint, else to `index + 1`, restarts
-  the timeout clock, applies the new waypoint's modes (only the fields it set), and pushes
-  `WorldEvent::WaypointCompleted { group, index }` for mission scripts and the future FSM
-  runtime.
-- `started` (World time) is the clock `timeout[1]` runs on; it is set when the queue is moved
-  (`add_waypoint` on an empty queue, `set_current_waypoint`, `move_group`, advance).
+The engine's waypoint loop and what we implement of it: `docs/re/ai-formation.md` §3 and §8. In
+short: the AI leader arrives when he has walked his path to the waypoint or is within
+`max(completionRadius, precision)` of it in 3-D (the default radius is 0 and a man's precision
+1 m); then the type's condition must hold (`Completion`: MOVE and most types none, HOLD/GUARD/
+SUPPORT/vehicle types never, SENTRY an identified enemy, SAD/DESTROY no contacts left, DISMISS
+COMBAT); then the group waits `Rand_MinMidMax(timeout)` seconds (a random time between min and
+max with median mid, from the World's seeded `EngineRng`); then the waypoint is done:
+`advance_waypoint` moves to `index + 1` (0 after a CYCLE), applies the next waypoint's modes and
+pushes `WorldEvent::WaypointCompleted { group, index }`.
 
 `move group position` clears the queue and leaves **one** MOVE waypoint active at once; `move`
 on a unit is the same call on his group. It is not the same as `doMove`.
 
-## 4. Steering and formations
+## 4. Formations and movement
 
-`ManInput { forward, strafe, turn, sprint, stance }`. For each unit, in order:
+Detail and confidence: `docs/re/ai-formation.md` (§1 formations, §2 followers, §8 what we do).
 
-| unit | goal |
-|---|---|
-| any unit with `move_order` (doMove/commandMove/moveTo) | his own order — overrides the group |
-| `stopped` (doStop) | none: he stands, out of the formation |
-| `disabled` (enableAI/disableAI, not yet a script command) | untouched — the script drives him |
-| leader | the active waypoint's position |
-| follower | `leader.position + rotate_flat(formation.offset(index), leader.heading())` |
-
-On the way: `walk_towards` turns towards the goal and walks while the heading error is under
-`FULL_TURN_DEGREES = 90°` (otherwise turning on the spot — walking while turning sharply would
-carry him the wrong way), and stops within `ARRIVE_RADIUS = 1.0` m. Turn input is proportional
-below 90° of error and saturated at ±1.0 (`turn = clamp(error / 90, -1, 1)`). Heading is
-`atan2(dx, dz)` degrees, as `Entity::heading` reports.
-
-A unit with no goal and a group on the offensive (`Behaviour::Combat` or a `pursues()` combat
-mode — RED or WHITE) turns to face the best-known contact instead of standing still.
-
-**Speed modes.** LIMITED walks (`sprint` off); NORMAL and FULL both use the fastest move the
-graph has, because the sprint moves do not exist yet (#124). This is a deviation, not a
-finding.
-
-**Formations** (`FORMATION_SPACING = 5.0` m): COLUMN/FILE one behind the other, STAG COLUMN
-alternating half a step, WEDGE/VEE arrowhead/V, ECH LEFT/ECH RIGHT diagonals, LINE abreast,
-DIAMOND slots ahead/right/left/behind the leader. The offsets are ours (low confidence in the
-exact spacing; the engine's spacing depends on the men and their weapons). `CombatMode::Red`'s
-`breaks_formation` flag exists but is not used for movement yet — a RED group still walks in
-formation while it has a waypoint.
-
-**Per-unit arrival.** A `doMove` order is done on arrival (`ARRIVE_RADIUS`, flat) and cleared:
-the man walks back into his slot. `doStop` leaves him out of the formation until a waypoint
-moves the group or `doFollow` puts him back in. The wiki's note that "doStop'ed units return to
-formation if their leader's behaviour isn't COMBAT" is not modelled — `stopped` here is
-absolute.
-
-**No path.** Steering is straight at the goal through the collision world; nothing routes around
-terrain or buildings yet. The navigation grid and planner exist (`docs/re/navigation.md`, #240)
-but the AI does not plan over them (#243).
+- **Slots** come from `cfgFormations` read by position (COLUMN, STAG COLUMN, WEDGE, ECH LEFT,
+  ECH RIGHT, VEE, LINE, DIAMOND, FILE): fixed entries, then a repeating pattern, each slot placed
+  from a reference slot by the average `formationX`/`formationZ` of the two units' types (5 m for
+  men). Slot 0 is the first unit in ID order; positions are relative to the leader's slot,
+  turned by the **formation direction** (reset to the leader's facing by `setFormation`, set by
+  `setFormDir`, and by us towards each waypoint the group turns to).
+- **The leader's speed**: `formationCoef` slews at 0.1/s within 0.1..1.5 towards the speed that
+  lets the follower furthest behind his slot catch up; LIMITED caps him at
+  `maxSpeed x limitedSpeedCoef` (not in COMBAT), FULL lets him go at 1.5x `maxSpeed`.
+- **Followers** in AWARE and above steer to their slots; in CARELESS and SAFE they walk in file
+  on the trail of the man ahead.
+- **Pace** (ours, the engine's gait choice is not traced): stand below 0.3 m/s of speed cap, walk
+  below 3 m/s, run above; CARELESS and SAFE walk; a follower far behind his slot runs;
+  `forceSpeed` caps it.
+- **Stance**: `setUnitPos` (the script's) beats the formation FSM's own request
+  (`setUnitPosWeak`); AUTO leaves the stance to the move graph.
+- **Paths**: the leader and a unit with `doMove` plan on the World's `a3-nav` navigator
+  (`World::set_navigator`; a straight line without one) and walk point to point.
+- **Per-unit orders**: `doMove` is done within the unit's `precision` and cleared, and the man
+  walks back into his slot. `doStop` leaves him out of the formation until a waypoint moves the
+  group or `doFollow` puts him back in. `disableAI` "MOVE", "PATH" or "ANIM" leaves his input to
+  the script.
 
 ## 5. Target knowledge
 
@@ -252,38 +232,49 @@ Registered by `crates/a3-world/src/script/ai.rs` (53 names incl. overloads). Han
 | `reveal` | `who reveal target` / `who reveal [target, accuracy]` | 0x1c86f0 | a unit reveals to his group |
 | `forgetTarget` | `who forgetTarget target` | 0x1c82d0 | drops the contact at once |
 
-Engine commands in this area we have **not** registered: `copyWaypoints` (0x8fbec0),
-`enableAI`/`disableAI` (0x527420/0x526960), `setUnitPos` (0x53fc20), `commandStop` (0x568360),
-`stop` (0x541980), `unitReady` (0x569170), `waypointTimeoutCurrent` (0x8f8d20),
-`lockWp` (0x1911a0), the waypoint attachment commands (`waypointAttachVehicle` etc.),
-`forceSpeed` (0x569ed0), `nearTargets` (0x1cb6a0).
+Unit movement and features (`crates/a3-world/src/script/ai_unit.rs`):
+
+| command | form | handler | notes |
+|---|---|---|---|
+| `setUnitPos` / `setUnitPosWeak` / `unitPos` | `unit setUnitPos "UP"` | 0x53fc20 / 0x53fd50 / 0x533390 | the script's stance beats the AI's ("weak") one |
+| `forceSpeed` | `unit forceSpeed mps` | 0x569ed0 | negative removes the cap |
+| `disableAI` / `enableAI` / `checkAIFeature` | `unit disableAI "FSM"` | 0x526960 / 0x527420 / 0x481de0, 0x481cc0 | `FSM` and `COVER` act; the global form is always true |
+| `setFormDir` / `formationDirection` | `group setFormDir deg` | 0x191d00 / 0x192bf0 | |
+| `formationPosition` | `formationPosition unit` | 0x56ae60 | the slot, above the terrain |
+| `formationLeader` / `isFormationLeader` | | 0x56aba0 / 0x56cd00 | the group leader |
+| `unitReady` | `unitReady unit(s)` | 0x569170 | false for a leader with a move to make, or a unit with his own order |
+| `moveToCompleted` / `moveToFailed` | | 0x47de00 / 0x47de70 | `moveToFailed` is always false |
+| `execFSM` and the FSM commands | | | `docs/re/ai-fsm.md` §4.4 |
+
+Engine commands in this area we have **not** registered: `commandStop` (0x568360), `stop`
+(0x541980), `waypointTimeoutCurrent` (0x8f8d20), `lockWp` (0x1911a0), the waypoint attachment
+commands (`waypointAttachVehicle` etc.), `limitSpeed` (0x536610), `setDestination`,
+`expectedDestination` (0x56a880), `doFSM`/`commandFSM`, `nearTargets` (0x1cb6a0).
 
 ## 7. Deviations from the engine, and what is left out
 
-- **The unit FSMs do not exist.** #129 lists `formationFSM` / danger FSM through the SQF/FSM
-  runtime; this slice implements the group state machine in Rust instead. Waypoint statements
-  and scripts are stored on the waypoint and never executed; there is no FSM runtime to run
-  them in (#242).
-- **`addWaypoint`'s radius is ignored** and the waypoint lands on the centre: random placement
-  needs a seeded RNG the engine does not have yet. The same for the middle element of
-  `setWaypointPosition`'s `[center, radius]`.
-- **Waypoint timeouts use `timeout[1]`** (and completions are exact, not randomised between
-  min and max) — again no random source.
+- **Unit FSMs.** The native formation FSM (`CfgFSMs >> Formation`, the soldiers'
+  `fsmFormation`) runs per unit with the engine's Man functions; without a cover search,
+  `coverReached` holds only when cover is switched off (`docs/re/ai-fsm.md` §2.3). Scripted unit
+  FSMs (civilians' `formationC.fsm`) and danger FSMs need the VM in the AI tick and do not run;
+  soldiers have `fsmDanger = "-"` (danger handling off), so only civilians and module units miss
+  theirs.
+- **Waypoint statements and scripts** are stored and never run: the World has no VM. The engine
+  checks the condition after arrival and runs the statements after the countdown
+  (`docs/re/ai-formation.md` §3.2); `WorldEvent::WaypointCompleted` is the hook for a host.
+- **`addWaypoint`'s radius is ignored** and the waypoint lands on the centre; the same for the
+  middle element of `setWaypointPosition`'s `[center, radius]`.
 - **Insert-at-current is an approximation.** The binary's insert path does not fix the current
   index up inline (the delete path does), and its trailing notification (world vtable `+0x7b0`)
-  could not be resolved, so whether the engine shifts the pointer when a waypoint is inserted at
-  the current index is unverified. Ours: insert before the active index shifts it up; insert at
-  the active index becomes active.
+  could not be resolved. Ours: insert before the active index shifts it up; insert at the active
+  index becomes active; adding to a group that has finished its queue makes the new waypoint
+  active.
 - **Vehicle waypoints wait.** GETIN/GETOUT/LOAD/UNLOAD/TR UNLOAD/HOOK/UNHOOK/GETIN NEAREST never
   complete (no vehicle boarding yet, #124/#127); LOITER's radius and type and
   `setWaypointHousePosition` are stored and unused.
-- **Speed modes collapse to walk / fastest** (#124), and combat mode does not yet break
-  formation for movement (see §4).
 - **Knowledge is per group, not per unit**; no weapon-range gate, no firing effect (#127), no
-  `nearTargets`/`targetsQuery`.
-- **Steering is straight-line**; no path through the navigation grid (#243).
+  `nearTargets`/`targetsQuery`. The engine's detection model is in `docs/re/ai-detection.md`.
 - **Locality gates only the AI tick.** No network messages are produced or consumed for any of
-  this; the network-facing World operations do not carry AI state, so a client-side mission
-  setting waypoints changes its local copy only (#244).
-- `Behaviour::view_scale`, `FORMATION_SPACING`, the knowledge constants and `ARRIVE_RADIUS` are
+  this.
+- `Behaviour::view_scale`, the knowledge constants, the pace thresholds and the trail radius are
   our values, chosen to be plausible, not traced from the binary.

@@ -57,6 +57,8 @@ pub struct Unspawned {
 /// Creates every unit of `mission` in `world` (types from `types`), grouped as the SQM places
 /// them.
 pub fn spawn_mission(world: &mut World, types: &mut TypeBank, mission: &Mission) -> Spawned {
+    // The units' formation FSMs and the formation table come from the game config.
+    world.load_ai_config(types.config());
     let mut out = Spawned {
         markers: mission
             .markers

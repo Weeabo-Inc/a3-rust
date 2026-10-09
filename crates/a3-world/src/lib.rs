@@ -122,9 +122,11 @@ pub mod weapons;
 mod world;
 
 pub use ai::{
-    ARRIVE_RADIUS, Behaviour, CombatMode, DEFAULT_COMPLETION_RADIUS, EYE_HEIGHT, FORGET_TIME,
-    FORMATION_SPACING, Formation, GroupAi, KNOWLEDGE_PER_SECOND, LoiterType, ManAi, SpeedMode,
-    TargetKnowledge, Targets, VIEW_RANGE, Waypoint, WaypointQueue, WaypointType, target_key,
+    ARRIVE_RADIUS, AiFeatures, AiWorld, Behaviour, CombatMode, Completion, CoverState,
+    DEFAULT_COMPLETION_RADIUS, DEFAULT_SEED, EYE_HEIGHT, EngineRng, FORGET_TIME, FORMATION_SPACING,
+    Formation, FormationEntry, FormationShape, FormationSlot, FormationTable, GroupAi,
+    KNOWLEDGE_PER_SECOND, LoiterType, ManAi, Pace, PlanningMode, SpeedMode, TargetKnowledge,
+    Targets, UnitFsm, UnitPath, VIEW_RANGE, Waypoint, WaypointQueue, WaypointType, target_key,
 };
 pub use aircraft::{AircraftBank, FlightData, FlightType};
 pub use class::{EntityClass, SimulationClass};
@@ -154,7 +156,7 @@ pub use sim::{
 };
 pub use statics::{StaticKey, StaticObject};
 pub use types::{
-    DEFAULT_SIMULATION_STEP, EntityType, ModelTypeResolver, Scope, TypeBank, TypeSource,
+    AiParams, DEFAULT_SIMULATION_STEP, EntityType, ModelTypeResolver, Scope, TypeBank, TypeSource,
 };
 pub use world::{Create, POSITION_MAX, POSITION_MIN, Placement, World, WorldEvent};
 

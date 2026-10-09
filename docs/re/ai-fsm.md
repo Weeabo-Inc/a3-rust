@@ -696,7 +696,8 @@ skip frames; it never steps twice in one frame.
 | native step (1.5): slots start at 0.5, `slot <= value`, one transition, enter/exit order, zero-time `true` chain, final state = synthetic `true` link | `a3_fsm::Machine` | done |
 | scripted step (4.3): precondition every step, `init` after the link action, self-link re-runs `init`, empty condition = true, a final state ends one step later | `a3_fsm::Machine` | done |
 | mission FSMs (4.4): `execFSM` (4 forms), `completedFSM`, `getFSMVariable`, `setFSMVariable`, `diag_activeMissionFSMs`; one step per scheduler frame; FSM-wide local variables, `_this`, `_thisFSM` | `a3-sqf` | done. Not modelled: `allowTermination`/`terminate` on FSMs, `debugFSM`, the shared 3 ms budget (every FSM steps every frame), the caller's namespace (code runs in missionNamespace) |
-| unit FSMs (3): `fsmFormation` / `fsmDanger`, `AIUnit_Think` order, danger events and `_queue`, `_fsmExclusive`, `disableAI "FSM"` | `a3-world` | follow-up (#242 second half) |
-| native Man / Entity functions (2.1, 2.3) | `a3-world` | follow-up, with the formation movement |
+| unit formation FSM (3.2, 3.4): a native `fsmFormation` created on the unit's first think and stepped every AI tick; `disableAI "FSM"` stops it | `a3-world` (`ai/unit_fsm.rs`) | done; the World loads `CfgFSMs` with `World::load_native_fsms` |
+| native Man / Entity functions (2.1, 2.3) | `a3-world` | done on foot: every Man condition and action; `vehicle`/`vehicleAir`/`reloadNeeded` are 0 (no vehicles or weapons yet); no cover search (so `coverReached` holds only with cover off); `formationCanLeaveCover` in the outline of 2.3; `script:` functions do nothing (no VM in the World) |
+| scripted unit FSMs, the danger FSM, danger events, `_queue`, `_fsmExclusive` (3.3, 3.4) | | not done: they need the VM in the AI tick |
 | `doFSM` / `commandFSM` | | not done (the command FSMs are not traced) |
 | the engine RNG (1.3) | | not used: the VM's own generator draws thresholds for mission FSMs |

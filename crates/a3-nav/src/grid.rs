@@ -239,7 +239,9 @@ impl NavGrid {
                 if !self.is_walkable(x, z) {
                     return;
                 }
-                let d = (self.cell_center(x, z) - p).length();
+                let c = self.cell_center(x, z) - p;
+                // On the ground plane: the centres sit at height 0, the point at its own height.
+                let d = c.x.hypot(c.z);
                 if d <= radius && d < best_d {
                     best_d = d;
                     best = Some((x, z));
@@ -495,6 +497,15 @@ mod tests {
         assert!(grid.is_walkable(cell.0, cell.1));
         assert!((grid.cell_center(cell.0, cell.1) - p).length() <= 16.0);
         assert!(grid.nearest_walkable(p, 5.0).is_none());
+    }
+
+    #[test]
+    fn nearest_walkable_measures_on_the_ground_plane() {
+        // A point on a hill 120 m above sea level snaps to the cell under it.
+        let terrain = flat_terrain(8, 4, 10.0);
+        let grid = NavGrid::bake(&terrain);
+        let p = Vec3::new(42.0, 120.0, 47.0);
+        assert_eq!(grid.nearest_walkable(p, 10.0), Some((4, 4)));
     }
 
     #[test]

@@ -480,7 +480,7 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
 // ---- The helpers the handlers share ----
 
 /// The Entity an SQF Object value refers to.
-fn unit_arg(world: &World, value: &Value) -> Option<EntityId> {
+pub(super) fn unit_arg(world: &World, value: &Value) -> Option<EntityId> {
     match object_arg(world, value)? {
         ObjectRef::Entity(id) => Some(id),
         ObjectRef::Static(_) => None,
@@ -488,12 +488,12 @@ fn unit_arg(world: &World, value: &Value) -> Option<EntityId> {
 }
 
 /// The group an SQF value refers to: a Group, or a unit of one.
-fn group_of_arg(world: &World, value: &Value) -> Option<GroupId> {
+pub(super) fn group_of_arg(world: &World, value: &Value) -> Option<GroupId> {
     group_arg(world, value).or_else(|| unit_arg(world, value).and_then(|u| world.group_of(u)))
 }
 
 /// The units an SQF value refers to: one unit, or an array of them.
-fn units_arg(world: &World, value: &Value) -> Vec<EntityId> {
+pub(super) fn units_arg(world: &World, value: &Value) -> Vec<EntityId> {
     let Some(items) = value.as_array() else {
         return unit_arg(world, value).into_iter().collect();
     };

@@ -83,6 +83,11 @@ impl Group {
         self.leader
     }
 
+    /// The group's AI state: waypoints, modes, formation and what it knows.
+    pub fn ai(&self) -> &GroupAi {
+        &self.ai
+    }
+
     /// The group is deleted automatically when its last unit leaves.
     pub fn delete_when_empty(&self) -> bool {
         self.delete_when_empty

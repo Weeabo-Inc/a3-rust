@@ -645,8 +645,21 @@ _Avoid_: pace
 
 **Formation**:
 The shape a Group moves in (WEDGE, COLUMN, LINE, VEE, ...), expressed as each follower's slot
-around the leader.
+around the leader. Defined in `cfgFormations`, scaled by each type's `formationX`/`formationZ`.
 _Avoid_: pattern, arrangement
+
+**Formation slot**:
+Where one unit of a Group belongs in its Formation: an offset from the leader's slot, turned by
+the formation direction. `formationPosition` returns it.
+
+**Formation direction**:
+The direction a Group's Formation faces: reset to the leader's facing by `setFormation`, set by
+`setFormDir`, read by `formationDirection`. Not the leader's heading frame by frame.
+
+**Formation FSM**:
+The FSM a unit runs in every AI think, named by its type's `fsmFormation` (the soldiers' native
+`Formation`): it bounds and covers in COMBAT and keeps the unit in formation otherwise.
+_Avoid_: behaviour FSM
 
 **Target knowledge**:
 What a Group knows about one enemy: a certainty from 0 to 4 and where and when it was last

@@ -231,30 +231,34 @@ fn a_hold_waypoint_waits_there_and_never_completes() {
 }
 
 #[test]
-fn a_waypoint_times_out_when_the_group_cannot_reach_it_in_time() {
+fn a_waypoint_timeout_is_a_wait_after_arriving() {
+    // The engine's countdown starts once the leader is there (`docs/re/ai.md` §3): a timeout
+    // does not cut a long walk short, it holds the group at the waypoint.
     let mut world = world();
     let start = DVec3::new(10.0, 100.0, 10.0);
-    let (group, _units) = group_at(&mut world, start, 1);
-    let far = start + DVec3::new(0.0, 0.0, 500.0);
-    let mut waypoint = Waypoint::new(WaypointType::Move, far);
-    waypoint.timeout = [0.0, 1.0, 0.0];
+    let (group, units) = group_at(&mut world, start, 1);
+    let near = start + DVec3::new(0.0, 0.0, 4.0);
+    let mut waypoint = Waypoint::new(WaypointType::Move, near);
+    waypoint.timeout = [10.0, 10.0, 10.0];
     world.add_waypoint(group, waypoint).unwrap();
 
-    run(&mut world, 30);
+    run(&mut world, 75);
+    assert!(
+        flat(position(&world, units[0]), near) < 1.5,
+        "the leader is there after 5 s"
+    );
+    assert_eq!(world.current_waypoint(group), Some(0), "but still waiting");
 
+    run(&mut world, 150);
     assert_eq!(
         world.current_waypoint(group),
         Some(1),
-        "the waypoint times out after its middle time"
+        "done 10 s after arriving"
     );
     assert!(
         world
             .drain_events()
             .contains(&WorldEvent::WaypointCompleted { group, index: 0 })
-    );
-    assert!(
-        flat(position(&world, _units[0]), start) < 5.0,
-        "it never got there"
     );
 }
 

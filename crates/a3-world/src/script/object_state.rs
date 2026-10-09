@@ -111,17 +111,13 @@ fn register_unit<H: WorldHost>(r: &mut Registry<H>) {
         }
         Ok(Value::Nothing)
     });
-    // 0x533390.
+    // 0x533390 -> Man vfunc +0x1c48 (0x72c650): the first of three levels that is not AUTO —
+    // Man+0x228c, the script's `setUnitPos` (+0x2290), the AI's weak request (+0x2294).
     r.unary("unitPos", OBJ, STR, |ctx, a| {
         let w = ctx.host.world();
-        Ok(Value::string(entity(w, &a, EntityClass::Man).map_or(
-            "",
-            |id| {
-                w.object_state(id)
-                    .map_or(UnitPos::Auto, |s| s.unit_pos)
-                    .name()
-            },
-        )))
+        Ok(Value::string(
+            entity(w, &a, EntityClass::Man).map_or("", |id| w.effective_unit_pos(id).name()),
+        ))
     });
     // 0x526960 / 0x527420: feature names from the enum at 0x1400e7b30, "ALL" for every bit.
     r.binary("disableAI", OBJ, STR, NOTHING, |ctx, a, b| {

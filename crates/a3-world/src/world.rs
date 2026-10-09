@@ -216,6 +216,9 @@ pub struct World {
     /// What each shot fired since the last [`World::drain_events`] was fired with, for the
     /// `Fired` handlers' arguments (the shot may be gone by the time they run).
     pub(crate) fired_shots: HashMap<EntityId, crate::fire::FiredShot>,
+    /// What the AI keeps for everyone: formations, native FSMs, the navigator, the random
+    /// generator.
+    pub(crate) ai: crate::ai::AiWorld,
 }
 
 impl World {
@@ -253,6 +256,7 @@ impl World {
             armory: None,
             random: crate::random::EngineRandom::default(),
             fired_shots: HashMap::new(),
+            ai: crate::ai::AiWorld::default(),
         }
     }
 

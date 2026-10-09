@@ -79,6 +79,124 @@ pub struct EntityType {
     simulation_step: f32,
     config_path: Vec<NodeId>,
     damage: DamageModel,
+    ai: AiParams,
+}
+
+/// What the AI reads from a type's config (`EntityAIType` in the engine; `docs/re/ai.md`).
+/// Missing keys keep the values the shipped config gives the type's family; a type without
+/// config takes them all from its family.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AiParams {
+    /// `formationX`: the formation unit sideways, in metres (Man 5).
+    pub formation_x: f64,
+    /// `formationZ`: the formation unit along the formation direction, in metres (Man 5).
+    pub formation_z: f64,
+    /// `formationTime`: seconds of the unit ahead's trail a follower keeps behind (Man 5).
+    pub formation_time: f64,
+    /// `precision`: how close counts as there, in metres (Man 1).
+    pub precision: f64,
+    /// `maxSpeed`, in metres per second (config km/h; Man 24 km/h).
+    pub max_speed: f64,
+    /// `limitedSpeedCoef`: the LIMITED speed mode's share of `maxSpeed` (0.22).
+    pub limited_speed_coef: f64,
+    /// `sensitivity`: how well its eyes spot (Man 1.75).
+    pub sensitivity: f64,
+    /// `sensitivityEar`: how well its ears hear (Man 0.125).
+    pub sensitivity_ear: f64,
+    /// `camouflage`: how visible it is (Man 2, `B_Soldier_base_F` 1.4).
+    pub camouflage: f64,
+    /// `audible`: how loud it is (Man 0.05).
+    pub audible: f64,
+    /// `accuracy`: the knowledge above which an observer tells this class from its parent.
+    pub accuracy: f64,
+    /// `fsmFormation`: the unit's formation FSM: a CfgFSMs class, a `.fsm` path, or empty.
+    pub fsm_formation: String,
+    /// `fsmDanger`: the unit's danger FSM; `"-"` switches danger handling off.
+    pub fsm_danger: String,
+}
+
+impl AiParams {
+    /// The shipped values of `CfgVehicles >> All`.
+    pub fn all() -> Self {
+        Self {
+            formation_x: 10.0,
+            formation_z: 20.0,
+            formation_time: 5.0,
+            precision: 5.0,
+            max_speed: 80.0 / 3.6,
+            limited_speed_coef: 0.22,
+            sensitivity: 2.5,
+            sensitivity_ear: 0.0075,
+            camouflage: 2.0,
+            audible: 1.0,
+            accuracy: 0.0,
+            fsm_formation: String::new(),
+            fsm_danger: String::new(),
+        }
+    }
+
+    /// The shipped values of a rifleman: `CAManBase`, with `B_Soldier_base_F`'s camouflage and
+    /// accuracy.
+    pub fn soldier() -> Self {
+        Self {
+            formation_x: 5.0,
+            formation_z: 5.0,
+            formation_time: 5.0,
+            precision: 1.0,
+            max_speed: 24.0 / 3.6,
+            limited_speed_coef: 0.22,
+            sensitivity: 1.75,
+            sensitivity_ear: 0.125,
+            camouflage: 1.4,
+            audible: 0.05,
+            accuracy: 2.3,
+            fsm_formation: "Formation".into(),
+            fsm_danger: "-".into(),
+        }
+    }
+
+    fn for_class(class: SimulationClass) -> Self {
+        if class == SimulationClass::Soldier {
+            Self::soldier()
+        } else {
+            Self::all()
+        }
+    }
+
+    fn from_config(cfg: &ConfigRef<'_>, class: SimulationClass) -> Self {
+        let d = Self::for_class(class);
+        let number = |key: &str, default: f64| {
+            let v = cfg.get(key);
+            if v.is_number() {
+                f64::from(v.number())
+            } else {
+                default
+            }
+        };
+        let text = |key: &str, default: &str| {
+            let v = cfg.get(key);
+            if v.is_text() {
+                v.text()
+            } else {
+                default.to_owned()
+            }
+        };
+        Self {
+            formation_x: number("formationX", d.formation_x),
+            formation_z: number("formationZ", d.formation_z),
+            formation_time: number("formationTime", d.formation_time),
+            precision: number("precision", d.precision),
+            max_speed: number("maxSpeed", d.max_speed * 3.6) / 3.6,
+            limited_speed_coef: number("limitedSpeedCoef", d.limited_speed_coef),
+            sensitivity: number("sensitivity", d.sensitivity),
+            sensitivity_ear: number("sensitivityEar", d.sensitivity_ear),
+            camouflage: number("camouflage", d.camouflage),
+            audible: number("audible", d.audible),
+            accuracy: number("accuracy", d.accuracy),
+            fsm_formation: text("fsmFormation", &d.fsm_formation),
+            fsm_danger: text("fsmDanger", &d.fsm_danger),
+        }
+    }
 }
 
 impl EntityType {
@@ -96,6 +214,7 @@ impl EntityType {
             simulation_step: DEFAULT_SIMULATION_STEP,
             config_path: Vec::new(),
             damage: DamageModel::new(),
+            ai: AiParams::for_class(class),
         }
     }
 
@@ -133,7 +252,13 @@ impl EntityType {
             simulation_step,
             config_path: cfg.node_path().to_vec(),
             damage: DamageModel::from_config(cfg, class),
+            ai: AiParams::from_config(cfg, class),
         })
+    }
+
+    /// What the AI reads from the type's config.
+    pub fn ai(&self) -> &AiParams {
+        &self.ai
     }
 
     /// The config class name in its original case.

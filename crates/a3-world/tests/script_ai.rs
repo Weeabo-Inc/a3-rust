@@ -441,3 +441,68 @@ fn copy_waypoints_replaces_the_target_queue_and_get_wp_pos_reads_the_position() 
     ));
     assert_eq!(number(&mut vm, "currentWaypoint g2"), 1.0);
 }
+
+#[test]
+fn unit_stance_speed_and_feature_commands() {
+    let mut vm = vm(ClientId::SERVER);
+    eval(&mut vm, TWO_GROUPS);
+
+    assert_eq!(text(&mut vm, "unitPos a"), "Auto");
+    eval(&mut vm, r#"a setUnitPos "DOWN""#);
+    assert_eq!(text(&mut vm, "unitPos a"), "Down");
+    // The AI's own request does not beat the script's.
+    eval(
+        &mut vm,
+        r#"a setUnitPosWeak "MIDDLE"; b setUnitPosWeak "MIDDLE""#,
+    );
+    assert_eq!(text(&mut vm, "unitPos a"), "Down");
+    assert_eq!(text(&mut vm, "unitPos b"), "Middle");
+
+    assert!(truth(&mut vm, r#"a checkAIFeature "FSM""#));
+    eval(&mut vm, r#"a disableAI "FSM"; a disableAI "cover""#);
+    assert!(!truth(&mut vm, r#"a checkAIFeature "FSM""#));
+    assert!(!truth(&mut vm, r#"a checkAIFeature "COVER""#));
+    assert!(truth(&mut vm, r#"b checkAIFeature "FSM""#));
+    eval(&mut vm, r#"a enableAI "FSM""#);
+    assert!(truth(&mut vm, r#"a checkAIFeature "FSM""#));
+
+    eval(&mut vm, "a forceSpeed 2");
+    let a = entity(&mut vm, "a");
+    assert_eq!(vm.host.world().man(a).unwrap().ai.force_speed, Some(2.0));
+    eval(&mut vm, "a forceSpeed -1");
+    assert_eq!(vm.host.world().man(a).unwrap().ai.force_speed, None);
+}
+
+#[test]
+fn formation_direction_position_and_leader_commands() {
+    let mut vm = vm(ClientId::SERVER);
+    eval(&mut vm, TWO_GROUPS);
+    eval(&mut vm, "g setFormDir 90");
+    assert_eq!(number(&mut vm, "formationDirection a"), 90.0);
+    // `b` is slot 1 of a WEDGE facing east: 5 m south (to the right) and 5 m west (behind) of
+    // the leader at the origin.
+    assert!(truth(
+        &mut vm,
+        "(formationPosition b) isEqualTo [-5, -5, 0]"
+    ));
+    assert!(truth(&mut vm, "formationLeader b == a"));
+    assert!(truth(&mut vm, "isFormationLeader a"));
+    assert!(!truth(&mut vm, "isFormationLeader b"));
+}
+
+#[test]
+fn unit_ready_and_move_to_state() {
+    let mut vm = vm(ClientId::SERVER);
+    eval(&mut vm, TWO_GROUPS);
+    assert!(truth(&mut vm, "unitReady a"));
+    eval(&mut vm, "g addWaypoint [[0, 0, 50], 0]");
+    assert!(
+        !truth(&mut vm, "unitReady a"),
+        "the leader has a move to make"
+    );
+    assert!(truth(&mut vm, "unitReady b"), "a follower is ready");
+    assert!(truth(&mut vm, "unitReady [b]"));
+    eval(&mut vm, "b doMove [20, 0, 0]");
+    assert!(!truth(&mut vm, "moveToCompleted b"));
+    assert!(!truth(&mut vm, "moveToFailed b"), "never true in 2.22");
+}

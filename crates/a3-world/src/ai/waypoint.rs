@@ -154,7 +154,7 @@ impl SpeedMode {
 /// The shape a group moves in (`setFormation`). WEDGE is the default.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Formation {
-    /// A single file, one man behind the other — the tightest column.
+    /// One man behind the other, a formation unit apart.
     Column,
     /// A column with each man half a step to alternate sides.
     StagColumn,
@@ -175,8 +175,8 @@ pub enum Formation {
     Diamond,
 }
 
-/// The distance between two men of a formation, in metres. The original spreads a group over
-/// roughly this much; the exact spacing depends on the men and their weapons.
+/// The formation unit of a man (`formationX` = `formationZ` = 5 m of `CAManBase`): two men of
+/// a formation stand this far apart along each axis of a formation step.
 pub const FORMATION_SPACING: f64 = 5.0;
 
 impl Formation {
@@ -209,32 +209,13 @@ impl Formation {
         }
     }
 
-    /// Where unit `index` (0 is the leader) stands, in the leader's frame: `x` to his right, `z`
-    /// ahead of him. The leader is always at the origin.
+    /// Where unit `index` of a group of men stands, relative to unit 0 (the leader in ID
+    /// order): `x` to the right of the formation direction, `z` along it, in metres. From the
+    /// shipped `cfgFormations` (`docs/re/ai.md` §4.1); see [`super::FormationTable::slots`] for
+    /// mixed types.
     pub fn offset(self, index: usize) -> DVec3 {
-        if index == 0 {
-            return DVec3::ZERO;
-        }
-        let step = FORMATION_SPACING;
-        // Followers number from 1; the wings of a symmetric shape take them two at a time.
-        let pair = index.div_ceil(2) as f64;
-        let side = if index % 2 == 1 { -1.0 } else { 1.0 };
-        match self {
-            Formation::Column | Formation::File => DVec3::new(0.0, 0.0, -step * index as f64),
-            Formation::StagColumn => DVec3::new(side * step * 0.5, 0.0, -step * index as f64),
-            Formation::Wedge => DVec3::new(side * step * pair, 0.0, -step * pair),
-            Formation::Vee => DVec3::new(side * step * pair, 0.0, -step * pair + step),
-            Formation::EchLeft => DVec3::new(-step * index as f64, 0.0, -step * index as f64),
-            Formation::EchRight => DVec3::new(step * index as f64, 0.0, -step * index as f64),
-            Formation::Line => DVec3::new(side * step * pair, 0.0, 0.0),
-            Formation::Diamond => match index % 4 {
-                // Ahead, right, left, behind — the leader's own slot is the empty middle.
-                1 => DVec3::new(0.0, 0.0, step),
-                2 => DVec3::new(step, 0.0, 0.0),
-                3 => DVec3::new(-step, 0.0, 0.0),
-                _ => DVec3::new(0.0, 0.0, -step),
-            },
-        }
+        let men = vec![Some((FORMATION_SPACING, FORMATION_SPACING)); index + 1];
+        super::FormationTable::shipped().slots(self, &men)[index].offset
     }
 }
 
@@ -354,17 +335,15 @@ impl WaypointType {
         }
     }
 
-    /// Whether reaching the position is enough to finish the waypoint. HOLD, SENTRY, GUARD and
-    /// SUPPORT are never finished by arriving — the group waits there until something else (a
-    /// timeout, a statement, a script) moves it on.
-    pub fn completes_on_arrival(self) -> bool {
+    /// What finishes the waypoint once the group's leader has arrived (the group FSM's states
+    /// per type, `docs/re/ai.md` §3).
+    pub fn completion(self) -> Completion {
         match self {
-            WaypointType::Hold
-            | WaypointType::Sentry
-            | WaypointType::Guard
-            | WaypointType::Support
-            | WaypointType::And
-            | WaypointType::Or => false,
+            // HOLD and GUARD never complete; SUPPORT waits to be called.
+            WaypointType::Hold | WaypointType::Guard | WaypointType::Support => Completion::Never,
+            WaypointType::Sentry => Completion::IdentifiedEnemy,
+            WaypointType::Sad | WaypointType::Destroy => Completion::Cleared,
+            WaypointType::Dismiss => Completion::Combat,
             // Vehicle waypoints wait for a vehicle that this engine does not have yet
             // (#124/#127); the group waits on the spot rather than completing them.
             WaypointType::GetIn
@@ -374,15 +353,26 @@ impl WaypointType {
             | WaypointType::TrUnload
             | WaypointType::Hook
             | WaypointType::Unhook
-            | WaypointType::GetInNearest => false,
-            _ => true,
+            | WaypointType::GetInNearest => Completion::Never,
+            _ => Completion::Arrival,
         }
     }
+}
 
-    /// Waypoints SAD finishes only once there is nothing left to hunt nearby.
-    pub fn needs_a_clear_area(self) -> bool {
-        matches!(self, WaypointType::Sad | WaypointType::Destroy)
-    }
+/// What a waypoint waits for after the leader arrives, before its countdown starts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Completion {
+    /// Nothing: arriving is enough (MOVE and most types).
+    Arrival,
+    /// Never done (HOLD, GUARD, and vehicle waypoints until vehicles exist).
+    Never,
+    /// SENTRY: the group knows an enemy whose side it has identified (knowledge 1.5).
+    IdentifiedEnemy,
+    /// SAD, DESTROY: the group knows no more enemies (our reading of the search states; the
+    /// engine searches five times around the position first).
+    Cleared,
+    /// DISMISS: any unit of the group is in COMBAT or STEALTH.
+    Combat,
 }
 
 /// Where a LOITER waypoint sends a flyer (`setWaypointLoiterType`).
@@ -412,9 +402,9 @@ impl LoiterType {
     }
 }
 
-/// The radius a MOVE waypoint uses when the mission asked for none: the group stops a few metres
-/// short instead of trying to stand on the exact spot (`docs/re/ai.md`).
-pub const DEFAULT_COMPLETION_RADIUS: f64 = 3.0;
+/// The completion radius of a waypoint the mission set none for: 0, so the leader must come
+/// within his type's `precision` (1 m for a man) or finish his path there (`docs/re/ai.md` §3).
+pub const DEFAULT_COMPLETION_RADIUS: f64 = 0.0;
 
 /// One waypoint of a group's queue.
 ///
@@ -433,12 +423,11 @@ pub struct Waypoint {
     pub speed_mode: Option<SpeedMode>,
     /// `setWaypointFormation`.
     pub formation: Option<Formation>,
-    /// How close the group has to get, in metres; 0 means the engine picks
-    /// ([`DEFAULT_COMPLETION_RADIUS`] for infantry).
+    /// How close the leader has to get, in metres; the leader's `precision` when larger.
     pub completion_radius: f64,
-    /// `setWaypointTimeout [min, mid, max]`, in seconds. The group finishes the waypoint after
-    /// `mid` seconds on it; the middle value is the engine's expectation, and this engine has no
-    /// random source to spread between the three (yet).
+    /// `setWaypointTimeout [min, mid, max]`, in seconds: after arriving (and the condition), the
+    /// group waits a random time between `min` and `max` whose median is `mid`
+    /// ([`crate::ai::EngineRng::min_mid_max`]) before the waypoint is done.
     pub timeout: [f64; 3],
     /// `setWaypointDescription`, on the map.
     pub description: String,
@@ -493,20 +482,10 @@ impl Waypoint {
         }
     }
 
-    /// How close the group has to get: the radius the mission set, or the engine's default when
-    /// it set none.
-    pub fn effective_completion_radius(&self) -> f64 {
-        if self.completion_radius > 0.0 {
-            self.completion_radius
-        } else {
-            DEFAULT_COMPLETION_RADIUS
-        }
-    }
-
-    /// Whether the waypoint's timeout has run out after `elapsed` seconds on it. A timeout of
-    /// zero (the default) never runs out.
-    pub fn timed_out(&self, elapsed: f64) -> bool {
-        self.timeout[1] > 0.0 && elapsed >= self.timeout[1]
+    /// How close a leader of `precision` has to get: the larger of the two
+    /// (`AIGroupFSM_CheckMoveCompleted`).
+    pub fn arrival_radius(&self, precision: f64) -> f64 {
+        self.completion_radius.max(precision)
     }
 }
 
@@ -517,9 +496,14 @@ pub struct WaypointQueue {
     /// Index of the waypoint the group is working on; equal to the queue length once every
     /// waypoint is done.
     pub current: usize,
-    /// When the group started on the current waypoint, in World time — the clock the waypoint's
-    /// timeout runs on.
+    /// When the group started on the current waypoint, in World time.
     pub started: f64,
+    /// Whether the group has turned to the current waypoint yet: its modes applied, its
+    /// direction set, its leader given the move (the engine's `Turn` state).
+    pub turned: bool,
+    /// When the group arrived and the countdown ends: the waypoint is done at this World time
+    /// (`Countdown`). `None` until it arrives.
+    pub deadline: Option<f64>,
 }
 
 impl Default for WaypointQueue {
@@ -527,6 +511,8 @@ impl Default for WaypointQueue {
         WaypointQueue {
             current: 0,
             started: 0.0,
+            turned: false,
+            deadline: None,
         }
     }
 }

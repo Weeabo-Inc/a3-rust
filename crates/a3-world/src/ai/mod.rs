@@ -1,43 +1,74 @@
-//! The AI of groups: waypoints, formations and what a group knows about its enemies, turned
-//! into each unit's [`ManInput`] once per frame (issue #129).
+//! The AI of groups and units: waypoints, formations, the units' formation FSM, paths and what a
+//! group knows about its enemies, turned into each unit's [`ManInput`] once per frame.
 //!
 //! Phase 5 of [`World::simulate`]. Only groups whose [`Locality`](crate::Locality) is local think
 //! here — a group owned by another machine is driven there, and its units on this machine only
 //! replay the state that arrives over the network. Nothing in this module reads a clock:
-//! the tick uses `dt` of World time, so a mission replays the same way at any frame rate.
+//! the tick uses `dt` of World time and the World's own seeded random generator
+//! ([`EngineRng`]), so a mission replays the same way at any frame rate.
 //!
-//! The design, the constants and how sure we are of each: `docs/re/ai.md`.
+//! The engine's model and how sure we are of each part: `docs/re/ai.md` (groups, waypoints,
+//! formations, movement), `docs/re/ai-fsm.md` (the unit FSMs).
 
+mod formation;
+mod movement;
+mod rng;
 mod target;
+mod unit_fsm;
 mod waypoint;
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
+pub use formation::{FormationEntry, FormationShape, FormationSlot, FormationTable};
+pub use movement::{Pace, UnitPath};
+pub use rng::{DEFAULT_SEED, EngineRng};
 pub use target::{
     EYE_HEIGHT, FORGET_TIME, KNOWLEDGE_PER_SECOND, TargetKnowledge, Targets, VIEW_RANGE, target_key,
 };
+pub use unit_fsm::CoverState;
 pub use waypoint::{
-    Behaviour, CombatMode, DEFAULT_COMPLETION_RADIUS, FORMATION_SPACING, Formation, LoiterType,
-    SpeedMode, Waypoint, WaypointQueue, WaypointType,
+    Behaviour, CombatMode, Completion, DEFAULT_COMPLETION_RADIUS, FORMATION_SPACING, Formation,
+    LoiterType, SpeedMode, Waypoint, WaypointQueue, WaypointType,
 };
 
+use a3_fsm::{Fsm, Machine};
 use a3_physics::ObjectKey;
 use glam::DVec3;
 
-use crate::{EntityId, Error, GroupId, ManInput, World};
+use crate::{EntityId, Error, GroupId, UnitPos, World};
 
-/// How close a unit must be to where it is walking before it stops, in metres. A waypoint's own
-/// completion radius is usually wider than this, so the group comes to a stop inside it.
+/// How close a unit must be to the end of an order of his own (`doMove`) before it is done, in
+/// metres, when his type gives no `precision`.
 pub const ARRIVE_RADIUS: f64 = 1.0;
 
-/// The heading error a full turn input (`±1.0`) aims at, in degrees. Beyond this the unit stands
-/// and turns first; below it he turns while walking.
-const FULL_TURN_DEGREES: f64 = 90.0;
+/// The AI state the World keeps for everyone: the formation table, the native FSMs units can
+/// run, the navigator paths are planned on, and the random generator.
+#[derive(Default)]
+pub struct AiWorld {
+    pub(crate) formations: FormationTable,
+    pub(crate) native_fsms: HashMap<String, Arc<Fsm>>,
+    pub(crate) navigator: Option<a3_nav::Navigator>,
+    pub(crate) rng: EngineRng,
+}
 
-/// The AI state of a group: its waypoint queue, the modes it moves under, and what it knows.
-#[derive(Debug, Clone, PartialEq, Default)]
+impl std::fmt::Debug for AiWorld {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AiWorld")
+            .field("native_fsms", &self.native_fsms.keys().collect::<Vec<_>>())
+            .field("navigator", &self.navigator.is_some())
+            .field("rng", &self.rng)
+            .finish()
+    }
+}
+
+/// The AI state of a group: its waypoint queue, the modes it moves under, its formation, and
+/// what it knows.
+#[derive(Debug, Clone, PartialEq)]
 pub struct GroupAi {
     /// The queue, and the waypoint the group is working on.
     pub waypoints: Vec<Waypoint>,
-    /// Which waypoint is active, and since when.
+    /// Which waypoint is active, since when, and how far through it the group is.
     pub queue: WaypointQueue,
     /// `behaviour`: how the group moves and how alert it is.
     pub behaviour: Behaviour,
@@ -47,44 +78,143 @@ pub struct GroupAi {
     pub speed_mode: SpeedMode,
     /// `formation`: the shape the group moves in.
     pub formation: Formation,
+    /// The formation direction (a flat unit vector): reset to the leader's facing by
+    /// `setFormation`, set by `setFormDir` and towards each waypoint the group turns to. `None`
+    /// until first set; the leader's facing is used then.
+    pub formation_direction: Option<DVec3>,
+    /// The leader's share of his top speed (`formationCoef`, 0.1..1.5): slews towards what
+    /// keeps the slowest follower in his slot.
+    pub formation_coef: f64,
     /// What the group knows about its enemies (`knowsAbout`); shared by its units.
     pub targets: Targets,
+    /// The last time the group met danger (a new contact), for the formation FSM's delays.
+    pub last_danger: Option<f64>,
 }
 
-/// The AI state of one unit: what he was ordered to do outside his group's waypoints.
-///
-/// The group fills his [`ManInput`] from its own orders; these are the overrides a mission script
-/// set on him alone.
+impl Default for GroupAi {
+    fn default() -> Self {
+        Self {
+            waypoints: Vec::new(),
+            queue: WaypointQueue::default(),
+            behaviour: Behaviour::default(),
+            combat_mode: CombatMode::default(),
+            speed_mode: SpeedMode::default(),
+            formation: Formation::default(),
+            formation_direction: None,
+            formation_coef: 1.0,
+            targets: Targets::default(),
+            last_danger: None,
+        }
+    }
+}
+
+/// The stance a [`UnitPos`] asks for.
+fn stance_of(pos: UnitPos) -> a3_moves::Stance {
+    match pos {
+        UnitPos::Auto => a3_moves::Stance::Undefined,
+        UnitPos::Up => a3_moves::Stance::Stand,
+        UnitPos::Middle => a3_moves::Stance::Crouch,
+        UnitPos::Down => a3_moves::Stance::Prone,
+    }
+}
+
+/// The AI features `disableAI` / `enableAI` switch off, as the bits of the engine's enum
+/// (`docs/re/sqf-object-state.md`, [`crate::AI_FEATURES`]). They live in the unit's
+/// [`ObjectState`](crate::ObjectState); this is the AI's view of them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+pub struct AiFeatures(pub u32);
+
+impl AiFeatures {
+    pub const TARGET: u32 = 0x1;
+    pub const MOVE: u32 = 0x2;
+    pub const AUTOTARGET: u32 = 0x4;
+    pub const ANIM: u32 = 0x8;
+    pub const TEAMSWITCH: u32 = 0x10;
+    /// No formation or danger FSM.
+    pub const FSM: u32 = 0x40;
+    pub const WEAPONAIM: u32 = 0x80;
+    pub const AIMINGERROR: u32 = 0x100;
+    pub const SUPPRESSION: u32 = 0x200;
+    pub const CHECKVISIBLE: u32 = 0x400;
+    pub const COVER: u32 = 0x800;
+    pub const AUTOCOMBAT: u32 = 0x1000;
+    pub const PATH: u32 = 0x2000;
+    pub const MINEDETECTION: u32 = 0x4000;
+    pub const NVG: u32 = 0x8000;
+    pub const LIGHTS: u32 = 0x1_0000;
+    pub const RADIOPROTOCOL: u32 = 0x2_0000;
+    pub const FIREWEAPON: u32 = 0x4_0000;
+    pub const COMMAND: u32 = 0x8_0000;
+    pub const HEARING: u32 = 0x10_0000;
+    pub const ALL: u32 = 0xffff_ffff;
+
+    /// The bits of a `disableAI` feature name (any case), `None` for an unknown one.
+    pub fn bit(name: &str) -> Option<u32> {
+        crate::object_state::ai_feature(name)
+    }
+
+    pub fn has(self, bit: u32) -> bool {
+        self.0 & bit != 0
+    }
+
+    /// Whether the AI leaves the unit's movement to the script: `MOVE`, `PATH` or `ANIM` off.
+    pub fn script_moves(self) -> bool {
+        self.has(Self::MOVE | Self::PATH | Self::ANIM)
+    }
+}
+
+/// How a unit's path is planned (`AIBrain+0x234`, `docs/re/ai.md` §4): what the formation FSM's
+/// `formationIsLeader` reads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PlanningMode {
+    #[default]
+    DoNotPlan,
+    DoNotPlanFormation,
+    LeaderPlanned,
+    LeaderDirect,
+    FormationPlanned,
+    VehiclePlanned,
+}
+
+/// A unit's formation FSM, running.
+#[derive(Debug, Clone, PartialEq)]
+pub struct UnitFsm {
+    pub fsm: Arc<Fsm>,
+    pub machine: Machine,
+}
+
+/// The AI state of one unit: what he was ordered to do outside his group's waypoints, the stance
+/// he is asked to keep, his path and his formation FSM.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ManAi {
     /// `doMove`/`moveTo`/`commandMove`: walk to this point instead of following the group.
     pub move_order: Option<DVec3>,
     /// `doStop`: stay here, out of the formation, until a waypoint or `doFollow` moves him.
     pub stopped: bool,
-    /// `disableAI`: the mission script drives him itself, so the group leaves him alone.
-    pub disabled: bool,
-}
-
-/// What a group's waypoint queue asks of it while its units are being steered.
-#[derive(Debug, Clone, Copy)]
-struct Orders {
-    /// Index of the waypoint in the group's queue.
-    index: usize,
-    /// Whether arriving is enough to finish it.
-    completes_on_arrival: bool,
-    /// Whether it also needs the group to know about no enemies.
-    needs_a_clear_area: bool,
-    /// Where the group leader walks to.
-    position: DVec3,
-    /// How close the leader has to get to it, in metres.
-    radius: f64,
-    /// Seconds after which the waypoint is done whether the group got there or not.
-    timeout: f64,
+    /// The stance the formation FSM asks for (the engine's "weak" request).
+    pub fsm_unit_pos: UnitPos,
+    /// `forceSpeed`, in metres per second; `None` when not forced.
+    pub force_speed: Option<f64>,
+    /// How his path is planned.
+    pub planning: PlanningMode,
+    /// The path he is following, if he plans one.
+    pub path: Option<UnitPath>,
+    /// His formation FSM, once created.
+    pub fsm: Option<UnitFsm>,
+    /// Whether the formation FSM was looked up already (so a type without one is not asked
+    /// again every frame).
+    pub fsm_looked_up: bool,
+    /// What the formation FSM keeps about covering and hiding.
+    pub cover: CoverState,
+    /// His last positions, newest first, for the men behind him in a SAFE file
+    /// (`docs/re/ai.md` §4.3).
+    pub trail: Vec<DVec3>,
 }
 
 impl World {
     /// Phase 5 of a frame: every local group works its waypoint queue, updates what it knows
-    /// about its enemies, and fills the [`ManInput`] of each of its units.
+    /// about its enemies, runs its units' formation FSMs and fills the [`ManInput`] of each of
+    /// its units.
     pub(crate) fn perform_ai(&mut self, dt: f64) {
         for group in self.all_groups().map(|g| g.id()).collect::<Vec<_>>() {
             self.tick_group(group, dt);
@@ -100,273 +230,31 @@ impl World {
         }
         let units = g.units.clone();
         let behaviour = g.ai.behaviour;
-        let combat_mode = g.ai.combat_mode;
 
         // What the group sees, before it decides where to go or what to look at.
         self.update_targets(group, &units, behaviour, dt);
-
-        // Where every unit should be: the active waypoint, the formation, or his own order.
-        let orders = self.active_orders(group);
-        match orders {
-            Some(orders) => self.steer_group(group, &units, orders, combat_mode),
-            None => self.stand_group(group, &units, combat_mode),
-        }
-
-        // Arrivals and timeouts move the queue on.
-        if let Some(orders) = orders {
-            self.check_orders(group, orders);
-        }
-    }
-
-    /// The waypoint the group is working on, if any. `None` once the queue is done, and for a
-    /// group with no waypoints at all.
-    fn active_orders(&self, group: GroupId) -> Option<Orders> {
-        let g = self.group(group)?;
-        let waypoint = g.ai.waypoints.get(g.ai.queue.current)?;
-        Some(Orders {
-            index: g.ai.queue.current,
-            completes_on_arrival: waypoint.waypoint_type.completes_on_arrival(),
-            needs_a_clear_area: waypoint.waypoint_type.needs_a_clear_area(),
-            position: waypoint.position,
-            radius: waypoint.effective_completion_radius(),
-            timeout: waypoint.timeout[1],
-        })
-    }
-
-    /// Steers every unit towards his place: the leader to the active waypoint, a follower to his
-    /// slot in the formation behind the leader, and a unit with an order of his own to that.
-    fn steer_group(
-        &mut self,
-        group: GroupId,
-        units: &[EntityId],
-        orders: Orders,
-        combat_mode: CombatMode,
-    ) {
-        let Some(g) = self.group(group) else {
-            return;
-        };
-        let leader = g.leader();
-        let formation = g.ai.formation;
-        let speed = g.ai.speed_mode;
-        let leader_pose = leader
-            .and_then(|l| self.entity(l))
-            .map(|e| (e.position(), e.heading()));
-
+        // The waypoint the group works on: turn to it, give the leader the move.
+        self.turn_to_waypoint(group);
+        // Where everyone's place is, and how fast the leader may go to keep them in it.
+        let slots = self.formation_positions(group, &units);
+        let leader_speed = self.leader_speed(group, &units, &slots, dt);
+        // Each unit: his formation FSM, then his steering.
         for (index, unit) in units.iter().enumerate() {
-            let is_leader = Some(*unit) == leader;
-            let Some(man) = self.man(*unit) else {
-                continue;
-            };
-            if man.ai.disabled {
-                continue;
-            }
-            let order = man.ai.move_order;
-            let stopped = man.ai.stopped;
-            let goal = match (order, stopped, is_leader) {
-                // An order of his own overrides everything the group is doing.
-                (Some(order), _, _) => Some(order),
-                (None, true, _) => None,
-                (None, false, true) => Some(orders.position),
-                (None, false, false) => leader_pose.map(|(position, heading)| {
-                    position + rotate_flat(formation.offset(index), heading)
-                }),
-            };
-            let input = match goal {
-                Some(goal) => self.walk_towards(*unit, goal, speed),
-                // In place: face what the group knows about, when it is hunting.
-                None => self.face_target(group, *unit, combat_mode),
-            };
-            if let Some(order) = order {
-                self.finish_move_order(*unit, order);
-            }
-            if let Some(man) = self.man_mut(*unit) {
+            self.think_unit(group, *unit);
+            let input = self.steer_unit(group, *unit, index, &units, &slots, leader_speed);
+            if let Some(input) = input
+                && let Some(man) = self.man_mut(*unit)
+            {
                 man.input = input;
             }
+            self.record_trail(*unit);
         }
-    }
-
-    /// Has every unit stand where he is (queue done, or a group with no waypoints yet), walking
-    /// on if he has an order of his own. The group stands in formation: a follower closes up on
-    /// his slot behind the leader before he comes to rest.
-    fn stand_group(&mut self, group: GroupId, units: &[EntityId], combat_mode: CombatMode) {
-        let Some(g) = self.group(group) else {
-            return;
-        };
-        let leader = g.leader();
-        let formation = g.ai.formation;
-        let speed = g.ai.speed_mode;
-        let leader_pose = leader
-            .and_then(|l| self.entity(l))
-            .map(|e| (e.position(), e.heading()));
-        for (index, unit) in units.iter().enumerate() {
-            let is_leader = Some(*unit) == leader;
-            let Some(man) = self.man(*unit) else {
-                continue;
-            };
-            if man.ai.disabled {
-                continue;
-            }
-            let order = man.ai.move_order;
-            let stopped = man.ai.stopped;
-            let goal = match (order, stopped, is_leader) {
-                (Some(order), _, _) => Some(order),
-                (None, true, _) => None,
-                (None, false, true) => None,
-                (None, false, false) => leader_pose.map(|(position, heading)| {
-                    position + rotate_flat(formation.offset(index), heading)
-                }),
-            };
-            let input = match goal {
-                Some(goal) => self.walk_towards(*unit, goal, speed),
-                None => self.face_target(group, *unit, combat_mode),
-            };
-            if let Some(order) = order {
-                self.finish_move_order(*unit, order);
-            }
-            if let Some(man) = self.man_mut(*unit) {
-                man.input = input;
-            }
-        }
-    }
-
-    /// Ends a unit's own move order once he is there. `doMove` to a point is done when the unit
-    /// arrives: he goes back to his place in the formation — the leader to what the group is
-    /// doing, a follower to his slot behind him — until the next order comes.
-    fn finish_move_order(&mut self, unit: EntityId, order: DVec3) {
-        let arrived = self
-            .entity(unit)
-            .is_some_and(|e| flat_distance(e.position(), order) <= ARRIVE_RADIUS);
-        if arrived {
-            self.clear_move_order(unit);
-        }
-    }
-
-    /// The input that stands `unit` still, turning him towards what the group knows about when
-    /// it is on the offensive.
-    fn face_target(&self, group: GroupId, unit: EntityId, combat_mode: CombatMode) -> ManInput {
-        let Some(g) = self.group(group) else {
-            return ManInput::default();
-        };
-        if !(combat_mode.pursues() || g.ai.behaviour.is_combat()) {
-            return ManInput::default();
-        }
-        let Some(known) = g.ai.targets.best() else {
-            return ManInput::default();
-        };
-        let Some(entity) = self.entity(unit) else {
-            return ManInput::default();
-        };
-        if flat_distance(known.position, entity.position()) <= ARRIVE_RADIUS {
-            return ManInput::default();
-        }
-        ManInput {
-            turn: turn_towards(entity.heading(), known.position - entity.position()),
-            ..Default::default()
-        }
-    }
-
-    /// The input that walks `unit` towards `goal` at his group's speed mode.
-    fn walk_towards(&self, unit: EntityId, goal: DVec3, speed: SpeedMode) -> ManInput {
-        let Some(entity) = self.entity(unit) else {
-            return ManInput::default();
-        };
-        if flat_distance(goal, entity.position()) <= ARRIVE_RADIUS {
-            return ManInput::default();
-        }
-        let to = goal - entity.position();
-        // Walking while turning sharply would carry him the wrong way: he turns on the spot
-        // until the goal is ahead of him.
-        let forward = if heading_error(entity.heading(), to).abs() < FULL_TURN_DEGREES {
-            1.0
-        } else {
-            0.0
-        };
-        ManInput {
-            forward,
-            strafe: 0.0,
-            turn: turn_towards(entity.heading(), to),
-            // LIMITED walks; NORMAL and FULL both use the fastest move the graph has until the
-            // sprint moves exist (#124).
-            sprint: speed != SpeedMode::Limited,
-            ..Default::default()
-        }
-    }
-
-    /// Whether the waypoint's conditions are met; the queue moves on when they are.
-    fn check_orders(&mut self, group: GroupId, orders: Orders) {
-        let now = self.time();
-        let Some(g) = self.group(group) else {
-            return;
-        };
-        let elapsed = now - g.ai.queue.started;
-        let Some(leader) = g.leader() else {
-            return;
-        };
-        let arrived = self
-            .entity(leader)
-            .is_some_and(|e| flat_distance(e.position(), orders.position) <= orders.radius);
-        let clear = !orders.needs_a_clear_area || g.ai.targets.is_empty();
-        let timed_out = orders.timeout > 0.0 && elapsed >= orders.timeout;
-        if (orders.completes_on_arrival && arrived && clear) || timed_out {
-            self.advance_waypoint(group, orders.index);
-        }
-    }
-
-    /// Marks the waypoint at `index` done: the group starts the next one (or the first again,
-    /// after a CYCLE waypoint), that waypoint's mode changes are applied, and the event goes out
-    /// for the mission's scripts.
-    fn advance_waypoint(&mut self, group: GroupId, index: usize) {
-        let now = self.time();
-        let Some(g) = self.group_mut(group) else {
-            return;
-        };
-        if g.ai.queue.current != index {
-            return;
-        }
-        let Some(waypoint) = g.ai.waypoints.get(index) else {
-            return;
-        };
-        let next = if waypoint.waypoint_type == WaypointType::Cycle {
-            0
-        } else {
-            index + 1
-        };
-        g.ai.queue.current = next;
-        g.ai.queue.started = now;
-        self.apply_waypoint_modes(group, next);
-        self.push_event(crate::WorldEvent::WaypointCompleted { group, index });
-    }
-
-    /// Applies what the waypoint at `index` says about the group's modes. A field the waypoint
-    /// does not set means "no change", as `UNCHANGED` does in the engine.
-    fn apply_waypoint_modes(&mut self, group: GroupId, index: usize) {
-        let Some(g) = self.group_mut(group) else {
-            return;
-        };
-        let Some(waypoint) = g.ai.waypoints.get(index) else {
-            return;
-        };
-        if let Some(behaviour) = waypoint.behaviour {
-            g.ai.behaviour = behaviour;
-        }
-        if let Some(combat_mode) = waypoint.combat_mode {
-            g.ai.combat_mode = combat_mode;
-        }
-        if let Some(speed_mode) = waypoint.speed_mode {
-            g.ai.speed_mode = speed_mode;
-        }
-        if let Some(formation) = waypoint.formation {
-            g.ai.formation = formation;
-        }
+        // Arrivals, conditions and countdowns move the queue on.
+        self.check_waypoint(group);
     }
 
     /// Updates what the group knows about its enemies: what it can see gains knowledge, what it
     /// cannot see is kept until [`FORGET_TIME`] runs out, and the gone are dropped.
-    ///
-    /// Every candidate is checked against the group's eye (`VIEW_RANGE` scaled by the behaviour,
-    /// taken from its first unit) and everything within that range is tested for line of sight
-    /// through the collision world's view layer. That is the plainest reading of the engine's
-    /// contact model; a real mission pays for the ray casts and `docs/re/ai.md` says so.
     fn update_targets(
         &mut self,
         group: GroupId,
@@ -385,8 +273,6 @@ impl World {
         let eye = observer.position() + DVec3::Y * EYE_HEIGHT;
         let range = VIEW_RANGE * behaviour.view_scale();
         let ignore: Vec<ObjectKey> = units.iter().copied().map(target_key).collect();
-        // What the group knows before this frame: knowledge to add to, when each contact was
-        // last seen, and where it was — kept while it is out of sight.
         let known: Vec<(EntityId, f64, f64, DVec3)> = self
             .group(group)
             .map(|g| {
@@ -397,7 +283,6 @@ impl World {
             })
             .unwrap_or_default();
 
-        // What is out there to see: living enemies of the group's side within view range.
         let candidates: Vec<(EntityId, DVec3)> = self
             .entities()
             .filter(|e| e.is_alive())
@@ -409,17 +294,20 @@ impl World {
             .collect();
 
         let mut updates: Vec<TargetKnowledge> = Vec::new();
+        let mut new_contact = false;
         for (target, position) in &candidates {
             let visible = self.is_visible(eye, *position, &ignore, *target);
             match known.iter().find(|(id, _, _, _)| id == target) {
-                // A target never seen before is only noticed when it is in plain sight.
                 None if !visible => continue,
-                None => updates.push(TargetKnowledge {
-                    target: *target,
-                    knowledge: (KNOWLEDGE_PER_SECOND * dt).min(4.0),
-                    position: *position - DVec3::Y * EYE_HEIGHT,
-                    last_seen: now,
-                }),
+                None => {
+                    new_contact = true;
+                    updates.push(TargetKnowledge {
+                        target: *target,
+                        knowledge: (KNOWLEDGE_PER_SECOND * dt).min(4.0),
+                        position: *position - DVec3::Y * EYE_HEIGHT,
+                        last_seen: now,
+                    })
+                }
                 Some(&(_, knowledge, last_seen, old_position)) => {
                     let (position, last_seen) = if visible {
                         (*position - DVec3::Y * EYE_HEIGHT, now)
@@ -440,8 +328,6 @@ impl World {
             }
         }
 
-        // The dead and the deleted are not contact's work to keep; the forgotten have run out
-        // their [`FORGET_TIME`].
         let gone: Vec<EntityId> = self
             .group(group)
             .map(|g| {
@@ -458,13 +344,14 @@ impl World {
         for target in gone {
             g.ai.targets.forget(target);
         }
-        // A contact whose time ran out stays dropped: its own update, built from the knowledge
-        // it had, would otherwise put it straight back.
         let forgotten = g.ai.targets.retain_recent(now);
         for update in updates {
             if !forgotten.contains(&update.target) {
                 g.ai.targets.insert(update);
             }
+        }
+        if new_contact {
+            g.ai.last_danger = Some(now);
         }
     }
 
@@ -484,6 +371,74 @@ impl World {
         keys.extend_from_slice(ignore);
         keys.push(target_key(target));
         collision.visibility(eye, position, &keys) > 0.0
+    }
+
+    // ---- What the AI needs installed. ----
+
+    /// Installs the formation table (`cfgFormations >> <side>`); the shipped one is the
+    /// default.
+    pub fn set_formation_table(&mut self, table: FormationTable) {
+        self.ai.formations = table;
+    }
+
+    /// Loads every native FSM of `CfgFSMs` (the soldiers' `Formation`), so units whose
+    /// `fsmFormation` names one run it. Returns the loader's warnings.
+    pub fn load_native_fsms(&mut self, cfg_fsms: &a3_config::ConfigRef<'_>) -> Vec<String> {
+        let mut warnings = Vec::new();
+        for class in cfg_fsms.entries() {
+            if !class.is_class() {
+                continue;
+            }
+            match Fsm::from_native_config(&class) {
+                Ok(loaded) => {
+                    warnings.extend(loaded.warnings);
+                    self.ai
+                        .native_fsms
+                        .insert(class.name().to_ascii_lowercase(), Arc::new(loaded.fsm));
+                }
+                Err(e) => warnings.push(format!("CfgFSMs >> {}: {e}", class.name())),
+            }
+        }
+        warnings
+    }
+
+    /// Loads what the AI reads from the game config: the native FSMs of `CfgFSMs` and the
+    /// formation table of `cfgFormations` (every side ships the same; `West` is used). Returns
+    /// the FSM loader's warnings.
+    pub fn load_ai_config(&mut self, config: &a3_config::ConfigTree) -> Vec<String> {
+        let side = config.root() >> "cfgFormations" >> "West";
+        if side.is_class() {
+            self.set_formation_table(FormationTable::from_config(&side));
+        }
+        self.load_native_fsms(&(config.root() >> "CfgFSMs"))
+    }
+
+    /// Adds one native FSM by name (tests and tools).
+    pub fn add_native_fsm(&mut self, fsm: Fsm) {
+        self.ai
+            .native_fsms
+            .insert(fsm.name.to_ascii_lowercase(), Arc::new(fsm));
+    }
+
+    /// Installs the navigator paths are planned on. Without one, units walk straight at their
+    /// goals.
+    pub fn set_navigator(&mut self, navigator: a3_nav::Navigator) {
+        self.ai.navigator = Some(navigator);
+    }
+
+    /// The navigator, to patch its grid.
+    pub fn navigator_mut(&mut self) -> Option<&mut a3_nav::Navigator> {
+        self.ai.navigator.as_mut()
+    }
+
+    /// Seeds the World's random generator (every AI choice that is random draws from it).
+    pub fn seed_random(&mut self, seed: u32) {
+        self.ai.rng = EngineRng::new(seed);
+    }
+
+    /// The next number in `0..1` from the World's random generator.
+    pub fn random(&mut self) -> f64 {
+        self.ai.rng.next_unit()
     }
 
     // ---- The waypoint queue, as the mission scripts and the network layer see it. ----
@@ -525,20 +480,26 @@ impl World {
         index: usize,
         waypoint: Waypoint,
     ) -> Result<usize, Error> {
-        let was_empty = {
+        let now = self.time();
+        let (was_idle, index) = {
             let g = self.group_mut(group).ok_or(Error::NoSuchGroup(group))?;
-            let was_empty = g.ai.waypoints.is_empty();
+            let was_idle = g.ai.queue.current >= g.ai.waypoints.len();
             let index = index.min(g.ai.waypoints.len());
             g.ai.waypoints.insert(index, waypoint);
             // A waypoint inserted before the active one pushes it along.
-            if !was_empty && index < g.ai.queue.current {
+            if !was_idle && index < g.ai.queue.current {
                 g.ai.queue.current += 1;
             }
-            (was_empty, index)
+            if was_idle {
+                g.ai.queue.current = index;
+                g.ai.queue.started = now;
+                g.ai.queue.turned = false;
+                g.ai.queue.deadline = None;
+            }
+            (was_idle, index)
         };
-        let (was_empty, index) = was_empty;
-        if was_empty {
-            self.apply_waypoint_modes(group, 0);
+        if was_idle {
+            self.apply_waypoint_modes(group, index);
         }
         Ok(index)
     }
@@ -553,6 +514,9 @@ impl World {
         g.ai.waypoints.remove(index);
         if index < g.ai.queue.current {
             g.ai.queue.current -= 1;
+        } else if index == g.ai.queue.current {
+            g.ai.queue.turned = false;
+            g.ai.queue.deadline = None;
         }
         Ok(())
     }
@@ -577,8 +541,12 @@ impl World {
         }
         let now = self.time();
         let g = self.group_mut(group).expect("checked");
-        g.ai.queue.current = index;
-        g.ai.queue.started = now;
+        g.ai.queue = WaypointQueue {
+            current: index,
+            started: now,
+            turned: false,
+            deadline: None,
+        };
         self.apply_waypoint_modes(group, index);
         Ok(())
     }
@@ -607,9 +575,36 @@ impl World {
         g.ai.waypoints.clear();
         g.ai.waypoints
             .push(Waypoint::new(WaypointType::Move, position));
-        g.ai.queue.current = 0;
-        g.ai.queue.started = now;
+        g.ai.queue = WaypointQueue {
+            current: 0,
+            started: now,
+            turned: false,
+            deadline: None,
+        };
         Ok(())
+    }
+
+    /// Applies what the waypoint at `index` says about the group's modes. A field the waypoint
+    /// does not set means "no change", as `UNCHANGED` does in the engine.
+    fn apply_waypoint_modes(&mut self, group: GroupId, index: usize) {
+        let Some(g) = self.group_mut(group) else {
+            return;
+        };
+        let Some(waypoint) = g.ai.waypoints.get(index) else {
+            return;
+        };
+        if let Some(behaviour) = waypoint.behaviour {
+            g.ai.behaviour = behaviour;
+        }
+        if let Some(combat_mode) = waypoint.combat_mode {
+            g.ai.combat_mode = combat_mode;
+        }
+        if let Some(speed_mode) = waypoint.speed_mode {
+            g.ai.speed_mode = speed_mode;
+        }
+        if let Some(formation) = waypoint.formation {
+            g.ai.formation = formation;
+        }
     }
 
     // ---- The group's modes. ----
@@ -669,28 +664,44 @@ impl World {
         Some(self.group(group)?.ai.formation)
     }
 
-    /// `setFormation`.
+    /// `setFormation`: the new shape, and the formation direction reset to where the leader
+    /// faces (`AISubgroup_SetFormation`).
     pub fn set_group_formation(
         &mut self,
         group: GroupId,
         formation: Formation,
     ) -> Result<(), Error> {
-        self.group_mut(group)
-            .ok_or(Error::NoSuchGroup(group))?
-            .ai
-            .formation = formation;
+        let facing = self.leader_facing(group);
+        let g = self.group_mut(group).ok_or(Error::NoSuchGroup(group))?;
+        g.ai.formation = formation;
+        if let Some(facing) = facing {
+            g.ai.formation_direction = Some(facing);
+        }
         Ok(())
+    }
+
+    /// `setFormDir`: the formation direction, as a heading in degrees.
+    pub fn set_formation_direction(&mut self, group: GroupId, heading: f64) -> Result<(), Error> {
+        let g = self.group_mut(group).ok_or(Error::NoSuchGroup(group))?;
+        g.ai.formation_direction = Some(movement::direction_of(heading));
+        Ok(())
+    }
+
+    /// The formation direction of the group as a heading in degrees.
+    pub fn formation_direction(&self, group: GroupId) -> Option<f64> {
+        let direction = self.group_direction(group)?;
+        Some(movement::heading_of(direction))
     }
 
     // ---- Orders on a single unit. ----
 
-    /// `doMove`/`moveTo`/`commandMove` (and `commandMove`'s radio message later): this unit
-    /// walks to `position`, whatever his group is doing, and stays there until something else
-    /// moves him.
+    /// `doMove`/`moveTo`/`commandMove`: this unit walks to `position`, whatever his group is
+    /// doing, and stays there until something else moves him.
     pub fn order_move(&mut self, unit: EntityId, position: DVec3) {
         if let Some(man) = self.man_mut(unit) {
             man.ai.move_order = Some(position);
             man.ai.stopped = false;
+            man.ai.path = None;
         }
     }
 
@@ -704,6 +715,7 @@ impl World {
     pub fn clear_move_order(&mut self, unit: EntityId) {
         if let Some(man) = self.man_mut(unit) {
             man.ai.move_order = None;
+            man.ai.path = None;
         }
     }
 
@@ -713,6 +725,7 @@ impl World {
         if let Some(man) = self.man_mut(unit) {
             man.ai.stopped = true;
             man.ai.move_order = None;
+            man.ai.path = None;
         }
     }
 
@@ -726,14 +739,91 @@ impl World {
         if let Some(man) = self.man_mut(unit) {
             man.ai.stopped = false;
             man.ai.move_order = None;
+            man.ai.path = None;
         }
     }
 
-    /// `enableAI`/`disableAI`: whether the group drives this unit at all.
+    /// `enableAI`/`disableAI` of every feature at once: whether the group drives this unit at
+    /// all.
     pub fn set_man_ai_enabled(&mut self, unit: EntityId, enabled: bool) {
-        if let Some(man) = self.man_mut(unit) {
-            man.ai.disabled = !enabled;
+        self.set_ai_feature(unit, AiFeatures::ALL, enabled);
+    }
+
+    /// `enableAI` / `disableAI` of the features in `bits`.
+    pub fn set_ai_feature(&mut self, unit: EntityId, bits: u32, enabled: bool) {
+        if self.man(unit).is_none() {
+            return;
         }
+        let state = self.object_state_mut(unit);
+        if enabled {
+            state.ai_disabled &= !bits;
+        } else {
+            state.ai_disabled |= bits;
+        }
+    }
+
+    /// The AI features switched off for the unit.
+    pub fn ai_disabled(&self, unit: EntityId) -> AiFeatures {
+        AiFeatures(self.object_state(unit).map_or(0, |s| s.ai_disabled))
+    }
+
+    /// `checkAIFeature`: whether every feature in `bits` is enabled for the unit.
+    pub fn ai_feature_enabled(&self, unit: EntityId, bits: u32) -> bool {
+        self.man(unit).is_some() && !self.ai_disabled(unit).has(bits)
+    }
+
+    /// `setUnitPos`.
+    pub fn set_unit_pos(&mut self, unit: EntityId, pos: UnitPos) {
+        if self.man(unit).is_some() {
+            self.object_state_mut(unit).unit_pos = pos;
+        }
+    }
+
+    /// The stance the unit is asked to keep: the script's (`setUnitPos`), else the formation
+    /// FSM's own ("weak") request.
+    pub fn effective_unit_pos(&self, unit: EntityId) -> UnitPos {
+        let script = self
+            .object_state(unit)
+            .map_or(UnitPos::Auto, |s| s.unit_pos);
+        if script != UnitPos::Auto {
+            return script;
+        }
+        self.man(unit).map_or(UnitPos::Auto, |m| m.ai.fsm_unit_pos)
+    }
+
+    /// `forceSpeed`: caps the unit's speed in metres per second; negative removes the cap.
+    pub fn force_speed(&mut self, unit: EntityId, speed: f64) {
+        if let Some(man) = self.man_mut(unit) {
+            man.ai.force_speed = (speed >= 0.0).then_some(speed);
+        }
+    }
+
+    /// `unitReady`: false only for a group leader whose group still has a move to make
+    /// (`docs/re/ai.md` §5); a unit with an order of his own is ready once he arrived.
+    pub fn unit_ready(&self, unit: EntityId) -> bool {
+        let Some(man) = self.man(unit) else {
+            return true;
+        };
+        if man.ai.move_order.is_some() {
+            return false;
+        }
+        let Some(group) = self.group_of(unit) else {
+            return true;
+        };
+        let Some(g) = self.group(group) else {
+            return true;
+        };
+        if g.leader != Some(unit) {
+            return true;
+        }
+        g.ai.waypoints
+            .get(g.ai.queue.current)
+            .is_none_or(|_| g.ai.queue.deadline.is_some())
+    }
+
+    /// `moveToCompleted`: the unit's own move is done (he has none left).
+    pub fn move_to_completed(&self, unit: EntityId) -> bool {
+        self.man(unit).is_none_or(|man| man.ai.move_order.is_none())
     }
 
     // ---- Target knowledge. ----
@@ -819,39 +909,6 @@ impl World {
 }
 
 /// The flat (ground plane) distance between two points, in metres.
-fn flat_distance(a: DVec3, b: DVec3) -> f64 {
+pub(crate) fn flat_distance(a: DVec3, b: DVec3) -> f64 {
     DVec3::new(a.x - b.x, 0.0, a.z - b.z).length()
-}
-
-/// The heading (degrees clockwise from north) of a direction, as [`crate::Entity::heading`]
-/// reports one.
-fn heading_of(direction: DVec3) -> f64 {
-    direction
-        .x
-        .atan2(direction.z)
-        .to_degrees()
-        .rem_euclid(360.0)
-}
-
-/// How far a unit facing `heading` has to turn to face `direction`: positive to his right,
-/// `-180..=180` degrees.
-fn heading_error(heading: f64, direction: DVec3) -> f64 {
-    let difference = heading_of(direction) - heading;
-    (difference + 180.0).rem_euclid(360.0) - 180.0
-}
-
-/// The turn input that brings a unit facing `heading` around to `direction`: a full turn at
-/// [`FULL_TURN_DEGREES`] or more of error, a proportional one below it.
-fn turn_towards(heading: f64, direction: DVec3) -> f32 {
-    (heading_error(heading, direction) / FULL_TURN_DEGREES).clamp(-1.0, 1.0) as f32
-}
-
-/// A formation offset (to the right `x`, ahead `z`) in world metres, turned into the frame of a
-/// unit facing `heading` degrees.
-fn rotate_flat(offset: DVec3, heading: f64) -> DVec3 {
-    let (sin, cos) = heading.to_radians().sin_cos();
-    // North (heading 0) is +Z and east is +X, clockwise from above.
-    let right = DVec3::new(cos, 0.0, -sin);
-    let forward = DVec3::new(sin, 0.0, cos);
-    right * offset.x + forward * offset.z
 }
