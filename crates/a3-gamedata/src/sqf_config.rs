@@ -517,7 +517,7 @@ pub fn register_config_commands<H: ConfigHost>(r: &mut Registry<H>) {
 
     // `language`: the language the stringtables resolve for, e.g. "English".
     r.nular("language", STR, |ctx| {
-        Ok(Value::string(ctx.host.language().to_owned()))
+        Ok(Value::string(ctx.host.language()))
     });
 
     // `"class" isKindOf "base"` and `"class" isKindOf ["base", targetConfig]`. The class is

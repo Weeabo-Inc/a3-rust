@@ -387,10 +387,22 @@ impl World {
         Ok(())
     }
 
-    /// The side of a unit or object: a unit reports its own side (a soldier of one side can
-    /// serve in a group of another), a vehicle its crew's — and an empty vehicle is civilian.
-    /// Crews are not modelled yet, so a vehicle is always empty. Community wiki, `side`.
+    /// The side of a unit or object: its group's side, otherwise its type's config side. This is
+    /// the side the AI and the side relations work with; the `side` script command answers
+    /// [`World::object_side`] instead.
     pub fn side_of(&self, entity: EntityId) -> Option<Side> {
+        let e = self.entity(entity)?;
+        Some(match e.group.and_then(|g| self.group(g)) {
+            Some(g) => g.side,
+            None => side_from_config(e.entity_type().side()),
+        })
+    }
+
+    /// `side` for an Object: a unit reports its own side (a soldier of one side can serve in a
+    /// group of another), a vehicle its crew's — and an empty vehicle is civilian. Crews are not
+    /// modelled yet, so a vehicle is always empty. Community wiki, `side`; oracle probes
+    /// `wstr.createunit_east_in_west` and `wstr.empty_vehicle_side`.
+    pub fn object_side(&self, entity: EntityId) -> Option<Side> {
         let e = self.entity(entity)?;
         if e.class().is_kind_of(crate::EntityClass::Man) {
             return Some(side_from_config(e.entity_type().side()));

@@ -24,15 +24,12 @@ const SUN_HORIZON: f64 = 0.0;
 pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     r.nular("worldSize", NUM, |ctx| {
         Ok(Value::Number(
-            ctx.host
-                .world()
-                .terrain()
-                .map_or(0.0, |t| t.world_size() as f32),
+            ctx.host.world().terrain().map_or(0.0, |t| t.world_size()),
         ))
     });
     // The `CfgWorlds` class of the terrain (`worldName`); "" until a loader sets it.
     r.nular("worldName", STR, |ctx| {
-        Ok(Value::string(ctx.host.world().world_name().to_owned()))
+        Ok(Value::string(ctx.host.world().world_name()))
     });
 
     // `[x, y]` or `[x, y, z]`: the height is above sea level, the third element is ignored.
@@ -109,18 +106,10 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
         Ok(Value::Number(sun_or_moon(ctx.host.world()) as f32))
     });
 
-    // `sizeOf classname`: the diameter of an Object of that class present in the mission. The
-    // model's bounding sphere needs the model geometry (issue #117), so only the "no such object"
-    // case is answered.
-    r.unary("sizeOf", STR, NUM, |ctx, a| {
-        let name = a.as_str().unwrap_or_default().to_owned();
-        let present = ctx
-            .host
-            .world()
-            .entities()
-            .any(|e| !e.is_deleted() && e.type_name().eq_ignore_ascii_case(&name));
-        Ok(Value::Number(if present { 0.0 } else { 0.0 }))
-    });
+    // `sizeOf classname`: the diameter of the bounding sphere of an Object of that class. The
+    // model geometry is needed for that (issue #117); the answer is 0 until then, which is also
+    // the engine's answer while no Object of the class exists (oracle probe `wstr.sizeof`).
+    r.unary("sizeOf", STR, NUM, |_, _| Ok(Value::Number(0.0)));
 
     // `disableSerialization` lives in the game's own registry (`a3-gamedata`), which the
     // function library needs at the main menu too; see #281.

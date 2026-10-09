@@ -294,6 +294,20 @@ A symbol of the 2D map stored in the WRP (tree, house, fence, power line, forest
 pointing at the placed Object it stands for.
 _Avoid_: map marker (markers are mission-placed)
 
+**Named property**:
+The kind a Map object gives the placed Objects it covers (`TREE`, `HOUSE`, `ROCK`, ...). The
+object queries `nearestTerrainObjects` and `nearestObjects` select on it rather than on config
+classes: a lamp inside a town's `HOUSE` symbols is found by `"House"`, while a garbage pile whose
+config class does inherit `House` is not.
+_Avoid_: map type (the WRP record's numeric kind), terrain object type
+
+**Static entity**:
+A WRP record naming the config class and the model of a placed Object (lamps, houses with a
+config class), the second placed-object list next to the plain Object block (`Terrain::entities`).
+`typeOf` and the object queries see them as well as the plain Objects.
+_Avoid_: static object (the World's representation of either list), entity (the World's simulated
+Object)
+
 **Road net**:
 The WRP's list of road parts per land cell, each with its connection ends; in Arma 3 it holds
 only bridges and invisible runway roadways, while ordinary roads come from the terrain's roads
