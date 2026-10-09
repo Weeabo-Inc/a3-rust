@@ -2,7 +2,7 @@
 //! (`cutRsc`, `cutText`, `cutFadeOut`), the title effects and the post-process effect family.
 
 use super::{ARR, BOOL, NOTHING, NUM, OBJ, STR, WorldHost, null_object};
-use a3_sqf::{Registry, TypeSet, Value};
+use a3_sqf::{Handle, HandleKind, Registry, TypeSet, Value};
 use std::sync::atomic::{AtomicI32, Ordering};
 
 /// Handles handed out by `ppEffectCreate`. We render no post-process effects, so a handle is only
@@ -211,4 +211,24 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     r.binary("setLightDayLight", OBJ, BOOL, NOTHING, |_, _, _| {
         Ok(Value::Nothing)
     });
+
+    // `clearRadio`: stops the unit's radio sentences. We play no sentences, so there is nothing
+    // to stop (`stub`).
+    r.nular("clearRadio", NOTHING, |_ctx| Ok(Value::Nothing));
+    // `enableRadio`: the radio-sentence switch, the same subsystem as `clearRadio` (`stub`).
+    r.unary("enableRadio", BOOL, NOTHING, |_, _| Ok(Value::Nothing));
+
+    // `display displayCtrl idc` / `idc displayCtrl`: the control with that id. The display stack
+    // lives in a3-ui and is not reachable from the world host yet, so the lookup answers the null
+    // control (`stub`). A script that only stores the handle is unaffected.
+    r.unary("displayCtrl", NUM, HandleKind::Control.ty(), |_, _| {
+        Ok(Value::Handle(Handle::null(HandleKind::Control)))
+    });
+    r.binary(
+        "displayCtrl",
+        HandleKind::Control.ty(),
+        NUM,
+        HandleKind::Control.ty(),
+        |_, _, _| Ok(Value::Handle(Handle::null(HandleKind::Control))),
+    );
 }
