@@ -130,6 +130,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-mission"
+version = "0.1.0"
+dependencies = [
+ "a3-config",
+ "a3-gamedata",
+ "a3-sqf",
+ "a3-vfs",
+ "a3-world",
+ "a3-wrp",
+ "glam 0.34.1",
+ "tempfile",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "a3-moves"
 version = "0.1.0"
 dependencies = [
@@ -325,6 +340,7 @@ dependencies = [
  "a3-fonts",
  "a3-gamedata",
  "a3-landscape",
+ "a3-mission",
  "a3-p3d",
  "a3-paa",
  "a3-pbo",
@@ -334,6 +350,7 @@ dependencies = [
  "a3-sqf",
  "a3-stringtable",
  "a3-vfs",
+ "a3-world",
  "a3-wrp",
  "anyhow",
  "clap",

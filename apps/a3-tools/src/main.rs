@@ -3,6 +3,7 @@
 mod config_cmd;
 mod font_cmd;
 mod input;
+mod mission_cmd;
 mod p3d_cmd;
 mod p3d_export;
 mod paa_cmd;
@@ -61,6 +62,9 @@ enum Command {
     Stringtable(stringtable_cmd::StringtableCommand),
     /// Run SQF scripts headless and compile-check the install.
     Sqf(sqf_cmd::SqfArgs),
+    /// Load a mission (mission.sqm, description.ext) and print what it places; `--run` spawns it
+    /// into a World and runs its scripts.
+    Mission(mission_cmd::MissionArgs),
 }
 
 #[derive(Subcommand)]
@@ -166,6 +170,7 @@ fn main() -> anyhow::Result<()> {
         Command::Font(cmd) => font_cmd::run(cmd)?,
         Command::Stringtable(cmd) => stringtable_cmd::run(cmd)?,
         Command::Sqf(args) => sqf_cmd::run(args)?,
+        Command::Mission(args) => mission_cmd::run(args)?,
     }
     Ok(())
 }

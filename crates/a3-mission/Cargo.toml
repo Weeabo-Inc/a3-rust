@@ -1,0 +1,23 @@
+[package]
+name = "a3-mission"
+description = "Mission loading: mission.sqm, description.ext and the mission scripts, spawned into a World"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+a3-config.workspace = true
+a3-gamedata.workspace = true
+a3-sqf.workspace = true
+a3-vfs.workspace = true
+a3-world.workspace = true
+glam.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+a3-wrp.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true
