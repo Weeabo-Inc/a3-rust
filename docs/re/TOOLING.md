@@ -74,6 +74,7 @@ the server's naming conventions; they do not block the rename.
 | `tools/re/verify_net_emu.py <exe>` | runs the original net crypto under emulation and compares with `a3net.py` |
 | `tools/re/net_formats.py <exe> --tsv out` | runs the message-format registration under emulation → `docs/re/net-message-formats.tsv` |
 | `tools/re/shdc.py list\|dump <file.shdc> [regex] [outdir]` | lists the compiled shaders in a shader cache (`Shaders_5_0_PS.shdc` etc. from `Dta\bin.pbo`) and dumps DXBC + disassembly (Windows `d3dcompiler_47.dll`; stdlib only). Used for `render-*.md` |
+| `tools/re/re_gaps.py [--summary] [--doc NAME]` | lists the confidence markers and open-question bullets in `docs/re/` (stdlib only); feeds the ledger `docs/fidelity/re-gaps.md` |
 
 ## MCP servers for interactive sessions (`.mcp.json`)
 
