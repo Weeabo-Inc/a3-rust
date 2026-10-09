@@ -24,7 +24,7 @@ use glam::DVec3;
 use crate::weapons::AmmoType;
 use crate::{Entity, EntityId, ObjectRef, StaticKey};
 
-use super::{ClassState, Command, StepContext};
+use super::{ClassState, Command, MissileState, StepContext};
 
 /// The engine's gravity, m/s² (`9.8066` in `0x140e6c3d0`).
 const GRAVITY: f64 = 9.8066;
@@ -65,6 +65,8 @@ pub struct ProjectileState {
     pub exploded: bool,
     /// Whether it draws a tracer (the magazine's `tracersEvery` / `lastRoundsTracer`).
     pub tracer: bool,
+    /// The guided flight of a missile (§3.1); `None` for every other kind of shot.
+    pub missile: Option<MissileState>,
 }
 
 impl Default for ProjectileState {
@@ -81,6 +83,7 @@ impl Default for ProjectileState {
             fuse_distance: 0.0,
             exploded: false,
             tracer: false,
+            missile: None,
         }
     }
 }
@@ -88,6 +91,9 @@ impl Default for ProjectileState {
 impl ProjectileState {
     /// The state of a new shot of `ammo`: its timers start from the config values.
     pub fn new(ammo: Arc<AmmoType>) -> Self {
+        // §3.1: a missile's motor is a state machine of its own, started here.
+        let missile = matches!(ammo.simulation, Some(crate::SimulationClass::ShotMissile))
+            .then(|| MissileState::new(&ammo));
         Self {
             time_to_live: if ammo.time_to_live > 0.0 {
                 ammo.time_to_live
@@ -101,6 +107,7 @@ impl ProjectileState {
             },
             fuse_distance: ammo.fuse_distance.max(0.0),
             ammo: Some(ammo),
+            missile,
             ..Self::default()
         }
     }
@@ -172,12 +179,19 @@ pub(crate) fn simulate(entity: &mut Entity, ctx: &mut StepContext<'_>, dt: f64) 
     }
 
     // 2. The move.
+    let guided = state.missile.is_some();
+    if guided {
+        // §3.1: a missile carries its own drag, thrust and guidance; the ShotShell velocity step
+        // is switched off below so the two do not add up.
+        super::missile::step(entity, &mut state, &ammo, ctx.world(), dt);
+    }
     let mut flight = Flight {
         entity,
         state: &mut state,
         ammo: &ammo,
         ignore: Vec::new(),
         stopped: false,
+        velocity_step: !guided,
     };
     flight.ignore = ignore_list(flight.entity, flight.state, ctx);
     flight.advance(ctx, dt, false, 0);
@@ -230,6 +244,9 @@ struct Flight<'a> {
     ignore: Vec<ObjectKey>,
     /// Set when the shot stops (hits and is consumed); the step deletes it.
     stopped: bool,
+    /// Whether the move steps the velocity with the ShotShell drag of §3. A missile integrates its
+    /// own velocity (`sim::missile`) and leaves this off.
+    velocity_step: bool,
 }
 
 impl Flight<'_> {
@@ -340,7 +357,8 @@ impl Flight<'_> {
 
     /// `0x140e6c3d0`: puts the shot at `to` after `dt` of flight, counts the distance off the
     /// arming distance, and steps the velocity — only when `0 < factor ≤ caliber·1000` (the
-    /// penetration passes the surface's resistance as the factor).
+    /// penetration passes the surface's resistance as the factor). A missile never steps here: its
+    /// own drag and thrust did that before the move.
     fn move_to(&mut self, dt: f64, to: DVec3, factor: f64) {
         if self.state.fuse_distance > 0.0 {
             self.state.fuse_distance -= to.distance(self.entity.position);
@@ -348,6 +366,9 @@ impl Flight<'_> {
             self.state.fuse_distance = 0.0;
         }
         self.entity.position = to;
+        if !self.velocity_step {
+            return;
+        }
         if factor > 0.0 && factor <= self.ammo.caliber * 1000.0 {
             let v = self.entity.velocity;
             let k = self.friction();

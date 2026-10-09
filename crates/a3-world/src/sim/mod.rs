@@ -29,6 +29,7 @@ mod air;
 mod generic;
 mod ground;
 mod man;
+mod missile;
 mod projectile;
 
 use crate::random::EngineRandom;
@@ -37,6 +38,7 @@ use crate::{Create, DamageHit, EntityClass, EntityId, ListKind, SimulationClass,
 pub use air::{AirState, Flight, HitIndices};
 pub use ground::GroundState;
 pub use man::{GRAVITY, MAX_STEP_DOWN, MAX_STEP_UP, ManInput, ManState, Motion, MoveState};
+pub use missile::{MissileState, MotorPhase};
 pub use projectile::ProjectileState;
 pub(crate) use projectile::{ExplosionRecord, HitRecord, body_key};
 

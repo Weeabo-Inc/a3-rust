@@ -33,6 +33,9 @@ pub struct FireRequest {
     pub from: DVec3,
     /// The aim; any length but zero.
     pub direction: DVec3,
+    /// What a guided shot steers at (`docs/re/sim-ballistics.md` §3.1); `None` for everything
+    /// that flies straight.
+    pub target: Option<ObjectRef>,
     /// Whether the shot draws a tracer.
     pub tracer: bool,
     /// The rounds in the magazine before this shot: with the direction it seeds the shot's
@@ -57,6 +60,7 @@ impl FireRequest {
             mode: None,
             from,
             direction,
+            target: None,
             tracer: false,
             rounds: 1,
         }
@@ -65,6 +69,12 @@ impl FireRequest {
     /// The rounds in the magazine before this shot (`sim-weapons.md` §2.2, §2.5).
     pub fn rounds(mut self, rounds: u32) -> Self {
         self.rounds = rounds;
+        self
+    }
+
+    /// Makes the shot steer at `target` when it is a missile (`docs/re/sim-ballistics.md` §3.1).
+    pub fn target(mut self, target: ObjectRef) -> Self {
+        self.target = Some(target);
         self
     }
 
@@ -258,6 +268,10 @@ impl World {
             state.mode = mode.name.clone();
             state.magazine = magazine.name.clone();
             state.tracer = request.tracer;
+            // §3.1: a missile steers at what the caller locked onto; every other shot ignores it.
+            if let Some(missile) = state.missile.as_mut() {
+                missile.target = request.target;
+            }
             e.class_state = ClassState::Projectile(state);
         }
         self.fired_shots.insert(

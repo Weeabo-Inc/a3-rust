@@ -94,6 +94,27 @@ pub struct AmmoType {
     pub tracer_start_time: f64,
     /// `tracerEndTime`: seconds of flight after which it burns out.
     pub tracer_end_time: f64,
+    /// `sideAirFriction`: the lateral drag of a missile (§3.1). Positive: the drag is a
+    /// deceleration magnitude.
+    pub side_air_friction: f64,
+    /// `thrust`: the motor's acceleration along the body's +z axis, m/s² (§3.1).
+    pub thrust: f64,
+    /// `thrustTime`: seconds the motor burns; the last quarter ramps down linearly (§3.1).
+    pub thrust_time: f64,
+    /// `initTime`: seconds between firing and the motor lighting (§3.1).
+    pub init_time: f64,
+    /// `maneuvrability`: scales the guidance's steering authority and its clamp (§3.1).
+    pub maneuvrability: f64,
+    /// `trackOversteer`: scales the guidance's proportional term (§3.1).
+    pub track_oversteer: f64,
+    /// `trackLead`: seconds of target lead per second of flight time (§3.1).
+    pub track_lead: f64,
+    /// `maxControlRange`: the seeker's range in metres; at most 10 m makes a missile lock type 4
+    /// (§3.1).
+    pub max_control_range: f64,
+    /// `airLock`: the seeker's lock classes, kept as data; they pick between the lock types 8,
+    /// 0x10 and 0x20, which are not told apart yet (§3.1).
+    pub air_lock: Option<String>,
 }
 
 impl Default for AmmoType {
@@ -122,7 +143,67 @@ impl Default for AmmoType {
             simulation_step: None,
             tracer_start_time: 0.0,
             tracer_end_time: f64::INFINITY,
+            side_air_friction: 0.0,
+            thrust: 0.0,
+            thrust_time: 0.0,
+            init_time: 0.0,
+            maneuvrability: 0.0,
+            track_oversteer: 0.0,
+            track_lead: 0.0,
+            max_control_range: 0.0,
+            air_lock: None,
         }
+    }
+}
+
+/// The lock type of `0x1410f5830` (`docs/re/sim-ballistics.md` §3.1): it selects a missile's drag
+/// model. The engine reads it from the ammo type each step, so it is a function of the parameters
+/// rather than a stored field.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LockType {
+    /// `1`: no guidance — a shell, a grenade, a spread shot.
+    None,
+    /// `2`: a bullet.
+    Bullet,
+    /// `4`: a missile whose `maxControlRange` is at most 10 m.
+    ShortRangeMissile,
+    /// `8`, `0x10`, `0x20`: a guided missile; which one comes from the `airLock` enum, which is
+    /// kept as data only, so every guided missile reads as `0x10` here.
+    GuidedMissile,
+    /// `0x40`: a missile with no `thrustTime` — an unguided rocket, flown with the advanced drag
+    /// model of §3.1.
+    UnguidedMissile,
+    /// `0x80`: every other simulation.
+    Other,
+}
+
+impl AmmoType {
+    /// The lock type (`0x1410f5830`, §3.1): `AmmoType+0x49c` is read first and is `0x100` for
+    /// every class the shipped config builds, so the `simulation` decides.
+    pub fn lock_type(&self) -> LockType {
+        match self.simulation {
+            Some(SimulationClass::ShotMissile) => {
+                if self.thrust_time <= 0.0 {
+                    LockType::UnguidedMissile
+                } else if self.max_control_range <= 10.0 {
+                    LockType::ShortRangeMissile
+                } else {
+                    LockType::GuidedMissile
+                }
+            }
+            Some(SimulationClass::ShotBullet) => LockType::Bullet,
+            Some(
+                SimulationClass::ShotShell
+                | SimulationClass::ShotGrenade
+                | SimulationClass::ShotSpread,
+            ) => LockType::None,
+            _ => LockType::Other,
+        }
+    }
+
+    /// Whether the missile flies with the advanced drag model (`lockType == 0x40`, §3.1).
+    pub fn uses_advanced_drag(&self) -> bool {
+        self.lock_type() == LockType::UnguidedMissile
     }
 }
 
@@ -403,6 +484,15 @@ impl WeaponBank {
             tracer_end_time: number(cfg, "tracerEndTime")
                 .filter(|t| *t > 0.0)
                 .unwrap_or(f64::INFINITY),
+            side_air_friction: number_or(cfg, "sideAirFriction", 0.0),
+            thrust: number_or(cfg, "thrust", 0.0),
+            thrust_time: number_or(cfg, "thrustTime", 0.0),
+            init_time: number_or(cfg, "initTime", 0.0),
+            maneuvrability: number_or(cfg, "maneuvrability", 0.0),
+            track_oversteer: number_or(cfg, "trackOversteer", 0.0),
+            track_lead: number_or(cfg, "trackLead", 0.0),
+            max_control_range: number_or(cfg, "maxControlRange", 0.0),
+            air_lock: text(cfg, "airLock").filter(|s| !s.is_empty()),
         }
     }
 
