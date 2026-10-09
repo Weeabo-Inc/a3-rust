@@ -190,7 +190,7 @@ fn select_weapon_switches_between_carried_weapons() {
 }
 
 #[test]
-fn fire_shoots_one_round_and_raises_fired_with_the_engine_arguments() {
+fn fire_requests_a_round_that_goes_in_the_next_step_with_the_engine_arguments() {
     let mut vm = vm();
     eval(&mut vm, ARMED);
     eval(
@@ -201,10 +201,14 @@ fn fire_shoots_one_round_and_raises_fired_with_the_engine_arguments() {
         a fire "rifle_F";
         "#,
     );
+    // `fire` only leaves a request (`WeaponsState+0x30`): no shot, no round spent.
+    assert_eq!(shots(&vm), 0);
+    assert_eq!(num(&mut vm, r#"a ammo "rifle_F""#), 30.0);
 
+    run(&mut vm, 1, 0.05);
     assert_eq!(shots(&vm), 1);
     assert_eq!(num(&mut vm, r#"a ammo "rifle_F""#), 29.0);
-    // `[unit, weapon, muzzle, mode, ammo, magazine, projectile, gunner]`, before `fire` returns.
+    // `[unit, weapon, muzzle, mode, ammo, magazine, projectile, gunner]`.
     assert_eq!(num(&mut vm, "count fired"), 8.0);
     assert_eq!(text(&mut vm, "fired select 0 == a"), "true");
     assert_eq!(
@@ -219,16 +223,24 @@ fn fire_shoots_one_round_and_raises_fired_with_the_engine_arguments() {
 fn a_mode_cannot_fire_again_before_its_reload_time() {
     let mut vm = vm();
     eval(&mut vm, ARMED);
+    // Two `fire` calls in one frame are one request: the engine keeps a single pending slot.
     eval(&mut vm, r#"a fire "rifle_F"; a fire "rifle_F";"#);
-    assert_eq!(shots(&vm), 1, "reloadTime 0.1 s has not passed");
+    run(&mut vm, 1, 0.001);
+    assert_eq!(num(&mut vm, r#"a ammo "rifle_F""#), 29.0, "one round, not two");
 
-    run(&mut vm, 1, 0.05);
+    // The round reload is `reloadTime · U(1 ± 0.1)` (0.09..0.11 s here): a request made inside
+    // that window stays pending (`§3.3`) and goes once the weapon is ready.
+    run(&mut vm, 10, 0.001);
     eval(&mut vm, r#"a fire "rifle_F""#);
-    assert_eq!(num(&mut vm, r#"a ammo "rifle_F""#), 29.0, "0.05 s later");
+    run(&mut vm, 1, 0.001);
+    assert_eq!(num(&mut vm, r#"a ammo "rifle_F""#), 29.0, "0.011 s later");
 
-    run(&mut vm, 1, 0.05);
-    eval(&mut vm, r#"a fire "rifle_F""#);
-    assert_eq!(num(&mut vm, r#"a ammo "rifle_F""#), 28.0, "0.1 s later");
+    run(&mut vm, 12, 0.01);
+    assert_eq!(
+        num(&mut vm, r#"a ammo "rifle_F""#),
+        28.0,
+        "the pending request fires once 0.11 s have passed"
+    );
 }
 
 #[test]
@@ -253,15 +265,32 @@ fn an_empty_magazine_is_changed_after_the_magazine_reload_time() {
     let mut vm = vm();
     eval(&mut vm, ARMED);
     eval(&mut vm, r#"a setAmmo ["rifle_F", 1]; a fire "rifle_F";"#);
-    assert_eq!(num(&mut vm, r#"a ammo "rifle_F""#), 0.0);
-
-    // The spare (10 rounds) goes in after magazineReloadTime = 2 s; the empty one is dropped.
-    run(&mut vm, 1, 0.1);
-    assert_eq!(text(&mut vm, "magazines a"), "[]", "it is in the weapon");
-    run(&mut vm, 10, 0.1);
-    assert_eq!(num(&mut vm, r#"a ammo "rifle_F""#), 0.0, "still reloading");
-    run(&mut vm, 10, 0.1);
+    run(&mut vm, 1, 0.05);
+    assert_eq!(shots(&vm), 1);
+    // §3.4: the empty magazine is dropped, the 10-round spare goes in at once, and the muzzle
+    // waits `magazineReloadTime · U(1 ± 0.2)` = 1.6..2.4 s before the next round.
     assert_eq!(num(&mut vm, r#"a ammo "rifle_F""#), 10.0);
+    assert_eq!(text(&mut vm, "magazines a"), "[]", "the spare is in the weapon");
+
+    eval(&mut vm, r#"a fire "rifle_F""#);
+    run(&mut vm, 10, 0.1);
+    assert_eq!(shots(&vm), 1, "still reloading");
+    run(&mut vm, 20, 0.1);
+    assert_eq!(shots(&vm), 2, "the held request goes after 2.4 s");
+}
+
+#[test]
+fn a_player_does_not_auto_reload_a_muzzle_that_says_so() {
+    let mut vm = vm();
+    eval(&mut vm, ARMED);
+    let a = unit(&mut vm);
+    vm.host.world_mut().set_player(Some(a));
+    eval(&mut vm, r#"a setAmmo ["rifle_F", 1]; a fire "rifle_F";"#);
+    run(&mut vm, 1, 0.05);
+
+    // `0x140f95940`: `autoReload` decides for a player, while AI always reloads.
+    assert_eq!(num(&mut vm, r#"a ammo "rifle_F""#), 0.0);
+    assert_eq!(text(&mut vm, "magazines a"), r#"["Mag_30"]"#);
 }
 
 #[test]
@@ -303,7 +332,8 @@ fn tracer_rounds_follow_the_magazine() {
             _ => unreachable!(),
         };
         tracers.push(tracer);
-        run(&mut vm, 1, 0.1);
+        // A semi-automatic round reload is `reloadTime · U(1 ± 0.1)`, so 0.11 s at most.
+        run(&mut vm, 2, 0.1);
     }
     assert_eq!(tracers, [false, true, true]);
 }

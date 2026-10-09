@@ -527,7 +527,9 @@ impl Flight<'_> {
         });
         let surface = collision.and_then(|c| hit.surface.map(|s| c.surface(s).name.clone()));
         // `R`: the model's bounding sphere; an MLOD model stores none, so its layer's extent
-        // stands in rather than dividing by zero.
+        // stands in rather than dividing by zero. _Deviation_: the engine's value is derived at
+        // load as half the Geometry LOD's bounding-box diagonal (`sim-weapons.md` §5), which is
+        // the same quantity only for a model whose geometry is centred on its origin.
         let radius = collision
             .and_then(|c| c.shape(hit.shape?))
             .map(|s| match s.model_bounding_sphere() {

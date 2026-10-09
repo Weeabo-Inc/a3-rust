@@ -3,8 +3,9 @@
 //! `currentWeaponMode`, `currentMagazine`, `ammo`, `setAmmo`, `selectWeapon`, `reload`) and
 //! firing (`fire`, `forceWeaponFire`). See [`crate::Loadout`] and `docs/re/sim-weapons.md`.
 //!
-//! The Loadout commands need a local unit (AL); firing raises the `Fired` handlers before the
-//! command returns, as the engine runs them inside the shot.
+//! The Loadout commands need a local unit (AL). `forceWeaponFire` fires at once and raises the
+//! `Fired` handlers before the command returns; `fire` only leaves a request, so its round goes in
+//! a later simulate (`docs/re/sim-weapons.md` §3.3, §6).
 
 use a3_sqf::vm::Ctx;
 use a3_sqf::{Registry, Value};
@@ -97,13 +98,14 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
         let n = unit(ctx, &a).map_or(0, |u| ctx.host.world().ammo_in(u, &muzzle));
         Ok(Value::Number(n as f32))
     });
-    // AL EG: `unit setAmmo [weapon, count]`.
+    // AL EG: `unit setAmmo [weapon, count]`. `count` is rounded; a negative one fills the
+    // magazine, as does one above its capacity (`0x1411176b0`).
     r.binary("setAmmo", OBJ, ARR, NOTHING, |ctx, a, b| {
         let (muzzle, count) = name_and_number(&b);
         if let (Some(unit), Some(muzzle), Some(count)) = (local_unit(ctx, &a), muzzle, count) {
-            ctx.host
-                .world_mut()
-                .set_ammo(unit, &muzzle, count.max(0.0) as u32);
+            let count = count.round();
+            let ammo = (count >= 0.0).then_some(count as u32);
+            ctx.host.world_mut().set_ammo(unit, &muzzle, ammo);
         }
         Ok(Value::Nothing)
     });
@@ -142,23 +144,40 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
         Ok(Value::Nothing)
     });
 
-    // `unit fire muzzle` / `unit fire [muzzle, mode(, magazine)]`: one round if ready.
+    // `unit fire muzzle` / `unit fire [muzzle, mode(, magazine)]`: a **request**
+    // (`WeaponsState+0x30`, `0x1405281a0`). It goes in a later simulate, from the selected
+    // muzzle and only when the weapon is ready and aimed.
     r.binary("fire", OBJ, STR, NOTHING, |ctx, a, b| {
         let muzzle = b.as_str().map(str::to_owned);
-        fire(ctx, &a, muzzle, None);
+        request_fire(ctx, &a, muzzle, None);
         Ok(Value::Nothing)
     });
     r.binary("fire", OBJ, ARR, NOTHING, |ctx, a, b| {
         let parts = text_items(&b);
-        fire(ctx, &a, parts.first().cloned(), parts.get(1).cloned());
+        request_fire(ctx, &a, parts.first().cloned(), parts.get(1).cloned());
         Ok(Value::Nothing)
     });
-    // `unit forceWeaponFire [muzzle, mode]`.
+    // `unit forceWeaponFire [muzzle, mode]`: fires at once, like the engine's `FireWeapon`.
     r.binary("forceWeaponFire", OBJ, ARR, NOTHING, |ctx, a, b| {
         let parts = text_items(&b);
         fire(ctx, &a, parts.first().cloned(), parts.get(1).cloned());
         Ok(Value::Nothing)
     });
+}
+
+/// The `fire` command: leaves a request on the unit.
+fn request_fire<H: WorldHost>(
+    ctx: &mut Ctx<'_, H>,
+    a: &Value,
+    muzzle: Option<String>,
+    mode: Option<String>,
+) {
+    let Some(unit) = local_unit(ctx, a) else {
+        return;
+    };
+    ctx.host
+        .world_mut()
+        .request_fire(unit, muzzle.as_deref(), mode.as_deref());
 }
 
 fn fire<H: WorldHost>(

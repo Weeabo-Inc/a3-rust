@@ -346,8 +346,12 @@ impl Combat {
             .unit_loadout(unit)
             .and_then(|l| {
                 let (wi, mi) = l.current?;
-                l.weapons[wi].muzzles[mi].reloading.as_ref().map(|r| r.0)
+                l.weapons[wi].muzzles[mi]
+                    .magazine
+                    .as_ref()
+                    .map(|m| m.reload_left)
             })
+            .filter(|left| *left > 0.0)
             .map(|left| format!("  RELOADING {left:.1} S"))
             .unwrap_or_default();
         let mut out = vec![format!(
