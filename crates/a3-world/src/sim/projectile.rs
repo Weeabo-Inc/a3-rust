@@ -24,7 +24,7 @@ use glam::DVec3;
 use crate::weapons::AmmoType;
 use crate::{Entity, EntityId, ObjectRef, StaticKey};
 
-use super::{ClassState, Command, StepContext};
+use super::{ClassState, Command, MissileState, StepContext};
 
 /// The engine's gravity, m/s² (`9.8066` in `0x140e6c3d0`).
 const GRAVITY: f64 = 9.8066;
@@ -57,6 +57,8 @@ pub struct ProjectileState {
     pub magazine: String,
     /// Seconds left before the shot is deleted (`+0x5e8`); infinite when `timeToLive ≤ 0`.
     pub time_to_live: f64,
+    /// Seconds left of `initTime` (`+0x644`, from `AmmoType+0x3a0`) before any other timer ticks.
+    pub init_timer: f64,
     /// Seconds left before the shot explodes (`+0x648`); infinite when `explosionTime ≤ 0`.
     pub explosion_timer: f64,
     /// Metres left to fly before the shot is armed (`fuseDistance`, `+0x64c`).
@@ -65,6 +67,8 @@ pub struct ProjectileState {
     pub exploded: bool,
     /// Whether it draws a tracer (the magazine's `tracersEvery` / `lastRoundsTracer`).
     pub tracer: bool,
+    /// The guided flight of a missile (§3.1); `None` for every other kind of shot.
+    pub missile: Option<MissileState>,
 }
 
 impl Default for ProjectileState {
@@ -77,10 +81,12 @@ impl Default for ProjectileState {
             mode: String::new(),
             magazine: String::new(),
             time_to_live: f64::INFINITY,
+            init_timer: 0.0,
             explosion_timer: f64::INFINITY,
             fuse_distance: 0.0,
             exploded: false,
             tracer: false,
+            missile: None,
         }
     }
 }
@@ -88,6 +94,9 @@ impl Default for ProjectileState {
 impl ProjectileState {
     /// The state of a new shot of `ammo`: its timers start from the config values.
     pub fn new(ammo: Arc<AmmoType>) -> Self {
+        // §3.1: a missile's motor is a state machine of its own, started here.
+        let missile = matches!(ammo.simulation, Some(crate::SimulationClass::ShotMissile))
+            .then(|| MissileState::new(&ammo));
         Self {
             time_to_live: if ammo.time_to_live > 0.0 {
                 ammo.time_to_live
@@ -100,7 +109,9 @@ impl ProjectileState {
                 f64::INFINITY
             },
             fuse_distance: ammo.fuse_distance.max(0.0),
+            init_timer: ammo.init_time.max(0.0),
             ammo: Some(ammo),
+            missile,
             ..Self::default()
         }
     }
@@ -108,8 +119,12 @@ impl ProjectileState {
     /// Whether the shot is armed: no fuse is running (`+0x648`), no arming distance is left
     /// (`+0x64c`). Only an armed shot explodes or deals its hit when it stops.
     fn armed(&self) -> bool {
-        !(self.explosion_timer > 0.0 && self.explosion_timer < f64::MAX)
-            && self.fuse_distance <= 0.0
+        !self.fuse_running() && self.fuse_distance <= 0.0
+    }
+
+    /// Whether the explosion timer (`+0x648`) is running: `explosionTime` was positive.
+    fn fuse_running(&self) -> bool {
+        self.explosion_timer > 0.0 && self.explosion_timer < f64::MAX
     }
 }
 
@@ -154,30 +169,42 @@ pub(crate) fn simulate(entity: &mut Entity, ctx: &mut StepContext<'_>, dt: f64) 
     };
     let mut state = state.clone();
 
-    // 1. Timers.
-    state.time_to_live -= dt;
-    if state.time_to_live <= 0.0 {
-        ctx.delete(entity.id);
-        entity.class_state = ClassState::Projectile(state);
-        return;
-    }
-    if state.explosion_timer < f64::MAX {
-        state.explosion_timer -= dt;
-        if state.explosion_timer <= 0.0 {
-            explode(entity, &mut state, &ammo, ctx);
+    // 1. Timers (`ShotShell`'s ctor copies them once, `docs/re/sim-grenades.md` §5). Nothing ticks
+    // until `initTime` at `+0x644` has run out.
+    if state.init_timer > 0.0 {
+        state.init_timer -= dt;
+    } else {
+        state.time_to_live -= dt;
+        if state.time_to_live <= 0.0 {
             ctx.delete(entity.id);
             entity.class_state = ClassState::Projectile(state);
             return;
         }
+        if state.explosion_timer < f64::MAX {
+            state.explosion_timer -= dt;
+            if state.explosion_timer <= 0.0 {
+                explode(entity, &mut state, &ammo, ctx);
+                ctx.delete(entity.id);
+                entity.class_state = ClassState::Projectile(state);
+                return;
+            }
+        }
     }
 
     // 2. The move.
+    let guided = state.missile.is_some();
+    if guided {
+        // §3.1: a missile carries its own drag, thrust and guidance; the ShotShell velocity step
+        // is switched off below so the two do not add up.
+        super::missile::step(entity, &mut state, &ammo, ctx.world(), dt);
+    }
     let mut flight = Flight {
         entity,
         state: &mut state,
         ammo: &ammo,
         ignore: Vec::new(),
         stopped: false,
+        velocity_step: !guided,
     };
     flight.ignore = ignore_list(flight.entity, flight.state, ctx);
     flight.advance(ctx, dt, false, 0);
@@ -230,6 +257,9 @@ struct Flight<'a> {
     ignore: Vec<ObjectKey>,
     /// Set when the shot stops (hits and is consumed); the step deletes it.
     stopped: bool,
+    /// Whether the move steps the velocity with the ShotShell drag of §3. A missile integrates its
+    /// own velocity (`sim::missile`) and leaves this off.
+    velocity_step: bool,
 }
 
 impl Flight<'_> {
@@ -332,6 +362,55 @@ impl Flight<'_> {
         }
     }
 
+    /// §4.1's slow-shot branch (`0x140e65820`, high): a shot with a fuse running — or still inside
+    /// its arming distance — whose contact is at its own feet (`distToContact < 0.1`) with a normal
+    /// speed under 2 m/s does not ricochet. It loses its normal velocity and slides, decelerating
+    /// by about 3 m/s² plus a tenth of its speed per second; a grenade or a shell rolls to a stop.
+    ///
+    /// `contact` is the distance from the step's start to the contact; the continuation offset is
+    /// counted in, because the object test of a continued move already starts 0.1 m along.
+    fn roll(
+        &mut self,
+        ctx: &mut StepContext<'_>,
+        normal: DVec3,
+        contact: f64,
+        remaining: f64,
+        depth: u32,
+    ) -> bool {
+        let v = self.entity.velocity;
+        let speed = v.length();
+        let normal_speed = -v.dot(normal);
+        if self.state.armed()
+            || normal_speed >= 2.0
+            || contact > CONTINUE_OFFSET + 1e-6
+            || speed <= 0.0
+        {
+            return false;
+        }
+        // The friction coefficient is `clamp(-100·cos(v, n), 0, 1)` of the **incoming** velocity:
+        // 1 for anything but a shot skimming the surface within half a degree.
+        let coef = (-100.0 * v.dot(normal) / speed / normal.length()).clamp(0.0, 1.0);
+        let sliding = |x: f64| (x * 0.1 + sign3(x)) * coef;
+        // The normal component goes; what is left slides along the surface.
+        let mut v2 = v + normal * normal_speed.max(0.0);
+        for i in 0..3 {
+            let damping = sliding(v2[i]);
+            if v2[i] * damping > 0.0 {
+                let loss = damping * remaining;
+                v2[i] = if v2[i].abs() <= loss.abs() {
+                    0.0
+                } else {
+                    v2[i] - loss
+                };
+            }
+        }
+        self.entity.velocity = v2;
+        if depth < MAX_CONTINUATIONS {
+            self.advance(ctx, remaining, true, depth + 1);
+        }
+        true
+    }
+
     /// `airFriction` (the original switches to `waterFriction` under water; there is no water
     /// test yet).
     fn friction(&self) -> f64 {
@@ -340,7 +419,8 @@ impl Flight<'_> {
 
     /// `0x140e6c3d0`: puts the shot at `to` after `dt` of flight, counts the distance off the
     /// arming distance, and steps the velocity — only when `0 < factor ≤ caliber·1000` (the
-    /// penetration passes the surface's resistance as the factor).
+    /// penetration passes the surface's resistance as the factor). A missile never steps here: its
+    /// own drag and thrust did that before the move.
     fn move_to(&mut self, dt: f64, to: DVec3, factor: f64) {
         if self.state.fuse_distance > 0.0 {
             self.state.fuse_distance -= to.distance(self.entity.position);
@@ -348,6 +428,9 @@ impl Flight<'_> {
             self.state.fuse_distance = 0.0;
         }
         self.entity.position = to;
+        if !self.velocity_step {
+            return;
+        }
         if factor > 0.0 && factor <= self.ammo.caliber * 1000.0 {
             let v = self.entity.velocity;
             let k = self.friction();
@@ -390,13 +473,21 @@ impl Flight<'_> {
             Some(h) => h.normal,
             None => self.terrain_normal(ctx),
         };
+        let v = self.entity.velocity;
+        let speed = v.length();
+        let sin_g = -normal.dot(v / speed);
+        // The engine draws the ricochet's random normal before it decides whether the shot rolls,
+        // so the draw happens either way.
         let d = self.ammo.deflection_dir_distribution;
         let rng = ctx.random();
         let jitter = DVec3::new(rng.spread(d), rng.spread(d), rng.spread(d));
         let n = (normal + jitter).normalize_or_zero();
-        let v = self.entity.velocity;
-        let sin_g = -n.dot(v.normalize_or_zero());
-        let _ = along; // the original's slow-shell rolling branch reads it; rolling is not done
+        // A live shot whose contact is at its own feet is rolling, not ricocheting: it loses its
+        // normal velocity and slides. This is grenade and shell rolling.
+        if self.roll(ctx, normal, along, remaining, depth) {
+            return true;
+        }
+        let _ = along;
         if !(sin_g >= 0.0 && sin_g < max_sin && sin_g < object_limit)
             || v.length_squared() <= RICOCHET_MIN_SPEED_SQ
         {
@@ -483,7 +574,16 @@ impl Flight<'_> {
 
     /// §4.3: an armed shot explodes (when explosive) and deals its hit; every stopped shot is
     /// consumed.
+    ///
+    /// A PhysX body — a grenade, a smoke shell, a mine — is the exception: it comes to rest and
+    /// its fuse keeps running, where a `ShotShell` that stops with a fuse is a dud. Its velocity
+    /// is dropped so it stays where it landed; gravity brings the next step back to the surface
+    /// and this branch runs again.
     fn stop(&mut self, ctx: &mut StepContext<'_>, hit: Option<&RayHit>, target: Option<ObjectRef>) {
+        if self.ammo.is_physx_body() && self.state.fuse_running() {
+            self.entity.velocity = DVec3::ZERO;
+            return;
+        }
         self.stopped = true;
         if !self.state.armed() {
             return;
@@ -546,6 +646,18 @@ impl Flight<'_> {
             surface,
             radius,
         })));
+    }
+}
+
+/// The `-3, 0, +3` of a component's sign, which is the constant part of the rolling friction
+/// (`0x140e65820`).
+fn sign3(x: f64) -> f64 {
+    if x > 0.0 {
+        3.0
+    } else if x < 0.0 {
+        -3.0
+    } else {
+        0.0
     }
 }
 

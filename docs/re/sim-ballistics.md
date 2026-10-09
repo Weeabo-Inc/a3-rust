@@ -36,6 +36,8 @@ constants. (medium) means the formula is certain but the meaning of an input is 
 | `thrust`, `thrustTime`, `initTime` | +0x3a8, +0x3a4, +0x3a0 | rockets/missiles |
 | `sideAirFriction` | +0x3ac | missiles |
 | `maneuvrability`, `trackOversteer`, `trackLead` | +0x37c, +0x380, +0x384 | missiles |
+| `maxControlRange` | +0x378 | missiles; drives the lock type §3.1 |
+| `airLock` (enum) | +0x3cc | missiles: 0/1/2 select lock types 0x10/0x20/8 §3.1 |
 | `maxSpeed`, `explosionTime`, `fuseDistance` | +0x3bc, +0x3b0, +0x3b4 | `explosionTime` ≤ 0 → never |
 | `simulation` | +0x498 | enum, §2 |
 
@@ -76,10 +78,12 @@ constants. (medium) means the formula is certain but the meaning of an input is 
 `ShotShell::Simulate` is `0x140e65000`; `ShotBullet` (`0x140e64d00`) adds tracer/sound
 bookkeeping. Each step `dt`:
 
-- Timers count down:
-  - the arming delay at `+0x644`;
-  - `timeToLive` at `+0x5e8`: at ≤ 0 the shot is deleted;
-  - the explosion timer at `+0x648`: at ≤ 0 the shot explodes.
+- Timers count down (the labels corrected in the third pass, `docs/re/sim-grenades.md` §5):
+  - `initTime` at `+0x644` (from `AmmoType+0x3a0`): nothing else ticks until it runs out;
+  - `timeToLive` at `+0x5e8`: at ≤ 0 the shot is **silently deleted** — no explosion;
+  - `explosionTime` at `+0x648`: at ≤ 0 the shot explodes where it is, with its current velocity;
+  - `fuseDistance` at `+0x64c` is a distance budget, decremented by `|Δposition|`; the water branch
+    is its only reader, it does not gate the explosion.
 - The move is `0x140e66ea0`:
   1. If the friction coefficient is below −0.99, `dt` is limited to `4/|v|`.
   2. Segment test from `p` to `p + v·dt` against terrain (`0x1412236c0`) and objects
@@ -129,11 +133,144 @@ clamp divides 0 by 0 and the original gets NaN; we leave the velocity at zero.
    that we do not model yet.
 7. No hit: `0x140e6c3d0(dt, end, 1)`.
 
-**Missiles** (`Missile::Simulate` `0x140e63790`, medium) work in model space. Lateral drag per
-axis is `((|u|·u + u)·10 + u³·0.0005)·sideAirFriction`, and axial drag is
-`(|w|·w·0.01 + w³·1e-5 + 2w)·airFriction`, both scaled by a mass-like factor. Gravity is
-`9.8066·coefGravity`. Thrust and guidance (`thrust`, `thrustTime`, `maneuvrability`, the
-lock types) are applied in helpers that have not been decoded yet.
+### 3.1 Missiles (high on the formulas; see the confidence notes)
+
+`Missile::Simulate` (`0x140e63790`) does not use the `ShotShell` move above: the shot is a PhysX
+body whose velocity the engine rewrites every step. The whole flight lives in the shot's **block**
+(`shot + 0xd0`, byte offsets below):
+
+| block | holds |
+|---|---|
+| `+0x08 … +0x28` | 3×3 matrix `A` = **world → model**, row-major |
+| `+0x2c … +0x34` | position (world) |
+| `+0x54 … +0x5c` | velocity (world) |
+| `+0x60 … +0x68` | velocity (model): `A`·(the world velocity), recomputed each step |
+| `+0x6c … +0x74` | the shot's world acceleration, used to predict the velocity (medium) |
+| `+0x94 … +0xb4` | `Aᵀ` = model → world |
+
+`k = FUN_140e85230(shot)` (`0x140e85230`): the `int` at `shot + 0x440` when `vfunc +0x1d0` (the
+"has a PhysX body" test) answers yes, else the shooter's (`shot + 0xc8`) `+0x5c8`, else 0. Both
+`k` uses are scaled by it — the drag (`k·0.1`) and the gravity (`k·9.8066`) — and the step's
+gravity term is multiplied by `dt` again on the way in (§3.2), so the only value that makes the
+gravity the physical `9.8066·dt` per step is **`k = 1`**, which is what we implement (medium: the
+field is not named, but the dimensional argument pins its value).
+
+One step, in the model frame (x = right, y = up, z = axial — `+0x60/+0x64/+0x68`):
+
+```
+v_m  = model velocity
+drag = ( ((|vx|·vx + vx)·10 + vx³·0.0005) · sideAirFriction · 0.1            // lateral x
+       , ((|vy|·vy + vy)·10 + vy³·0.0005) · sideAirFriction · 0.1            // lateral y
+       ,  (|vz|·vz·0.01 + vz³·1e-5 + 2·vz) · airFriction · 0.1 )            // axial
+accel = (0, 0, 0)
+```
+
+`sideAirFriction` is `AmmoType+0x3ac`, `airFriction` `+0x3f8`; unlike a bullet's, a missile's
+`airFriction` is positive, and `drag` is a **deceleration magnitude** that is *subtracted* below,
+never added. The motor (`FUN_140e59ab0`, `0x140e59ab0`) is a three-phase machine on the shot:
+
+| shot | field | meaning |
+|---|---|---|
+| `+0x740` | float | `initTime` countdown (delay before the motor can light) |
+| `+0x744` | float | `thrustTime` countdown |
+| `+0x748` | float | the thrust in m/s² |
+| `+0x74c` | int | phase: 0 = init, 1 = burning, 2 = burnt out |
+
+```
+phase 0: init_timer -= dt; if init_timer < 0: phase = if thrust_timer <= 0 { 2 } else { 1 }
+phase 1: thrust_timer -= dt
+         if thrust_timer >= 0:
+             frac = min(thrust_timer·4 / thrustTime, 1)      // full thrust, then a ramp over the
+             drag  = (0, drag_y, k·frac·thrust)              //   last quarter of thrustTime
+             accel = (0, drag_y, drag_z)                     // the motor replaces the axial drag
+         else: phase = 2                                     // and zeroes the lateral-x drag
+```
+
+So a missile accelerates at `thrust` for ¾ of `thrustTime` and decelerates linearly over the last
+quarter: the burn adds `0.875·thrust·thrustTime` m/s in total.
+
+**Guidance** (`FUN_140e59d50`, `0x140e59d50`) runs only while the lock state (`shot + 0x750`,
+int) is not 1 *and* the axial speed is at least 30 m/s, and only when the shot has a target
+object (`+0x758`) or is in one of the seeker modes:
+
+```
+t   = 0.3                                   // in/out
+P   = FUN_140e55730(shot, t)                // world offset from the shot to the aim point
+Q   = block+0x54 + t·(block+0x6c)           // world velocity predicted t ahead
+u   = normalize(A·Q)                        // the flight direction, model frame
+b   = normalize(a·u + (1−a)·(0,0,1))        // blended with the missile's own axis, a below
+p   = normalize(A·P)                        // the direction to the aim point, model frame
+a   = clamp(0.3·maneuvrability, 0.5, 0.95)
+s   = clamp(0.02·vz, 0.1, 3.0)              // vz = the axial speed
+steer_x = clamp((p_y − b_y)·20·trackOversteer·3/s, ±0.25·maneuvrability)   // shot +0x79c
+steer_y = clamp((p_x − b_x)·20·trackOversteer·3/s, ±0.25·maneuvrability)   // shot +0x7a0
+guide.x -= k·s·steer_x·0.04·maneuvrability
+guide.y += k·s·steer_y·0.04·maneuvrability
+```
+
+`t` comes back from the seeker as `min(0.3, distance/speed)` with
+`speed = max(vz, 0.3·maxSpeed + 0.7·vz)`; the aim point is the target's centre (`vfunc +0x6c0`,
+plus `AmmoType+0xf70` on y for one lock mode) led by `t·trackLead·target_velocity`
+(`trackLead` = `AmmoType+0x384`).
+
+The two components are **not** cross-coupled once the command's meaning is clear: `guide` is an
+**angular acceleration** about the body's x and y axes (it is integrated below as `ω' = guide − 5ω`),
+so a target above the nose has to pitch up — a negative turn about x — and a target to the right
+has to yaw right, a positive turn about y. That is exactly `guide.x ∝ −(p_y − b_y)`,
+`guide.y ∝ +(p_x − b_x)` in a right-handed body frame with x right, y up and z forward. For the
+lock type whose guidance is a force instead (`0x40`, below) the same errors drive a lateral
+acceleration straight at the target: `accel.x += k·s·steer_y`, `accel.y += k·s·steer_x`.
+
+**Integration** (`FUN_140e75130`, `0x140e75130`, called at the end of `Missile::Simulate`):
+
+```
+v_m   += dt · accel                       // accel in the model frame (thrust + guidance)
+for each axis i:                          // the drag can slow a component to 0, never past it
+    if v_m[i]·drag[i] > 0:
+        v_m[i] = |v_m[i]| <= drag[i]·dt ? 0 : v_m[i] − drag[i]·dt
+block+0x54 = Aᵀ·(v_m + N·(0, −9.8066·k, 0))   // gravity is added in world space
+position  += (block+0x54) · dt
+```
+
+The step's angular command reaches the body through `FUN_140e845f0(shot+0x2cc, 5·ω, guide_world,
+dt)`: `ω += dt·guide`, then `ω -= 5·ω·dt` per axis with the same never-reverse clamp, i.e. `ω`
+settles at `guide/5` (up to `0.006·maneuvrability²` rad/s — about 111°/s for `maneuvrability` 18).
+
+Both the acceleration and the drag are scaled by a factor from the shot's virtual `+0x620` slot
+(the same call guards the missile's axis update); it is not identified and `a3-world` takes it as
+1. **Open:** that factor, `AmmoType+0xf88` (a scale on the guidance command when positive, medium),
+`+0xe00`/`+0xda8`/`+0xe30`/`+0xe2c`/`+0xe3c` (the seeker's ranges, flags and lock limits, not
+traced), and how the body's turn reaches the flight path (`a3-world` turns both).
+
+**Lock types** (`FUN_1410f5830(AmmoType)`, high):
+
+| value | when |
+|---|---|
+| 1 | default: `AmmoType+0x49c` ≠ 0x100, or a simulation other than a missile with no better match |
+| 2 | `simulation` 6 (`shotBullet`) |
+| 4 | `simulation` 4 (`shotMissile`) with `maxControlRange` (`+0x378`) ≤ 10 m |
+| 8, 0x10, 0x20 | missile with `airLock`-derived enum `+0x3cc` = 2, 0, other |
+| 0x40 | missile with `thrustTime` (`+0x3a4`) ≤ 0: an unguided rocket, and the **advanced drag** branch |
+| 0x80 | any other simulation |
+
+`0x40` swaps the drag for a second model, both scaled by `k`, and passes `1` as the guidance
+helper's last argument:
+
+```
+lateral: drag_x = (vx·−0.005 − |vx|·vx·0.00033)·k      // plus, from the plain model,
+         guide.x += −0.03·(the plain lateral drag)      //   the plain lateral drag × −0.03
+axial:   drag_z = (vz·−0.005 − |vz|·vz·0.00033)·k       // replaces the plain axial drag
+```
+
+**Implementation note (`a3-world`).** The engine's PhysX body is replaced by the shot's own
+integration: the model frame is the Entity's orientation (+z forward), the world velocity is
+`A`-transformed into it once per step, and the position advance runs through the same segment test
+as every other shot, so a missile still ricochets, penetrates and explodes by §4. Because a
+Kinematic shot has no rigid body, the flight path turns with the body — a coordinated turn at the
+body's own rate — where the engine's velocity follows the body through the thrust and PhysX's
+aerodynamic coupling. The synthetic convergence test in `crates/a3-world/tests/missiles.rs` pins
+that a missile told to steer at a target 17° off its launch axis flies into it, and the real-data
+smoke in `weapons_real_data.rs` does the same with a shipped missile.
 
 ## 4. Impact: ricochet → penetration → stop (high)
 
@@ -166,8 +303,22 @@ was wrong (the third argument, 1.0, is passed in XMM3).
   `0x1410dfd80`. Medium confidence on which of these two fields is used here.
 - `objLimit` comes from the hit object (`vfunc +0x350`, not decoded; `a3-world` uses 1 for every
   Object, so the surface alone decides). For the terrain it is 1.
-- A slow-moving shell (normal speed < 2 m/s) with a fuse, or one already rolling, instead loses
-  its normal velocity and slides. This is grenade/shell rolling.
+- **Rolling** (high, `0x140e65820`, decoded 2026-10-09): a shot whose fuse is running
+  (`0 < +0x648 < FLT_MAX`) or that is inside its arming distance (`+0x64c > 0`) — i.e. not armed —
+  and whose **contact is at its own feet** (`distToContact < 0.1`, the distance from the step's
+  start to the contact) with a normal speed under 2 m/s does not ricochet. It loses its normal
+  velocity (`v -= (v·n)·n`) and slides:
+  ```
+  coef = clamp(−100·cos(v, n), 0, 1)          // n = the surface normal, v the *incoming* velocity
+  for each axis i:                            // FUN_140e845f0, never reverses a component
+      damping = (0.1·v_i + 3·sign(v_i))·coef
+      if v_i·damping > 0:  v_i = |v_i| ≤ |damping|·dt ? 0 : v_i − damping·dt
+  move(remaining dt, continuing = true)
+  ```
+  So a fused shot that skims the ground decelerates by about 3 m/s² plus a tenth of its speed per
+  second and rolls to a stop: this is grenade and shell rolling. It takes precedence over the
+  ricochet below, but the ricochet's random normal is drawn either way (the draw is above the
+  branch in the original), which matters for reproducing the stream of `Rand_MinMidMax`.
 
 ### 4.2 Penetration (`0x140e69b00`)
 
@@ -207,6 +358,12 @@ If the shot neither ricochets nor penetrates:
   world explosion for the damage), and the hit handler deals the direct hit with `v_out = 0`;
 - in every case the shot is then stopped and deleted (`0x140e583d0`). An unarmed fused shell
   (inside its `fuseDistance`) is a dud.
+
+A shot that is a **PhysX body** rather than a segment-tested shell — `shotGrenade`, `shotSmokeX`,
+the mines and the bombs (§2) — does not take this path: it rests where it stopped and its fuse
+keeps running, which is what a thrown grenade does between landing and going off. `a3-world`
+models that as `AmmoType::is_physx_body` in `sim::projectile::stop` (medium: the classification is
+from §2, the resting behaviour from what the classes do in the game).
 
 ## 5. Direct hit value (high)
 
@@ -317,10 +474,9 @@ Then:
 
 ## 8. Open points
 
-- Missile thrust and guidance; submunitions and deploy timing.
+- Submunitions and deploy timing; the missile step's unnamed factors (§3.1 "Open").
 - Hit-point dependencies: total damage from hit points, `depends`, the fatal Man hit points —
   now traced, see `sim-damage.md`.
 - `g` in §7.2, `shotCoef`, and the type component behind `vfunc +0x640` (`+0x2a4`, `+0x2a8`).
-- Which surface field feeds the ricochet coefficient; the meaning of the penetration component
-  flags.
+- The meaning of the penetration component flags.
 - Simulation enum value 16.

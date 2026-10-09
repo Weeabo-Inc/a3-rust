@@ -148,7 +148,7 @@ pub use query::Near;
 pub use script_state::{Identity, ScriptState, VarOwner};
 pub use sim::{
     AirState, ClassState, Flight, GRAVITY, GroundState, HitIndices, MAX_STEP_DOWN, MAX_STEP_UP,
-    ManInput, ManState, Motion, MoveState, ProjectileState, SUB_STEP,
+    ManInput, ManState, MissileState, Motion, MotorPhase, MoveState, ProjectileState, SUB_STEP,
 };
 pub use statics::{StaticKey, StaticObject};
 pub use types::{

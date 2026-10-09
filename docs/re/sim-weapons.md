@@ -198,6 +198,13 @@ With `initSpeed < 30` (thrown grenades) the engine plays the throw action (actio
 and the shot is created later from the animation. A thrown shell's speed is multiplied by the
 throw-hold intensity `WeaponsState+0x88`, which is then reset to 1.
 
+_Implementation note (`a3-world`)._ The shell family is
+`AmmoType::is_shell_family` (sim 0, 1, 2, 3, 8, 9, 10, 0x13), the threshold is
+`THROW_SPEED_LIMIT = 30`, and the intensity is `FireRequest::throw_intensity` — there is no throw
+animation yet, so the caller supplies the release point and direction and the intensity. The
+shipped data agrees: `GrenadeHand`'s `HandGrenade` magazine throws at 18 m/s with a 5 s fuse, and
+the `Throw` weapon class carries the magazine.
+
 ### 2.2 Position, direction, dispersion (high unless noted)
 
 **Muzzle position (Man, `0x14072dc30`).**
