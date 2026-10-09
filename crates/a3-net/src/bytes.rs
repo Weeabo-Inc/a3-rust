@@ -1,5 +1,4 @@
-//! Little-endian cursor helpers shared by the control payloads (and, in the A2S slice, by the
-//! query answers).
+//! Little-endian cursor helpers shared by the control payloads and the A2S query answers.
 //!
 //! Every field on the wire is little-endian and byte aligned, so there is no packing to get wrong;
 //! what matters is bounds checking, which is why reads return `Option` and never panic.
@@ -14,6 +13,11 @@ pub(crate) struct Cursor<'a> {
 impl<'a> Cursor<'a> {
     pub(crate) fn new(data: &'a [u8]) -> Self {
         Self { data, pos: 0 }
+    }
+
+    /// Bytes left after the cursor.
+    pub(crate) fn remaining(&self) -> usize {
+        self.data.len().saturating_sub(self.pos)
     }
 
     /// Read `n` raw bytes.
@@ -47,6 +51,39 @@ impl<'a> Cursor<'a> {
         let end = raw.iter().position(|b| *b == 0).unwrap_or(raw.len());
         Some(String::from_utf8_lossy(&raw[..end]).into_owned())
     }
+
+    /// Read a NUL-terminated string that runs to the end of the payload at most.
+    ///
+    /// A2S strings are variable length and NUL-terminated, so this consumes up to and including
+    /// the terminator; without one the rest of the payload is the string.
+    pub(crate) fn string(&mut self) -> Option<String> {
+        let rest = self.data.get(self.pos..)?;
+        let end = rest.iter().position(|b| *b == 0).unwrap_or(rest.len());
+        let text = String::from_utf8_lossy(&rest[..end]).into_owned();
+        self.pos += end + usize::from(end < rest.len());
+        Some(text)
+    }
+}
+
+/// Readers the tests use to assert a byte layout field by field.
+///
+/// The library itself only reads the fields it acts on; these exist so a test can walk a whole
+/// answer and show that nothing is left over, which is why they are test-only and stay free of
+/// dead-code warnings in the shipped build.
+#[cfg(test)]
+impl<'a> Cursor<'a> {
+    pub(crate) fn u16(&mut self) -> Option<u16> {
+        self.bytes(2).map(|b| u16::from_le_bytes([b[0], b[1]]))
+    }
+
+    pub(crate) fn u64(&mut self) -> Option<u64> {
+        self.bytes(8)
+            .map(|b| u64::from_le_bytes([b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]]))
+    }
+
+    pub(crate) fn f32(&mut self) -> Option<f32> {
+        self.u32().map(f32::from_bits)
+    }
 }
 
 /// A growable little-endian writer, used as a consuming builder so that a message reads as one
@@ -71,6 +108,11 @@ impl Writer {
         self
     }
 
+    pub(crate) fn u16(mut self, value: u16) -> Self {
+        self.out.extend_from_slice(&value.to_le_bytes());
+        self
+    }
+
     pub(crate) fn u32(mut self, value: u32) -> Self {
         self.out.extend_from_slice(&value.to_le_bytes());
         self
@@ -78,6 +120,15 @@ impl Writer {
 
     pub(crate) fn i32(self, value: i32) -> Self {
         self.u32(value as u32)
+    }
+
+    pub(crate) fn u64(mut self, value: u64) -> Self {
+        self.out.extend_from_slice(&value.to_le_bytes());
+        self
+    }
+
+    pub(crate) fn f32(self, value: f32) -> Self {
+        self.u32(value.to_bits())
     }
 
     /// Write a fixed-width, NUL-terminated field of `width` bytes.
@@ -97,6 +148,18 @@ impl Writer {
             written += len;
         }
         self.out.resize(self.out.len() + (width - written), 0);
+        self
+    }
+
+    /// Write a NUL-terminated string of no fixed width.
+    pub(crate) fn string(self, text: &str) -> Self {
+        self.raw_string(text.as_bytes())
+    }
+
+    /// Write raw bytes followed by a NUL, for values that are bytes rather than text.
+    pub(crate) fn raw_string(mut self, bytes: &[u8]) -> Self {
+        self.out.extend_from_slice(bytes);
+        self.out.push(0);
         self
     }
 
@@ -121,6 +184,14 @@ mod tests {
     fn a_field_without_a_nul_is_taken_whole() {
         let mut cursor = Cursor::new(b"abcd");
         assert_eq!(cursor.fixed_string(4).as_deref(), Some("abcd"));
+    }
+
+    #[test]
+    fn string_consumes_its_terminator() {
+        let mut cursor = Cursor::new(b"hello\0world\0");
+        assert_eq!(cursor.string().as_deref(), Some("hello"));
+        assert_eq!(cursor.string().as_deref(), Some("world"));
+        assert_eq!(cursor.string().as_deref(), Some(""));
     }
 
     #[test]

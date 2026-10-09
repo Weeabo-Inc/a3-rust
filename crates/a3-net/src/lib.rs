@@ -23,6 +23,7 @@
 
 mod bytes;
 
+pub mod a2s;
 pub mod channel;
 pub mod crc32;
 pub mod crypto;

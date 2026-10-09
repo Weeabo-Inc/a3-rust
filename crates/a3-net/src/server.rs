@@ -1,8 +1,9 @@
 //! The dedicated server's session state and its UDP loop (`docs/re/net-handshake.md`).
 //!
 //! [`Server`] owns no sockets: it takes a received datagram and returns the datagrams to send
-//! back, so the whole handshake is testable without a network. [`BoundServer`] is the thin socket
-//! wrapper the binary runs.
+//! back, so the whole handshake and every A2S answer are testable without a network.
+//! [`BoundServer`] is the thin socket wrapper the binary runs: it serves the game port and, on the
+//! query port, the Steam queries of `docs/re/net-a2s.md`.
 //!
 //! What the server checks, in the order the document lists them: the message length and the net
 //! magic, `player_id >= 0x14`, the version window, the password, a duplicate address, a free
@@ -18,6 +19,7 @@ use std::collections::HashMap;
 use std::net::{SocketAddr, UdpSocket};
 use std::time::{Duration, Instant};
 
+use crate::a2s::{GameTags, Info, PlayerEntry, Responder, RulesBlock, ServerState};
 use crate::channel::Channel;
 use crate::error::NetError;
 use crate::handshake::{
@@ -38,6 +40,9 @@ pub const PLAYER_ID_WINDOW: i32 = 12;
 /// The receive buffer. The engine reads into 0x7ff bytes with a hard limit of 0x800.
 pub const RECV_BUFFER: usize = 0x800;
 
+/// The query socket's receive buffer; an A2S request is tiny, and anything larger is not one.
+pub const QUERY_BUFFER: usize = 0x1000;
+
 /// How long one [`BoundServer::poll`] waits for a datagram before it services resends and expiry.
 pub const POLL_TICK: Duration = Duration::from_millis(100);
 
@@ -46,6 +51,9 @@ pub const POLL_TICK: Duration = Duration::from_millis(100);
 pub struct ServerConfig {
     /// Where the game socket binds; 2302 in the original.
     pub bind: SocketAddr,
+    /// Where the Steam query socket binds. `None` means the game port plus one, which is the
+    /// original's default (`net-a2s.md`, "Ports and init": 2303 for 2302).
+    pub query_bind: Option<SocketAddr>,
     /// The obfuscation magic; both sides of this build use [`MAGIC`].
     pub magic: u32,
     /// Server hostname (server.cfg `hostname`).
@@ -65,6 +73,7 @@ impl Default for ServerConfig {
     fn default() -> Self {
         Self {
             bind: SocketAddr::from(([0, 0, 0, 0], 2302)),
+            query_bind: None,
             magic: MAGIC,
             hostname: "a3-rust dedicated server".into(),
             password: String::new(),
@@ -93,6 +102,8 @@ pub struct Player {
     pub flag_b: u8,
     /// The client's BattlEye state, accepted but never checked.
     pub be_state: u8,
+    /// When the player joined, which A2S_PLAYER reports as a duration.
+    pub joined: Instant,
     /// The channel of this connection: serials, acknowledgements and the reliable outbox.
     pub channel: Channel,
 }
@@ -127,6 +138,8 @@ pub struct Server {
     /// The first challenge-less CONNECT of each address, which is only recorded.
     seen_connect: HashMap<SocketAddr, Instant>,
     players: Vec<Player>,
+    /// The Steam query answers on the query port.
+    query: Responder,
 }
 
 impl Server {
@@ -138,6 +151,24 @@ impl Server {
     /// A server with an explicit generator, which is what tests use.
     pub fn with_rng(config: ServerConfig, rng: SplitMix64) -> Self {
         let keys = Keys::derive(config.magic);
+        let state = ServerState {
+            info: Info::waiting(
+                config.hostname.clone(),
+                config.world.clone(),
+                config.bind.port(),
+                config.max_players,
+                !config.password.is_empty(),
+            ),
+            rules: RulesBlock::default(),
+            players: Vec::new(),
+            tags: GameTags {
+                actual_version: config.versions.actual,
+                required_build: config.versions.required_build,
+                ..crate::a2s::GameTags::default()
+            },
+        };
+        // A second generator, so the query challenges cannot be predicted from the connect ones.
+        let query = Responder::new(state, SplitMix64::from_clock(0xA2));
         Self {
             config,
             keys,
@@ -146,6 +177,7 @@ impl Server {
             pending: HashMap::new(),
             seen_connect: HashMap::new(),
             players: Vec::new(),
+            query,
         }
     }
 
@@ -156,6 +188,19 @@ impl Server {
     /// The players currently connected.
     pub fn players(&self) -> &[Player] {
         &self.players
+    }
+
+    /// The Steam query state the A2S answers are built from.
+    pub fn query(&self) -> &Responder {
+        &self.query
+    }
+
+    /// Set the game port A2S_INFO reports, once the socket is bound.
+    ///
+    /// The port comes from the socket rather than the configuration because a test (or a server
+    /// started with port 0) only learns its real port after binding.
+    pub fn set_game_port(&mut self, port: u16) {
+        self.query.state_mut().info.port = port;
     }
 
     /// Handle one datagram received on the game port.
@@ -184,6 +229,50 @@ impl Server {
         }
     }
 
+    /// Handle one datagram received on the Steam query port.
+    ///
+    /// The answers come from [`Responder`]; a datagram that is not an A2S query is ignored, which
+    /// is what a real query port does with stray traffic.
+    pub fn on_query_datagram(
+        &mut self,
+        datagram: &[u8],
+        from: SocketAddr,
+        now: Instant,
+    ) -> Vec<Reply> {
+        // The player list and the durations are as of this query, not of the last join.
+        self.refresh_query_players(now);
+        match self.query.answer(datagram, from, now) {
+            Ok(Some(answer)) => vec![Reply {
+                to: from,
+                datagram: answer,
+            }],
+            Ok(None) => Vec::new(),
+            Err(error) => {
+                log::warn!("a2s: cannot answer {from}: {error}");
+                Vec::new()
+            }
+        }
+    }
+
+    /// Rebuild the player list A2S_PLAYER and the info answer's player count report.
+    ///
+    /// The score is 0: which score the official server publishes is still a capture question
+    /// (`net-a2s.md`, "A2S_PLAYER"), and reporting a made-up number would be worse than none.
+    fn refresh_query_players(&mut self, now: Instant) {
+        let players: Vec<PlayerEntry> = self
+            .players
+            .iter()
+            .enumerate()
+            .map(|(index, player)| PlayerEntry {
+                index: index as u8 + 1,
+                name: player.name.clone(),
+                score: 0,
+                duration: now.saturating_duration_since(player.joined).as_secs_f32(),
+            })
+            .collect();
+        self.query.state_mut().players = players;
+    }
+
     /// Retry every reliable datagram whose acknowledgement is overdue.
     pub fn resend_due(&mut self, now: Instant) -> Vec<Reply> {
         let keys = &self.keys;
@@ -202,12 +291,13 @@ impl Server {
         replies
     }
 
-    /// Drop expired challenges and stale challenge-less CONNECT records.
+    /// Drop expired challenges, stale challenge-less CONNECT records and expired A2S challenges.
     pub fn expire(&mut self, now: Instant) {
         self.pending
             .retain(|_, entry| now.saturating_duration_since(entry.created) < PENDING_LIFETIME);
         self.seen_connect
             .retain(|_, first| now.saturating_duration_since(*first) < PENDING_LIFETIME);
+        self.query.expire(now);
     }
 
     /// A connection-less control message, which is everything the handshake uses.
@@ -366,8 +456,10 @@ impl Server {
             flag_a: connect.flag_a,
             flag_b: connect.flag_b,
             be_state: connect.be_state,
+            joined: now,
             channel,
         });
+        self.refresh_query_players(now);
         reply.into_iter().collect()
     }
 
@@ -470,12 +562,14 @@ impl Server {
     }
 }
 
-/// A [`Server`] with its UDP socket.
+/// A [`Server`] with its UDP sockets: the game port and the Steam query port.
 #[derive(Debug)]
 pub struct BoundServer {
     server: Server,
     game: UdpSocket,
+    query: UdpSocket,
     buffer: Vec<u8>,
+    query_buffer: Vec<u8>,
 }
 
 /// Build the accepted RESULT on `channel` and remember it for a resend.
@@ -502,19 +596,40 @@ fn accept_reply_with(
 }
 
 impl BoundServer {
-    /// Bind the game socket of `config`.
+    /// Bind the game socket and the Steam query socket of `config`.
+    ///
+    /// The query port defaults to the game port plus one, which is what the original passes to
+    /// `SteamInternal_GameServer_Init_V2` (`net-a2s.md`, "Ports and init").
     pub fn bind(config: ServerConfig) -> Result<Self, NetError> {
         let game = UdpSocket::bind(config.bind)?;
+        let game_addr = game.local_addr()?;
+        let query_addr = config.query_bind.unwrap_or_else(|| {
+            SocketAddr::new(
+                game_addr.ip(),
+                game_addr.port().checked_add(1).unwrap_or(game_addr.port()),
+            )
+        });
+        let query = UdpSocket::bind(query_addr)?;
+        let mut server = Server::new(config);
+        server.set_game_port(game_addr.port());
+        log::info!("a3-rust dedicated server: game port {game_addr}, query port {query_addr}");
         Ok(Self {
-            server: Server::new(config),
+            server,
             game,
+            query,
             buffer: vec![0u8; RECV_BUFFER],
+            query_buffer: vec![0u8; QUERY_BUFFER],
         })
     }
 
     /// The address the game socket bound, which is how a test learns its port.
     pub fn game_addr(&self) -> Result<SocketAddr, NetError> {
         Ok(self.game.local_addr()?)
+    }
+
+    /// The address the Steam query socket bound.
+    pub fn query_addr(&self) -> Result<SocketAddr, NetError> {
+        Ok(self.query.local_addr()?)
     }
 
     pub fn server(&self) -> &Server {
@@ -524,32 +639,11 @@ impl BoundServer {
     /// Receive whatever is waiting, answer it, then service resends and expiry.
     ///
     /// One call waits at most `tick` for the first datagram, so a caller with a shutdown flag can
-    /// use it as a loop body.
+    /// use it as a loop body. The query socket is drained without waiting: it sees only queries,
+    /// and making them wait a whole tick for the game socket would add latency for no gain.
     pub fn poll(&mut self, tick: Duration) -> Result<usize, NetError> {
-        self.game.set_read_timeout(Some(tick))?;
-        let mut handled = 0;
-        loop {
-            let (len, from) = match self.game.recv_from(&mut self.buffer) {
-                Ok(received) => received,
-                Err(error)
-                    if matches!(
-                        error.kind(),
-                        std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
-                    ) =>
-                {
-                    break;
-                }
-                Err(error) => return Err(NetError::Io(error)),
-            };
-            handled += 1;
-            let now = Instant::now();
-            let datagram = self.buffer[..len].to_vec();
-            let replies = self.server.on_game_datagram(&datagram, from, now);
-            self.send(replies)?;
-            if handled >= 32 {
-                break;
-            }
-        }
+        let mut handled = self.receive_game(tick)?;
+        handled += self.receive_queries()?;
         let now = Instant::now();
         self.server.expire(now);
         let replies = self.server.resend_due(now);
@@ -564,12 +658,102 @@ impl BoundServer {
         }
     }
 
+    /// Drain the game socket, waiting up to `tick` for the first datagram.
+    fn receive_game(&mut self, tick: Duration) -> Result<usize, NetError> {
+        self.game.set_read_timeout(Some(tick))?;
+        let mut handled = 0;
+        loop {
+            let (len, from) = match self.game.recv_from(&mut self.buffer) {
+                Ok(received) => received,
+                Err(error) if is_idle(&error) => break,
+                Err(error) => return Err(NetError::Io(error)),
+            };
+            handled += 1;
+            let now = Instant::now();
+            let datagram = self.buffer[..len].to_vec();
+            let replies = self.server.on_game_datagram(&datagram, from, now);
+            self.send_to(&self.game, replies)?;
+            if handled >= 32 {
+                break;
+            }
+        }
+        Ok(handled)
+    }
+
+    /// Drain the query socket without waiting for a datagram to arrive.
+    ///
+    /// The timeout is one millisecond rather than zero because a zero read timeout is rejected on
+    /// Windows; a query that lands just after this call waits for the next poll tick instead.
+    fn receive_queries(&mut self) -> Result<usize, NetError> {
+        self.query
+            .set_read_timeout(Some(Duration::from_millis(1)))?;
+        let mut handled = 0;
+        loop {
+            let (len, from) = match self.query.recv_from(&mut self.query_buffer) {
+                Ok(received) => received,
+                Err(error) if is_idle(&error) => break,
+                Err(error) => return Err(NetError::Io(error)),
+            };
+            handled += 1;
+            let now = Instant::now();
+            let datagram = self.query_buffer[..len].to_vec();
+            let replies = self.server.on_query_datagram(&datagram, from, now);
+            self.send_to(&self.query, replies)?;
+            if handled >= 32 {
+                break;
+            }
+        }
+        Ok(handled)
+    }
+
     fn send(&self, replies: Vec<Reply>) -> Result<(), NetError> {
+        self.send_to(&self.game, replies)
+    }
+
+    /// Send every reply, ignoring the peers that went away between the answer and the send.
+    fn send_to(&self, socket: &UdpSocket, replies: Vec<Reply>) -> Result<(), NetError> {
         for reply in replies {
-            self.game.send_to(&reply.datagram, reply.to)?;
+            if let Err(error) = socket.send_to(&reply.datagram, reply.to) {
+                if is_peer_gone(&error) {
+                    log::debug!("cannot send to {}: {error}", reply.to);
+                    continue;
+                }
+                return Err(NetError::Io(error));
+            }
         }
         Ok(())
     }
+}
+
+/// Whether a socket error means "nothing to read right now" rather than a failure.
+fn is_timeout(error: &std::io::Error) -> bool {
+    matches!(
+        error.kind(),
+        std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+    )
+}
+
+/// Whether a socket error is the ICMP-induced reset a connectionless socket reports.
+///
+/// After a datagram reaches a closed port, Windows queues `WSAECONNRESET` (10054) and returns it
+/// from the next receive, sometimes from the next send. For a connection-less server that is not a
+/// failure: a client went away, which is ordinary traffic, and dying on it would take the whole
+/// server down (which is exactly what happened in the evidence run that found this). Unix never
+/// reports it.
+fn is_peer_gone(error: &std::io::Error) -> bool {
+    matches!(
+        error.kind(),
+        std::io::ErrorKind::ConnectionReset | std::io::ErrorKind::ConnectionAborted
+    )
+}
+
+/// A receive that failed for a reason that leaves the socket usable.
+fn is_idle(error: &std::io::Error) -> bool {
+    if is_peer_gone(error) {
+        log::debug!("socket reports a departed peer: {error}");
+        return true;
+    }
+    is_timeout(error)
 }
 
 #[cfg(test)]
@@ -1075,5 +1259,128 @@ mod tests {
         let last = broken.len() - 1;
         broken[last] ^= 0x20;
         assert!(server.on_game_datagram(&broken, CLIENT, now).is_empty());
+    }
+
+    /// A2S_INFO without a challenge, then with the one the server hands out.
+    fn info_request(challenge: Option<u32>) -> Vec<u8> {
+        let mut out = crate::a2s::query::QUERY_HEADER.to_vec();
+        out.push(crate::a2s::query::REQUEST_INFO);
+        out.extend_from_slice(crate::a2s::query::INFO_REQUEST_STRING);
+        if let Some(challenge) = challenge {
+            out.extend_from_slice(&challenge.to_le_bytes());
+        }
+        out
+    }
+
+    /// A2S_PLAYER with a challenge, or with the "none yet" value.
+    fn player_request(challenge: Option<u32>) -> Vec<u8> {
+        let mut out = crate::a2s::query::QUERY_HEADER.to_vec();
+        out.push(crate::a2s::query::REQUEST_PLAYER);
+        out.extend_from_slice(
+            &challenge
+                .unwrap_or(crate::a2s::CHALLENGE_UNSET)
+                .to_le_bytes(),
+        );
+        out
+    }
+
+    /// The challenge an answer carries.
+    fn challenge_of(answer: &[u8]) -> u32 {
+        assert_eq!(answer[4], crate::a2s::query::RESPONSE_CHALLENGE);
+        u32::from_le_bytes([answer[5], answer[6], answer[7], answer[8]])
+    }
+
+    #[test]
+    fn the_query_port_answers_the_challenge_dance() {
+        let now = Instant::now();
+        let mut server = test_server();
+        let query_addr = SocketAddr::new(CLIENT.ip(), 2399);
+
+        // Without a challenge: S2C_CHALLENGE.
+        let replies = server.on_query_datagram(&info_request(None), query_addr, now);
+        assert_eq!(replies.len(), 1);
+        assert_eq!(replies[0].to, query_addr);
+        let challenge = challenge_of(&replies[0].datagram);
+
+        // With it: the info answer, which says "Waiting" until a mission is loaded.
+        let replies = server.on_query_datagram(&info_request(Some(challenge)), query_addr, now);
+        let answer = &replies[0].datagram;
+        assert_eq!(answer[4], crate::a2s::query::RESPONSE_INFO);
+        assert!(
+            answer.windows("Waiting".len()).any(|w| w == b"Waiting"),
+            "no mission is loaded"
+        );
+
+        // Garbage on the query port is ignored rather than answered.
+        assert!(
+            server
+                .on_query_datagram(b"not a query", query_addr, now)
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn a_joined_player_appears_in_the_query_answers() {
+        let now = Instant::now();
+        let mut server = test_server();
+        let mut client = TestClient::new();
+        let challenge = greet(&mut server, &mut client, CLIENT, now);
+        assert_eq!(
+            server
+                .on_game_datagram(
+                    &client.connect(MAGIC, Some(challenge), "J. Doe"),
+                    CLIENT,
+                    now
+                )
+                .len(),
+            1
+        );
+
+        let query_addr = SocketAddr::new(CLIENT.ip(), 2399);
+        let challenge = challenge_of(
+            &server.on_query_datagram(&player_request(None), query_addr, now)[0].datagram,
+        );
+        let answer = &server.on_query_datagram(&player_request(Some(challenge)), query_addr, now)
+            [0]
+        .datagram;
+        assert_eq!(answer[4], crate::a2s::query::RESPONSE_PLAYER);
+        assert_eq!(answer[5], 1, "one player");
+        let text = String::from_utf8_lossy(answer);
+        assert!(
+            text.contains("J. Doe"),
+            "the profile name is reported: {text}"
+        );
+
+        // Ten seconds later the same player is reported with a ten-second duration.
+        let later = now + Duration::from_secs(10);
+        let challenge = challenge_of(
+            &server.on_query_datagram(&player_request(None), query_addr, later)[0].datagram,
+        );
+        let answer = &server.on_query_datagram(&player_request(Some(challenge)), query_addr, later)
+            [0]
+        .datagram;
+        let duration = f32::from_le_bytes(answer[answer.len() - 4..].try_into().expect("4 bytes"));
+        assert_eq!(duration, 10.0, "duration counts from the join");
+    }
+
+    #[test]
+    fn a_departed_peer_does_not_kill_the_loop() {
+        // Windows reports WSAECONNRESET on a connectionless socket once a datagram has reached a
+        // closed port; the loop must treat that as ordinary traffic, not as a failure.
+        let reset = std::io::Error::from(std::io::ErrorKind::ConnectionReset);
+        let aborted = std::io::Error::from(std::io::ErrorKind::ConnectionAborted);
+        let timed_out = std::io::Error::from(std::io::ErrorKind::TimedOut);
+        let would_block = std::io::Error::from(std::io::ErrorKind::WouldBlock);
+        let denied = std::io::Error::from(std::io::ErrorKind::PermissionDenied);
+
+        assert!(is_peer_gone(&reset));
+        assert!(is_peer_gone(&aborted));
+        assert!(!is_peer_gone(&timed_out));
+        assert!(!is_peer_gone(&denied));
+
+        assert!(is_idle(&reset), "a reset leaves the socket usable");
+        assert!(is_idle(&timed_out));
+        assert!(is_idle(&would_block));
+        assert!(!is_idle(&denied), "a real failure still ends the loop");
     }
 }

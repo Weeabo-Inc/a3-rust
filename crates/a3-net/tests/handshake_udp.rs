@@ -125,7 +125,7 @@ impl Client {
     }
 }
 
-/// Start a server on an ephemeral port and return its address plus a stop flag.
+/// Start a server on ephemeral ports and return its address plus a stop flag.
 fn start_server(
     config: ServerConfig,
 ) -> (SocketAddr, Arc<AtomicBool>, thread::JoinHandle<BoundServer>) {
@@ -142,9 +142,12 @@ fn start_server(
     (addr, stop, handle)
 }
 
+/// A test server binds its query socket on its own ephemeral port: the default game port + 1 is
+/// meant for a real server, not for a test whose game port the OS just picked.
 fn test_config() -> ServerConfig {
     ServerConfig {
         bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0),
+        query_bind: Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0)),
         hostname: "a3-rust test server".into(),
         ..ServerConfig::default()
     }
