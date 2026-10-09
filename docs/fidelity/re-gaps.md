@@ -30,10 +30,10 @@ Network items are out of scope for this track (deferred with Phase 6).
 | R5 | render-lod §7 | super-LODs (FOREST_LOD1/2, TOWN_LOD1) | not implemented | med | open |
 | C1 | render-materials §6 | which stages bind the sRGB vs the linear SRV (`0x1416d7e10`) | `a3-render-models::material` (colour types sRGB by suffix), `a3-landscape-render` satellite / detail layers | high | open (#173) |
 | C2 | render-materials §2, render-atmosphere §5 | CfgWorlds lighting and rvmat colours → `PSC_AE/GE/AmbientMid/Diffuse/DForced/Specular` | `a3-render-models` hemisphere ambient from a3-render sky colours | high | open (#173) |
-| H1 | render-atmosphere §3.3, hdr | `PSC_AssumedLuminancePars1/2`: per-frame limits (halve in 0.5–1 s, double in 1–20 s by CPU exposure) decoded; the key `engine+0x368 · brightness · 0.5` has one unidentified factor | `a3-render::post` `key = 0.3` | high | limits closed #313-PR; key factor open |
+| H1 | render-atmosphere §3.3, hdr | `PSC_AssumedLuminancePars1/2`: per-frame limits (halve in 0.5–1 s, double in 1–20 s by CPU exposure) decoded; the key `engine+0x368 · brightness · 0.5` has one unidentified factor | `a3-render::post` aperture stage (`1/aperture²`), key only as the degenerate-entry fallback | high | limits closed #313-PR; key factor open (steady state needs none, client probe) |
 | H2 | render-atmosphere §3.2 | `PSC_RgbEyeCoef.w` = 1 always (and its rgb / night shift) | `a3-render::post` `final_gamma = 1` (correct) | high | closed #313-PR |
-| H3 | hdr, render-atmosphere §3.3 | CPU aperture stage: `apertureMin/Std/Max`, `standardAvgLum`, `apertureRatioMin/Max`, `eyeAdaptFactorLight/Dark` | `a3-render::post` (not implemented) | med | doc closed #313-PR → #314 |
-| H4 | hdr, render-atmosphere §3.3 | luminance meter (histogram vs mean, percentiles) | `a3-render::post` log-average | med | open |
+| H3 | hdr, render-atmosphere §3.3 | CPU aperture stage: `apertureMin/Std/Max`, `standardAvgLum`, `apertureRatioMin/Max`, `eyeAdaptFactorLight/Dark` | `a3-render::post` + `shaders/exposure.wgsl` (curve implemented; the stage's own `eyeAdaptFactor` interpolation replaced by the GPU ratio limits) | med | closed #314-PR |
+| H4 | hdr, render-atmosphere §3.3 | luminance meter (histogram vs mean, percentiles); `0.9·min(t0.x,1000) + 0.2·min(t0.y,1000)` mixes two downsample channels we do not identify | `a3-render::post` log-average (geometric mean) | med | open |
 | H5 | hdr | bloom generation passes (`bloomLuminance*`) | `a3-render::post` quarter-res Gaussian | med | open |
 | A1 | render-atmosphere §1.3 | cloud factor `c` and sun/moon blending in the lighting lookup | `a3-render::sky`, `apps/arma3/src/environment.rs` | med | open |
 | A2 | render-atmosphere §2 | `PSC_PhysicalFog` source | `a3-render::post` fog | med | open |

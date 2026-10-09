@@ -260,6 +260,23 @@ That `state+0x20` (the exposure applied next) takes the smoothed `e` is medium: 
 found. `hdr.md`'s statement that aperture acts like adapted luminance and darkens the image is
 consistent with `e = 1/ap²`.
 
+**The rendered exposure is this stage's `e = 1/ap²`** (high; measurements and the probe script are
+in `hdr.md` §Aperture). With the aperture fixed and the scene unchanged, `setApertureNew
+[2,2,4,4]` renders 4.14x brighter and `[8,8,16,4]` 8.5x darker than the table's night entry, and a
+4x exposure step predicts the capture through the Altis filmic curve to 0.7 % error. The
+assumed-luminance stage of §3.2 therefore does not set the steady-state brightness — it can only
+shape transients (the soft step and the `Pars2.zw` ratio limits) — and `Pars1.z`'s key is not an
+exposure target. The default night capture equals the Lighting0 entry to 0.0 %, and the default
+sunset capture equals the twilight entry our own lighting lookup samples to 0.3 %, so the config
+path and our table lookup agree with the client.
+
+**Meter units.** The engine's meter runs on the *exposed* HDR buffer (`…LuminanceInit` averages
+`ln(luma)`, a geometric mean; `PSPostProcessAssumedLuminance` then combines two of its downsample
+channels as `0.9·min(t0.x, 1000) + 0.2·min(t0.y, 1000)`), and the CPU divides the read-back by the
+exposure it was rendered with to get the absolute `lum` the aperture stage takes (`0x1416d2850`).
+A meter that reads the *unexposed* buffer gets that absolute luminance directly, and must not
+apply `min(·, 1000)`: it binds on every daylit frame (noon scene luminance ~1.2e4).
+
 ## 4. Sky
 
 ### 4.1 The dome and its textures (high)

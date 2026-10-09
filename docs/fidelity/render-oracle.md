@@ -206,7 +206,34 @@ model's sun stays within a couple of degrees of the real one.
 What is left at night is the lamps (#294, split into its own PR) and our blue cast: our bottom
 third is still short of red (0.026 against 0.056) and long on blue (0.110 against 0.075).
 
+After #314 (the lighting entry's aperture stage is the exposure, `docs/re/hdr.md` §Aperture),
+measured the same way against the same client images:
 
+| shot | MAE lin | SSIM | lum Arma | lum ours | lum ratio | hist dist |
+|---|---|---|---|---|---|---|
+| altis_kavala_noon | 0.141 | 0.821 | 0.593 | 0.569 | 0.960 | 0.027 |
+| altis_kavala_sunset | 0.139 | 0.741 | 0.384 | 0.267 | 0.694 | 0.131 |
+| altis_hills_ground | 0.098 | 0.551 | 0.535 | 0.493 | 0.921 | 0.039 |
+| stratis_coast | 0.151 | 0.696 | 0.492 | 0.594 | 1.206 | 0.094 |
+| altis_building_close | 0.109 | 0.707 | 0.591 | 0.524 | 0.887 | 0.051 |
+| altis_vegetation_close | 0.110 | 0.668 | 0.472 | 0.429 | 0.908 | 0.089 |
+| altis_kavala_night_moon | 0.043 | 0.542 | 0.051 | 0.031 | 0.609 | 0.070 |
+| altis_kavala_overcast_fog | 0.107 | 0.968 | 0.708 | 0.598 | 0.845 | 0.065 |
+
+Against the table above: MAE sum 0.920 → 0.898, Σ|1 − ratio| 1.510 → 1.382, and the *daylight*
+exposure lands on RV's `1/apertureStandard²` (noon 1.160 → 0.960, hills 1.170 → 0.921,
+vegetation 1.055 → 0.908, stratis 1.457 → 1.206, with hills/stratis/vegetation also improving
+their MAE). Five shots move away because the old `key/minAperture` clamp was compensating for
+scene errors that are now unmasked — the same ones #337 names:
+
+- `altis_kavala_noon` 0.120 → 0.141 MAE *although* its ratio improves 1.160 → 0.960: the sky's
+  red channel, already short from #295, is darkened further.
+- `altis_building_close` 0.095 → 0.109 (ratio 1.097 → 0.887) and
+  `altis_kavala_overcast_fog` 0.073 → 0.107 (0.895 → 0.845): both were riding the clamp.
+- `altis_kavala_night_moon` 0.041 → 0.043 (ratio 0.807 → 0.609) and
+  `altis_kavala_sunset` 0.133 → 0.139 (0.727 → 0.694): the match was the clamp over-exposing
+  past what the engine's aperture allows (client-verified); relative to the session's first
+  capture the night ratio is still 0.192 → 0.807 (#329) → 0.609.
 
 ## Discrepancies
 
@@ -225,6 +252,9 @@ reference and a hypothesis.
    The engine's own sun and moon model puts a 70 %-lit moon 43° up at that date, so the ground is
    moonlit; we were using a real ephemeris, which has a new moon below the horizon. Luminance
    ratio 0.192 → 0.807. What is left is the blue cast and the missing lamps.
+   With #314 the exposure is the engine's own (`1/apertureMin² = 1/16`, client-verified) instead
+   of a clamp that over-exposed, so the ratio reads 0.609 while the exposure is right: the rest is
+   scene, tracked in #337.
 5. **No point lights** (#294, split). Street lamps light Kavala at dusk and at night in Arma. Ours
    has no lamps; the light list and the lamp discovery are a separate lighting path.
 6. **Sky colour** (#295, the gradient fixed). Our zenith was paler, more cyan and brighter.
@@ -233,7 +263,13 @@ reference and a hypothesis.
    left is the sky's overall level: the tint the engine multiplies the ramp by (`PSHorizon`'s
    `v1.xyz`) is not traced, so our sky is still brighter than Arma's and its zenith a little
    short on red.
-7. **Daylight exposure** (#296). Ours is 10–15 % brighter at noon.
+7. **Daylight exposure** (#296, fixed). Ours was 10–15 % brighter at noon, because our exposure
+   was `key/minAperture = 1.102e-4` instead of the engine's `1/apertureStandard² = 6.94e-5`
+   (#314, `docs/re/hdr.md` §Aperture): noon now reads 0.960, hills 0.921, vegetation 0.908,
+   stratis 1.206. The noon MAE rises (0.120 → 0.141) because the sky's red channel, short from
+   #295, is darkened with it.
 8. **Fog colour and density, overcast** (#297). Our fog is darker and bluer. Arma's fog is neutral
    white-grey.
 9. **Sunset light** (#298). Ours is too dark and blue at low sun. Arma is still neutral at 19:15.
+   The lighting entry our lookup picks matches the client's default capture (0.3 %, `hdr.md`), so
+   this is the shading under it; the exposure half is #337.
