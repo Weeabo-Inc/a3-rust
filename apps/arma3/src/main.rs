@@ -128,6 +128,10 @@ struct Cli {
     /// Leave out the debug text overlay, for frames to compare with the original game.
     #[arg(long)]
     no_overlay: bool,
+    /// `--play`: run this SQF on the in-game UI's script VM when play starts (`hint`,
+    /// `hintSilent`, `systemChat` show on the HUD).
+    #[arg(long, value_name = "SQF", requires = "play")]
+    exec: Option<String>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -170,6 +174,7 @@ fn main() -> anyhow::Result<()> {
             fog_distance: cli.fog_distance,
         },
         hide_overlay: cli.no_overlay,
+        exec: cli.exec.clone(),
     };
     log::info!(
         "a3-rust {} (targets Arma 3 {}), game dir: {:?}",

@@ -68,6 +68,7 @@ pub fn screenshot(
     let mut renderer = Renderer::new(&gpu, a3_render::wgpu::TextureFormat::Rgba8UnormSrgb);
     let mut scene = DebugScene::new();
     scene.load(&gpu, &mut renderer);
+    scene.hud_exec = engine.exec.clone();
     if let Some(world) = engine.load_world()? {
         let play = engine.play.then_some(engine.camera_mode);
         scene.load_world(

@@ -431,8 +431,15 @@ impl Ui {
             c.color_border = v;
         }
         c.font = read_text(cfg, "font", eval).unwrap_or_default();
-        c.size_ex = read_number(cfg, "sizeEx", eval)
-            .or_else(|| read_number(cfg, "size", eval))
+        // Structured text takes its base size from `size` (`sizeEx` is a plain-text entry
+        // its classes often inherit, e.g. `RscHint >> Hint`); other controls from `sizeEx`.
+        let (first, second) = if c.kind == ControlType::StructuredText {
+            ("size", "sizeEx")
+        } else {
+            ("sizeEx", "size")
+        };
+        c.size_ex = read_number(cfg, first, eval)
+            .or_else(|| read_number(cfg, second, eval))
             .unwrap_or(c.size_ex);
         c.shadow = read_number(cfg, "shadow", eval).unwrap_or(0.0) as i32;
         c.line_spacing = read_number(cfg, "lineSpacing", eval).unwrap_or(1.0);
@@ -449,6 +456,17 @@ impl Ui {
                 read_number(&text_pos, "right", eval).unwrap_or(0.0),
                 read_number(&text_pos, "bottom", eval).unwrap_or(0.0),
             ]);
+        }
+        let attributes = cfg.get("Attributes");
+        if c.kind == ControlType::StructuredText && attributes.is_class() {
+            c.text_align = read_text(&attributes, "align", eval).and_then(|a| {
+                match a.to_ascii_lowercase().as_str() {
+                    "left" => Some(crate::kinds::style::LEFT),
+                    "center" => Some(crate::kinds::style::CENTER),
+                    "right" => Some(crate::kinds::style::RIGHT),
+                    _ => None,
+                }
+            });
         }
         c.show = read_number(cfg, "show", eval).is_none_or(|v| v != 0.0);
         c.enabled = read_number(cfg, "enable", eval).is_none_or(|v| v != 0.0);

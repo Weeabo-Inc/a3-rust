@@ -34,6 +34,8 @@ pub struct EngineContext {
     /// Leave out the debug text overlay (FPS, position, keys), for frames to compare with the
     /// original game.
     pub hide_overlay: bool,
+    /// SQF to run on the in-game UI's VM when play starts.
+    pub exec: Option<String>,
 }
 
 impl EngineContext {

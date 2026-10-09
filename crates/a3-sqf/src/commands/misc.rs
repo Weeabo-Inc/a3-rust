@@ -121,12 +121,14 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         ctx.host.system_chat(string(&a));
         Ok(Value::Nothing)
     });
-    for name in ["hint", "hintSilent"] {
-        r.unary(name, STR, NOTHING, |ctx, a| {
-            ctx.host.hint(string(&a));
-            Ok(Value::Nothing)
-        });
-    }
+    r.unary("hint", STR, NOTHING, |ctx, a| {
+        ctx.host.hint(string(&a));
+        Ok(Value::Nothing)
+    });
+    r.unary("hintSilent", STR, NOTHING, |ctx, a| {
+        ctx.host.hint_silent(string(&a));
+        Ok(Value::Nothing)
+    });
     r.unary("copyToClipboard", STR, NOTHING, |ctx, a| {
         ctx.host.copy_to_clipboard(string(&a));
         Ok(Value::Nothing)
