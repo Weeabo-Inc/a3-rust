@@ -431,6 +431,54 @@ Script commands differ in whether their arguments must be local and whether thei
 global.
 _Avoid_: authority (alone), ownership (that is the Owner relation)
 
+## AI
+
+**Group**:
+A set of Entities under one leader, all of one Side, whose AI thinks as a unit: one waypoint
+queue, one set of modes, one body of knowledge.
+_Avoid_: squad (that is the map label), team (that is a UI grouping)
+
+**Side**:
+One of the world's opposing alignments (West, East, Resistance, Civilian); the unit of enmity —
+two Entities are enemies when their Sides are.
+
+**Waypoint**:
+One order in a Group's queue: a position, the modes it sets, and what it asks on arrival.
+_Avoid_: marker (that is a map symbol)
+
+**Waypoint queue**:
+A Group's ordered Waypoints plus the index of the one it is working on. The mission's
+`currentWaypoint` counts from one because index 0 is the group's start position, already done;
+the index equals the count once every waypoint is done.
+
+**Waypoint type**:
+What a Waypoint asks of the Group on arrival — walk there (MOVE), wait (HOLD), hunt (SAD), board
+(GETIN), start over (CYCLE) and so on.
+_Avoid_: waypoint mode (the modes are the behaviour, combat, speed and formation fields)
+
+**Group behaviour**:
+How a Group moves and how alert it is (CARELESS, SAFE, AWARE, COMBAT, STEALTH); while it says
+so, it overrides the combat mode and the formation.
+_Avoid_: alertness, stance
+
+**Combat mode**:
+A Group's rules of engagement (BLUE, GREEN, WHITE, YELLOW, RED): whether and how it acts on an
+enemy it knows about.
+_Avoid_: ROE, fire mode
+
+**Speed mode**:
+How fast a Group moves (LIMITED walking, NORMAL, FULL).
+_Avoid_: pace
+
+**Formation**:
+The shape a Group moves in (WEDGE, COLUMN, LINE, VEE, ...), expressed as each follower's slot
+around the leader.
+_Avoid_: pattern, arrangement
+
+**Target knowledge**:
+What a Group knows about one enemy: a certainty from 0 to 4 and where and when it was last
+seen. Shared by every unit of the Group, not kept per unit.
+
 ## Physics and collision
 
 **Collision world**:
