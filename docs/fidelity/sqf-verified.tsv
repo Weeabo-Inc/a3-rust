@@ -267,3 +267,6 @@ setLightUseFlare	binary	*	stub	wiki	no script override
 setLightFlareSize	binary	*	stub	wiki	no script override
 setLightFlareMaxDistance	binary	*	stub	wiki	no script override
 setLightDayLight	binary	*	stub	wiki	no script override
+createDiarySubject	binary	0xdfea70	verified	wiki+decompiled 0xdfea70	[subject, display name]; kept in ObjectState, the index returned; no diary UI
+assignAsDriver	binary	0x5251a0	verified	decompiled 0x5251a0	the seat is taken when he boards; a later assignment replaces the earlier
+assignAsGunner	binary	0x525230	verified	decompiled 0x525230	same for the gunner seat

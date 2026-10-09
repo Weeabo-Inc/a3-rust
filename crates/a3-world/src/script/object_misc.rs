@@ -192,4 +192,17 @@ fn register_globals<H: WorldHost>(r: &mut Registry<H>) {
         }
         Ok(Value::Handle(Handle::null(HandleKind::DiaryRecord)))
     });
+    // 0xdfea70: `unit createDiarySubject [[subject, display name(, picture)]]`. The subject is
+    // kept and its index returned; there is no diary UI yet _(stub)_.
+    r.binary("createDiarySubject", OBJ, ARR, NUM, |ctx, a, b| {
+        let args = items(&b);
+        let subject = args.first().map(text).unwrap_or_default();
+        let display = args.get(1).map(text).unwrap_or_default();
+        let Some(id) = entity(ctx.host.world(), &a, EntityClass::EntityAi) else {
+            return Ok(Value::Number(-1.0));
+        };
+        let state = ctx.host.world_mut().object_state_mut(id);
+        state.diary_subjects.push((subject, display));
+        Ok(Value::Number(state.diary_subjects.len() as f32 - 1.0))
+    });
 }
