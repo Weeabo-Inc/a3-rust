@@ -194,6 +194,10 @@ impl World {
         }
         self.apply(&mut commands);
 
+        // 3b. Weapons: reload timers, automatic reloads, held triggers. Rounds fired here fly from
+        // the next frame's projectile phase.
+        self.step_loadouts(dt);
+
         // 4. Attached positions.
         self.update_attached_positions();
 

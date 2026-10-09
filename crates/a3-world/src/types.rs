@@ -223,6 +223,11 @@ impl TypeBank {
         &self.config
     }
 
+    /// The merged config, shared (for [`World::set_config`](crate::World::set_config)).
+    pub fn config_arc(&self) -> Arc<ConfigTree> {
+        self.config.clone()
+    }
+
     /// Whether config class `name` is `base` or inherits from it (`isKindOf`), searching the
     /// same roots as [`get`](Self::get). Case-insensitive; unknown names are not kinds of anything.
     pub fn is_kind_of(&self, name: &str, base: &str) -> bool {

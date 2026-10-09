@@ -99,6 +99,8 @@ pub struct Entity {
     pub(crate) hidden: bool,
     pub(crate) attachment: Option<Attachment>,
     pub(crate) group: Option<crate::GroupId>,
+    /// The unit's weapons and magazines.
+    pub(crate) loadout: crate::Loadout,
 }
 
 /// An `attachTo` link: the Entity follows `to` at `offset` in `to`'s model space.
@@ -148,6 +150,7 @@ impl Entity {
             hidden: false,
             attachment: None,
             group: None,
+            loadout: crate::Loadout::default(),
         }
     }
 

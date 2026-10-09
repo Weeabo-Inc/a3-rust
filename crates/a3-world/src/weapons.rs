@@ -127,6 +127,10 @@ pub struct MagazineType {
     pub count: u32,
     /// `initSpeed`: the base muzzle velocity in m/s.
     pub init_speed: f64,
+    /// `tracersEvery`: every n-th round is a tracer (0: none).
+    pub tracers_every: u32,
+    /// `lastRoundsTracer`: the last n rounds of the magazine are tracers.
+    pub last_rounds_tracer: u32,
 }
 
 /// One trigger setting of a [`MuzzleType`] (`Single`, `FullAuto`, ... or `"this"`).
@@ -142,6 +146,12 @@ pub struct ModeType {
     pub recoil_prone: Option<String>,
     /// `initSpeed`, when the class declares one; see [`ShotParams::init_speed`].
     pub init_speed: Option<f64>,
+    /// `reloadTime`: seconds between two rounds.
+    pub reload_time: f64,
+    /// `burst`: rounds one trigger press fires (at least 1).
+    pub burst: u32,
+    /// `autoFire`: whether a held trigger keeps firing.
+    pub auto_fire: bool,
 }
 
 /// One muzzle of a weapon: its own magazines, `initSpeed` and modes.
@@ -159,6 +169,8 @@ pub struct MuzzleType {
     /// `modes[]`, in declaration order; the first is the default. A muzzle with none is its own
     /// single `"this"` mode.
     pub modes: Vec<ModeType>,
+    /// `magazineReloadTime`: seconds a magazine change takes.
+    pub magazine_reload_time: f64,
 }
 
 impl MuzzleType {
@@ -182,6 +194,8 @@ pub struct WeaponType {
     pub muzzles: Vec<MuzzleType>,
     /// The weapon body's `magazines[]`; each muzzle holds its own list too.
     pub magazines: Vec<String>,
+    /// `type`: the slot bit mask (1 primary, 2 handgun, 4 secondary, ...).
+    pub kind: u32,
 }
 
 impl WeaponType {
@@ -283,6 +297,7 @@ impl WeaponBank {
             name: cfg.name().to_owned(),
             muzzles: self.muzzles(&cfg),
             magazines: text_list(&cfg, "magazines"),
+            kind: number_or(&cfg, "type", 0.0).max(0.0) as u32,
         });
         self.weapons.insert(key, w.clone());
         Ok(w)
@@ -303,6 +318,8 @@ impl WeaponBank {
             ammo: text(&cfg, "ammo").unwrap_or_default(),
             count: if count > 0.0 { count as u32 } else { 0 },
             init_speed: number(&cfg, "initSpeed").unwrap_or(0.0),
+            tracers_every: number_or(&cfg, "tracersEvery", 0.0).max(0.0) as u32,
+            last_rounds_tracer: number_or(&cfg, "lastRoundsTracer", 0.0).max(0.0) as u32,
         });
         self.magazines.insert(key, m.clone());
         Ok(m)
@@ -374,6 +391,7 @@ impl WeaponBank {
                     magazines: text_list(&cfg, "magazines"),
                     init_speed: number(&cfg, "initSpeed"),
                     modes: self.modes(&cfg),
+                    magazine_reload_time: number_or(&cfg, "magazineReloadTime", 0.0),
                 })
             })
             .collect()
@@ -426,6 +444,9 @@ fn mode_from(cfg: &ConfigRef<'_>, name: &str) -> ModeType {
         recoil: text(cfg, "recoil").filter(|s| !s.is_empty()),
         recoil_prone: text(cfg, "recoilProne").filter(|s| !s.is_empty()),
         init_speed: number(cfg, "initSpeed"),
+        reload_time: number_or(cfg, "reloadTime", 0.0),
+        burst: number_or(cfg, "burst", 1.0).max(1.0) as u32,
+        auto_fire: number_or(cfg, "autoFire", 0.0) != 0.0,
     }
 }
 

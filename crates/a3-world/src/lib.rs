@@ -100,6 +100,7 @@ mod fire;
 mod groups;
 mod handlers;
 mod id;
+mod loadout;
 mod markers;
 mod moves;
 pub mod net;
@@ -131,6 +132,7 @@ pub use fire::FireRequest;
 pub use groups::{ENEMY_THRESHOLD, Group, GroupId, Side, default_group_name, side_from_config};
 pub use handlers::{Handler, Handlers};
 pub use id::{ClientId, EntityId, NetworkId, ParseNetworkIdError};
+pub use loadout::{Aim, Loadout, Magazine, MuzzleSlot, WeaponSlot};
 pub use markers::{Marker, Markers};
 pub use net::{
     DAMAGE_ERROR_SCALE, JipObject, OwedUpdate, RemoteCreate, RemoteUpdate, ReplicatedState,

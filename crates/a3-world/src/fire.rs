@@ -197,6 +197,15 @@ impl World {
             (muzzle.clone(), mode.clone())
         };
         let (muzzle, mode) = params;
+        // Scripts name the weapon body's muzzle by the weapon's class.
+        let muzzle_name = if muzzle
+            .name
+            .eq_ignore_ascii_case(crate::weapons::DEFAULT_MUZZLE)
+        {
+            weapon.name.clone()
+        } else {
+            muzzle.name.clone()
+        };
         let magazine = armory.bank.magazine(&request.magazine)?;
         let ammo = armory.bank.ammo(&magazine.ammo)?;
         let shot_type = armory.shot_type(&magazine.ammo)?;
@@ -228,7 +237,7 @@ impl World {
             let mut state = ProjectileState::new(ammo);
             state.shooter = Some(request.shooter);
             state.weapon = weapon.name.clone();
-            state.muzzle = muzzle.name.clone();
+            state.muzzle = muzzle_name.clone();
             state.mode = mode.name.clone();
             state.magazine = magazine.name.clone();
             state.tracer = request.tracer;
@@ -238,7 +247,7 @@ impl World {
             shot,
             FiredShot {
                 weapon: weapon.name.clone(),
-                muzzle: muzzle.name.clone(),
+                muzzle: muzzle_name,
                 mode: mode.name.clone(),
                 ammo: magazine.ammo.clone(),
                 magazine: magazine.name.clone(),
