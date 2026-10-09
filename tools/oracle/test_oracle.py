@@ -1,7 +1,10 @@
-"""Tests for the oracle harness: probe parsing, log parsing, diff. Run: python -m unittest
-discover -s tools/oracle (stdlib only; no game data needed)."""
+"""Tests for the oracle harness: probe parsing, log parsing, diff, world grouping. Run:
+python -m unittest discover -s tools/oracle (stdlib only; no game data needed)."""
 
+import argparse
+import io
 import unittest
+from unittest import mock
 
 import oracle
 
@@ -95,6 +98,55 @@ class Diff(unittest.TestCase):
         self.assertIn("**1 of 2 comparable probes match (50.0%)**", md)
         self.assertIn("| num | 1 | 1 |", md)
         self.assertIn("| `num.b` | mismatch |", md)
+
+
+class WorldGrouping(unittest.TestCase):
+    """Both sides must run a probe in the same environment: ours ran world-independent probes in
+    the main-menu VM, where the original never runs them (issue #327)."""
+
+    def probes(self):
+        return [
+            oracle.Probe("a.noworld", "str 1", "t.probes", None),
+            oracle.Probe("b.stratis", "str 1", "t.probes", "Stratis"),
+        ]
+
+    def test_ours_runs_world_independent_probes_in_the_default_world(self):
+        runs = []
+
+        def fake_run_ours(args, group, world):
+            runs.append((world, [p.id for p in group]))
+            return {}, {"done": True, "seconds": 0.0}
+
+        with (
+            mock.patch.object(oracle, "select", return_value=self.probes()),
+            mock.patch.object(oracle, "run_ours", side_effect=fake_run_ours),
+            mock.patch.object(oracle, "save"),
+            mock.patch("sys.stderr", new_callable=io.StringIO),
+        ):
+            oracle.cmd_ours(argparse.Namespace())
+        self.assertEqual(runs, [(oracle.DEFAULT_WORLD, ["a.noworld"]), ("Stratis", ["b.stratis"])])
+
+    def test_both_sides_group_probes_the_same_way(self):
+        groups = {}
+
+        def capture(side):
+            def fake_run(args, group, world):
+                groups.setdefault(side, {})[tuple(p.id for p in group)] = world
+                return {}, {"done": True, "seconds": 0.0}
+
+            return fake_run
+
+        with (
+            mock.patch.object(oracle, "select", return_value=self.probes()),
+            mock.patch.object(oracle, "run_oracle", side_effect=capture("oracle")),
+            mock.patch.object(oracle, "run_ours", side_effect=capture("ours")),
+            mock.patch.object(oracle, "save"),
+            mock.patch("sys.stderr", new_callable=io.StringIO),
+        ):
+            oracle.cmd_oracle(argparse.Namespace())
+            oracle.cmd_ours(argparse.Namespace())
+        self.assertEqual(groups["ours"], groups["oracle"])
+        self.assertEqual(set(groups["ours"].values()), {oracle.DEFAULT_WORLD, "Stratis"})
 
 
 if __name__ == "__main__":
