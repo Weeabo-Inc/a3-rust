@@ -31,12 +31,14 @@ mod ground;
 mod man;
 mod projectile;
 
+use crate::random::EngineRandom;
 use crate::{Create, DamageHit, EntityClass, EntityId, ListKind, SimulationClass, World};
 
 pub use air::{AirState, Flight, HitIndices};
 pub use ground::GroundState;
 pub use man::{GRAVITY, MAX_STEP_DOWN, MAX_STEP_UP, ManInput, ManState, Motion, MoveState};
 pub use projectile::ProjectileState;
+pub(crate) use projectile::{ExplosionRecord, HitRecord, body_key};
 
 use crate::Entity;
 
@@ -110,6 +112,10 @@ pub(crate) enum Command {
     /// A hit on another Entity (a projectile's impact, an explosion). Applied after the phase,
     /// when every Entity is back in its slot, so the damage path sees the whole World.
     Damage(EntityId, Box<DamageHit>),
+    /// A shot hit an Object (`docs/re/sim-ballistics.md` §5): damage and the `Hit` event.
+    Hit(Box<HitRecord>),
+    /// A shot exploded (§6): the indirect damage and the `Exploded` event.
+    Explosion(Box<ExplosionRecord>),
 }
 
 /// What a family step sees besides its own Entity: the rest of the World (read-only; the
@@ -118,13 +124,24 @@ pub(crate) enum Command {
 pub(crate) struct StepContext<'a> {
     world: &'a World,
     commands: &'a mut Vec<Command>,
+    random: &'a mut EngineRandom,
 }
 
 #[allow(dead_code)] // Used by the family modules as they are filled in.
-impl StepContext<'_> {
+impl<'a> StepContext<'a> {
     /// The World without the stepping Entity.
-    pub(crate) fn world(&self) -> &World {
+    pub(crate) fn world(&self) -> &'a World {
         self.world
+    }
+
+    /// The World's random source.
+    pub(crate) fn random(&mut self) -> &mut EngineRandom {
+        self.random
+    }
+
+    /// Queues a command for after the phase.
+    pub(crate) fn push(&mut self, command: Command) {
+        self.commands.push(command);
     }
 
     /// World time at the start of the frame, in seconds.
@@ -176,6 +193,10 @@ impl World {
             self.sub_step(remaining, &mut commands);
         }
         self.apply(&mut commands);
+
+        // 3b. Weapons: reload timers, automatic reloads, held triggers. Rounds fired here fly from
+        // the next frame's projectile phase.
+        self.step_loadouts(dt);
 
         // 4. Attached positions.
         self.update_attached_positions();
@@ -239,13 +260,16 @@ impl World {
         entity.visual.previous_orientation = entity.orientation;
         entity.visual.last_step = dt;
         entity.visual.since_step = 0.0;
+        let mut random = std::mem::take(&mut self.random);
         {
             let mut ctx = StepContext {
                 world: self,
                 commands,
+                random: &mut random,
             };
             step_family(&mut entity, &mut ctx, dt);
         }
+        self.random = random;
         entity.steps += 1;
         entity.simulated_time += dt;
         self.put_entity(entity);
@@ -264,6 +288,8 @@ impl World {
                 Command::Damage(id, hit) => {
                     self.apply_damage_to(id, *hit);
                 }
+                Command::Hit(hit) => self.apply_hit(*hit),
+                Command::Explosion(explosion) => self.explode(*explosion),
             }
         }
     }

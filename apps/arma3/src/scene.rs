@@ -12,6 +12,7 @@ use a3_render::{
 };
 use glam::{DAffine3, DQuat, DVec3, Vec3};
 
+use crate::combat::Combat;
 use crate::gear::{Loadout, ManGear, place_man};
 use crate::man::ManAnimation;
 use crate::models::{ModelSpec, Orbit, stats_line};
@@ -316,6 +317,8 @@ pub struct DebugScene {
     /// SQF the HUD runs when play starts (`--exec`).
     pub hud_exec: Option<String>,
     sim_time: f64,
+    /// The player's weapon and its shots, when playing.
+    combat: Option<Combat>,
 }
 
 impl DebugScene {
@@ -339,6 +342,7 @@ impl DebugScene {
             hud: None,
             hud_exec: None,
             sim_time: 0.0,
+            combat: None,
         }
     }
 
@@ -433,7 +437,7 @@ impl DebugScene {
                 self.soldier = Some(SoldierModel::new(
                     gpu,
                     renderer,
-                    world.vfs,
+                    world.vfs.clone(),
                     path,
                     crate::man::moves_of(&world.config),
                     Some(&loadout),
@@ -443,6 +447,16 @@ impl DebugScene {
                     "no model for {} in the game data; drawing the stand-in Man",
                     crate::player::PLAYER_CLASS
                 );
+            }
+            match Combat::new(
+                world.terrain.clone(),
+                world.vfs.clone(),
+                world.config.clone(),
+                crate::player::PLAYER_CLASS,
+                player.position,
+            ) {
+                Ok(combat) => self.combat = Some(combat),
+                Err(e) => log::warn!("the player is unarmed: {e:#}"),
             }
             self.camera = player.camera();
             self.player = Some(player);
@@ -520,6 +534,10 @@ impl DebugScene {
     /// rendering.
     pub fn update_hud(&mut self, size: (u32, u32), dt: f64) {
         if let (Some(hud), Some(player)) = (&mut self.hud, &self.player) {
+            if let Some(combat) = &self.combat {
+                let (loaded, spare) = combat.rounds();
+                hud.set_rounds(loaded, spare);
+            }
             hud.frame(player, size, dt);
         }
     }
@@ -603,6 +621,21 @@ impl DebugScene {
         if let Some(soldier) = &self.soldier {
             soldier.advance(player, dt as f32);
         }
+        if let Some(combat) = &mut self.combat {
+            let fire = mouse_look && self.actions.is_active(input, actions::DEFAULT_ACTION);
+            combat.update(
+                player.position,
+                f64::from(player.yaw),
+                player.eye(),
+                crate::player::look_direction(player.yaw, player.pitch),
+                player.mode == CameraMode::FirstPerson,
+                fire,
+                self.actions.just_triggered(input, actions::RELOAD_MAGAZINE),
+                self.actions
+                    .just_triggered(input, crate::player::NEXT_WEAPON),
+                dt,
+            );
+        }
         let mut camera = player.camera();
         // The third-person boom may hang over a slope behind the player: keep it above the
         // terrain there.
@@ -619,6 +652,13 @@ impl DebugScene {
         }
         if let (Some(player), Some(a)) = (&self.player, &self.assets) {
             self.draw_man(draws, a, player);
+        }
+        if let Some(combat) = &self.combat {
+            combat.draw(
+                draws,
+                self.assets.as_ref().map(|a| a.cube),
+                self.camera.position,
+            );
         }
         if self.world.is_some() {
             // The terrain draws itself as a render feature.
@@ -879,6 +919,12 @@ impl DebugScene {
             };
             draws.text(8.0, y, 2.0, dim, man);
             y += 22.0;
+            if let Some(combat) = &self.combat {
+                for line in combat.overlay() {
+                    draws.text(8.0, y, 2.0, dim, line);
+                    y += 22.0;
+                }
+            }
         }
         if let Some(models) = &self.models {
             let line = match &self.orbit {

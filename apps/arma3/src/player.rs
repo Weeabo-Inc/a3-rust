@@ -17,6 +17,8 @@ pub const CROUCH: &str = "crouch";
 pub const PRONE: &str = "prone";
 pub const STAND: &str = "stand";
 pub const WALK: &str = "walk";
+/// Cycles the weapon's fire modes (F in the game's presets).
+pub const NEXT_WEAPON: &str = "NextWeapon";
 
 /// Ground height in metres at a world position: the terrain under the player.
 pub trait Ground {

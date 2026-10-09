@@ -39,6 +39,8 @@ pub struct LoadedWorld {
     /// The merged game config, for the Moves type and other data the player needs after the
     /// load.
     pub config: Arc<a3_config::ConfigTree>,
+    /// The parsed WRP: the terrain and Static objects the player's shots fly over and hit.
+    pub terrain: Arc<Terrain>,
 }
 
 /// Mount the game at `game_dir`, find `CfgWorlds >> world` and load its terrain, and its
@@ -59,7 +61,7 @@ pub fn load(
         .vfs
         .open(wrp)
         .with_context(|| format!("cannot open {wrp}"))?;
-    let terrain = Terrain::parse(&bytes).with_context(|| format!("cannot parse {wrp}"))?;
+    let terrain = Arc::new(Terrain::parse(&bytes).with_context(|| format!("cannot parse {wrp}"))?);
     drop(bytes);
     let objects =
         objects.map(|options| WorldObjects::from_terrain(&terrain, data.vfs.clone(), options));
@@ -132,6 +134,7 @@ pub fn load(
         sky_noise,
         player_model,
         config: data.config.clone(),
+        terrain,
     })
 }
 

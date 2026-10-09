@@ -125,6 +125,8 @@ pub fn ensure_client_defaults(map: &mut ActionMap) {
         (player::CROUCH, Dik::C),
         (player::PRONE, Dik::Z),
         (player::STAND, Dik::X),
+        (player::NEXT_WEAPON, Dik::F),
+        (actions::RELOAD_MAGAZINE, Dik::R),
     ];
     for (action, key) in fallbacks {
         if map.bindings(action).is_empty() {

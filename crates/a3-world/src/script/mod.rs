@@ -20,6 +20,7 @@ mod markers;
 mod query;
 mod state;
 mod transform;
+mod weapons;
 
 use a3_sqf::{Handle, HandleKind, Host, Registry, Type, TypeSet, Value};
 use glam::DVec3;
@@ -54,6 +55,7 @@ pub fn register_world_commands<H: WorldHost>(r: &mut Registry<H>) {
     state::register(r);
     transform::register(r);
     query::register(r);
+    weapons::register(r);
 }
 
 pub(crate) const OBJ: TypeSet = TypeSet::of(Type::Object);

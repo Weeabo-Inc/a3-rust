@@ -97,20 +97,24 @@ mod aircraft;
 mod class;
 mod damage;
 mod entity;
+mod fire;
 mod groups;
 mod handlers;
 mod id;
+mod loadout;
 mod markers;
 mod moves;
 pub mod net;
 mod object_ref;
 mod query;
+mod random;
 pub mod script;
 mod script_state;
 mod sim;
 mod statics;
 mod terrain;
 mod types;
+pub mod weapons;
 mod world;
 
 pub use ai::{
@@ -126,9 +130,11 @@ pub use damage::{
     FatalHitPoint, HitPoint, Ruin,
 };
 pub use entity::{Attachment, Entity, ListKind, Locality, VisualState};
+pub use fire::FireRequest;
 pub use groups::{ENEMY_THRESHOLD, Group, GroupId, Side, default_group_name, side_from_config};
 pub use handlers::{Handler, Handlers};
 pub use id::{ClientId, EntityId, NetworkId, ParseNetworkIdError};
+pub use loadout::{Aim, Loadout, Magazine, MuzzleSlot, WeaponSlot};
 pub use markers::{Marker, Markers};
 pub use net::{
     DAMAGE_ERROR_SCALE, JipObject, OwedUpdate, RemoteCreate, RemoteUpdate, ReplicatedState,
@@ -167,6 +173,32 @@ pub enum Error {
     /// No class of this name in CfgVehicles, CfgAmmo or CfgNonAIVehicles.
     #[error("no config class {0:?} in CfgVehicles, CfgAmmo or CfgNonAIVehicles")]
     UnknownType(String),
+    /// No class of this name in CfgWeapons.
+    #[error("no CfgWeapons class {0:?}")]
+    UnknownWeapon(String),
+    /// No class of this name in CfgMagazines.
+    #[error("no CfgMagazines class {0:?}")]
+    UnknownMagazine(String),
+    /// No class of this name in CfgAmmo.
+    #[error("no CfgAmmo class {0:?}")]
+    UnknownAmmo(String),
+    /// The World has no config (`World::set_config`), so it cannot read weapon, magazine or ammo
+    /// parameters.
+    #[error("the world has no config; call World::set_config first")]
+    NoConfig,
+    /// The weapon has no muzzle of this name.
+    #[error("weapon {weapon:?} has no muzzle {muzzle:?}")]
+    NoSuchMuzzle { weapon: String, muzzle: String },
+    /// The muzzle has no fire mode of this name.
+    #[error("muzzle {muzzle:?} of weapon {weapon:?} has no mode {mode:?}")]
+    NoSuchMode {
+        weapon: String,
+        muzzle: String,
+        mode: String,
+    },
+    /// A shot needs a direction to fly in.
+    #[error("cannot fire along a zero direction")]
+    ZeroDirection,
     /// The class's `simulation` value has no engine class (yet).
     #[error("config class {type_name:?} has unknown simulation {simulation:?}")]
     UnknownSimulation {

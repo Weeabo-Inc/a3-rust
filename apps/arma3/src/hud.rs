@@ -94,6 +94,24 @@ impl Hud {
         }
     }
 
+    /// Shows the live rounds of the selected weapon: `loaded` in its magazine (`None`: empty)
+    /// and `spare` further magazines.
+    pub fn set_rounds(&mut self, loaded: Option<u32>, spare: u32) {
+        if let Some(weapon) = &mut self.info.weapon {
+            match (loaded, &mut weapon.loaded) {
+                (Some(ammo), Some(m)) => m.ammo = ammo,
+                (Some(ammo), slot @ None) => {
+                    *slot = Some(a3_ingame_ui::LoadedMagazine {
+                        ammo,
+                        ..Default::default()
+                    })
+                }
+                (None, slot) => *slot = None,
+            }
+            weapon.magazines = spare;
+        }
+    }
+
     /// Updates the HUD for `player` on a `width` x `height` output and hands its quads to the
     /// UI feature.
     pub fn frame(&mut self, player: &Player, (width, height): (u32, u32), dt: f64) {

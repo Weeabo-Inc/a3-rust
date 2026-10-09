@@ -106,7 +106,7 @@ impl EntityType {
         self
     }
 
-    fn from_config(source: TypeSource, cfg: &ConfigRef<'_>) -> Result<Self, Error> {
+    pub(crate) fn from_config(source: TypeSource, cfg: &ConfigRef<'_>) -> Result<Self, Error> {
         let simulation = cfg.get("simulation").text().to_ascii_lowercase();
         let class = SimulationClass::from_simulation(&simulation).ok_or_else(|| {
             Error::UnknownSimulation {
@@ -221,6 +221,11 @@ impl TypeBank {
     /// The merged config the types are read from.
     pub fn config(&self) -> &ConfigTree {
         &self.config
+    }
+
+    /// The merged config, shared (for [`World::set_config`](crate::World::set_config)).
+    pub fn config_arc(&self) -> Arc<ConfigTree> {
+        self.config.clone()
     }
 
     /// Whether config class `name` is `base` or inherits from it (`isKindOf`), searching the

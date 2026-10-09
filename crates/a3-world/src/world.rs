@@ -100,6 +100,55 @@ pub enum WorldEvent {
     /// A group finished the waypoint at `index` and moved on (#129); a CYCLE waypoint reports
     /// the waypoint it left, so a mission sees each completion once.
     WaypointCompleted { group: GroupId, index: usize },
+    /// A weapon fired a round (`Fired`): `shot` is the new projectile. The muzzle, mode,
+    /// magazine and ammo are in its [`crate::ProjectileState`].
+    Fired {
+        shot: EntityId,
+        shooter: EntityId,
+        weapon: String,
+    },
+    /// A shot hit an Object, directly or with its explosion (`docs/re/sim-ballistics.md` §5,
+    /// §6): what `Hit`, `HitPart` and damage read.
+    Hit {
+        shot: EntityId,
+        /// Who fired the shot.
+        shooter: Option<EntityId>,
+        /// The Object hit, as scripts see it after the hit (a damaged Static object is promoted).
+        target: ObjectRef,
+        /// The `CfgAmmo` class.
+        ammo: String,
+        /// Where: the hit point, or the explosion's centre for an indirect hit.
+        position: DVec3,
+        /// The surface normal at the hit point, facing the shot (zero for an indirect hit).
+        normal: DVec3,
+        /// The shot's velocity at the hit (zero for an indirect hit).
+        velocity: DVec3,
+        /// `|v_in|`: the shot's speed at the hit.
+        speed_in: f64,
+        /// `|v_out|`: its speed after a ricochet or a penetration, 0 when it stopped.
+        speed_out: f64,
+        /// The hit's raw value: `hit · e` for a direct hit (§5), the falloff-scaled
+        /// `indirectHit` for an indirect one (§6).
+        value: f64,
+        /// Whether the shot itself hit (`true`) or its explosion (`false`).
+        direct: bool,
+        /// The Fire Geometry component hit (`componentNN`), when known.
+        component: Option<String>,
+        /// The Surface info of the face hit (a `.bisurf` path or `#Class`), when known.
+        surface: Option<String>,
+        /// The hit Object's radius `R` for a direct hit; the blast radius for an indirect one.
+        radius: f64,
+        /// The total damage the hit added to the target (0 when it did none).
+        damage: f64,
+    },
+    /// A shot exploded at `position` with blast radius `radius` (`indirectHitRange`).
+    Exploded {
+        shot: EntityId,
+        shooter: Option<EntityId>,
+        ammo: String,
+        position: DVec3,
+        radius: f64,
+    },
 }
 
 #[derive(Debug, Default)]
@@ -157,6 +206,13 @@ pub struct World {
     time_multiplier: f64,
     /// Variables, identities, the player and other state scripts set (`script_state.rs`).
     pub(crate) script: crate::script_state::ScriptState,
+    /// The weapons config and its parameter caches ([`World::set_config`]).
+    pub(crate) armory: Option<crate::fire::Armory>,
+    /// The simulation's random source (dispersion, ricochets, penetration spread).
+    pub(crate) random: crate::random::EngineRandom,
+    /// What each shot fired since the last [`World::drain_events`] was fired with, for the
+    /// `Fired` handlers' arguments (the shot may be gone by the time they run).
+    pub(crate) fired_shots: HashMap<EntityId, crate::fire::FiredShot>,
 }
 
 impl World {
@@ -190,6 +246,9 @@ impl World {
             acc_time: 1.0,
             time_multiplier: 1.0,
             script: Default::default(),
+            armory: None,
+            random: crate::random::EngineRandom::default(),
+            fired_shots: HashMap::new(),
         }
     }
 
@@ -217,7 +276,10 @@ impl World {
         }
         let network_id = (!request.local_only).then(|| self.allocate_network_id());
         let list = ListKind::for_class(ty.class());
-        Ok(self.insert(ty, position, network_id, Locality::Local, list))
+        let id = self.insert(ty, position, network_id, Locality::Local, list);
+        self.init_projectile(id);
+        self.arm_from_config(id);
+        Ok(id)
     }
 
     /// The next Network object ID `{local client, serial}`. Objects and groups share the serial,
@@ -411,7 +473,16 @@ impl World {
 
     /// Takes the events recorded since the last call, oldest first.
     pub fn drain_events(&mut self) -> Vec<WorldEvent> {
+        self.fired_shots.clear();
         std::mem::take(&mut self.events)
+    }
+
+    /// [`drain_events`](Self::drain_events) with what each shot fired since was fired with.
+    pub(crate) fn drain_events_and_shots(
+        &mut self,
+    ) -> (Vec<WorldEvent>, HashMap<EntityId, crate::fire::FiredShot>) {
+        let shots = std::mem::take(&mut self.fired_shots);
+        (std::mem::take(&mut self.events), shots)
     }
 
     /// Records an event for the next [`World::drain_events`]. For the simulation modules, which
@@ -518,6 +589,10 @@ impl World {
     /// one.
     pub fn collision_world(&self) -> Option<&CollisionWorld> {
         self.collision_world.as_ref()
+    }
+
+    pub(crate) fn collision_world_mut(&mut self) -> Option<&mut CollisionWorld> {
+        self.collision_world.as_mut()
     }
 
     /// Installs the model path → type lookup a Static object's model is resolved with, replacing

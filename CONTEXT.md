@@ -519,6 +519,54 @@ Script commands differ in whether their arguments must be local and whether thei
 global.
 _Avoid_: authority (alone), ownership (that is the Owner relation)
 
+## Weapons and ballistics
+
+**Weapon type, Magazine type, Ammo type**:
+What a config class becomes at runtime: a `CfgWeapons` class (its muzzles and their fire modes), a
+`CfgMagazines` class (the ammo class it holds, its `count` and its `initSpeed`) and a `CfgAmmo`
+class (the shot's flight, impact and hit parameters). Parsed once per class and shared.
+_Avoid_: weapon/magazine/ammo definition, class (that is the config node)
+
+**Loadout**:
+One unit's carried weapons and magazines together with the state that fires them: the selected
+muzzle, the magazine loaded in each muzzle with its rounds, the round reload and magazine reload
+clocks, the rounds left of a burst and a pending `fire` request. The engine's `WeaponsState`.
+_Avoid_: inventory (that is the containers and their equipment), weapon slots
+
+**Muzzle**:
+One barrel of a weapon: a `CfgWeapons` sub-class listed in `muzzles[]`, or the weapon body itself
+when it lists none (the engine's `"this"` muzzle). It holds the magazines it accepts, its fire
+modes and its `magazineReloadTime`.
+_Avoid_: barrel, gun, weapon (that is the whole class)
+
+**Fire mode**:
+One trigger setting of a Muzzle (`Single`, `Burst`, `FullAuto`, or the muzzle itself; the engine's
+`WeaponModeType`): its `reloadTime`, `burst`, `dispersion`, `autoFire` and the recoil class it
+names.
+_Avoid_: weapon mode, firing mode
+
+**Magazine**:
+One instance of a `CfgMagazines` class: the rounds left in it and its two reload clocks. The class
+is the type, the magazine the thing a Loadout loads, empties and drops.
+_Avoid_: clip, ammo (that is the `CfgAmmo` class the magazine holds)
+
+**Round reload, magazine reload**:
+The two clocks of a Loadout that gate the next round: the round reload runs after every shot
+(`mode.reloadTime`, randomised after the last round of a semi-automatic pull), the magazine reload
+while a magazine is changed (`muzzle.magazineReloadTime`). They never run together.
+_Avoid_: cooldown, fire rate (that is their inverse)
+
+**Dispersion**:
+The largest deviation of one shot from the aim on each of two axes, in radians
+(`mode.dispersion`): drawn per shot from a generator seeded by the rounds in the magazine and the
+fire direction, so the same round in the same direction always lands the same way.
+_Avoid_: spread, accuracy, cone (the pattern is a square, not a disc)
+
+**Tracer**:
+A shot that draws its flight, chosen by the magazine's `tracersEvery` and `lastRoundsTracer` from
+the rounds left before the shot.
+_Avoid_: tracer round (in prose fine; the config decides it, not the round type)
+
 ## AI
 
 **Group**:
