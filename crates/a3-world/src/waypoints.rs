@@ -108,7 +108,9 @@ impl World {
         waypoint: Waypoint,
     ) -> Option<usize> {
         let g = self.group_mut(group)?;
-        let index = index.filter(|&i| i < g.waypoints.len()).unwrap_or(g.waypoints.len());
+        let index = index
+            .filter(|&i| i < g.waypoints.len())
+            .unwrap_or(g.waypoints.len());
         g.waypoints.insert(index, waypoint);
         Some(index)
     }

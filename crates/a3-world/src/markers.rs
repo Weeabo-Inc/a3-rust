@@ -123,7 +123,11 @@ impl Markers {
     /// Markers in `allMapMarkers` order: ascending draw priority, creation order breaking ties
     /// (the original sorts by priority; before 2.18 a new marker simply went last).
     pub fn iter(&self) -> impl Iterator<Item = &Marker> {
-        let mut markers: Vec<&Marker> = self.order.iter().filter_map(|n| self.by_name.get(n)).collect();
+        let mut markers: Vec<&Marker> = self
+            .order
+            .iter()
+            .filter_map(|n| self.by_name.get(n))
+            .collect();
         // `sort_by` is stable, so equal priorities keep creation order.
         markers.sort_by(|a, b| {
             a.draw_priority

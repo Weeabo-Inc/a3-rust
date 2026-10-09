@@ -153,7 +153,9 @@ impl Handlers {
 
     /// The mission's handlers for one event type, by id.
     pub fn mission_list(&self, event_type: &str) -> Option<&[Option<Handler>]> {
-        self.mission.get(event_type).map(|list| list.entries.as_slice())
+        self.mission
+            .get(event_type)
+            .map(|list| list.entries.as_slice())
     }
 
     /// `getEventHandlerInfo [type, id]` for an Object.

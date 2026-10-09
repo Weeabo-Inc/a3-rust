@@ -66,10 +66,7 @@ fn num(vm: &mut Vm<ScriptWorld>, code: &str) -> f64 {
 fn create_marker_returns_its_name_and_refuses_a_taken_one() {
     let mut vm = vm();
 
-    assert_eq!(
-        text(&mut vm, r#"createMarker ["m1", [100, 200]]"#),
-        "m1"
-    );
+    assert_eq!(text(&mut vm, r#"createMarker ["m1", [100, 200]]"#), "m1");
     // A name that is taken: the command is ignored and reports "".
     assert_eq!(text(&mut vm, r#"createMarker ["m1", [0, 0]]"#), "");
     assert_eq!(text(&mut vm, r#"createMarkerLocal ["m2", [0, 0]]"#), "m2");
@@ -122,7 +119,10 @@ fn marker_fields_set_and_get() {
     assert!(!truth(&mut vm, r#"markerShadow "m1""#));
 
     // `getMarkerPos` reports [x, y, 0] unless the elevation is asked for.
-    assert_eq!(nums(&mut vm, r#"getMarkerPos "m1""#), vec![300.0, 400.0, 0.0]);
+    assert_eq!(
+        nums(&mut vm, r#"getMarkerPos "m1""#),
+        vec![300.0, 400.0, 0.0]
+    );
     assert_eq!(
         nums(&mut vm, r#"getMarkerPos ["m1", true]"#),
         vec![300.0, 400.0, 5.0]
@@ -160,10 +160,7 @@ fn all_map_markers_lists_by_draw_priority() {
     "#,
     );
 
-    assert_eq!(
-        text(&mut vm, r#"str allMapMarkers"#),
-        r#"["b","c","a"]"#
-    );
+    assert_eq!(text(&mut vm, r#"str allMapMarkers"#), r#"["b","c","a"]"#);
     assert_eq!(num(&mut vm, r#"markerDrawPriority "a""#), 10.0);
 }
 

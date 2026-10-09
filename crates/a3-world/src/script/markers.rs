@@ -38,7 +38,8 @@ fn items(value: &Value) -> Vec<Value> {
 
 /// The marker a name argument refers to, if it exists.
 fn marker_of<'w, H: WorldHost>(ctx: &'w Ctx<'_, H>, name: &Value) -> Option<&'w Marker> {
-    name.as_str().and_then(|n| ctx.host.world().markers().get(n))
+    name.as_str()
+        .and_then(|n| ctx.host.world().markers().get(n))
 }
 
 /// `createMarker [name, position, channel, creator]`: creates the marker when the name is free
@@ -149,19 +150,33 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     });
 
     // `getMarkerPos name` and `getMarkerPos [name, preserveElevation]`.
-    r.unary("getMarkerPos", STR, ARR, |ctx, a| Ok(marker_pos(ctx, &a, false)));
-    r.unary("markerPos", STR, ARR, |ctx, a| Ok(marker_pos(ctx, &a, false)));
-    r.unary("getMarkerPos", ARR, ARR, |ctx, a| Ok(marker_pos_array(ctx, &a)));
-    r.unary("markerPos", ARR, ARR, |ctx, a| Ok(marker_pos_array(ctx, &a)));
+    r.unary("getMarkerPos", STR, ARR, |ctx, a| {
+        Ok(marker_pos(ctx, &a, false))
+    });
+    r.unary("markerPos", STR, ARR, |ctx, a| {
+        Ok(marker_pos(ctx, &a, false))
+    });
+    r.unary("getMarkerPos", ARR, ARR, |ctx, a| {
+        Ok(marker_pos_array(ctx, &a))
+    });
+    r.unary("markerPos", ARR, ARR, |ctx, a| {
+        Ok(marker_pos_array(ctx, &a))
+    });
 
     r.binary("setMarkerPos", STR, OBJ.union(ARR), NOTHING, |ctx, n, p| {
         set_marker_pos(ctx, &n, &p);
         Ok(Value::Nothing)
     });
-    r.binary("setMarkerPosLocal", STR, OBJ.union(ARR), NOTHING, |ctx, n, p| {
-        set_marker_pos(ctx, &n, &p);
-        Ok(Value::Nothing)
-    });
+    r.binary(
+        "setMarkerPosLocal",
+        STR,
+        OBJ.union(ARR),
+        NOTHING,
+        |ctx, n, p| {
+            set_marker_pos(ctx, &n, &p);
+            Ok(Value::Nothing)
+        },
+    );
 
     r.binary("setMarkerDrawPriority", STR, NUM, NOTHING, |ctx, n, p| {
         if let (Some(name), Some(priority)) = (n.as_str(), p.as_number()) {
@@ -179,11 +194,25 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     });
 
     // The string fields (the two `getMarker*` aliases the engine table has).
-    marker_string_field!(r, marker_type, "markerType", "setMarkerType", "setMarkerTypeLocal");
+    marker_string_field!(
+        r,
+        marker_type,
+        "markerType",
+        "setMarkerType",
+        "setMarkerTypeLocal"
+    );
     marker_string_field!(r, text, "markerText", "setMarkerText", "setMarkerTextLocal");
-    marker_string_field!(r, color, "markerColor", "setMarkerColor", "setMarkerColorLocal");
+    marker_string_field!(
+        r,
+        color,
+        "markerColor",
+        "setMarkerColor",
+        "setMarkerColorLocal"
+    );
     r.unary("getMarkerColor", STR, STR, |ctx, a| {
-        Ok(Value::from(marker_of(ctx, &a).map_or("", |m| m.color.as_str())))
+        Ok(Value::from(
+            marker_of(ctx, &a).map_or("", |m| m.color.as_str()),
+        ))
     });
     r.unary("getMarkerType", STR, STR, |ctx, a| {
         Ok(Value::from(
@@ -193,7 +222,9 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
 
     // The shape is stored uppercased, as `markerShape` reports it.
     r.unary("markerShape", STR, STR, |ctx, a| {
-        Ok(Value::from(marker_of(ctx, &a).map_or("", |m| m.shape.as_str())))
+        Ok(Value::from(
+            marker_of(ctx, &a).map_or("", |m| m.shape.as_str()),
+        ))
     });
     r.binary("setMarkerShape", STR, STR, NOTHING, |ctx, n, v| {
         if let (Some(name), Some(shape)) = (n.as_str(), v.as_str()) {
@@ -211,7 +242,13 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
         }
         Ok(Value::Nothing)
     });
-    marker_string_field!(r, brush, "markerBrush", "setMarkerBrush", "setMarkerBrushLocal");
+    marker_string_field!(
+        r,
+        brush,
+        "markerBrush",
+        "setMarkerBrush",
+        "setMarkerBrushLocal"
+    );
 
     // Size.
     r.unary("markerSize", STR, ARR, |ctx, a| Ok(marker_size(ctx, &a)));
@@ -226,7 +263,13 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     });
 
     // Direction, alpha, channel and the polyline.
-    marker_number_field!(r, direction, "markerDir", "setMarkerDir", "setMarkerDirLocal");
+    marker_number_field!(
+        r,
+        direction,
+        "markerDir",
+        "setMarkerDir",
+        "setMarkerDirLocal"
+    );
     r.unary("markerAlpha", STR, NUM, |ctx, a| {
         Ok(Value::Number(marker_of(ctx, &a).map_or(0.0, |m| m.alpha)))
     });
@@ -243,7 +286,9 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
             marker_of(ctx, &a).map_or(-1.0, |m| m.channel as f32),
         ))
     });
-    r.unary("markerPolyline", STR, ARR, |ctx, a| Ok(marker_polyline(ctx, &a)));
+    r.unary("markerPolyline", STR, ARR, |ctx, a| {
+        Ok(marker_polyline(ctx, &a))
+    });
     r.binary("setMarkerPolyline", STR, ARR, NOTHING, |ctx, n, p| {
         set_marker_polyline(ctx, &n, &p);
         Ok(Value::Nothing)
