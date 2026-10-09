@@ -197,9 +197,25 @@ fn register_player<H: WorldHost>(r: &mut Registry<H>) {
         let w = ctx.host.world();
         Ok(entity_value(w, w.camera_on()))
     });
-    // 0x542510: an AI unit's vehicle; anything else (objNull included) is returned as given.
-    // Units are never inside a vehicle yet, so a unit is its own vehicle.
-    r.unary("vehicle", OBJ, OBJ, |_, a| Ok(a));
+    // 0x542510: the vehicle a unit is in, or the object itself when it is in none (which is what
+    // the engine does for anything that is not a unit, `objNull` included). A seat is recorded on
+    // the *vehicle* (`ObjectState`'s `driver`, `gunner`, `cargo_seats`), so the lookup walks the
+    // entities that hold one. That is linear in the world's objects per call, which is what the
+    // engine's own seat lookup costs too.
+    r.unary("vehicle", OBJ, OBJ, |ctx, a| {
+        let w = ctx.host.world();
+        let Some(unit) = entity_of_class(w, &a, EntityClass::EntityAi) else {
+            return Ok(a);
+        };
+        let vehicle = w.entities().find_map(|e| {
+            let state = w.object_state(e.id())?;
+            let in_seat = state.driver == Some(unit)
+                || state.gunner == Some(unit)
+                || state.cargo_seats.iter().any(|(_, u)| *u == unit);
+            in_seat.then_some(e.id())
+        });
+        Ok(vehicle.map_or(a, |v| object_value(w, ObjectRef::Entity(v))))
+    });
     // 0x535b00: an EntityAI whose brain is player-controlled.
     r.unary("isPlayer", OBJ, BOOL, |ctx, a| {
         let w = ctx.host.world();

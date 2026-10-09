@@ -12,7 +12,7 @@ allVariables	unary	0x49b2e0	verified	decompiled 0x49b2e0	sorted instead of hash 
 allVariables	unary	0x49a4d0	verified	decompiled 0x49a4d0	sorted instead of hash order
 player	nular	0x8b1120	verified	decompiled 0x8b1120	
 cameraOn	nular	0x8a5bf0	stub	decompiled 0x8a5bf0	no camera system: the player unless set
-vehicle	unary	0x542510	stub	decompiled 0x542510	no crew yet: every object is its own vehicle
+vehicle	unary	0x542510	verified	decompiled 0x542510	a unit in a recorded seat reports its vehicle; anything else is its own vehicle
 isPlayer	unary	0x535b00	verified	decompiled 0x535b00	single player only
 isPlayer	unary	0x535b70	verified	decompiled 0x535b70	single player only
 setName	binary	0x553560	verified	decompiled 0x553560	
