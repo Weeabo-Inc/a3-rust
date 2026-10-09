@@ -152,6 +152,8 @@ pub struct World {
     acc_time: f64,
     /// `timeMultiplier`: the mission's time scale.
     time_multiplier: f64,
+    /// Variables, identities, the player and other state scripts set (`script_state.rs`).
+    pub(crate) script: crate::script_state::ScriptState,
 }
 
 impl World {
@@ -183,6 +185,7 @@ impl World {
             observer: None,
             acc_time: 1.0,
             time_multiplier: 1.0,
+            script: Default::default(),
         }
     }
 
@@ -333,6 +336,7 @@ impl World {
     pub fn flush_deletions(&mut self) {
         for id in std::mem::take(&mut self.pending_deletions) {
             self.leave_group(id);
+            self.script.forget_entity(id);
             let slot = &mut self.slots[id.index as usize];
             let Some(entity) = slot.entity.take() else {
                 continue;

@@ -348,6 +348,7 @@ impl World {
         slot.generation = slot.generation.wrapping_add(1);
         groups.free.push(id.index);
         groups.by_network_id.remove(&g.network_id);
+        self.script.forget_group(id);
         Ok(())
     }
 
