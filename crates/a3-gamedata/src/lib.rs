@@ -29,6 +29,7 @@ mod sqf_config;
 pub use boot::{
     CompileStats, FunctionsReport, compile_all, engine_command_table, error_category,
     init_functions, register_headless, script_registry, script_vm, unimplemented_usage,
+    unimplemented_usage_in,
 };
 pub use scripts::{VfsHost, VfsResolver, decode_text, load_text_config, read_text};
 pub use sqf_config::{ConfigHost, ConfigRoot, SqfConfigs, register_config_commands};

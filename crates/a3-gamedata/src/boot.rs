@@ -179,40 +179,61 @@ pub fn init_functions(vm: &mut Vm<VfsHost>) -> FunctionsReport {
 /// How often each command without an implementation is used (statically) by the code values in
 /// `namespace`, most used first. Shows what a script library still needs from the VM.
 pub fn unimplemented_usage<H: Host>(vm: &Vm<H>, namespace: Namespace) -> Vec<(String, usize)> {
-    fn scan<H: Host>(
-        vm: &Vm<H>,
-        code: &Code,
-        seen: &mut std::collections::HashSet<*const Instr>,
-        out: &mut BTreeMap<String, usize>,
-    ) {
-        if !seen.insert(code.instructions().as_ptr()) {
-            return;
-        }
-        for instr in code.instructions() {
-            let (id, form) = match instr {
-                Instr::Nular(id) => (*id, Form::Nular),
-                Instr::Unary(id) => (*id, Form::Unary),
-                Instr::Binary(id) => (*id, Form::Binary),
-                Instr::Push(Value::Code(inner)) => {
-                    scan(vm, inner, seen, out);
-                    continue;
-                }
-                _ => continue,
-            };
-            let name = &vm.table().get(id).name;
-            if !vm.registry().is_implemented(name, form) {
-                *out.entry(format!("{name} ({})", form.as_str()))
-                    .or_default() += 1;
-            }
-        }
-    }
     let mut counts = BTreeMap::new();
     let mut seen = std::collections::HashSet::new();
     for (_, value) in vm.namespace(namespace).iter() {
         if let Value::Code(code) = value {
-            scan(vm, code, &mut seen, &mut counts);
+            scan_unimplemented(vm, code, &mut seen, &mut counts);
         }
     }
+    ranked(counts)
+}
+
+/// Like [`unimplemented_usage`], for code the caller still holds rather than a namespace (an
+/// `init.sqf` a runner just compiled, say).
+pub fn unimplemented_usage_in<'a, H: Host>(
+    vm: &Vm<H>,
+    codes: impl IntoIterator<Item = &'a Code>,
+) -> Vec<(String, usize)> {
+    let mut counts = BTreeMap::new();
+    let mut seen = std::collections::HashSet::new();
+    for code in codes {
+        scan_unimplemented(vm, code, &mut seen, &mut counts);
+    }
+    ranked(counts)
+}
+
+/// Adds the commands of `code` (and the code values inside it) that the VM cannot run to `out`.
+fn scan_unimplemented<H: Host>(
+    vm: &Vm<H>,
+    code: &Code,
+    seen: &mut std::collections::HashSet<*const Instr>,
+    out: &mut BTreeMap<String, usize>,
+) {
+    if !seen.insert(code.instructions().as_ptr()) {
+        return;
+    }
+    for instr in code.instructions() {
+        let (id, form) = match instr {
+            Instr::Nular(id) => (*id, Form::Nular),
+            Instr::Unary(id) => (*id, Form::Unary),
+            Instr::Binary(id) => (*id, Form::Binary),
+            Instr::Push(Value::Code(inner)) => {
+                scan_unimplemented(vm, inner, seen, out);
+                continue;
+            }
+            _ => continue,
+        };
+        let name = &vm.table().get(id).name;
+        if !vm.registry().is_implemented(name, form) {
+            *out.entry(format!("{name} ({})", form.as_str()))
+                .or_default() += 1;
+        }
+    }
+}
+
+/// `counts` as a list, most used first, ties by name.
+fn ranked(counts: BTreeMap<String, usize>) -> Vec<(String, usize)> {
     let mut out: Vec<(String, usize)> = counts.into_iter().collect();
     out.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
     out
