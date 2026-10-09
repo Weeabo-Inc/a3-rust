@@ -3,6 +3,7 @@
 //! anything and compares exactly (case-sensitive, deep for arrays).
 
 use super::*;
+use crate::value::HandleKind;
 
 /// Types `==` and `!=` accept (both sides of the same type).
 const EQ_TYPES: [Type; 16] = [
@@ -27,6 +28,16 @@ const EQ_TYPES: [Type; 16] = [
 fn loose_equal(a: &Value, b: &Value) -> bool {
     match (a, b) {
         (Value::String(x), Value::String(y)) => x.eq_ignore_ascii_case(y),
+        // Objects, groups, controls and the like compare by identity and are
+        // never equal when null: `objNull == objNull` is false, while
+        // `configNull == configNull` is true (server oracle).
+        (Value::Handle(x), Value::Handle(y)) => {
+            if x.kind == HandleKind::Config {
+                x == y
+            } else {
+                x == y && !x.is_null()
+            }
+        }
         _ => a.is_equal_to(b),
     }
 }

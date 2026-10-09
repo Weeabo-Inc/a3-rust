@@ -3,7 +3,7 @@
 
 mod common;
 
-use common::{err, s, vm};
+use common::{s, vm};
 
 #[test]
 fn structured_text() {
@@ -117,9 +117,15 @@ fn hash_map_object_inheritance_and_flags() {
         v.to_sqf_string(),
         "[[\"animal\",\"pig\"],[\"IAnimal\",\"Pig\"],\"oink\",true]"
     );
+    // Logged, not fatal (server oracle: command errors do not stop a
+    // script).
+    let mut vm2 = common::vm();
+    vm2.eval("private _o = createHashMapObject [[[\"#flags\", [\"sealed\"]], [\"a\", 1]]]; _o set [\"b\", 2]")
+        .unwrap();
     assert!(
-        err("private _o = createHashMapObject [[[\"#flags\", [\"sealed\"]], [\"a\", 1]]]; _o set [\"b\", 2]")
-            .contains("Tried to add key to sealed HashMap")
+        vm2.host.errors[0].contains("Tried to add key to sealed HashMap"),
+        "{:?}",
+        vm2.host.errors
     );
     assert_eq!(
         s(
@@ -127,9 +133,13 @@ fn hash_map_object_inheritance_and_flags() {
         ),
         "2"
     );
+    let mut vm3 = common::vm();
+    vm3.eval("private _o = createHashMapObject [[[\"#flags\", [\"noCopy\"]]]]; +_o")
+        .unwrap();
     assert!(
-        err("private _o = createHashMapObject [[[\"#flags\", [\"noCopy\"]]]]; +_o")
-            .contains("noCopy")
+        vm3.host.errors[0].contains("noCopy"),
+        "{:?}",
+        vm3.host.errors
     );
 }
 

@@ -62,6 +62,9 @@ pub struct Invoke {
     /// Reading a `nil` variable in this scope (and scopes it calls) is not
     /// an error (`isNil {...}`).
     pub nil_ok: bool,
+    /// The scope and everything it calls runs in the unscheduled
+    /// environment (`canSuspend` is false in it; `isNil {...}`).
+    pub unscheduled: bool,
     pub(crate) switch: Option<Rc<SwitchState>>,
 }
 
@@ -74,6 +77,7 @@ impl Invoke {
             namespace: None,
             capture: false,
             nil_ok: false,
+            unscheduled: false,
             switch: None,
         }
     }

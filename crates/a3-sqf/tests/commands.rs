@@ -2,7 +2,7 @@
 
 mod common;
 
-use common::{err, eval, s, vm};
+use common::{eval, s, vm};
 
 #[test]
 fn hash_map_basics() {
@@ -22,7 +22,7 @@ fn hash_map_basics() {
         s("_m = [[1, 2], [\"x\", \"y\"]] createHashMapFromArray []; count _m"),
         "2"
     );
-    assert_eq!(s("_m = createHashMap; _m get \"missing\""), "any");
+    assert_eq!(s("_m = createHashMap; _m get \"missing\""), "<null>");
     assert_eq!(s("_m = createHashMap; _m getOrDefault [\"k\", 5]"), "5");
     assert_eq!(
         s("_m = createHashMap; _m getOrDefault [\"k\", 5, true]; _m get \"k\""),
@@ -89,8 +89,32 @@ fn hash_map_array_keys_are_snapshots() {
 
 #[test]
 fn hash_map_rejects_bad_keys_and_read_only_edits() {
-    assert!(err("createHashMap set [objNull, 1]").contains("Type Object"));
-    assert!(err("_m = compileFinal createHashMap; _m set [1, 1]").contains("Read-only"));
+    // Both errors are logged and the script goes on (server oracle: the
+    // probe `hash.object_key` yields 0, it does not abort).
+    let mut vm = vm();
+    assert_eq!(
+        vm.eval("_h = createHashMap; _h set [objNull, 1]; count _h")
+            .unwrap()
+            .to_sqf_string(),
+        "0"
+    );
+    assert!(
+        vm.host.errors[0].contains("Type Object"),
+        "{:?}",
+        vm.host.errors
+    );
+    let mut vm2 = common::vm();
+    assert_eq!(
+        vm2.eval("_m = compileFinal createHashMap; _m set [1, 1]; count _m")
+            .unwrap()
+            .to_sqf_string(),
+        "0"
+    );
+    assert!(
+        vm2.host.errors[0].contains("Read-only"),
+        "{:?}",
+        vm2.host.errors
+    );
 }
 
 #[test]
@@ -206,7 +230,13 @@ fn parse_simple_array() {
         s("parseSimpleArray \"[1, -2.5, \"\"a\"\", true, [false, []]]\""),
         "[1,-2.5,\"a\",true,[false,[]]]"
     );
-    assert_eq!(s("parseSimpleArray \"[1 + 1]\""), "[]");
+    // On bad input the prefix parsed so far is returned and an error is
+    // logged (server oracle).
+    assert_eq!(s("parseSimpleArray \"[1 + 1]\""), "[1]");
+    assert_eq!(s("parseSimpleArray \"[1, b]\""), "[1]");
+    assert_eq!(s("parseSimpleArray \"[1, 2\""), "[1,2]");
+    assert_eq!(s("parseSimpleArray \"[1, 2,]\""), "[1,2]");
+    assert_eq!(s("parseSimpleArray \"1\""), "[]");
 }
 
 #[test]

@@ -264,13 +264,42 @@ fn replace<H: Host>(ctx: &mut Ctx<'_, H>, a: &Value, b: &Value) -> Result<Value,
 }
 
 pub(super) fn register<H: Host>(r: &mut Registry<H>) {
+    // A pattern that does not compile is logged and the command gives its
+    // empty result, as the original does (server oracle: `rex.bad_pattern`
+    // is false, not an aborted script).
     r.binary("regexMatch", STR, STR, BOOL, |ctx, a, b| {
         ctx.take_unicode();
-        let p = compile(string(&b), true)?;
-        Ok(Value::Bool(p.re.is_match(string(&a)).map_err(regex_err)?))
+        let p = match compile(string(&b), true) {
+            Ok(p) => p,
+            Err(e) => {
+                ctx.report(e);
+                return Ok(Value::Bool(false));
+            }
+        };
+        match p.re.is_match(string(&a)) {
+            Ok(hit) => Ok(Value::Bool(hit)),
+            Err(e) => {
+                ctx.report(regex_err(e));
+                Ok(Value::Bool(false))
+            }
+        }
     });
-    r.binary("regexFind", STR, ARR, ARR, |ctx, a, b| find(ctx, &a, &b));
+    r.binary("regexFind", STR, ARR, ARR, |ctx, a, b| {
+        match find(ctx, &a, &b) {
+            Ok(v) => Ok(v),
+            Err(e) => {
+                ctx.report(e);
+                Ok(Value::array([]))
+            }
+        }
+    });
     r.binary("regexReplace", STR, ARR, STR, |ctx, a, b| {
-        replace(ctx, &a, &b)
+        match replace(ctx, &a, &b) {
+            Ok(v) => Ok(v),
+            Err(e) => {
+                ctx.report(e);
+                Ok(Value::from(string(&a)))
+            }
+        }
     });
 }

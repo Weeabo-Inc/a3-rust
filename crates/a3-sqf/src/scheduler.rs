@@ -252,8 +252,8 @@ fn run_frame<H: Host>(
         }
         match outcome {
             Outcome::Done(_) | Outcome::Terminated => report.finished += 1,
+            // The script error was already reported by the run loop.
             Outcome::Failed(e) => {
-                host.report_error(&e);
                 report.errors.push(e);
                 report.finished += 1;
             }

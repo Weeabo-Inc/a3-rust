@@ -40,6 +40,11 @@ pub(crate) struct CodeFrame {
     /// First scope of a new evaluation context (`isNil {...}`), where
     /// `diag_scope` counts from.
     pub context_root: bool,
+    /// An error in this scope ends only the scope, not the script (the code
+    /// of `isNil {...}`).
+    pub error_barrier: bool,
+    /// The scope and everything it calls runs unscheduled (`isNil {...}`).
+    pub unscheduled: bool,
 }
 
 pub(crate) enum Frame<H: Host> {
@@ -69,6 +74,9 @@ pub(crate) struct ScriptState<H: Host> {
     /// `toFixed n`: numbers print with `n` decimals for the rest of the
     /// script (a setting of the script's context, not of a scope).
     pub fixed: Option<u8>,
+    /// A script error was already reported: the engine logs the first one
+    /// only and goes on (server oracle: `1/0; 5%0; "END"` logs one error).
+    pub error_reported: bool,
 }
 
 /// How a run of a script ended.
@@ -111,6 +119,7 @@ impl<H: Host> ScriptState<H> {
             resume_with: None,
             final_locals: Vec::new(),
             fixed: None,
+            error_reported: false,
         };
         let mut inv = Invoke::new(code);
         inv.this = Some(this.unwrap_or(Value::Nil));
@@ -141,6 +150,7 @@ impl<H: Host> ScriptState<H> {
         }
         let parent_nil_ok = self.top_code().is_some_and(|cf| cf.nil_ok);
         let nil_ok = inv.nil_ok || parent_nil_ok;
+        let parent_unscheduled = self.top_code().is_some_and(|cf| cf.unscheduled);
         self.frames.push(Frame::Code(CodeFrame {
             code: inv.code,
             ip: 0,
@@ -153,6 +163,8 @@ impl<H: Host> ScriptState<H> {
             nil_ok,
             private_all: false,
             context_root: inv.nil_ok,
+            error_barrier: inv.nil_ok,
+            unscheduled: inv.unscheduled || parent_unscheduled,
         }));
     }
 
@@ -263,6 +275,18 @@ impl<H: Host> ScriptState<H> {
         }
     }
 
+    /// `private "name"`: declares the variable in the current scope holding
+    /// nil. A variable that is already there keeps its value, so
+    /// `private ["_this"]` inside a call does not hide `_this` (server
+    /// oracle).
+    pub fn declare_private(&mut self, name: Sym) {
+        if let Some(cf) = self.top_code_mut() {
+            if !cf.locals.iter().any(|(s, _)| *s == name) {
+                cf.locals.push((name, Value::Nil));
+            }
+        }
+    }
+
     /// The error position: the instruction the innermost code frame is at.
     pub(crate) fn error_position(&self) -> Option<(Code, u32)> {
         self.top_code()
@@ -306,6 +330,31 @@ pub(crate) fn assign_var<H: Host>(
     Ok(())
 }
 
+/// Reports a script error, once per script: the engine writes the first
+/// error of a script to the RPT and swallows the rest (server oracle:
+/// `1/0; 5%0; "END"` logs one line).
+pub(crate) fn report_error<H: Host>(host: &mut H, script: &mut ScriptState<H>, error: ScriptError) {
+    if !script.error_reported {
+        script.error_reported = true;
+        host.report_error(&error);
+    }
+}
+
+/// A script error a command raised at the current position.
+fn command_error<H: Host>(
+    script: &ScriptState<H>,
+    error: SqfError,
+    command: Option<&str>,
+) -> ScriptError {
+    let pos = script.error_position();
+    ScriptError::new(
+        error,
+        command,
+        pos.as_ref()
+            .map(|(code, off)| (code.source_file().as_ref(), *off)),
+    )
+}
+
 const BUDGET_CHECK_INTERVAL: u32 = 256;
 
 /// Runs `script` until it finishes, fails, suspends or (with a deadline)
@@ -328,10 +377,12 @@ pub(crate) fn run<H: Host>(
             Next::Deliver(v, exited) => deliver(host, reg, vm, script, v, exited),
             Next::Unwind(u) => unwind(host, reg, vm, script, u),
             Next::Suspend(s) => {
-                if script.scheduled {
+                if script.scheduled && !script.top_code().is_some_and(|cf| cf.unscheduled) {
                     script.resume_with = Some(Value::Nothing);
                     return Outcome::Suspended(s);
                 }
+                // The VM itself cannot suspend here: that ends the script
+                // (a command error would only be logged).
                 Next::Fail(SqfError::SuspendNotAllowed, None)
             }
             Next::Finish(v) => {
@@ -345,19 +396,53 @@ pub(crate) fn run<H: Host>(
                 return Outcome::Terminated;
             }
             Next::Fail(e, cmd) => {
-                let pos = script.error_position();
-                let err = ScriptError::new(
-                    e,
-                    cmd.as_deref(),
-                    pos.as_ref()
-                        .map(|(code, off)| (code.source_file().as_ref(), *off)),
-                );
-                script.frames.clear();
-                script.stack.clear();
-                return Outcome::Failed(err);
+                let err = command_error(script, e, cmd.as_deref());
+                report_error(host, script, err.clone());
+                // Inside `isNil {...}` an error ends only that block; the
+                // block's value is the empty value and `isNil` is true.
+                if let Some(i) = barrier_frame(script) {
+                    while script.frames.len() > i {
+                        script.pop_frame();
+                    }
+                    Next::Deliver(Value::Nothing, false)
+                } else {
+                    script.frames.clear();
+                    script.stack.clear();
+                    return Outcome::Failed(err);
+                }
             }
         };
     }
+}
+
+/// The innermost frame whose errors are contained (`isNil {...}`).
+fn barrier_frame<H: Host>(script: &ScriptState<H>) -> Option<usize> {
+    script
+        .frames
+        .iter()
+        .rposition(|f| matches!(f, Frame::Code(cf) if cf.error_barrier))
+}
+
+/// Reports a command error and continues with the empty value: a handler
+/// error (a bad index, a type check inside a command, a regexp that does not
+/// compile, ...) is logged and the script goes on (server oracle).
+///
+/// A suspension the VM cannot honour (`sleep`/`waitUntil` in the unscheduled
+/// environment) is not a command error but a VM-level failure: it ends the
+/// script.
+fn report_and_continue<H: Host>(
+    host: &mut H,
+    script: &mut ScriptState<H>,
+    e: SqfError,
+    cmd: Option<&str>,
+) -> Next {
+    if matches!(e, SqfError::SuspendNotAllowed) {
+        return Next::Fail(e, cmd.map(str::to_string));
+    }
+    let err = command_error(script, e, cmd);
+    report_error(host, script, err);
+    script.stack.push(Value::Nothing);
+    Next::Continue
 }
 
 fn handle_flow<H: Host>(script: &mut ScriptState<H>, flow: Flow<H>) -> Next {
@@ -428,11 +513,17 @@ fn exec_code<H: Host>(
             Instr::GetVar(name) => {
                 let v = read_var(vm, script, *name);
                 if v.is_nil() && !matches!(&script.frames[fi], Frame::Code(cf) if cf.nil_ok) {
+                    // An undefined variable is an error the script survives:
+                    // the read yields nil (server oracle).
                     save_ip!();
-                    return Next::Fail(
+                    let err = command_error(
+                        script,
                         SqfError::UndefinedVariable(name.as_str().to_string()),
                         None,
                     );
+                    report_error(host, script, err);
+                    script.stack.push(Value::Nil);
+                    continue;
                 }
                 script.stack.push(v);
             }
@@ -446,7 +537,7 @@ fn exec_code<H: Host>(
                 let v = script.stack.pop().unwrap_or(Value::Nil);
                 save_ip!();
                 if let Err(e) = assign_var(vm, script, *name, v) {
-                    return Next::Fail(e, None);
+                    return report_and_continue(host, script, e, None);
                 }
             }
             Instr::AssignPrivate(name) => {
@@ -461,8 +552,8 @@ fn exec_code<H: Host>(
             }
             Instr::Nular(id) => {
                 save_ip!();
+                let name = reg.table().get(*id).name.clone();
                 let Some(imp) = reg.nular_impl(*id) else {
-                    let name = reg.table().get(*id).name.clone();
                     return Next::Fail(SqfError::Unimplemented(name.clone()), Some(name));
                 };
                 let mut ctx = Ctx {
@@ -479,6 +570,8 @@ fn exec_code<H: Host>(
                             script.stack.push(v);
                             continue;
                         }
+                        // A command's own error is logged and the script
+                        // goes on with the empty value.
                         Err(e) => Err(e),
                     },
                     NularImpl::Flow(f) => f(&mut ctx),
@@ -486,11 +579,12 @@ fn exec_code<H: Host>(
                 match flow {
                     Ok(Flow::Value(v)) => script.stack.push(v),
                     Ok(flow) => return handle_flow(script, flow),
-                    Err(e) => return Next::Fail(e, Some(reg.table().get(*id).name.clone())),
+                    Err(e) => return report_and_continue(host, script, e, Some(&name)),
                 }
             }
             Instr::Unary(id) => {
                 save_ip!();
+                let name = reg.table().get(*id).name.clone();
                 let arg = script.stack.pop().unwrap_or(Value::Nil);
                 let imp = match reg.unary_impl(*id, &arg) {
                     Ok(Some(imp)) => imp,
@@ -498,7 +592,9 @@ fn exec_code<H: Host>(
                         script.stack.push(Value::Nil);
                         continue;
                     }
-                    Err(e) => return Next::Fail(e, Some(reg.table().get(*id).name.clone())),
+                    // No overload takes the argument: the engine stops the
+                    // script here (server oracle: `1 + "x"`).
+                    Err(e) => return Next::Fail(e, Some(name)),
                 };
                 let mut ctx = Ctx {
                     host,
@@ -519,11 +615,12 @@ fn exec_code<H: Host>(
                 match flow {
                     Ok(Flow::Value(v)) => script.stack.push(v),
                     Ok(flow) => return handle_flow(script, flow),
-                    Err(e) => return Next::Fail(e, Some(reg.table().get(*id).name.clone())),
+                    Err(e) => return report_and_continue(host, script, e, Some(&name)),
                 }
             }
             Instr::Binary(id) => {
                 save_ip!();
+                let name = reg.table().get(*id).name.clone();
                 let right = script.stack.pop().unwrap_or(Value::Nil);
                 let left = script.stack.pop().unwrap_or(Value::Nil);
                 let imp = match reg.binary_impl(*id, &left, &right) {
@@ -532,7 +629,7 @@ fn exec_code<H: Host>(
                         script.stack.push(Value::Nil);
                         continue;
                     }
-                    Err(e) => return Next::Fail(e, Some(reg.table().get(*id).name.clone())),
+                    Err(e) => return Next::Fail(e, Some(name)),
                 };
                 let mut ctx = Ctx {
                     host,
@@ -553,7 +650,7 @@ fn exec_code<H: Host>(
                 match flow {
                     Ok(Flow::Value(v)) => script.stack.push(v),
                     Ok(flow) => return handle_flow(script, flow),
-                    Err(e) => return Next::Fail(e, Some(reg.table().get(*id).name.clone())),
+                    Err(e) => return report_and_continue(host, script, e, Some(&name)),
                 }
             }
         }

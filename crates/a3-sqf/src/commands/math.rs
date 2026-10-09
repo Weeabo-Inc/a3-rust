@@ -34,18 +34,21 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
     });
     r.unary("-", NUM, NUM, |_, a| Ok(Value::Number(-num(&a))));
     r.binary("*", NUM, NUM, NUM, |_, a, b| Ok(number(num(&a) * num(&b))));
-    r.binary("/", NUM, NUM, NUM, |_, a, b| {
+    // A zero divisor is an error the script survives: the division still
+    // happens (`1/0` is `inf`) and `x % 0` is 0 (server oracle).
+    r.binary("/", NUM, NUM, NUM, |ctx, a, b| {
         let d = num(&b);
         if d == 0.0 {
-            return Err(SqfError::ZeroDivisor);
+            ctx.report(SqfError::ZeroDivisor);
         }
         Ok(number(num(&a) / d))
     });
     for name in ["%", "mod"] {
-        r.binary(name, NUM, NUM, NUM, |_, a, b| {
+        r.binary(name, NUM, NUM, NUM, |ctx, a, b| {
             let d = num(&b);
             if d == 0.0 {
-                return Err(SqfError::ZeroDivisor);
+                ctx.report(SqfError::ZeroDivisor);
+                return Ok(Value::Number(0.0));
             }
             Ok(number(num(&a) % d))
         });
@@ -88,28 +91,6 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         let digits = round_half_even(num(&b)).clamp(0, 20) as usize;
         Ok(Value::from(crate::number::format_fixed(num(&a), digits)))
     });
-    r.binary("bitAnd", NUM, NUM, NUM, |_, a, b| {
-        Ok(bits(&a, &b, |x, y| x & y))
-    });
-    r.binary("bitOr", NUM, NUM, NUM, |_, a, b| {
-        Ok(bits(&a, &b, |x, y| x | y))
-    });
-    r.binary("bitXor", NUM, NUM, NUM, |_, a, b| {
-        Ok(bits(&a, &b, |x, y| x ^ y))
-    });
-    r.binary("bitShiftLeft", NUM, NUM, NUM, |_, a, b| {
-        Ok(bits(&a, &b, |x, y| x.checked_shl(y).unwrap_or(0)))
-    });
-    r.binary("bitShiftRight", NUM, NUM, NUM, |_, a, b| {
-        Ok(bits(&a, &b, |x, y| x.checked_shr(y).unwrap_or(0)))
-    });
-    r.unary("bitNot", NUM, NUM, |_, a| {
-        Ok(Value::Number((!(num(&a) as u32)) as f32))
-    });
-}
-
-fn bits(a: &Value, b: &Value, f: fn(u32, u32) -> u32) -> Value {
-    Value::Number(f(num(a) as u32, num(b) as u32) as f32)
 }
 
 macro_rules! unary_math {

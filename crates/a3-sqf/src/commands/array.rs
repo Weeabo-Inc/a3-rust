@@ -19,8 +19,9 @@ fn element_at(a: &Value, i: i64) -> Option<Value> {
 }
 
 /// `array select index` and `array # index`: a negative index counts from
-/// the end; an index equal to the size gives nil; anything further out is
-/// the engine's "N elements provided, M expected" error.
+/// the end; an index equal to the size gives the empty value; anything
+/// further out is the engine's "N elements provided, M expected" error and
+/// also yields the empty value.
 fn select_index(a: &Value, b: &Value) -> Result<Value, SqfError> {
     let len = array(a).len() as i64;
     let mut i = index(num(b));
@@ -29,14 +30,14 @@ fn select_index(a: &Value, b: &Value) -> Result<Value, SqfError> {
     }
     if i < 0 || i >= len {
         if i == len {
-            return Ok(Value::Nil);
+            return Ok(Value::Nothing);
         }
         return Err(SqfError::generic(format!(
             "{len} elements provided, {} expected",
             i + 1
         )));
     }
-    Ok(element_at(a, i).unwrap_or(Value::Nil))
+    Ok(element_at(a, i).unwrap_or(Value::Nothing))
 }
 
 fn check_not_self(target: &Array, v: &Value) -> Result<(), SqfError> {
@@ -54,7 +55,7 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
     });
     r.binary("select", ARR, NUM, ANY, |_, a, b| select_index(&a, &b));
     r.binary("select", ARR, BOOL, ANY, |_, a, b| {
-        Ok(element_at(&a, i64::from(boolean(&b))).unwrap_or(Value::Nil))
+        Ok(element_at(&a, i64::from(boolean(&b))).unwrap_or(Value::Nothing))
     });
     r.binary("select", ARR, ARR, ARR, |_, a, b| {
         let args = array(&b);
@@ -100,34 +101,42 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         arr.borrow_mut().extend(extra);
         Ok(Value::Nothing)
     });
+    // `set [index, value]`: an index equal to the size appends, a negative
+    // index counts from the end (`-1` is the last element), further out is
+    // the engine's Zero divisor error and changes nothing, and a gap is
+    // filled with the empty value (server oracle).
     r.binary("set", ARR, ARR, NOTHING, |_, a, b| {
         let args = array(&b);
         let args = args.borrow();
-        let i = index(expect_num(args.first().unwrap_or(&Value::Nil))?);
-        if i < 0 {
-            return Err(SqfError::ZeroDivisor);
-        }
-        let v = args.get(1).cloned().unwrap_or(Value::Nil);
+        let mut i = index(expect_num(args.first().unwrap_or(&Value::Nil))?);
+        let v = args.get(1).cloned().unwrap_or(Value::Nothing);
         let arr = array(&a);
         check_not_self(&arr, &v)?;
         let mut items = arr.borrow_mut();
+        let len = items.len() as i64;
+        if i < 0 {
+            i += len;
+            if i < 0 {
+                return Err(SqfError::ZeroDivisor);
+            }
+        }
         let i = i as usize;
         if i >= items.len() {
-            items.resize(i + 1, Value::Nil);
+            items.resize(i + 1, Value::Nothing);
         }
         items[i] = v;
         Ok(Value::Nothing)
     });
     r.binary("resize", ARR, NUM, NOTHING, |_, a, b| {
         let n = num(&b).max(0.0) as usize;
-        array(&a).borrow_mut().resize(n, Value::Nil);
+        array(&a).borrow_mut().resize(n, Value::Nothing);
         Ok(Value::Nothing)
     });
     r.binary("resize", ARR, ARR, NOTHING, |_, a, b| {
         let args = array(&b);
         let args = args.borrow();
         let n = expect_num(args.first().unwrap_or(&Value::Nil))?.max(0.0) as usize;
-        let fill = args.get(1).cloned().unwrap_or(Value::Nil);
+        let fill = args.get(1).cloned().unwrap_or(Value::Nothing);
         array(&a).borrow_mut().resize(n, fill);
         Ok(Value::Nothing)
     });
@@ -140,7 +149,7 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         let arr = array(&a);
         let mut items = arr.borrow_mut();
         if i < 0 || i as usize >= items.len() {
-            return Ok(Value::Nil);
+            return Ok(Value::Nothing);
         }
         Ok(items.remove(i as usize))
     });
@@ -243,44 +252,69 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
     });
 }
 
-fn compare_values(a: &Value, b: &Value) -> Result<Ordering, SqfError> {
-    match (a, b) {
-        (Value::Number(x), Value::Number(y)) => Ok(x.partial_cmp(y).unwrap_or(Ordering::Equal)),
-        (Value::String(x), Value::String(y)) => Ok(x.cmp(y)),
-        (Value::Bool(x), Value::Bool(y)) => Ok(x.cmp(y)),
-        (Value::Array(x), Value::Array(y)) => {
-            let (x, y) = (x.borrow(), y.borrow());
-            for (p, q) in x.iter().zip(y.iter()) {
-                let o = compare_values(p, q)?;
-                if o != Ordering::Equal {
-                    return Ok(o);
-                }
-            }
-            Ok(x.len().cmp(&y.len()))
-        }
-        _ => Err(SqfError::type_error(b, a.ty())),
-    }
-}
-
 /// `array sort ascending`: numbers, strings or arrays (compared element by
-/// element), all of one type; sorts in place.
+/// element). Strings compare without regard to ASCII case, uppercase first
+/// when they are equal that way; mixed types compare by type name and then
+/// by value (the original's comparator is not a strict order for mixed
+/// types, its result is unspecified; see `docs/re/sqf-semantics.md`).
 fn sort<H: Host>(_: &mut Ctx<'_, H>, a: Value, b: Value) -> Result<Value, SqfError> {
     let arr = array(&a);
     let mut items = arr.borrow().clone();
-    let mut err = None;
-    items.sort_by(|x, y| match compare_values(x, y) {
-        Ok(o) => o,
-        Err(e) => {
-            err.get_or_insert(e);
-            Ordering::Equal
-        }
-    });
-    if let Some(e) = err {
-        return Err(e);
-    }
+    items.sort_by(compare_values);
     if !boolean(&b) {
         items.reverse();
     }
     *arr.borrow_mut() = items;
     Ok(Value::Nothing)
+}
+
+/// The ordering `sort` uses.
+fn compare_values(a: &Value, b: &Value) -> Ordering {
+    match (a, b) {
+        (Value::Number(x), Value::Number(y)) => x.partial_cmp(y).unwrap_or(Ordering::Equal),
+        (Value::String(x), Value::String(y)) => compare_strings(x, y),
+        (Value::Bool(x), Value::Bool(y)) => x.cmp(y),
+        (Value::Array(x), Value::Array(y)) => {
+            let (x, y) = (x.borrow(), y.borrow());
+            for (p, q) in x.iter().zip(y.iter()) {
+                let o = compare_values(p, q);
+                if o != Ordering::Equal {
+                    return o;
+                }
+            }
+            x.len().cmp(&y.len())
+        }
+        (x, y) => {
+            let (tx, ty) = (x.ty().type_name(), y.ty().type_name());
+            tx.cmp(ty)
+                .then_with(|| x.to_sqf_string().cmp(&y.to_sqf_string()))
+        }
+    }
+}
+
+/// Strings as `sort` compares them: byte by byte without regard to ASCII
+/// case, an uppercase letter first when only the case differs (server
+/// oracle: `["b", "A", "a", "B"]` sorts to `["A","a","B","b"]`). Bytes
+/// above 127 compare as signed, so a non-ASCII character sorts before
+/// ASCII (`["é", "e", "f", "E"]` keeps `é` first).
+fn compare_strings(x: &str, y: &str) -> Ordering {
+    let (a, b) = (x.as_bytes(), y.as_bytes());
+    for (p, q) in a.iter().zip(b.iter()) {
+        let (fp, fq) = (p.to_ascii_lowercase(), q.to_ascii_lowercase());
+        match (fp as i8).cmp(&(fq as i8)) {
+            Ordering::Equal => {}
+            other => return other,
+        }
+    }
+    match a.len().cmp(&b.len()) {
+        Ordering::Equal => {}
+        other => return other,
+    }
+    for (p, q) in a.iter().zip(b.iter()) {
+        match (*p as i8).cmp(&(*q as i8)) {
+            Ordering::Equal => {}
+            other => return other,
+        }
+    }
+    Ordering::Equal
 }

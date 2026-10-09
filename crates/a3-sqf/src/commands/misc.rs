@@ -26,17 +26,28 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         Ok(Value::from(format(ctx, &a)?))
     });
 
+    // A script that does not compile is reported with its own text and
+    // position, and `compile` yields the empty value (server oracle:
+    // `call compile "1 2"` logs `Missing ;` and is nil).
     r.unary("compile", STR, CODE, |ctx, a| {
-        let code = ctx
-            .compile("", string(&a))
-            .map_err(|e| SqfError::Generic(e.message))?;
-        Ok(Value::Code(code))
+        let src = string(&a).to_owned();
+        match ctx.compile("", &src) {
+            Ok(code) => Ok(Value::Code(code)),
+            Err(e) => {
+                report_compile_error(ctx, &src, &e);
+                Ok(Value::Nothing)
+            }
+        }
     });
     r.unary("compileFinal", STR, CODE, |ctx, a| {
-        let code = ctx
-            .compile("", string(&a))
-            .map_err(|e| SqfError::Generic(e.message))?;
-        Ok(Value::Code(code.to_final()))
+        let src = string(&a).to_owned();
+        match ctx.compile("", &src) {
+            Ok(code) => Ok(Value::Code(code.to_final())),
+            Err(e) => {
+                report_compile_error(ctx, &src, &e);
+                Ok(Value::Nothing)
+            }
+        }
     });
     r.unary("compileFinal", CODE, CODE, |_, a| {
         Ok(Value::Code(expect_code(&a)?.to_final()))
@@ -239,6 +250,17 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
     });
 }
 
+/// Reports a compile error with the position inside the compiled text.
+fn report_compile_error<H: Host>(ctx: &mut Ctx<'_, H>, text: &str, e: &crate::error::CompileError) {
+    let source = crate::source::SourceFile::new("", text);
+    let error = crate::error::ScriptError::new(
+        SqfError::Generic(e.message.clone()),
+        None,
+        Some((&source, e.span.start)),
+    );
+    ctx.report_script_error(error);
+}
+
 /// Registers a nular returning a side. A macro-free way to get one fn
 /// pointer per side.
 fn register_side<H: Host>(r: &mut Registry<H>, name: &str, side: Side) {
@@ -282,8 +304,9 @@ fn register_null<H: Host>(r: &mut Registry<H>, name: &str, kind: HandleKind) {
 }
 
 /// `format [fmt, args...]`: `%1`..`%N` are replaced by the arguments as
-/// `str` shows them, except that strings are not quoted. A `%` not followed
-/// by a digit is kept.
+/// `str` shows them, except that strings are not quoted. `%%` is a literal
+/// `%`; any other `%` is dropped (server oracle: `format ["100%"]` is
+/// `"100"`, `format ["a%bc"]` is `"abc"`, `format ["%1%%", 5]` is `"5%"`).
 fn format<H: Host>(ctx: &Ctx<'_, H>, a: &Value) -> Result<String, SqfError> {
     let arr = array(a);
     let items = arr.borrow();
@@ -298,8 +321,12 @@ fn format<H: Host>(ctx: &Ctx<'_, H>, a: &Value) -> Result<String, SqfError> {
         let after = &rest[pos + 1..];
         let digits = after.bytes().take_while(u8::is_ascii_digit).count();
         if digits == 0 {
-            out.push('%');
-            rest = after;
+            if let Some(escaped) = after.strip_prefix('%') {
+                out.push('%');
+                rest = escaped;
+            } else {
+                rest = after;
+            }
             continue;
         }
         let n: usize = after[..digits].parse().unwrap_or(0);

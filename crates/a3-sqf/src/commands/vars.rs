@@ -112,11 +112,11 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
 fn declare_private<H: Host>(ctx: &mut Ctx<'_, H>, name: &Value) -> Result<(), SqfError> {
     let name = expect_str(name)?;
     if !name.starts_with('_') {
-        return Err(SqfError::generic(format!(
-            "Local variable in global space: {name}"
-        )));
+        // The engine logs this and goes on: the variable is not declared.
+        ctx.report(SqfError::generic("Local variable in global space"));
+        return Ok(());
     }
-    ctx.set_private(Sym::new(name), Value::Nil);
+    ctx.declare_private(Sym::new(name));
     Ok(())
 }
 
@@ -218,9 +218,11 @@ fn params<H: Host>(ctx: &mut Ctx<'_, H>, input: Value, specs: &Value) -> Result<
         all_valid &= valid;
         if let Some(name) = name {
             if !name.is_local() {
-                return Err(SqfError::generic(format!(
-                    "Local variable in global space: {name}"
-                )));
+                // Logged, not fatal: the rest of the block still runs
+                // (server oracle: `[1] call {params ["a"]; 1}` is 1).
+                ctx.report(SqfError::generic("Local variable in global space"));
+                all_valid = false;
+                continue;
             }
             ctx.set_private(name, value);
         }

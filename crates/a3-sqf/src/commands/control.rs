@@ -116,20 +116,21 @@ impl Loop {
 }
 
 impl<H: Host> Continuation<H> for Loop {
-    fn resume(&mut self, _: &mut Ctx<'_, H>, result: Value) -> Result<Flow<H>, SqfError> {
+    fn resume(&mut self, ctx: &mut Ctx<'_, H>, result: Value) -> Result<Flow<H>, SqfError> {
         if !self.started {
             self.started = true;
             return self.step();
         }
         match self.mode {
             LoopMode::ForEach => self.last = result,
-            LoopMode::Count => {
-                if let Value::Bool(b) = result {
-                    self.count += usize::from(b);
-                } else if !result.is_nil() && !matches!(result, Value::Nothing) {
-                    return Err(SqfError::type_error(&result, BOOL));
-                }
-            }
+            // A body that does not return a boolean is an error the script
+            // survives: the element is not counted (server oracle: `{1} count
+            // [1, 2]` is 0).
+            LoopMode::Count => match result {
+                Value::Bool(b) => self.count += usize::from(b),
+                other if other.is_nil() => {}
+                other => ctx.report(SqfError::type_error(&other, BOOL)),
+            },
             LoopMode::Select => match result {
                 Value::Bool(true) => {
                     if let Some(x) = self.current() {
@@ -137,13 +138,15 @@ impl<H: Host> Continuation<H> for Loop {
                     }
                 }
                 Value::Bool(false) => {}
-                other => return Err(SqfError::type_error(&other, BOOL)),
+                other if other.is_nil() => {}
+                other => ctx.report(SqfError::type_error(&other, BOOL)),
             },
             LoopMode::Apply => self.out.push(result),
             LoopMode::FindIf => match result {
                 Value::Bool(true) => return Ok(Flow::Value(Value::Number(self.index as f32))),
                 Value::Bool(false) => {}
-                other => return Err(SqfError::type_error(&other, BOOL)),
+                other if other.is_nil() => {}
+                other => ctx.report(SqfError::type_error(&other, BOOL)),
             },
         }
         self.index += 1;
@@ -418,10 +421,7 @@ struct IsNilCode;
 
 impl<H: Host> Continuation<H> for IsNilCode {
     fn resume(&mut self, _: &mut Ctx<'_, H>, result: Value) -> Result<Flow<H>, SqfError> {
-        Ok(Flow::Value(Value::Bool(matches!(
-            result,
-            Value::Nil | Value::Nothing
-        ))))
+        Ok(Flow::Value(Value::Bool(result.is_nil())))
     }
 }
 
@@ -799,9 +799,11 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
     });
     r.unary_flow("isNil", CODE, BOOL, |_, a| {
         // Inside `isNil {...}` reading an undefined variable is not an
-        // error: the code just yields nil.
+        // error, the code runs unscheduled (`canSuspend` is false in it) and
+        // an error ends only the block, not the script (server oracle).
         let inv = Invoke {
             nil_ok: true,
+            unscheduled: true,
             ..Invoke::new(expect_code(&a)?)
         };
         Ok(Flow::CallThen(inv, Box::new(IsNilCode)))

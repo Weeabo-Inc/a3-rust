@@ -289,12 +289,6 @@ bezierInterpolation	binary	SCALAR	ARRAY	ARRAY	4
 binocular	unary		OBJECT	STRING
 binocularItems	unary		OBJECT	ARRAY
 binocularMagazine	unary		OBJECT	STRING
-bitAnd	binary	SCALAR	SCALAR	SCALAR	4
-bitNot	unary		SCALAR	SCALAR
-bitOr	binary	SCALAR	SCALAR	SCALAR	4
-bitShiftLeft	binary	SCALAR	SCALAR	SCALAR	4
-bitShiftRight	binary	SCALAR	SCALAR	SCALAR	4
-bitXor	binary	SCALAR	SCALAR	SCALAR	4
 blufor	nular			SIDE
 boundingBox	binary	SCALAR	OBJECT	ARRAY	4
 boundingBox	unary		OBJECT	ARRAY

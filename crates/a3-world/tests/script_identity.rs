@@ -5,8 +5,8 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use a3_config::{ConfigTree, parse_text};
-use a3_sqf::{Registry, Value, Vm};
-use a3_world::script::{ScriptWorld, register_world_commands};
+use a3_sqf::{Handle, Host, Registry, ScriptError, Value, Vm};
+use a3_world::script::{ScriptWorld, WorldHost, register_world_commands};
 use a3_world::{ClientId, EntityId, ObjectRef, TypeBank, World};
 
 const CONFIG: &str = r#"
@@ -31,13 +31,78 @@ class CfgIdentities {
 };
 "#;
 
-fn vm() -> Vm<ScriptWorld> {
+/// A [`ScriptWorld`] that keeps the errors the VM reports. A command error is logged and
+/// the script goes on (server oracle), so a test that checks one reads it here instead of
+/// expecting `eval` to fail.
+#[derive(Debug)]
+struct RecordingWorld {
+    inner: ScriptWorld,
+    errors: Vec<String>,
+}
+
+impl RecordingWorld {
+    fn new(inner: ScriptWorld) -> RecordingWorld {
+        RecordingWorld {
+            inner,
+            errors: Vec::new(),
+        }
+    }
+}
+
+impl std::ops::Deref for RecordingWorld {
+    type Target = ScriptWorld;
+    fn deref(&self) -> &ScriptWorld {
+        &self.inner
+    }
+}
+
+impl std::ops::DerefMut for RecordingWorld {
+    fn deref_mut(&mut self) -> &mut ScriptWorld {
+        &mut self.inner
+    }
+}
+
+impl Host for RecordingWorld {
+    fn time(&self) -> f32 {
+        self.inner.time()
+    }
+
+    fn is_null(&self, handle: Handle) -> bool {
+        self.inner.is_null(handle)
+    }
+
+    fn format_handle(&self, handle: Handle) -> String {
+        self.inner.format_handle(handle)
+    }
+
+    fn report_error(&mut self, error: &ScriptError) {
+        self.errors.push(error.report.clone());
+    }
+}
+
+impl WorldHost for RecordingWorld {
+    fn world(&self) -> &World {
+        self.inner.world()
+    }
+
+    fn world_mut(&mut self) -> &mut World {
+        self.inner.world_mut()
+    }
+
+    fn types(&mut self) -> &mut TypeBank {
+        self.inner.types()
+    }
+}
+
+type TestVm = Vm<RecordingWorld>;
+
+fn vm() -> TestVm {
     let config = parse_text(CONFIG).unwrap();
     let types = TypeBank::new(Arc::new(ConfigTree::from_config(&config)));
     let mut registry = Registry::with_core();
     register_world_commands(&mut registry);
     let mut vm = Vm::with_registry(
-        ScriptWorld::new(World::new(ClientId::SERVER), types),
+        RecordingWorld::new(ScriptWorld::new(World::new(ClientId::SERVER), types)),
         Rc::new(registry),
     );
     eval(
@@ -53,32 +118,40 @@ fn vm() -> Vm<ScriptWorld> {
     vm
 }
 
-fn eval(vm: &mut Vm<ScriptWorld>, code: &str) -> Value {
+fn eval(vm: &mut TestVm, code: &str) -> Value {
     vm.eval(code)
         .unwrap_or_else(|e| panic!("{code}: {}", e.report))
 }
 
-fn error(vm: &mut Vm<ScriptWorld>, code: &str) -> String {
-    match vm.eval(code) {
-        Ok(v) => panic!("{code}: expected an error, got {v:?}"),
-        Err(e) => e.report,
-    }
+/// Runs `code`, which must be an error the original logs and survives, and returns the
+/// report: the statement's value is the empty value and the error is on the host.
+fn error(vm: &mut TestVm, code: &str) -> String {
+    vm.host.errors.clear();
+    let value = eval(vm, code);
+    assert!(
+        value.is_nil(),
+        "{code}: expected the empty value, got {value:?}"
+    );
+    vm.host
+        .errors
+        .pop()
+        .unwrap_or_else(|| panic!("{code}: no error reported"))
 }
 
-fn text(vm: &mut Vm<ScriptWorld>, code: &str) -> String {
+fn text(vm: &mut TestVm, code: &str) -> String {
     match eval(vm, code) {
         Value::String(s) => s.to_string(),
         other => other.to_sqf_string(),
     }
 }
 
-fn truth(vm: &mut Vm<ScriptWorld>, code: &str) -> bool {
+fn truth(vm: &mut TestVm, code: &str) -> bool {
     eval(vm, code)
         .as_bool()
         .unwrap_or_else(|| panic!("{code}: not a bool"))
 }
 
-fn entity(vm: &mut Vm<ScriptWorld>, name: &str) -> EntityId {
+fn entity(vm: &mut TestVm, name: &str) -> EntityId {
     let value = eval(vm, name);
     match a3_world::script::object_arg(&vm.host.world, &value) {
         Some(ObjectRef::Entity(id)) => id,

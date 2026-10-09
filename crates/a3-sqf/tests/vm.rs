@@ -72,7 +72,7 @@ fn this_is_passed_by_call() {
 fn if_then_else() {
     assert_eq!(s("if (1 > 0) then { \"y\" } else { \"n\" }"), "\"y\"");
     assert_eq!(s("if (1 < 0) then { \"y\" } else { \"n\" }"), "\"n\"");
-    assert_eq!(s("typeName (if (false) then { 1 })"), "\"NOTHING\"");
+    assert!(eval("typeName (if (false) then { 1 })").is_nil());
     assert_eq!(s("if (true) then [{1}, {2}]"), "1");
 }
 
@@ -225,8 +225,10 @@ fn global_variables_and_namespaces() {
 fn compile_final_cannot_be_overwritten() {
     let mut vm = vm();
     vm.eval("fnc = compileFinal \"1\"").unwrap();
-    let e = vm.eval("fnc = {2}").unwrap_err();
-    assert!(e.report.contains("final"), "{}", e.report);
+    // Logged, not fatal: the assignment does not happen.
+    let v = vm.eval("fnc = {2}; fnc").unwrap();
+    assert_eq!(v.to_sqf_string(), "{1}");
+    assert!(vm.host.errors[0].contains("final"), "{:?}", vm.host.errors);
 }
 
 #[test]
@@ -253,7 +255,6 @@ fn type_names() {
         ("for \"_i\"", "FOR"),
         ("switch 1", "SWITCH"),
         ("with missionNamespace", "WITH"),
-        ("nil", "ANY"),
     ] {
         assert_eq!(
             s(&format!("typeName ({src})")),
@@ -261,6 +262,9 @@ fn type_names() {
             "{src}"
         );
     }
+    // `nil` is the empty value: the command is skipped (server oracle).
+    assert!(eval("nil").is_nil());
+    assert!(eval("typeName nil").is_nil());
 }
 
 #[test]
@@ -293,7 +297,10 @@ fn format_and_str() {
 
 #[test]
 fn array_commands() {
-    assert_eq!(s("_a = [1,2,3]; _a set [5, 9]; _a"), "[1,2,3,any,any,9]");
+    assert_eq!(
+        s("_a = [1,2,3]; _a set [5, 9]; _a"),
+        "[1,2,3,<null>,<null>,9]"
+    );
     assert_eq!(s("_a = [1,2,3]; [_a deleteAt 1, _a]"), "[2,[1,3]]");
     assert_eq!(s("_a = [1,2,3,4]; _a deleteRange [1, 2]; _a"), "[1,4]");
     assert_eq!(s("_a = [1,4]; _a insert [1, [2,3]]; _a"), "[1,2,3,4]");
@@ -306,10 +313,17 @@ fn array_commands() {
     assert_eq!(s("[1,2,3] select [1]"), "[2,3]");
     assert_eq!(s("[1,2,3] select [0, 2]"), "[1,2]");
     assert_eq!(s("[1,2] select true"), "2");
-    assert!(err("[1,2,3] # 5").contains("Error 3 elements provided, 6 expected"));
+    // Out of range: logged, and the command yields the empty value.
+    let mut vm1 = vm();
+    assert!(vm1.eval("[1,2,3] # 5").unwrap().is_nil());
+    assert!(
+        vm1.host.errors[0].contains("3 elements provided, 6 expected"),
+        "{:?}",
+        vm1.host.errors
+    );
     assert_eq!(s("[1,2,3] select -1"), "3");
     assert_eq!(s("[1,2,3] select [5, 1]"), "[]");
-    assert_eq!(s("[1,2] select 2"), "any");
+    assert_eq!(s("[1,2] select 2"), "<null>");
     assert_eq!(s("2 in [1,2]"), "true");
     assert_eq!(s("\"A\" in [\"a\"]"), "false");
     assert_eq!(s("[1,2,3,1] arrayIntersect [1,3,5]"), "[1,3]");
@@ -363,21 +377,32 @@ fn type_errors_use_engine_format() {
 }
 
 #[test]
-fn undefined_variables_in_expressions_are_errors() {
-    let report = err("_b = _undefined + 1");
+fn undefined_variables_in_expressions_are_logged() {
+    let mut vm = vm();
+    let v = vm.eval("_b = _undefined + 1").unwrap();
+    assert!(v.is_nil());
     assert!(
-        report.contains("Error Undefined variable in expression: _undefined"),
-        "{report}"
+        vm.host.errors[0].contains("Error Undefined variable in expression: _undefined"),
+        "{:?}",
+        vm.host.errors
     );
 }
 
 #[test]
-fn errors_abort_the_whole_script() {
+fn command_errors_are_logged_and_the_script_goes_on() {
+    // Server oracle: `1/0` logs Zero divisor, is inf, and the script runs to
+    // its end; only a failure the VM itself detects ends it.
     let mut vm = vm();
-    let r = vm.eval("g1 = 1; call { 1 / 0 }; g1 = 2");
-    assert!(r.unwrap_err().report.contains("Zero divisor"));
-    assert_eq!(vm.get_global("g1").to_sqf_string(), "1");
+    vm.eval("g1 = 1; call { 1 / 0 }; g1 = 2").unwrap();
+    assert_eq!(vm.get_global("g1").to_sqf_string(), "2");
     assert_eq!(vm.host.errors.len(), 1);
+    assert!(vm.host.errors[0].contains("Zero divisor"));
+    // No overload takes the arguments: that one does end the script.
+    let mut vm2 = common::vm();
+    let e = vm2.eval("g1 = 1; call { 1 + \"x\" }; g1 = 2").unwrap_err();
+    assert!(e.report.contains("expected Number"), "{}", e.report);
+    assert_eq!(vm2.get_global("g1").to_sqf_string(), "1");
+    assert_eq!(vm2.host.errors.len(), 1);
 }
 
 #[test]
@@ -430,8 +455,11 @@ fn hosts_register_their_own_commands() {
 
 #[test]
 fn sleep_is_not_allowed_unscheduled() {
+    // Suspending where the VM cannot is not a command error: it ends the
+    // script.
     let report = err("sleep 1");
     assert!(report.contains("Suspending not allowed"), "{report}");
+    assert!(err("waitUntil {false}").contains("Suspending not allowed"));
     assert_eq!(s("canSuspend"), "false");
 }
 
@@ -445,8 +473,8 @@ fn diag_log_goes_to_the_host() {
 #[test]
 fn eval_returns_last_statement_value() {
     assert_eq!(s("1; 2; 3"), "3");
-    assert_eq!(s("typeName (call { _a = 1 })"), "\"NOTHING\"");
-    assert!(eval("").to_sqf_string() == "nothing");
+    assert!(eval("typeName (call { _a = 1 })").is_nil());
+    assert!(eval("").is_nil());
 }
 
 #[test]

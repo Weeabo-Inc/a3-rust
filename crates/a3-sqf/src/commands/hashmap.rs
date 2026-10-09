@@ -80,7 +80,7 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
             };
             let pair = pair.borrow();
             let k = key(pair.first().unwrap_or(&Value::Nil))?;
-            out.insert(k, pair.get(1).cloned().unwrap_or(Value::Nil));
+            out.insert(k, pair.get(1).cloned().unwrap_or(Value::Nothing));
         }
         Ok(Value::HashMap(HashMap::from_map(out)))
     });
@@ -89,10 +89,14 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         let (keys, values) = (keys.borrow(), values.borrow());
         let mut out = HashMapEntries::default();
         for (i, k) in keys.iter().enumerate() {
-            out.insert(key(k)?, values.get(i).cloned().unwrap_or(Value::Nil));
+            out.insert(key(k)?, values.get(i).cloned().unwrap_or(Value::Nothing));
         }
         Ok(Value::HashMap(HashMap::from_map(out)))
     });
+    // `set [key, value, onlyIfNotExists]` returns whether an existing value
+    // was overwritten: true when the key was already there and `insertOnly`
+    // was not asked for (server oracle: new key -> false, existing key ->
+    // true, existing key with insertOnly -> false).
     r.binary("set", HASH, ARR, BOOL, |_, a, b| {
         let m = map(&a);
         writable(&m)?;
@@ -107,11 +111,11 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
             may_add(&m, &entries, &k)?;
             entries.insert(k, v);
         }
-        Ok(Value::Bool(existed))
+        Ok(Value::Bool(existed && !insert_only))
     });
     r.binary("get", HASH, ANY, ANY, |_, a, b| {
         let k = key(&b)?;
-        Ok(map(&a).borrow().get(&k).cloned().unwrap_or(Value::Nil))
+        Ok(map(&a).borrow().get(&k).cloned().unwrap_or(Value::Nothing))
     });
     r.binary("getOrDefault", HASH, ARR, ANY, |_, a, b| {
         let m = map(&a);
@@ -156,7 +160,7 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         if m.is_sealed() && m.borrow().contains_key(&k) {
             return Err(SqfError::generic("Tried to remove key from sealed HashMap"));
         }
-        Ok(m.borrow_mut().shift_remove(&k).unwrap_or(Value::Nil))
+        Ok(m.borrow_mut().shift_remove(&k).unwrap_or(Value::Nothing))
     });
     r.binary("in", ANY, HASH, BOOL, |_, a, b| {
         let Some(k) = HashKey::from_value(&a) else {
@@ -254,7 +258,7 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
                     let pair = pair.borrow();
                     out.push((
                         pair.first().cloned().unwrap_or(Value::Nil),
-                        pair.get(1).cloned().unwrap_or(Value::Nil),
+                        pair.get(1).cloned().unwrap_or(Value::Nothing),
                     ));
                 }
                 out
