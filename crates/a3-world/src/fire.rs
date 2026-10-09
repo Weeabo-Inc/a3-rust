@@ -38,6 +38,10 @@ pub struct FireRequest {
     pub target: Option<ObjectRef>,
     /// Whether the shot draws a tracer.
     pub tracer: bool,
+    /// A thrown shot's hold intensity (`WeaponsState+0x88`, `sim-weapons.md` §2.1): it multiplies
+    /// the magazine's `initSpeed` when the ammo is thrown rather than fired, and is ignored
+    /// otherwise. 1 is a full-strength throw.
+    pub throw_intensity: f64,
     /// The rounds in the magazine before this shot: with the direction it seeds the shot's
     /// dispersion and picks the tracer (`sim-weapons.md` §2.2, §2.5). The engine never fires
     /// from an empty magazine, so it is at least 1.
@@ -62,6 +66,7 @@ impl FireRequest {
             direction,
             target: None,
             tracer: false,
+            throw_intensity: 1.0,
             rounds: 1,
         }
     }
@@ -93,6 +98,12 @@ impl FireRequest {
     /// Marks the shot as a tracer round.
     pub fn tracer(mut self, tracer: bool) -> Self {
         self.tracer = tracer;
+        self
+    }
+
+    /// The hold intensity of a throw (`sim-weapons.md` §2.1), 1 for a full-strength throw.
+    pub fn throw_intensity(mut self, intensity: f64) -> Self {
+        self.throw_intensity = intensity;
         self
     }
 }
@@ -241,6 +252,14 @@ impl World {
             mode: &mode,
         }
         .init_speed(&magazine, &ammo);
+        // §2.1: a shell whose magazine `initSpeed` is below 30 m/s is *thrown*, and its speed is
+        // scaled by the throw-hold intensity. Where it starts and which way it goes come from the
+        // throw animation, which is the caller's `from`/`direction` here.
+        let speed = if ammo.is_thrown_from(&magazine) {
+            speed * request.throw_intensity
+        } else {
+            speed
+        };
         // §2.2: a bullet keeps the dispersed direction's length, every other shot is normalised;
         // the shooter's velocity adds on.
         let aim = disperse(direction, mode.dispersion, request.rounds);

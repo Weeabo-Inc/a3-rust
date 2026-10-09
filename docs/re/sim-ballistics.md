@@ -292,8 +292,21 @@ was wrong (the third argument, 1.0, is passed in XMM3).
   `0x1410dfd80`. Medium confidence on which of these two fields is used here.
 - `objLimit` comes from the hit object (`vfunc +0x350`, not decoded; `a3-world` uses 1 for every
   Object, so the surface alone decides). For the terrain it is 1.
-- A slow-moving shell (normal speed < 2 m/s) with a fuse, or one already rolling, instead loses
-  its normal velocity and slides. This is grenade/shell rolling.
+- **Rolling** (high, `0x140e65820`, decoded 2026-10-09): a shot whose **fuse is running**
+  (`0 < +0x648 < FLT_MAX`) or that is **inside its arming distance** (`+0x64c > 0`) — i.e. not
+  armed — and that lands **grazing** the surface (`sinG < 0.1`, within 5.7°) with a normal speed
+  under 2 m/s does not ricochet. It loses its normal velocity (`v += |v·n|·n`) and slides:
+  ```
+  coef = clamp(−100·cos(v, n), 0, 1)          // n = the surface normal, v the *incoming* velocity
+  for each axis i:                            // FUN_140e845f0, never reverses a component
+      damping = (0.1·v_i + 3·sign(v_i))·coef
+      if v_i·damping > 0:  v_i = |v_i| ≤ |damping|·dt ? 0 : v_i − damping·dt
+  move(remaining dt, continuing = true)
+  ```
+  So a fused shot that skims the ground decelerates by about 3 m/s² plus a tenth of its speed per
+  second and rolls to a stop: this is grenade and shell rolling. It takes precedence over the
+  ricochet below, but the ricochet's random normal is drawn either way (the draw is above the
+  branch in the original), which matters for reproducing the stream of `Rand_MinMidMax`.
 
 ### 4.2 Penetration (`0x140e69b00`)
 
@@ -333,6 +346,12 @@ If the shot neither ricochets nor penetrates:
   world explosion for the damage), and the hit handler deals the direct hit with `v_out = 0`;
 - in every case the shot is then stopped and deleted (`0x140e583d0`). An unarmed fused shell
   (inside its `fuseDistance`) is a dud.
+
+A shot that is a **PhysX body** rather than a segment-tested shell — `shotGrenade`, `shotSmokeX`,
+the mines and the bombs (§2) — does not take this path: it rests where it stopped and its fuse
+keeps running, which is what a thrown grenade does between landing and going off. `a3-world`
+models that as `AmmoType::is_physx_body` in `sim::projectile::stop` (medium: the classification is
+from §2, the resting behaviour from what the classes do in the game).
 
 ## 5. Direct hit value (high)
 

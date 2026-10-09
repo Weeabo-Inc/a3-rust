@@ -205,7 +205,54 @@ impl AmmoType {
     pub fn uses_advanced_drag(&self) -> bool {
         self.lock_type() == LockType::UnguidedMissile
     }
+
+    /// Whether a shot of this ammo is **thrown** rather than fired: the shell family whose
+    /// magazine's `initSpeed` is below [`THROW_SPEED_LIMIT`] (`sim-weapons.md` §2.1). A thrown
+    /// shell's speed is the magazine's `initSpeed` times the throw-hold intensity, and its
+    /// position and direction come from the throw animation.
+    pub fn is_thrown_from(&self, magazine: &MagazineType) -> bool {
+        magazine.init_speed < THROW_SPEED_LIMIT && self.is_shell_family()
+    }
+
+    /// Whether the shot is a PhysX body rather than a segment-tested shell (`sim-ballistics.md`
+    /// §2): a grenade, a smoke shell, a mine. Such a shot keeps its fuse when it comes to rest,
+    /// where a `ShotShell` that stops is a dud (§4.3).
+    pub fn is_physx_body(&self) -> bool {
+        matches!(
+            self.simulation,
+            Some(
+                SimulationClass::ShotGrenade
+                    | SimulationClass::ShotSmokeX
+                    | SimulationClass::ShotMine
+                    | SimulationClass::ShotBoundingMine
+                    | SimulationClass::ShotDirectionalBomb
+                    | SimulationClass::ShotTimeBomb
+            )
+        )
+    }
+
+    /// The shell family: the simulations a Man's `FireWeapon` sends down `FireShell`
+    /// (`sim-weapons.md` §2.1).
+    pub fn is_shell_family(&self) -> bool {
+        matches!(
+            self.simulation,
+            Some(
+                SimulationClass::ShotShell
+                    | SimulationClass::ShotGrenade
+                    | SimulationClass::ShotSubmunitions
+                    | SimulationClass::ShotDeploy
+                    | SimulationClass::ShotIlluminating
+                    | SimulationClass::ShotSmoke
+                    | SimulationClass::ShotSmokeX
+                    | SimulationClass::ShotNvgMarker
+            )
+        )
+    }
 }
+
+/// A magazine `initSpeed` below this is thrown, at or above it the shell is fired
+/// (`sim-weapons.md` §2.1).
+pub const THROW_SPEED_LIMIT: f64 = 30.0;
 
 /// `CfgMagazines` parameters: what a loaded magazine fires and how fast.
 #[derive(Debug, Clone, PartialEq)]
@@ -226,6 +273,12 @@ pub struct MagazineType {
     /// `deleteIfEmpty`, `None` when absent: whether a soldier drops the magazine once empty
     /// (absent: only one-round magazines are dropped).
     pub delete_if_empty: Option<bool>,
+    /// `maxThrowHoldTime`: seconds of holding that reach the strongest throw (`sim-weapons.md`
+    /// §2.1).
+    pub max_throw_hold_time: f64,
+    /// `minThrowIntensityCoef`, `maxThrowIntensityCoef`: the range of the throw-hold intensity.
+    pub min_throw_intensity_coef: f64,
+    pub max_throw_intensity_coef: f64,
 }
 
 /// One trigger setting of a [`MuzzleType`] (`Single`, `FullAuto`, ... or `"this"`).
@@ -429,6 +482,9 @@ impl WeaponBank {
             last_rounds_tracer: number_or(&cfg, "lastRoundsTracer", 0.0).max(0.0) as u32,
             quick_reload: number_or(&cfg, "quickReload", 0.0) != 0.0,
             delete_if_empty: number(&cfg, "deleteIfEmpty").map(|v| v != 0.0),
+            max_throw_hold_time: number_or(&cfg, "maxThrowHoldTime", 0.0),
+            min_throw_intensity_coef: number_or(&cfg, "minThrowIntensityCoef", 0.0),
+            max_throw_intensity_coef: number_or(&cfg, "maxThrowIntensityCoef", 1.0),
         });
         self.magazines.insert(key, m.clone());
         Ok(m)
