@@ -23,6 +23,13 @@
 //! for event in world.drain_events() { /* EntityCreated / EntityDeleted / LocalityChanged */ }
 //! ```
 //!
+//! # Multiplayer
+//!
+//! The network layer (Phase 6) drives the World through [`net`]: it applies remote create, update,
+//! delete and owner-change messages, collects the updates this machine owes each receiver
+//! ([`World::updates_owed`], ordered by [`UpdateError`]) and builds the state a joining client
+//! needs ([`World::jip_snapshot`]).
+//!
 //! # Contributor guide
 //!
 //! ## Add an entity type (a new `simulation` value)
@@ -90,6 +97,7 @@ mod entity;
 mod groups;
 mod id;
 mod moves;
+pub mod net;
 mod object_ref;
 mod query;
 pub mod script;
@@ -103,6 +111,11 @@ pub use class::{EntityClass, SimulationClass};
 pub use entity::{Attachment, Entity, ListKind, Locality, VisualState};
 pub use groups::{ENEMY_THRESHOLD, Group, GroupId, Side, default_group_name, side_from_config};
 pub use id::{ClientId, EntityId, NetworkId, ParseNetworkIdError};
+pub use net::{
+    DAMAGE_ERROR_SCALE, JipObject, OwedUpdate, RemoteCreate, RemoteUpdate, ReplicatedState,
+    STATE_FLAG_ERROR, TRANSFORM_ERROR_PER_METRE, TRANSFORM_ERROR_PER_MPS,
+    TRANSFORM_ERROR_PER_RADIAN, UpdateClass, UpdateError, UpdateOutcome,
+};
 pub use object_ref::ObjectRef;
 pub use query::Near;
 pub use sim::{
@@ -147,6 +160,20 @@ pub enum Error {
     /// The unit is not in the group.
     #[error("{0:?} is not in the group")]
     NotInGroup(EntityId),
+    /// No Object — Entity or Static object — has this Network object ID.
+    #[error("no object with network id {0}")]
+    NoSuchObject(NetworkId),
+    /// This machine created the object the message names; the network layer must not echo our own
+    /// create back ([`World::apply_remote_create`]).
+    #[error("network id {0} was created by this machine")]
+    OwnNetworkId(NetworkId),
+    /// An owner change arrived from a machine that does not own the object (message 355 is C→S and
+    /// the server checks the sender: "Server: OwnerChanged of %d:%d arrived from non owner %d").
+    #[error("client {sender:?} does not own {network_id}")]
+    NotOwner {
+        network_id: NetworkId,
+        sender: ClientId,
+    },
     /// No Static object has this key.
     #[error("no static object {0:?}")]
     NoSuchStatic(StaticKey),
