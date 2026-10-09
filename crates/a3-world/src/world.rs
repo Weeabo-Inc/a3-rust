@@ -4,6 +4,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use a3_moves::Moves;
+use a3_physics::CollisionWorld;
 use a3_wrp::Terrain;
 use glam::DVec3;
 
@@ -95,6 +97,12 @@ pub struct World {
     lists: [Vec<EntityId>; ListKind::COUNT],
     pending_deletions: Vec<EntityId>,
     terrain: Option<Arc<Terrain>>,
+    /// The collision world of this World: the terrain, its Static objects and every Entity's
+    /// body (ADR 0008). A Man walks on its surfaces, so without one no Man moves.
+    collision_world: Option<CollisionWorld>,
+    /// The moves type every Man of this World is animated by (`CfgMovesMaleSdr`); see
+    /// [`World::load_moves`].
+    pub(crate) moves: Option<Arc<Moves>>,
     statics: StaticObjects,
     promoted: HashMap<StaticKey, EntityId>,
     events: Vec<WorldEvent>,
@@ -115,6 +123,8 @@ impl World {
             lists: Default::default(),
             pending_deletions: Vec::new(),
             terrain: None,
+            collision_world: None,
+            moves: None,
             statics: StaticObjects::default(),
             promoted: HashMap::new(),
             events: Vec::new(),
@@ -366,6 +376,19 @@ impl World {
     /// The loaded terrain.
     pub fn terrain(&self) -> Option<&Arc<Terrain>> {
         self.terrain.as_ref()
+    }
+
+    /// Installs the collision world every collision query of this World runs in, and in which
+    /// every Entity's body lives (ADR 0008). The caller builds it — this crate owns no file
+    /// system — and keeps it streamed: [`CollisionWorld::stream`] per interest.
+    pub fn set_collision_world(&mut self, world: CollisionWorld) {
+        self.collision_world = Some(world);
+    }
+
+    /// The collision world, once [`set_collision_world`](Self::set_collision_world) installed
+    /// one.
+    pub fn collision_world(&self) -> Option<&CollisionWorld> {
+        self.collision_world.as_ref()
     }
 
     pub(crate) fn set_terrain(&mut self, terrain: Arc<Terrain>, statics: StaticObjects) {

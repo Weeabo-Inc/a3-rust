@@ -1,12 +1,14 @@
 //! SQF world commands, run as scripts against a synthetic World.
 
+mod common;
+
 use std::rc::Rc;
 use std::sync::Arc;
 
 use a3_config::{ConfigTree, parse_text};
 use a3_sqf::{Registry, Value, Vm};
 use a3_world::script::{ScriptWorld, register_world_commands};
-use a3_world::{ClientId, NetworkId, TypeBank, World};
+use a3_world::{ClientId, EntityId, NetworkId, TypeBank, World};
 use a3_wrp::{TerrainBuilder, Transform};
 use glam::Vec3;
 
@@ -29,21 +31,42 @@ class CfgVehicles {
 "#;
 
 /// Heights rise 1 m per 25 m eastwards. Two Static objects: id 0 at (10, 10), id 1 at
-/// (120, 160).
+/// (120, 160). The collision world and the moves type of the Man fixture are loaded, so a
+/// script-created Soldier can be animated and walked.
 fn vm(client: ClientId) -> Vm<ScriptWorld> {
     let at = |x, z| Transform::from_position(Vec3::new(x, 0.0, z));
-    let terrain = TerrainBuilder::new(4, 8, 50.0)
-        .heights(|i, _| i as f32)
-        .object(r"a3\plants_f\tree\t_pinus.p3d", at(10.0, 10.0))
-        .object(r"a3\structures_f\house\house.p3d", at(120.0, 160.0))
-        .build();
+    let terrain = Arc::new(
+        TerrainBuilder::new(4, 8, 50.0)
+            .heights(|i, _| i as f32)
+            .object(r"a3\plants_f\tree\t_pinus.p3d", at(10.0, 10.0))
+            .object(r"a3\structures_f\house\house.p3d", at(120.0, 160.0))
+            .build(),
+    );
     let mut world = World::new(client);
-    world.load_terrain(Arc::new(terrain)).unwrap();
+    world.load_terrain(terrain.clone()).unwrap();
+    world.load_moves(common::moves());
+    world.set_collision_world(common::collision_world(terrain, &[], &[]));
     let config = parse_text(CONFIG).unwrap();
     let types = TypeBank::new(Arc::new(ConfigTree::from_config(&config)));
     let mut registry = Registry::with_core();
     register_world_commands(&mut registry);
     Vm::with_registry(ScriptWorld::new(world, types), Rc::new(registry))
+}
+
+/// Steps the World `frames` times at the sim rate (1/15 s), as the engine runs it.
+fn run(vm: &mut Vm<ScriptWorld>, frames: usize) {
+    for _ in 0..frames {
+        vm.host.world.simulate(1.0 / 15.0);
+    }
+}
+
+/// The Entity an SQF Object value refers to.
+fn entity(vm: &mut Vm<ScriptWorld>, name: &str) -> EntityId {
+    let value = eval(vm, name);
+    match a3_world::script::object_arg(&vm.host.world, &value) {
+        Some(a3_world::ObjectRef::Entity(id)) => id,
+        other => panic!("{name}: {other:?}"),
+    }
 }
 
 fn eval(vm: &mut Vm<ScriptWorld>, code: &str) -> Value {
@@ -362,4 +385,121 @@ fn objects_print_like_the_original() {
     let s = text(&mut vm, "str v");
     assert!(s.ends_with(": offroad_01_unarmed_f.p3d"), "{s}");
     assert_eq!(text(&mut vm, "str objNull"), "<NULL-object>");
+}
+
+/// `playMove` and `playAction` queue the move the script asks for on the Man it names, and
+/// `animationState` reads back the move he plays (`docs/re/sim-man-anim-state.md` §6).
+#[test]
+fn animation_commands_drive_the_move_state_machine() {
+    let mut vm = vm(ClientId::SERVER);
+    eval(
+        &mut vm,
+        r#"u = "B_Soldier_F" createVehicle [30, 10, 0]; c = "Land_Crate_F" createVehicleLocal [0, 0, 0]"#,
+    );
+
+    // He has no move until his first step, and anything that is no Man never has one.
+    assert_eq!(text(&mut vm, "animationState u"), "");
+    assert_eq!(text(&mut vm, "animationState c"), "");
+    assert_eq!(text(&mut vm, "animationState objNull"), "");
+    run(&mut vm, 1);
+    assert_eq!(text(&mut vm, "animationState u"), "stand");
+
+    // A name that is no action of the map and no move changes nothing, and an Object that is no
+    // Man takes the command without a move state to change.
+    let id = entity(&mut vm, "u");
+    eval(
+        &mut vm,
+        r#"u playMove "no such move"; u playAction "no such action"; c playMove "walk""#,
+    );
+    assert_eq!(vm.host.world.man(id).unwrap().moves.queue().count(), 0);
+    assert_eq!(text(&mut vm, "animationState u"), "stand");
+
+    // `playMove` queues the move; it plays on his next step.
+    eval(&mut vm, r#"u playMove "walk""#);
+    run(&mut vm, 1);
+    assert_eq!(text(&mut vm, "animationState u"), "walk");
+
+    // `playAction` asks through the action map of the move he plays: `StandActions` has
+    // `WalkF = "Walk"`.
+    eval(&mut vm, r#"u playAction "WalkF""#);
+    run(&mut vm, 1);
+    assert_eq!(text(&mut vm, "animationState u"), "walk");
+}
+
+/// The immediate forms and `switchMove`: `playMoveNow` and `playActionNow` drop what was queued
+/// and arm their move, `switchMove` resets him where he stands, and its array form writes the
+/// cycle time and the blend factor of the record (`docs/re/sim-man-anim-state.md` §6.1, §6.3).
+#[test]
+fn immediate_forms_and_switch_move() {
+    let mut vm = vm(ClientId::SERVER);
+    eval(&mut vm, r#"u = "B_Soldier_F" createVehicle [30, 10, 0]"#);
+    let id = entity(&mut vm, "u");
+    run(&mut vm, 1);
+
+    // `playMoveNow` drops what `playMove` queued and arms its move at once.
+    eval(&mut vm, r#"u playMove "walk"; u playMoveNow "run""#);
+    run(&mut vm, 1);
+    assert_eq!(text(&mut vm, "animationState u"), "run");
+    assert_eq!(vm.host.world.man(id).unwrap().moves.queue().count(), 0);
+
+    // `playActionNow` resolves through the action map the same way. The hop out of a move waits
+    // for the blend into it, so let Run settle first.
+    run(&mut vm, 3);
+    eval(&mut vm, r#"u playActionNow "WalkF""#);
+    run(&mut vm, 1);
+    assert_eq!(text(&mut vm, "animationState u"), "walk");
+
+    // `switchMove` resets him on the spot: the queue and the request are dropped.
+    eval(&mut vm, r#"u playMove "walkback"; u switchMove "run""#);
+    assert_eq!(text(&mut vm, "animationState u"), "run");
+    assert_eq!(vm.host.world.man(id).unwrap().moves.phase(), 0.0);
+    assert_eq!(vm.host.world.man(id).unwrap().moves.queue().count(), 0);
+
+    // The array form writes the cycle time and the blend factor; the `resetAim` flag is accepted
+    // and ignored (nothing here aims).
+    eval(&mut vm, r#"u switchMove ["walk", 0.5, 0.25, false]"#);
+    assert_eq!(text(&mut vm, "animationState u"), "walk");
+    assert_eq!(vm.host.world.man(id).unwrap().moves.phase(), 0.5);
+    assert_eq!(vm.host.world.man(id).unwrap().moves.weight(), 0.25);
+    let weight = vm.host.world.man(id).unwrap().moves.weight();
+    run(&mut vm, 20);
+    assert!(vm.host.world.man(id).unwrap().moves.weight() > weight);
+
+    // A name the moves type does not know is the default of his action map: the idle of his
+    // stance.
+    eval(&mut vm, r#"u switchMove "no such move""#);
+    assert_eq!(text(&mut vm, "animationState u"), "stand");
+}
+
+/// The five move commands take a local argument: a remote Man's move state is his owner's to
+/// drive, so asking for a move here leaves him alone. `animationState` reads any Man.
+#[test]
+fn move_commands_of_a_remote_man_do_nothing() {
+    let mut client = vm(ClientId(5000));
+    let ty = client.host.types.get("B_Soldier_F").unwrap();
+    let id = client
+        .host
+        .world
+        .spawn_remote(
+            ty,
+            glam::DVec3::ZERO,
+            NetworkId::new(2, 9),
+            Some(ClientId::SERVER),
+        )
+        .unwrap();
+    eval(&mut client, r#"r = objectFromNetId "2:9""#);
+    assert!(!truth(&mut client, "local r"));
+
+    eval(
+        &mut client,
+        r#"
+        r playMove "walk"; r playMoveNow "walk"; r playAction "WalkF";
+        r playActionNow "WalkF"; r switchMove "walk"; r switchMove ["run", 0.5, 0.25];
+        "#,
+    );
+
+    let state = &client.host.world.man(id).unwrap().moves;
+    assert_eq!(state.current(), None);
+    assert_eq!(state.queue().count(), 0);
+    assert_eq!(text(&mut client, "animationState r"), "");
 }
