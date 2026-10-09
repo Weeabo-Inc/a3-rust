@@ -1,18 +1,20 @@
 //! The frame: uniforms, built-in pipelines (meshes, debug lines, text), the post chain and
 //! phase order.
 
+use std::sync::Arc;
 use std::sync::mpsc;
 
 use bytemuck::{Pod, Zeroable};
 use glam::{DVec3, Vec3};
 
 use crate::camera::Camera;
-use crate::draw::{DrawList, MeshId, TextureId, relative_model};
+use crate::draw::{DrawList, MeshId, Slots, TextureId, TextureRef, relative_model};
 use crate::feature::{Phase, PrepareContext, RenderFeature};
 use crate::font;
 use crate::gpu::{Gpu, RenderError};
 use crate::mesh::{Mesh, MeshData, Vertex};
 use crate::post::{HdrSettings, PostChain};
+use crate::residency::{ResidencyConfig, TextureResidency, TextureSource};
 use crate::shadow::{
     self, MAX_CASCADES, SHADOW_FORMAT, ShadowMaps, ShadowSettings, ShadowUniforms,
 };
@@ -217,9 +219,10 @@ pub struct Renderer {
 
     texture_layout: wgpu::BindGroupLayout,
     sampler: wgpu::Sampler,
-    meshes: Vec<Mesh>,
-    textures: Vec<(GpuTexture, wgpu::BindGroup)>,
+    meshes: Slots<Mesh>,
+    textures: Slots<(GpuTexture, wgpu::BindGroup)>,
     white: TextureId,
+    residency: Option<TextureResidency>,
 
     mesh_opaque: wgpu::RenderPipeline,
     mesh_alpha: wgpu::RenderPipeline,
@@ -515,9 +518,10 @@ impl Renderer {
             mesh_shadow,
             texture_layout,
             sampler,
-            meshes: Vec::new(),
-            textures: Vec::new(),
-            white: TextureId(0),
+            meshes: Slots::default(),
+            textures: Slots::default(),
+            white: TextureId::uploaded(0, 0),
+            residency: None,
             mesh_opaque,
             mesh_alpha,
             instances: DynamicBuffer::new(device, "mesh instances", wgpu::BufferUsages::VERTEX),
@@ -556,9 +560,50 @@ impl Renderer {
 
     /// Upload a mesh.
     pub fn upload_mesh(&mut self, gpu: &Gpu, data: &MeshData) -> MeshId {
-        self.meshes
-            .push(Mesh::upload(&gpu.device, data, Some("mesh")));
-        MeshId(self.meshes.len() as u32 - 1)
+        let (index, generation) = self
+            .meshes
+            .insert(Mesh::upload(&gpu.device, data, Some("mesh")));
+        MeshId { index, generation }
+    }
+
+    /// Free a mesh. Its id becomes stale (draws with it are skipped); the GPU memory is
+    /// released once no submitted frame uses it. Returns whether the id was current.
+    pub fn remove_mesh(&mut self, id: MeshId) -> bool {
+        self.meshes.remove(id.index, id.generation).is_some()
+    }
+
+    /// Free an uploaded texture; draws with its id then use white. Returns whether the id was
+    /// current. Streamed textures are freed by dropping their handles instead, and the white
+    /// fallback texture is never removed.
+    pub fn remove_texture(&mut self, id: TextureId) -> bool {
+        if id == self.white {
+            return false;
+        }
+        match id.0 {
+            TextureRef::Uploaded { index, generation } => {
+                self.textures.remove(index, generation).is_some()
+            }
+            TextureRef::Streamed { .. } => false,
+        }
+    }
+
+    /// Meshes and uploaded textures currently stored.
+    pub fn resource_counts(&self) -> (usize, usize) {
+        (self.meshes.len(), self.textures.len())
+    }
+
+    /// Turn on texture streaming from `source` (see [`TextureResidency`]).
+    pub fn enable_streaming(&mut self, source: Arc<dyn TextureSource>, config: ResidencyConfig) {
+        self.residency = Some(TextureResidency::new(source, config));
+    }
+
+    /// The streamed-texture manager, if [enabled](Self::enable_streaming).
+    pub fn residency(&self) -> Option<&TextureResidency> {
+        self.residency.as_ref()
+    }
+
+    pub fn residency_mut(&mut self) -> Option<&mut TextureResidency> {
+        self.residency.as_mut()
     }
 
     /// Upload a texture (with all its mips) for use by [`MeshDraw`](crate::MeshDraw)s.
@@ -583,8 +628,8 @@ impl Renderer {
                 },
             ],
         });
-        self.textures.push((texture, bind_group));
-        Ok(TextureId(self.textures.len() as u32 - 1))
+        let (index, generation) = self.textures.insert((texture, bind_group));
+        Ok(TextureId::uploaded(index, generation))
     }
 
     /// Whether the device can sample BC1-3 textures natively.
@@ -611,12 +656,19 @@ impl Renderer {
         dt: f32,
     ) {
         let size = (size.0.max(1), size.1.max(1));
+        if let Some(residency) = &mut self.residency {
+            residency.update(
+                &gpu.device,
+                &gpu.queue,
+                Some((&self.texture_layout, &self.sampler)),
+            );
+        }
         self.ensure_targets(gpu, size);
         let aspect = size.0 as f32 / size.1 as f32;
         let view_projection = camera.view_projection(aspect);
         let frame = self.write_frame_uniforms(gpu, camera, view_projection, size);
         self.prepare_shadows(gpu, camera, aspect, &frame);
-        self.prepare_meshes(gpu, camera.position, draws);
+        self.prepare_meshes(gpu, camera, size.1, draws);
         self.prepare_lines(gpu, camera.position, draws);
         self.prepare_text(gpu, draws);
 
@@ -927,8 +979,10 @@ impl Renderer {
             pass.set_pipeline(&self.mesh_shadow);
             pass.set_vertex_buffer(1, self.instances.buffer.slice(..));
             for batch in self.batches.iter().filter(|b| !b.transparent) {
-                let mesh = &self.meshes[batch.mesh.0 as usize];
-                pass.set_bind_group(1, &self.textures[batch.texture.0 as usize].1, &[]);
+                let Some(mesh) = self.meshes.get(batch.mesh.index, batch.mesh.generation) else {
+                    continue;
+                };
+                pass.set_bind_group(1, self.material(batch.texture), &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, batch.instances.clone());
@@ -940,12 +994,64 @@ impl Renderer {
         }
     }
 
-    fn prepare_meshes(&mut self, gpu: &Gpu, camera: DVec3, draws: &DrawList) {
-        let valid = |id: MeshId| (id.0 as usize) < self.meshes.len();
-        let texture_of = |t: Option<TextureId>| match t {
-            Some(t) if (t.0 as usize) < self.textures.len() => t,
-            _ => self.white,
+    /// The material bind group for `id`, white when it is stale or not loaded yet.
+    fn material(&self, id: TextureId) -> &wgpu::BindGroup {
+        let found = match id.0 {
+            TextureRef::Uploaded { index, generation } => {
+                self.textures.get(index, generation).map(|t| &t.1)
+            }
+            TextureRef::Streamed { slot, generation } => self
+                .residency
+                .as_ref()
+                .and_then(|r| r.material(slot, generation)),
         };
+        found.unwrap_or_else(|| {
+            let TextureRef::Uploaded { index, generation } = self.white.0 else {
+                unreachable!("white is an uploaded texture")
+            };
+            &self
+                .textures
+                .get(index, generation)
+                .expect("white is never removed")
+                .1
+        })
+    }
+
+    fn prepare_meshes(
+        &mut self,
+        gpu: &Gpu,
+        camera: &Camera,
+        viewport_height: u32,
+        draws: &DrawList,
+    ) {
+        let camera_position = camera.position;
+        let valid = |id: MeshId| self.meshes.get(id.index, id.generation).is_some();
+        let texture_of = |t: Option<TextureId>| t.unwrap_or(self.white);
+        // Screen-space need of streamed textures: the mesh's projected size in pixels.
+        if let Some(residency) = &self.residency {
+            for draw in &draws.meshes {
+                let (Some(TextureId(TextureRef::Streamed { slot, generation })), Some(mesh)) = (
+                    draw.texture,
+                    self.meshes.get(draw.mesh.index, draw.mesh.generation),
+                ) else {
+                    continue;
+                };
+                let scale = draw
+                    .transform
+                    .matrix3
+                    .x_axis
+                    .length()
+                    .max(draw.transform.matrix3.y_axis.length())
+                    .max(draw.transform.matrix3.z_axis.length());
+                let radius = f64::from(mesh.bounding_radius) * scale;
+                let distance = ((draw.transform.translation - camera_position).length() - radius)
+                    .max(f64::from(camera.near));
+                let screen =
+                    radius * f64::from(viewport_height) / (distance * f64::from(camera.fov.top));
+                residency.want_screen_size(slot, generation, screen as f32);
+            }
+        }
+        let camera = camera_position;
         let mut opaque: Vec<_> = draws
             .meshes
             .iter()
@@ -1047,8 +1153,10 @@ impl Renderer {
         pass.set_pipeline(pipeline);
         pass.set_vertex_buffer(1, self.instances.buffer.slice(..));
         for batch in self.batches.iter().filter(|b| b.transparent == transparent) {
-            let mesh = &self.meshes[batch.mesh.0 as usize];
-            pass.set_bind_group(1, &self.textures[batch.texture.0 as usize].1, &[]);
+            let Some(mesh) = self.meshes.get(batch.mesh.index, batch.mesh.generation) else {
+                continue;
+            };
+            pass.set_bind_group(1, self.material(batch.texture), &[]);
             pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
             pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..mesh.index_count, 0, batch.instances.clone());
