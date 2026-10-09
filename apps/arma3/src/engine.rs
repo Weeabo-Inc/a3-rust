@@ -25,6 +25,9 @@ pub struct EngineContext {
     pub play: bool,
     /// Which camera `--play` starts in; the `personView` key toggles it at runtime.
     pub camera_mode: CameraMode,
+    /// `--screenshot` of `--play`: hold the fire action, so the capture shows the rifle's
+    /// tracers.
+    pub fire: bool,
     /// Placed objects of the World.
     pub objects: ObjectOptions,
     /// Show one model instead (the model viewer).

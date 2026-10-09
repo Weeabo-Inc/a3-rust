@@ -4,6 +4,7 @@
 //! (`--world altis`), an FPS overlay, a headless smoke-test mode and an offscreen screenshot
 //! mode for checking rendering changes.
 
+mod combat;
 mod engine;
 mod environment;
 mod hud;
@@ -73,6 +74,10 @@ struct Cli {
     /// Camera `--play` starts in: `first` (`fp`) or `third` (`tp`).
     #[arg(long, value_name = "MODE", requires = "play", default_value = "first")]
     camera_mode: player::CameraMode,
+    /// `--screenshot` with `--play`: hold the fire action (the left mouse button) for the
+    /// captured frames, so the shot shows the rifle's tracers in flight.
+    #[arg(long, requires = "play")]
+    fire: bool,
     /// Objects quality (`VeryLow`, `Low`, `High`, `VeryHigh`, `Ultra`, `Extreme`): LOD
     /// coefficients and how far small objects stay visible.
     #[arg(long, default_value = "High")]
@@ -150,6 +155,7 @@ fn main() -> anyhow::Result<()> {
         fov: cli.fov,
         play: cli.play,
         camera_mode: cli.camera_mode,
+        fire: cli.fire,
         objects: models::ObjectOptions {
             quality: cli.objects_quality,
             view_distance: cli.view_distance,

@@ -97,7 +97,16 @@ pub fn screenshot(
     let mut frame = 0;
     let image = loop {
         let started = Instant::now();
-        scene.update(&input, false, FRAME.as_secs_f64());
+        if engine.fire {
+            // The rifle starts in its semi-automatic mode: press the trigger every other frame.
+            if frame % 2 == 0 {
+                input.press(InputCode::MouseButton(0));
+            } else {
+                input.release(InputCode::MouseButton(0));
+            }
+        }
+        // Firing needs the aim, which a captured mouse gives the windowed client.
+        scene.update(&input, engine.fire, FRAME.as_secs_f64());
         draws.clear();
         scene.draw(&mut draws);
         if !engine.hide_overlay {

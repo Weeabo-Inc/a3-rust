@@ -22,9 +22,9 @@
 //!
 //! # Not read yet
 //!
-//! Firing-mode state (burst counts, reload times, `aiRateOfFire*`), `CfgRecoils` resolution (the
-//! [`ModeType`] keeps the class names only), muzzle memory points (`usti hlavne` /
-//! `konec hlavne`), and the missile parameters of §1 (`thrust`, `maneuvrability`, ...).
+//! `aiRateOfFire*`, `CfgRecoils` resolution (the [`ModeType`] keeps the class names only), muzzle
+//! memory points (`usti hlavne` / `konec hlavne`), and the missile parameters of §1 (`thrust`,
+//! `maneuvrability`, ...).
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -87,6 +87,10 @@ pub struct AmmoType {
     pub simulation: Option<SimulationClass>,
     /// `simulationStep`: the Entity's step length, when the class declares one.
     pub simulation_step: Option<f64>,
+    /// `tracerStartTime`: seconds of flight before a tracer round lights.
+    pub tracer_start_time: f64,
+    /// `tracerEndTime`: seconds of flight after which it burns out.
+    pub tracer_end_time: f64,
 }
 
 impl Default for AmmoType {
@@ -113,6 +117,8 @@ impl Default for AmmoType {
             fuse_distance: 0.0,
             simulation: None,
             simulation_step: None,
+            tracer_start_time: 0.0,
+            tracer_end_time: f64::INFINITY,
         }
     }
 }
@@ -371,6 +377,10 @@ impl WeaponBank {
             fuse_distance: number_or(cfg, "fuseDistance", 0.0),
             simulation: text(cfg, "simulation").and_then(|s| SimulationClass::from_simulation(&s)),
             simulation_step: number(cfg, "simulationStep"),
+            tracer_start_time: number_or(cfg, "tracerStartTime", 0.0),
+            tracer_end_time: number(cfg, "tracerEndTime")
+                .filter(|t| *t > 0.0)
+                .unwrap_or(f64::INFINITY),
         }
     }
 
@@ -388,13 +398,40 @@ impl WeaponBank {
                 Some(MuzzleType {
                     name: name.clone(),
                     class: cfg.name().to_owned(),
-                    magazines: text_list(&cfg, "magazines"),
+                    magazines: self.accepted_magazines(&cfg),
                     init_speed: number(&cfg, "initSpeed"),
                     modes: self.modes(&cfg),
                     magazine_reload_time: number_or(&cfg, "magazineReloadTime", 0.0),
                 })
             })
             .collect()
+    }
+
+    /// The magazines a muzzle takes: its `magazines[]`, then every magazine its
+    /// `magazineWell[]` wells list (`CfgMagazineWells >> well >> anyName[]`), without repeats.
+    fn accepted_magazines(&self, muzzle: &ConfigRef<'_>) -> Vec<String> {
+        let mut out = text_list(muzzle, "magazines");
+        let wells = self.config.root().get("CfgMagazineWells");
+        for well in text_list(muzzle, "magazineWell") {
+            let well = wells.get(&well);
+            if !well.is_class() {
+                continue;
+            }
+            for entry in well.entries_with_inherited() {
+                if !entry.is_array() {
+                    continue;
+                }
+                for name in entry.array().iter().filter_map(|v| match v {
+                    Value::String(s) | Value::Expression(s) => Some(s.clone()),
+                    _ => None,
+                }) {
+                    if !out.iter().any(|m| m.eq_ignore_ascii_case(&name)) {
+                        out.push(name);
+                    }
+                }
+            }
+        }
+        out
     }
 
     /// The class a muzzle's parameters come from: the weapon itself for `"this"`, otherwise its
