@@ -231,6 +231,8 @@ dependencies = [
 name = "a3-render"
 version = "0.1.0"
 dependencies = [
+ "a3-paa",
+ "a3-vfs",
  "bytemuck",
  "glam 0.34.1",
  "log",
