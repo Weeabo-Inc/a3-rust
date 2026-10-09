@@ -102,8 +102,7 @@ fn creates_every_present_unit_at_its_sqm_position() {
     assert_eq!(spawned.unspawned[0].class, "O_Missing_F");
     assert!(spawned.unspawned[0].reason.contains("O_Missing_F"));
 
-    // A 3-component position is `CAN_COLLIDE`: the height is kept, unwrapped from
-    // {east, north, height}.
+    // A 3-component position is `CAN_COLLIDE`: the height is kept, as `{east, height, north}`.
     let boss = spawned.units[&7];
     assert_eq!(
         position(&world, boss),

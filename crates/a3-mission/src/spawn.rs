@@ -1,7 +1,7 @@
 //! Spawning a [`Mission`] into a [`World`]: Entities at the SQM positions, groups, leaders.
 //!
 //! What the engine does at mission start, in order: create every placed unit as an Entity at its
-//! `position[]` (the third component is height above sea level, like `CAN_COLLIDE`), set its
+//! `position[]` (the second component is height above sea level, like `CAN_COLLIDE`), set its
 //! heading from `azimut`, put it into its group, and make the unit with `leader=1` the group's
 //! leader. Units with `presence=0` are not created; units whose class the config does not know
 //! are reported in [`Spawned::unspawned`] instead of stopping the load.

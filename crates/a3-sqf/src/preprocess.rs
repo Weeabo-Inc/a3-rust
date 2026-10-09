@@ -122,7 +122,7 @@ impl<'a, H: Host> SqfEvaluator<'a, H> {
                     let error = crate::ScriptError::new(
                         crate::SqfError::Generic(e.message.clone()),
                         None,
-                        Some((&source, e.span.start as u32)),
+                        Some((&source, e.span.start)),
                     );
                     self.vm.host.report_error(&error);
                 }

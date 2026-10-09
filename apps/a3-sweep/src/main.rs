@@ -34,9 +34,9 @@ use crate::runner::{Engine, RunOptions};
     about = "Run every shipped scenario headlessly and report what breaks"
 )]
 struct Args {
-    /// Game install folder.
+    /// Game install folder. Not needed with `--summarize`, which only reads a recorded sweep.
     #[arg(long, env = "A3_ROOT")]
-    game_dir: PathBuf,
+    game_dir: Option<PathBuf>,
     /// Only scenarios whose folder contains this text (case-insensitive); repeatable, any
     /// matches. The folder ends with the world, so `--filter altis` selects a world.
     #[arg(long)]
@@ -104,12 +104,13 @@ impl Args {
         }
     }
 
-    /// The arguments that start a worker with the same run options.
-    fn worker_args(&self) -> Vec<OsString> {
+    /// The arguments that start a worker with the same run options, on the game install `run`
+    /// validated.
+    fn worker_args(&self, game_dir: &Path) -> Vec<OsString> {
         let mut args: Vec<OsString> = vec![
             "--worker".into(),
             "--game-dir".into(),
-            self.game_dir.clone().into(),
+            game_dir.as_os_str().to_owned(),
             "--seconds".into(),
             self.seconds.to_string().into(),
             "--fps".into(),
@@ -124,12 +125,22 @@ impl Args {
         }
         args
     }
+
+    /// The game install, from `--game-dir` or `A3_ROOT`; `--summarize` does not need one.
+    fn game_dir(&self) -> anyhow::Result<&Path> {
+        self.game_dir.as_deref().with_context(|| {
+            "no game install: pass --game-dir <DIR> or set A3_ROOT (only --summarize works \
+             without one)"
+        })
+    }
 }
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     if args.worker {
-        return on_big_stack(move || worker::serve(&args.game_dir, args.run_options()));
+        let game_dir = args.game_dir()?.to_owned();
+        let options = args.run_options();
+        return on_big_stack(move || worker::serve(&game_dir, options));
     }
     if let Some(json) = &args.summarize {
         let sweep: Sweep = serde_json::from_slice(
@@ -143,9 +154,10 @@ fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
+    let game_dir = args.game_dir()?.to_owned();
     let started = chrono::Local::now();
     let start = Instant::now();
-    let all = load_inventory(&args.game_dir)?;
+    let all = load_inventory(&game_dir)?;
     let selected = select(&all, &args);
     if args.list {
         println!("{}", summary::inventory_table(&all));
@@ -195,7 +207,6 @@ fn main() -> anyhow::Result<()> {
 
     let results = if args.in_process {
         let options = args.run_options();
-        let game_dir = args.game_dir.clone();
         let scenarios = selected.clone();
         let results = on_big_stack(move || {
             worker::install_panic_hook();
@@ -211,7 +222,7 @@ fn main() -> anyhow::Result<()> {
         let options = supervisor::SupervisorOptions {
             jobs: args.jobs,
             hard_timeout: Duration::from_secs_f64(args.hard_timeout.max(1.0)),
-            worker_args: args.worker_args(),
+            worker_args: args.worker_args(&game_dir),
         };
         supervisor::run(selected, &options, &mut on_result)?
     };
@@ -228,6 +239,7 @@ fn main() -> anyhow::Result<()> {
             jobs: if args.in_process { 1 } else { args.jobs },
             terrain: !args.no_terrain,
             filters: args.filter.clone(),
+            profile: build_profile().to_owned(),
         },
         elapsed_s: start.elapsed().as_secs_f64(),
         scenarios: results,
@@ -399,6 +411,15 @@ fn write_doc(path: &Path, sweep: &Sweep) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// The build profile of this binary: `ms/frame` is only comparable within one profile.
+fn build_profile() -> &'static str {
+    if cfg!(debug_assertions) {
+        "debug"
+    } else {
+        "release"
+    }
+}
+
 /// `git describe` of the working tree, or empty.
 fn engine_version() -> String {
     std::process::Command::new("git")
@@ -408,4 +429,40 @@ fn engine_version() -> String {
         .filter(|o| o.status.success())
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
         .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Regression: `--game-dir` used to be required, so the summary could not be regenerated
+    /// from a recorded sweep on a machine without the game install.
+    #[test]
+    fn summarize_needs_no_game_install() {
+        let args = Args::try_parse_from(["a3-sweep", "--summarize", "sweep.json"])
+            .expect("`--summarize` parses without `--game-dir`");
+        assert_eq!(args.summarize.as_deref(), Some(Path::new("sweep.json")));
+    }
+
+    #[test]
+    fn a_sweep_without_an_install_says_so() {
+        // `A3_ROOT` is unset in CI; when it is set locally this asserts the opposite branch.
+        let args = Args::try_parse_from(["a3-sweep"]).expect("parses");
+        let expected = std::env::var_os("A3_ROOT").is_none();
+        assert_eq!(
+            args.game_dir().is_err(),
+            expected,
+            "a run needs --game-dir or A3_ROOT: {:?}",
+            args.game_dir
+        );
+        if expected {
+            assert!(
+                args.game_dir()
+                    .unwrap_err()
+                    .to_string()
+                    .contains("--game-dir"),
+                "the error names the flag"
+            );
+        }
+    }
 }

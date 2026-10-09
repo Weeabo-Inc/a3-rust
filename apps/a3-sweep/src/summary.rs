@@ -178,13 +178,18 @@ pub fn markdown(sweep: &Sweep) -> String {
     );
     let _ = writeln!(
         out,
-        "Sweep of {} (engine `{}`): **{total} scenarios**, {} simulated seconds each at {} fps \
-         (wall budget {} s per scenario), {} worker(s), terrain {}{}. The sweep took {:.0} s.\n",
+        "Sweep of {} (engine `{}`, {} build): **{total} scenarios**, {} simulated seconds each at \
+         {} fps (wall budget {} s per scenario), {} worker(s), terrain {}{}. The sweep took {:.0} s.\n",
         sweep.started,
         if sweep.engine.is_empty() {
             "unknown"
         } else {
             &sweep.engine
+        },
+        if sweep.options.profile.is_empty() {
+            "unknown-profile"
+        } else {
+            &sweep.options.profile
         },
         sweep.options.seconds,
         sweep.options.fps,
@@ -202,7 +207,8 @@ pub fn markdown(sweep: &Sweep) -> String {
         },
         sweep.elapsed_s,
     );
-    out.push_str("A scenario **passes** when it loads, starts and simulates with no script error, no unimplemented command, no unspawned unit or missing model, every start-up script succeeding and the sanity checks holding (player present and alive, no non-finite positions, nothing below the terrain).\n\n");
+    out.push_str("A scenario **passes** when it loads, starts and simulates with no script error, no unimplemented command, no unspawned or misplaced unit, no missing model, every start-up script succeeding and the sanity checks holding (player present and alive, no non-finite positions, nothing below the terrain).\n\n");
+    out.push_str("*ms/frame* is wall-clock time of one simulated frame in the build profile above; it is not comparable across profiles or machines. Every other number is reproducible from the same install.\n\n");
 
     out.push_str("## Totals\n\n");
     let _ = writeln!(
@@ -388,8 +394,14 @@ pub fn markdown(sweep: &Sweep) -> String {
         if !r.unspawned.is_empty() {
             notes.push(format!("{} unspawned", r.unspawned.len()));
         }
+        if r.misplaced > 0 {
+            notes.push(format!("{} misplaced", r.misplaced));
+        }
         if !r.failed_scripts.is_empty() {
-            notes.push(format!("failed: {}", r.failed_scripts.join(", ")));
+            notes.push(format!(
+                "failed: {}",
+                listed(&r.failed_scripts, FAILED_SCRIPTS_SHOWN)
+            ));
         }
         if !r.compile_errors.is_empty() {
             notes.push(format!("{} files do not compile", r.compile_errors.len()));
@@ -411,10 +423,32 @@ pub fn markdown(sweep: &Sweep) -> String {
             cell(&blocked.join(", ")),
             r.sim_seconds,
             r.timings.frame_ms_mean,
-            cell(&notes.join("; "))
+            cell(&truncate(&notes.join("; "), MAX_NOTE)),
         );
     }
     out
+}
+
+/// How many names [`listed`] shows before it counts the rest.
+const FAILED_SCRIPTS_SHOWN: usize = 6;
+
+/// Longest notes cell in the per-scenario table.
+const MAX_NOTE: usize = 300;
+
+/// A few names, then `(+N more)`: the per-scenario table must stay readable when a mission has
+/// hundreds of failed init fields (full lists are in the JSON).
+fn listed(names: &[String], show: usize) -> String {
+    let shown = names
+        .iter()
+        .take(show)
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(", ");
+    if names.len() > show {
+        format!("{shown} (+{} more)", names.len() - show)
+    } else {
+        shown
+    }
 }
 
 /// The inventory as a Markdown table of counts per kind and world.
@@ -533,6 +567,7 @@ mod tests {
                 jobs: 2,
                 terrain: true,
                 filters: vec![],
+                profile: "release".into(),
             },
             elapsed_s: 10.0,
             scenarios: vec![a, b, c, d],
@@ -571,12 +606,24 @@ mod tests {
         assert!(md.contains("**Pass rate: 25.0% (1 of 4)**"), "{md}");
         assert!(md.contains("| 1 | `allowDamage` | 2 | 4 | 2 | 6 |"), "{md}");
         assert!(md.contains("| a3\\m\\d.altis | crash |"), "{md}");
+        assert!(md.contains("engine `abc123`, release build"), "{md}");
         for folder in ["a.altis", "b.stratis", "c.altis", "d.altis"] {
             assert!(
                 md.contains(&format!("a3\\m\\{folder} | unlisted |")),
                 "{folder}"
             );
         }
+    }
+
+    #[test]
+    fn a_long_failed_script_list_is_shortened() {
+        assert_eq!(listed(&[], 3), "");
+        let names: Vec<String> = (0..10).map(|i| format!("init of unit {i}")).collect();
+        assert_eq!(
+            listed(&names, 3),
+            "init of unit 0, init of unit 1, init of unit 2 (+7 more)"
+        );
+        assert_eq!(listed(&names[..2], 3), "init of unit 0, init of unit 1");
     }
 
     #[test]

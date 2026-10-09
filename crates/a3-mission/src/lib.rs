@@ -6,7 +6,7 @@
 //! 1. [`load_mission`] reads `mission.sqm` (text or rapified) through the VFS and, when the
 //!    mission has one, `description.ext` through the config preprocessor and parser into a
 //!    [`Mission`] value. Nothing is created in the World yet.
-//! 2. [`spawn_mission`] creates the World's Entities at the SQM positions (the third component of
+//! 2. [`spawn_mission`] creates the World's Entities at the SQM positions (the second component of
 //!    `position[]` is height above sea level, so `CAN_COLLIDE` placements keep it and surface
 //!    placements let the terrain set it), puts them into their groups and applies their headings.
 //! 3. [`run_scripts`] installs the mission's variables (`player`, each named unit), then runs the

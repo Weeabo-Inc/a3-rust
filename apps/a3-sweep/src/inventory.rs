@@ -342,7 +342,9 @@ fn collect_templates(class: &ConfigRef<'_>, out: &mut Vec<String>) {
 }
 
 /// Mounts the loose mission PBOs of the game's `Missions` and `MPMissions` folders, each at
-/// `missions\<file stem>` or `mpmissions\<file stem>`. Returns the folders and their kind.
+/// `missions\<file stem>` or `mpmissions\<file stem>`. Returns every mounted folder and its kind;
+/// [`inventory`] keeps the ones that hold a `mission.sqm`, so a PBO that is not a mission is
+/// mounted but never reported as one.
 pub fn mount_loose_missions(vfs: &Vfs, game_dir: &Path) -> Vec<(String, Kind)> {
     let mut out = Vec::new();
     for (folder, kind) in [
@@ -613,5 +615,72 @@ class Campaign { class Chapter { class E01 { template = "exp_m01.Tanoa"; }; }; }
         }
         assert_eq!(Kind::parse("mp"), Some(Kind::Multiplayer));
         assert_eq!(Kind::parse("nope"), None);
+    }
+
+    /// A PBO holding `files`, written where a game install keeps it.
+    fn write_pbo(path: &std::path::Path, files: &[(&str, &[u8])]) {
+        let mut pbo = a3_pbo::PboWriter::new().property("prefix", r"x\missions");
+        for (name, bytes) in files {
+            pbo = pbo.file(*name, bytes.to_vec());
+        }
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, pbo.to_bytes()).unwrap();
+    }
+
+    /// The loose mission PBOs of `Missions` and `MPMissions` are mounted under the PBO's file
+    /// stem; only the folders that hold a `mission.sqm` are scenarios. Synthetic install: the test
+    /// runs everywhere.
+    #[test]
+    fn loose_mission_pbos_are_mounted_at_their_stem_and_only_missions_are_scenarios() {
+        let dir = tempfile::tempdir().unwrap();
+        write_pbo(
+            &dir.path().join("Missions").join("coop_x.stratis.pbo"),
+            &[("mission.sqm", b"version=12;")],
+        );
+        write_pbo(
+            &dir.path().join("MPMissions").join("mp_y.altis.pbo"),
+            &[("mission.sqm", b"version=53;")],
+        );
+        write_pbo(
+            &dir.path().join("Missions").join("readme.pbo"),
+            &[("readme.txt", b"not a mission")],
+        );
+
+        let vfs = Vfs::new();
+        let loose = mount_loose_missions(&vfs, dir.path());
+        assert_eq!(
+            loose,
+            vec![
+                (r"missions\coop_x.stratis".to_owned(), Kind::Scenario),
+                (r"missions\readme".to_owned(), Kind::Scenario),
+                (r"mpmissions\mp_y.altis".to_owned(), Kind::Multiplayer),
+            ]
+        );
+        assert!(vfs.exists(r"missions\readme\readme.txt"));
+
+        let scenarios = inventory(&vfs, &Listing::default(), &loose);
+        assert_eq!(scenarios.len(), 2, "{scenarios:#?}");
+        assert_eq!(
+            (
+                scenarios[0].folder.as_str(),
+                scenarios[0].kind,
+                scenarios[0].package.as_str(),
+                scenarios[0].world.as_str(),
+            ),
+            (
+                r"missions\coop_x.stratis",
+                Kind::Scenario,
+                "Missions",
+                "stratis"
+            )
+        );
+        assert_eq!(
+            (
+                scenarios[1].kind,
+                scenarios[1].package.as_str(),
+                scenarios[1].world.as_str(),
+            ),
+            (Kind::Multiplayer, "MPMissions", "altis")
+        );
     }
 }

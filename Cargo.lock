@@ -428,8 +428,10 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
+ "glam 0.34.1",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]

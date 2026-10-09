@@ -186,7 +186,11 @@ fn a_lenient_evaluator_reports_errors_and_goes_on() {
         .expect("the config goes on");
     assert_eq!(out.text, "\na = \"\";\n\nb = 5;");
     assert_eq!(vm.host.errors.len(), 3, "{:#?}", vm.host.errors);
-    assert!(vm.host.errors[0].contains("_undefinedlines"), "{}", vm.host.errors[0]);
+    assert!(
+        vm.host.errors[0].contains("_undefinedlines"),
+        "{}",
+        vm.host.errors[0]
+    );
 }
 
 #[test]

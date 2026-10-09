@@ -91,6 +91,20 @@ pub struct CommandUse {
     pub count: usize,
 }
 
+/// A unit the World placed somewhere other than where the SQM put it, measured right after
+/// spawning.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Misplaced {
+    /// The SQM unit `id`.
+    pub id: i32,
+    /// The `vehicle` config class.
+    pub class: String,
+    /// Where the SQM put it, world space.
+    pub declared: [f64; 3],
+    /// Where it spawned.
+    pub spawned: [f64; 3],
+}
+
 /// A unit the mission places that was not created.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Unspawned {
@@ -115,8 +129,10 @@ pub struct Sanity {
     pub non_finite_positions: usize,
     /// Entities more than 5 m below the terrain surface.
     pub below_terrain: usize,
-    /// Entities more than 2 km above the terrain surface (no shipped scenario places anything
-    /// that high; a swapped coordinate does).
+    /// Entities more than 2 km above the terrain surface. A statistic, not a failure: shipped
+    /// missions place aircraft at altitude, so being high above the ground is the mission's
+    /// business. What a misread `position[]` produces is measured by
+    /// [`ScenarioResult::placement_mismatches`] instead.
     #[serde(default)]
     pub far_above_terrain: usize,
 }
@@ -138,9 +154,6 @@ impl Sanity {
         }
         if self.below_terrain > 0 {
             out.push(format!("{} below terrain", self.below_terrain));
-        }
-        if self.far_above_terrain > 0 {
-            out.push(format!("{} far above terrain", self.far_above_terrain));
         }
         out
     }
@@ -184,6 +197,14 @@ pub struct ScenarioResult {
     pub sqm_version: i32,
     pub units_spawned: usize,
     pub unspawned: Vec<Unspawned>,
+    /// Units the World placed somewhere other than where the SQM put them (more than a metre off
+    /// in the plane, or in height when the SQM gave one), measured right after spawning. This is
+    /// the check that catches a misread `position[]`: being high above the terrain is not a bug.
+    #[serde(default)]
+    pub misplaced: usize,
+    /// Up to ten of those, in full.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub misplaced_examples: Vec<Misplaced>,
     /// Model files the spawned Entity types name that the VFS does not have.
     pub missing_models: Vec<String>,
     /// Start-up scripts that failed (`functions init`, `init of ...`, `init.sqf`).
@@ -220,6 +241,8 @@ impl ScenarioResult {
             sqm_version: 0,
             units_spawned: 0,
             unspawned: Vec::new(),
+            misplaced: 0,
+            misplaced_examples: Vec::new(),
             missing_models: Vec::new(),
             failed_scripts: Vec::new(),
             errors: Vec::new(),
@@ -238,6 +261,7 @@ impl ScenarioResult {
         let clean = self.error_count == 0
             && self.unimplemented_runtime.is_empty()
             && self.unspawned.is_empty()
+            && self.misplaced == 0
             && self.missing_models.is_empty()
             && self.failed_scripts.is_empty()
             && self.compile_errors.is_empty()
@@ -269,6 +293,10 @@ pub struct SweepOptions {
     pub jobs: usize,
     pub terrain: bool,
     pub filters: Vec<String>,
+    /// The build profile the sweep ran in (`release`, `debug`). `ms/frame` is only comparable
+    /// within one profile; every other number is.
+    #[serde(default)]
+    pub profile: String,
 }
 
 /// An error report reduced to what groups it with its siblings.

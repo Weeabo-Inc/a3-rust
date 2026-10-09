@@ -21,7 +21,9 @@ use a3_wrp::Terrain;
 use anyhow::Context as _;
 
 use crate::inventory::{Scenario, mount_loose_missions};
-use crate::report::{Sanity, ScenarioResult, Stage, Status, Unspawned, group_errors, ranked};
+use crate::report::{
+    Misplaced, Sanity, ScenarioResult, Stage, Status, Unspawned, group_errors, ranked,
+};
 
 /// How each scenario is run.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -199,6 +201,7 @@ impl Runner {
                 reason: u.reason.clone(),
             })
             .collect();
+        (result.misplaced, result.misplaced_examples) = misplaced(&spawned, &mission, &host.world);
         result.timings.spawn_ms = ms(t.elapsed());
 
         // Start-up.
@@ -355,6 +358,56 @@ impl Runner {
     }
 }
 
+/// How far from the SQM position a spawned Entity may sit before it counts as misplaced. SQM
+/// coordinates are metres in world space, so a correct spawn reproduces them exactly; the
+/// tolerance only absorbs rounding.
+const PLACEMENT_TOLERANCE: f64 = 1.0;
+
+/// Entities the World placed away from where the SQM put them, right after spawning: the count
+/// and up to [`MAX_MISPLACED`] of them in full. A unit with a two-component `position[]` (place
+/// on the surface) only has its plane checked: the terrain supplies the height.
+fn misplaced(
+    spawned: &Spawned,
+    mission: &Mission,
+    world: &a3_world::World,
+) -> (usize, Vec<Misplaced>) {
+    let mut count = 0;
+    let mut examples = Vec::new();
+    for (id, entity) in &spawned.units {
+        let (Some(unit), Some(entity)) = (mission.unit(*id), world.entity(*entity)) else {
+            continue;
+        };
+        let got = entity.position();
+        if placement_offset(unit.position, got, unit.on_surface) <= PLACEMENT_TOLERANCE {
+            continue;
+        }
+        count += 1;
+        if examples.len() < MAX_MISPLACED {
+            examples.push(Misplaced {
+                id: *id,
+                class: unit.class.clone(),
+                declared: [unit.position.x, unit.position.y, unit.position.z],
+                spawned: [got.x, got.y, got.z],
+            });
+        }
+    }
+    (count, examples)
+}
+
+/// How many misplaced units the JSON spells out; beyond that it only counts them.
+const MAX_MISPLACED: usize = 10;
+
+/// How far a spawned Entity sits from its SQM position. A unit whose SQM position has two
+/// components asked to be placed on the surface, so only its plane counts.
+fn placement_offset(want: glam::DVec3, got: glam::DVec3, on_surface: bool) -> f64 {
+    let plane = (want.x - got.x).abs().max((want.z - got.z).abs());
+    if on_surface {
+        plane
+    } else {
+        plane.max((want.y - got.y).abs())
+    }
+}
+
 /// Loads `<campaign>\description.ext` as `campaignConfigFile`.
 fn install_campaign_config(data: &GameData, vm: &mut Vm<MissionVmHost>, campaign: &str) {
     let path = format!("{campaign}\\description.ext");
@@ -455,5 +508,31 @@ mod tests {
         assert_eq!(model_path("a3\\x\\box"), "a3\\x\\box.p3d");
         assert_eq!(model_path(""), "");
         assert_eq!(model_path("a3\\x.y\\box"), "a3\\x.y\\box.p3d");
+    }
+
+    #[test]
+    fn a_placement_off_by_more_than_a_metre_is_reported_but_a_surface_height_is_not() {
+        let want = glam::DVec3::new(100.0, 48.0, 200.0);
+        assert_eq!(placement_offset(want, want, false), 0.0);
+        assert!(
+            placement_offset(want, glam::DVec3::new(100.0, 0.0, 200.0), false)
+                > PLACEMENT_TOLERANCE,
+            "a lost height counts when the SQM gave one"
+        );
+        assert_eq!(
+            placement_offset(want, glam::DVec3::new(100.2, 47.4, 199.9), false),
+            0.6000000000000014,
+            "small differences stay under the tolerance"
+        );
+        assert_eq!(
+            placement_offset(want, glam::DVec3::new(100.0, 0.0, 200.0), true),
+            0.0,
+            "a two-component position[] lets the terrain set the height"
+        );
+        assert!(
+            placement_offset(want, glam::DVec3::new(100.0, 48.0, 15000.0), true)
+                > PLACEMENT_TOLERANCE,
+            "a swapped north coordinate is caught in the plane"
+        );
     }
 }
