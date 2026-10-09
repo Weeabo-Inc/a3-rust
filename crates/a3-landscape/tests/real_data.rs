@@ -108,3 +108,31 @@ fn every_world_resolves_its_cells() {
     }
     assert_eq!(checked, 6, "expected the six readable worlds");
 }
+
+#[test]
+fn altis_sea_waves_and_water_parameters() {
+    let Some(root) = std::env::var_os("A3_ROOT") else {
+        eprintln!("skipping: A3_ROOT not set");
+        return;
+    };
+    let game = GameData::load(&LoadOptions::new(root)).unwrap();
+    let altis = WorldConfig::load(&game.config, "Altis").unwrap();
+    let waves = altis.sea.waves;
+    assert_eq!(waves.water_grid, 50.0);
+    assert_eq!(waves.max_tide, 0.0);
+    assert_eq!(waves.max_wave, 0.25);
+    assert!((waves.x_scale - 2.0 / 50.0).abs() < 1e-7, "\"2.0/50\"");
+    assert!((waves.z_scale - 1.0 / 50.0).abs() < 1e-7, "\"1.0/50\"");
+    assert_eq!((waves.x_duration_ms, waves.z_duration_ms), (5000, 10000));
+    let ex = altis.sea.water_ex;
+    assert_eq!(ex.fog_density, Some(0.07));
+    assert_eq!(ex.fog_gradient_coefs, Some(Vec3::new(0.35, 1.0, 1.7)));
+    assert_eq!(ex.ss_reflection_strength, Some(0.85));
+    assert_eq!(ex.specular_power_overcast0, Some(750.0));
+    assert_eq!(ex.refraction_max_dist, Some(5.1));
+    assert_eq!(
+        ex.surface_opacity.unwrap_or(0.0),
+        0.0,
+        "an opaque surface tint is off"
+    );
+}

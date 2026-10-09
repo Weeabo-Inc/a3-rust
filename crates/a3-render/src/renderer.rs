@@ -43,6 +43,39 @@ pub struct HemisphereAmbient {
     pub ground: Vec3,
 }
 
+/// The sea's water as a fog medium (`docs/re/render-atmosphere.md` §2): the post pass fogs
+/// the part of each view ray that runs below `height` with it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WaterFog {
+    /// World height of the water surface (the sea level).
+    pub height: f32,
+    /// Extinction per metre (RV `WaterExPars >> fogDensity`).
+    pub density: f32,
+    /// Fog colour (RV `PSC_WaterFogColor`), linear HDR.
+    pub color: Vec3,
+    /// Colour scale by view direction (RV `fogGradientCoefs`): looking straight down, at the
+    /// horizon and straight up.
+    pub gradient: Vec3,
+    /// Extinction per metre of depth of the ambient light reaching a surface under the water
+    /// (RV `ligtExtinctionSpeed`, `PSC_WaterLightExtinctionCoefs`).
+    pub light_extinction: Vec3,
+    /// Extinction per metre of depth of the sun light (RV `diffuseLigtExtinctionSpeed`,
+    /// `PSC_WaterDiffuseLightExtinctionCoefs`).
+    pub diffuse_extinction: Vec3,
+}
+
+impl WaterFog {
+    /// RV's water fog colour scale for a unit view direction with height `dir_y`.
+    pub fn gradient_at(&self, dir_y: f32) -> f32 {
+        let g = self.gradient;
+        if dir_y < 0.0 {
+            g.x + (1.0 + dir_y).powi(2) * (g.y - g.x)
+        } else {
+            g.y + dir_y * (g.z - g.y)
+        }
+    }
+}
+
 /// Lighting and atmosphere parameters.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RenderSettings {
@@ -77,6 +110,8 @@ pub struct RenderSettings {
     pub hdr: HdrSettings,
     /// Cascaded sun shadows.
     pub shadows: ShadowSettings,
+    /// Underwater fog below the sea level; `None` when the world has no sea.
+    pub water: Option<WaterFog>,
 }
 
 impl Default for RenderSettings {
@@ -96,6 +131,7 @@ impl Default for RenderSettings {
             procedural_sky: true,
             hdr: HdrSettings::default(),
             shadows: ShadowSettings::default(),
+            water: None,
         }
     }
 }
@@ -121,6 +157,15 @@ struct FrameUniforms {
     haze: [f32; 4],
     // x: linear fog end, y: 1 / (end - start); y = 0 disables.
     linear_fog: [f32; 4],
+    // x: water height, y: water fog extinction per metre, z: 1 when there is water, w: unused.
+    water: [f32; 4],
+    // rgb: water fog colour.
+    water_fog_color: [f32; 4],
+    // xyz: water fog gradient (down, horizon, up).
+    water_fog_gradient: [f32; 4],
+    // xyz: underwater extinction per metre of depth of the ambient and of the sun light.
+    water_light_extinction: [f32; 4],
+    water_diffuse_extinction: [f32; 4],
 }
 
 #[repr(C)]
@@ -199,8 +244,14 @@ struct MeshBatch {
 
 struct Targets {
     size: (u32, u32),
+    color: wgpu::Texture,
+    depth: wgpu::Texture,
     color_view: wgpu::TextureView,
     depth_view: wgpu::TextureView,
+    copy_color: wgpu::Texture,
+    copy_depth: wgpu::Texture,
+    /// Group 2 of the water phase: the copies of colour and depth.
+    scene_copy: wgpu::BindGroup,
 }
 
 /// The renderer: owns uploaded meshes and textures, built-in pipelines and registered features.
@@ -240,6 +291,8 @@ pub struct Renderer {
 
     post: PostChain,
     targets: Option<Targets>,
+    scene_copy_layout: wgpu::BindGroupLayout,
+    scene_copy_sampler: wgpu::Sampler,
 
     features: Vec<Box<dyn RenderFeature>>,
 }
@@ -504,6 +557,25 @@ impl Renderer {
         });
 
         let post = PostChain::new(device, &frame_layout, output_format);
+        let scene_copy_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("scene copy layout"),
+            entries: &[
+                texture_entry(0, wgpu::TextureSampleType::Float { filterable: true }),
+                texture_entry(1, wgpu::TextureSampleType::Depth),
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+        let scene_copy_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("scene copy sampler"),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
 
         let mut renderer = Renderer {
             output_format,
@@ -535,6 +607,8 @@ impl Renderer {
             glyph_count: 0,
             post,
             targets: None,
+            scene_copy_layout,
+            scene_copy_sampler,
             features: Vec::new(),
         };
         renderer.white = renderer
@@ -551,6 +625,23 @@ impl Renderer {
     /// Bind group layout of the frame uniforms (group 0 of every scene pipeline).
     pub fn frame_layout(&self) -> &wgpu::BindGroupLayout {
         &self.frame_layout
+    }
+
+    /// Bind group layout of the scene copy, group 2 of [`Phase::Water`] pipelines:
+    /// - binding 0: scene colour after the opaque phase (`texture_2d<f32>`,
+    ///   [`SCENE_COLOR_FORMAT`](Self::SCENE_COLOR_FORMAT));
+    /// - binding 1: scene depth after the opaque phase (`texture_depth_2d`, reversed-Z: view
+    ///   depth is `near / depth`, 0 where nothing was drawn);
+    /// - binding 2: a linear clamping sampler.
+    pub fn scene_copy_layout(&self) -> &wgpu::BindGroupLayout {
+        &self.scene_copy_layout
+    }
+
+    /// The eye adaptation state: `{adapted luminance, exposure, average luminance, _}` as
+    /// `f32`s, written by the post chain after the scene passes. Shaders may bind it as
+    /// read-only storage to read the previous frame's exposure.
+    pub fn exposure_buffer(&self) -> &wgpu::Buffer {
+        self.post.exposure_state()
     }
 
     /// Register a feature; it is prepared and drawn every frame after the built-ins.
@@ -691,42 +782,82 @@ impl Renderer {
             });
         self.encode_shadows(&mut encoder);
         let targets = self.targets.as_ref().expect("ensured above");
-        {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        // The pass ends (is dropped) before the encoder records anything else, so its borrow
+        // of the encoder need not be tracked.
+        let scene_pass = |encoder: &mut wgpu::CommandEncoder, clear: bool| {
+            let descriptor = wgpu::RenderPassDescriptor {
                 label: Some("scene"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &targets.color_view,
                     depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        load: if clear {
+                            wgpu::LoadOp::Clear(wgpu::Color::BLACK)
+                        } else {
+                            wgpu::LoadOp::Load
+                        },
                         store: wgpu::StoreOp::Store,
                     },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &targets.depth_view,
                     depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(0.0),
+                        load: if clear {
+                            wgpu::LoadOp::Clear(0.0)
+                        } else {
+                            wgpu::LoadOp::Load
+                        },
                         store: wgpu::StoreOp::Store,
                     }),
                     stencil_ops: None,
                 }),
                 ..Default::default()
-            });
+            };
+            encoder.begin_render_pass(&descriptor).forget_lifetime()
+        };
+        let water = self.features.iter().any(|f| f.wants_scene_copy());
+        let mut pass = scene_pass(&mut encoder, true);
+        pass.set_bind_group(0, &self.frame_bind_group, &[]);
+        self.draw_meshes(&mut pass, false);
+        self.draw_lines(&mut pass);
+        for feature in &self.features {
             pass.set_bind_group(0, &self.frame_bind_group, &[]);
-            self.draw_meshes(&mut pass, false);
-            self.draw_lines(&mut pass);
+            feature.draw(Phase::Opaque, &mut pass);
+        }
+        if water {
+            // The water phase reads the opaque scene while it draws over it: copy colour and
+            // depth, then continue in a second pass.
+            drop(pass);
+            let full = wgpu::Extent3d {
+                width: size.0,
+                height: size.1,
+                depth_or_array_layers: 1,
+            };
+            encoder.copy_texture_to_texture(
+                targets.color.as_image_copy(),
+                targets.copy_color.as_image_copy(),
+                full,
+            );
+            encoder.copy_texture_to_texture(
+                targets.depth.as_image_copy(),
+                targets.copy_depth.as_image_copy(),
+                full,
+            );
+            pass = scene_pass(&mut encoder, false);
             for feature in &self.features {
                 pass.set_bind_group(0, &self.frame_bind_group, &[]);
-                feature.draw(Phase::Opaque, &mut pass);
-            }
-            pass.set_bind_group(0, &self.frame_bind_group, &[]);
-            self.draw_meshes(&mut pass, true);
-            for feature in &self.features {
-                pass.set_bind_group(0, &self.frame_bind_group, &[]);
-                feature.draw(Phase::Alpha, &mut pass);
+                pass.set_bind_group(2, &targets.scene_copy, &[]);
+                feature.draw(Phase::Water, &mut pass);
             }
         }
+        pass.set_bind_group(0, &self.frame_bind_group, &[]);
+        self.draw_meshes(&mut pass, true);
+        for feature in &self.features {
+            pass.set_bind_group(0, &self.frame_bind_group, &[]);
+            feature.draw(Phase::Alpha, &mut pass);
+        }
+        drop(pass);
         self.post.encode(
             &gpu.queue,
             &mut encoder,
@@ -829,7 +960,7 @@ impl Renderer {
         if self.targets.as_ref().is_some_and(|t| t.size == size) {
             return;
         }
-        let make = |label, format| {
+        let make = |label, format, usage| {
             gpu.device.create_texture(&wgpu::TextureDescriptor {
                 label: Some(label),
                 size: wgpu::Extent3d {
@@ -841,21 +972,56 @@ impl Renderer {
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                    | wgpu::TextureUsages::TEXTURE_BINDING,
+                usage: usage | wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
             })
         };
-        let color = make("scene color", Self::SCENE_COLOR_FORMAT);
-        let depth = make("scene depth", Self::DEPTH_FORMAT);
+        let target = wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC;
+        let color = make("scene color", Self::SCENE_COLOR_FORMAT, target);
+        let depth = make("scene depth", Self::DEPTH_FORMAT, target);
+        let copy_color = make(
+            "scene color copy",
+            Self::SCENE_COLOR_FORMAT,
+            wgpu::TextureUsages::COPY_DST,
+        );
+        let copy_depth = make(
+            "scene depth copy",
+            Self::DEPTH_FORMAT,
+            wgpu::TextureUsages::COPY_DST,
+        );
         let color_view = color.create_view(&Default::default());
         let depth_view = depth.create_view(&Default::default());
+        let copy_color_view = copy_color.create_view(&Default::default());
+        let copy_depth_view = copy_depth.create_view(&Default::default());
+        let scene_copy = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("scene copy"),
+            layout: &self.scene_copy_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&copy_color_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&copy_depth_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&self.scene_copy_sampler),
+                },
+            ],
+        });
         self.post
             .resize(&gpu.device, size, &color_view, &depth_view);
         self.targets = Some(Targets {
             size,
+            color,
+            depth,
             color_view,
             depth_view,
+            copy_color,
+            copy_depth,
+            scene_copy,
         });
     }
 
@@ -903,6 +1069,19 @@ impl Renderer {
             } else {
                 [0.0; 4]
             },
+            water: s
+                .water
+                .map_or([0.0; 4], |w| [w.height, w.density, 1.0, 0.0]),
+            water_fog_color: s.water.map_or([0.0; 4], |w| w.color.extend(0.0).to_array()),
+            water_fog_gradient: s
+                .water
+                .map_or([1.0; 4], |w| w.gradient.extend(0.0).to_array()),
+            water_light_extinction: s
+                .water
+                .map_or([0.0; 4], |w| w.light_extinction.extend(0.0).to_array()),
+            water_diffuse_extinction: s
+                .water
+                .map_or([0.0; 4], |w| w.diffuse_extinction.extend(0.0).to_array()),
         };
         gpu.queue
             .write_buffer(&self.frame_buffer, 0, bytemuck::bytes_of(&uniforms));

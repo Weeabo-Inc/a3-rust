@@ -30,6 +30,8 @@ pub struct LoadedWorld {
     pub objects: Option<WorldObjects>,
     /// The roads, when the World has a readable roads shapefile.
     pub roads: Option<crate::roads::LoadedRoads>,
+    /// `class Sea`, `WaterExPars` and the other water entries of the World.
+    pub sea: a3_landscape::Sea,
     /// Date, sun, lighting tables, weather and fog of the World.
     pub environment: a3_environment::WorldEnvironment,
     /// The cloud noise texture (`SimulWeather >> noiseTexture`), decoded.
@@ -130,6 +132,7 @@ pub fn load(
         centre,
         objects,
         roads,
+        sea: config.sea.clone(),
         environment,
         sky_noise,
         player_model,

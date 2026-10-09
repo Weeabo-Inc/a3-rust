@@ -8,13 +8,15 @@ use crate::draw::DrawList;
 /// The phases of a frame, in order.
 ///
 /// 1. **Shadow**: one depth pass per sun shadow cascade (opaque meshes and features).
-/// 2. **Opaque** and 3. **Alpha**: one render pass into the HDR scene colour
+/// 2. **Opaque**, 3. **Water** and 4. **Alpha**: render passes into the HDR scene colour
 ///    ([`Renderer::SCENE_COLOR_FORMAT`](crate::Renderer::SCENE_COLOR_FORMAT)) with the
 ///    reversed-Z depth buffer ([`Renderer::DEPTH_FORMAT`](crate::Renderer::DEPTH_FORMAT), clear
-///    0, compare `Greater`). Alpha draws come after all opaque draws, without depth writes.
-/// 4. **Post**: the renderer adds sky and fog into an HDR image, measures its luminance
+///    0, compare `Greater`). Water and alpha draws come after all opaque draws. When a feature
+///    [wants the scene copy](RenderFeature::wants_scene_copy), the renderer copies colour and
+///    depth after the opaque phase and binds the copies as group 2 for the water phase.
+/// 5. **Post**: the renderer adds sky and fog into an HDR image, measures its luminance
 ///    (eye adaptation), tonemaps it and anti-aliases it into the output target.
-/// 5. **Ui**: one render pass into the output target (no depth), for overlays and text.
+/// 6. **Ui**: one render pass into the output target (no depth), for overlays and text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Phase {
     /// Depth-only pass into one sun shadow cascade. Group 0 holds a copy of the frame uniforms
@@ -24,6 +26,11 @@ pub enum Phase {
         cascade: u32,
     },
     Opaque,
+    /// Surfaces that refract and reflect the opaque scene (the sea). Group 2 is
+    /// [`Renderer::scene_copy_layout`](crate::Renderer::scene_copy_layout): the scene colour
+    /// and depth as they were after the opaque phase. Drawn only in frames where a feature
+    /// [wants the scene copy](RenderFeature::wants_scene_copy).
+    Water,
     Alpha,
     Ui,
 }
@@ -53,4 +60,11 @@ pub trait RenderFeature {
 
     /// Record draws for `phase` into `pass`. Group 0 is already bound.
     fn draw(&self, phase: Phase, pass: &mut wgpu::RenderPass<'_>);
+
+    /// Whether this feature draws in [`Phase::Water`] and needs the copy of the opaque scene.
+    /// Asked every frame; the copy costs a colour and a depth copy, so only frames with a
+    /// willing feature pay for it.
+    fn wants_scene_copy(&self) -> bool {
+        false
+    }
 }

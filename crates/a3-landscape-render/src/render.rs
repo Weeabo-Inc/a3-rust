@@ -1,11 +1,7 @@
 //! The terrain [`RenderFeature`]: CDLOD heightmap patches textured like `PSTerrainSNX`: the
 //! satellite overview and streamed full-resolution satellite tiles, and near the camera the
-//! layer mask blending the surface detail textures (`docs/re/render-terrain.md`). Plus a
-//! placeholder sea plane.
-//!
-//! The sea belongs to the ocean renderer; until it exists, [`TerrainRenderer`] draws a flat
-//! placeholder at sea level (`vs_sea`/`fs_sea` in `terrain.wgsl`), shaded by the water depth
-//! read from the heightmap. Turn it off with [`TerrainRenderer::without_sea`].
+//! layer mask blending the surface detail textures (`docs/re/render-terrain.md`). The sea is
+//! [`SeaRenderer`](crate::SeaRenderer).
 
 use std::sync::{Arc, Mutex};
 
@@ -34,8 +30,7 @@ pub const TILE_RADIUS: f32 = 2_600.0;
 pub const DETAIL_SIZE: u32 = 1024;
 /// Most tiles uploaded per frame.
 const UPLOADS_PER_FRAME: usize = 8;
-/// Half-extent of the sea plane around the camera in metres.
-const SEA_EXTENT: f32 = 60_000.0;
+
 const MAX_LEVELS: usize = 16;
 
 /// Per-frame numbers for overlays and tests.
@@ -255,7 +250,6 @@ pub struct TerrainRenderer {
     quarter_count: u32,
 
     terrain_pipeline: wgpu::RenderPipeline,
-    sea_pipeline: wgpu::RenderPipeline,
     bind_group: wgpu::BindGroup,
     params: Params,
     params_buffer: wgpu::Buffer,
@@ -271,7 +265,6 @@ pub struct TerrainRenderer {
 
     streaming: Option<Streaming>,
     detail_textures: u32,
-    sea: bool,
     stats: Arc<Mutex<TerrainStats>>,
 }
 
@@ -389,7 +382,7 @@ impl TerrainRenderer {
         params.misc = [
             cells as f32,
             landscape.tiles.tiles.len() as f32,
-            SEA_EXTENT,
+            0.0,
             if detail.loaded > 0 { 1.0 } else { 0.0 },
         ];
         let shading = &landscape.shading;
@@ -533,32 +526,6 @@ impl TerrainRenderer {
             multiview_mask: None,
             cache: None,
         });
-        let sea_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("sea"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: Some("vs_sea"),
-                compilation_options: Default::default(),
-                buffers: &[],
-            },
-            primitive: Default::default(),
-            depth_stencil: Some(depth_state(true)),
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: Some("fs_sea"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: Renderer::SCENE_COLOR_FORMAT,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: None,
-        });
-
         let leaf = tree.settings().leaf_cells;
         let (vertices, indices, full, quarter) = patch(leaf);
         let patch_vertices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -593,7 +560,6 @@ impl TerrainRenderer {
             full_count: 0,
             quarter_count: 0,
             terrain_pipeline,
-            sea_pipeline,
             bind_group,
             params,
             params_buffer,
@@ -608,15 +574,8 @@ impl TerrainRenderer {
             instance_buffer,
             streaming,
             detail_textures: detail.loaded,
-            sea: true,
             stats: Arc::default(),
         }
-    }
-
-    /// Do not draw the placeholder sea (for a separate ocean renderer).
-    pub fn without_sea(mut self) -> Self {
-        self.sea = false;
-        self
     }
 
     /// Shared handle to this renderer's per-frame statistics.
@@ -761,10 +720,6 @@ impl RenderFeature for TerrainRenderer {
             pass.draw_indexed(self.full_indices.clone(), 0, 0..self.full_count);
             let quarters = self.full_count..self.full_count + self.quarter_count;
             pass.draw_indexed(self.quarter_indices.clone(), 0, quarters);
-        }
-        if self.sea {
-            pass.set_pipeline(&self.sea_pipeline);
-            pass.draw(0..6, 0..1);
         }
     }
 }

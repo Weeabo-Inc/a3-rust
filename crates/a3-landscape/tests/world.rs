@@ -22,7 +22,8 @@ class CfgWorlds {
         class Lighting { access = 3; };
         class DayLightingBrightAlmost {};
         class EnvMaps { class EnvMap1 { texture = "env1_ca.paa"; overcast = 0.3; }; };
-        class Sea { seaTexture = "sea_co.paa"; MaxWave = 0.25; WaterGrid = 50; };
+        class Sea { seaTexture = "sea_co.paa"; MaxWave = 0.25; WaterGrid = 50; SeaWaveXScale = "2.0/50"; SeaWaveZDuration = 8000; };
+        class WaterExPars { fogDensity = 0.07; fogGradientCoefs[] = {0.35, 1.0, 1.7}; refractionMaxDist = 5.1; };
         class Underwater { waterColor[] = {0.04, 0.16, 0.22}; };
         class Grid { offsetX = 0; offsetY = 2048;
             class Zoom1 { zoomMax = 0.15; format = "XY"; formatX = "000"; formatY = "000"; stepX = 100; stepY = -100; };
@@ -174,4 +175,22 @@ fn each_cell_resolves_to_its_tile_material() {
     assert!(layers.cell(&terrain, 0, 0).is_none());
     assert!(layers.cell(&terrain, 2, 0).is_none());
     assert!(layers.cell(&terrain, 4, 0).is_none());
+}
+
+#[test]
+fn sea_waves_evaluate_expressions_and_default_like_the_engine() {
+    let w = WorldConfig::load(&tree(), "Testland").unwrap();
+    let waves = w.sea.waves;
+    assert_eq!(waves.x_scale, 2.0 / 50.0, "\"2.0/50\" is evaluated");
+    assert_eq!(waves.z_duration_ms, 8000);
+    assert_eq!(waves.water_grid, 50.0);
+    // Missing entries take the engine's defaults.
+    assert_eq!(waves.z_scale, 0.02);
+    assert_eq!(waves.x_duration_ms, 5000);
+    assert_eq!(waves.max_tide, 1.5);
+    let ex = w.sea.water_ex;
+    assert_eq!(ex.fog_density, Some(0.07));
+    assert_eq!(ex.fog_gradient_coefs, Some(Vec3::new(0.35, 1.0, 1.7)));
+    assert_eq!(ex.refraction_max_dist, Some(5.1));
+    assert_eq!(ex.surface_opacity, None, "unset entries stay unset");
 }

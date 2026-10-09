@@ -32,7 +32,7 @@ pub use roads::{EASTING_OFFSET, Road, RoadNetwork, RoadType, RoadsError, RoadsLi
 pub use surfaces::{Surface, SurfaceCharacter, Surfaces};
 pub use world::{
     AmbientRadius, AmbientSpecies, ClutterModel, EnvMap, GridZoom, Location, MapGrid, OutsideLayer,
-    OutsideTerrain, Sea, Sky, WorldConfig, world_classes,
+    OutsideTerrain, Sea, SeaWaves, Sky, WaterExPars, WorldConfig, world_classes,
 };
 
 pub use a3_wrp::Terrain;

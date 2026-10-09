@@ -31,6 +31,28 @@ struct Frame {
     ambient_sky: vec4<f32>,
     ambient_mid: vec4<f32>,
     ambient_ground: vec4<f32>,
+    // z: camera world height.
+    fog: vec4<f32>,
+    haze: vec4<f32>,
+    linear_fog: vec4<f32>,
+    // x: water height, z: 1 when there is water.
+    water: vec4<f32>,
+    water_fog_color: vec4<f32>,
+    water_fog_gradient: vec4<f32>,
+    // Underwater extinction per metre of depth: ambient light, sun light.
+    water_light_extinction: vec4<f32>,
+    water_diffuse_extinction: vec4<f32>,
+}
+
+// Light reaching a point `relative` to the camera under the sea (render-materials.md
+// section 3.1): x of the result scales the ambient, y the sun, per channel.
+fn underwater_light(relative: vec3<f32>) -> array<vec3<f32>, 2> {
+    let height = frame.fog.z + relative.y;
+    let depth = select(0.0, max(frame.water.x - height, 0.0), frame.water.z > 0.5);
+    return array<vec3<f32>, 2>(
+        exp(-depth * frame.water_light_extinction.rgb),
+        exp(-depth * frame.water_diffuse_extinction.rgb),
+    );
 }
 
 const FAMILY_BASIC: u32 = 0u;
@@ -445,12 +467,13 @@ fn shade(in: VertexOut, front: bool) -> vec4<f32> {
     let n_dot_h = dot(n, h);
     let geometric = select(-normalize(in.normal), normalize(in.normal), front);
     let sun_vis = saturate(s.ao_sun * sun_visibility(in.relative, geometric));
-    let sun = frame.sun_color.rgb;
+    let water = underwater_light(in.relative);
+    let sun = frame.sun_color.rgb * water[1];
 
     if family == FAMILY_TREE {
         // Foliage is thin and translucent: wrapped diffuse, ambient on n.y * 0.5 + 0.5.
         let wrapped = saturate(n_dot_l * 0.5 + 0.5);
-        let amb = hemisphere(n.y * 0.5 + 0.5) * material.ambient.rgb * s.ao_ambient;
+        let amb = hemisphere(n.y * 0.5 + 0.5) * material.ambient.rgb * s.ao_ambient * water[0];
         let sun_d = sun * material.diffuse.rgb * wrapped;
         return vec4<f32>(s.albedo * (amb + sun_d * sun_vis), 1.0);
     }
@@ -476,7 +499,7 @@ fn shade(in: VertexOut, front: bool) -> vec4<f32> {
     }
 
     var amb = hemisphere(n.y) * material.ambient.rgb + material.emissive.rgb;
-    amb = amb * s.ao_ambient;
+    amb = amb * s.ao_ambient * water[0];
     let sun_d = sun * material.diffuse.rgb * max(n_dot_l, 0.0) * (1.0 - reflectivity);
     let sun_s = sun * material.specular.rgb * spec * reflectivity;
     // Premultiplied alpha, like the engine: colour scales with alpha, highlights do not.

@@ -5,9 +5,11 @@
 //!   low-resolution overview atlas of all satellite tiles.
 //! - [`LodQuadtree`]: CDLOD level-of-detail selection over the heightmap.
 //! - [`TerrainRenderer`]: the [`a3_render::RenderFeature`] that draws terrain patches with the
-//!   overview and streamed full-resolution satellite tiles, and the sea.
+//!   overview and streamed full-resolution satellite tiles.
+//! - [`SeaRenderer`]: the sea surface (`docs/re/render-water.md`): wave patches over the
+//!   water, reflections, refraction and foam, drawn in the water phase.
 //!
-//! See `docs/re/render-terrain.md` and `docs/adr/0007-terrain-lod.md`.
+//! See `docs/re/render-terrain.md`, `docs/re/render-water.md` and `docs/adr/0007-terrain-lod.md`.
 
 pub mod detail;
 pub mod heights;
@@ -16,6 +18,7 @@ pub mod lod;
 pub mod render;
 pub mod residency;
 pub mod satellite;
+pub mod sea;
 pub mod stream;
 
 pub use heights::{HeightField, MinMaxPyramid};
@@ -23,4 +26,5 @@ pub use landscape::Landscape;
 pub use lod::{LodQuadtree, LodSettings, SelectedNode};
 pub use render::{TerrainRenderer, TerrainStats};
 pub use satellite::{NO_TILE, SatelliteGrid, Tile, TileCoord, TileTable, TileUv};
+pub use sea::{SeaConfig, SeaHandle, SeaParams, SeaRenderer, SeaStats, WaveField};
 pub use stream::{FileReader, TileFormat};

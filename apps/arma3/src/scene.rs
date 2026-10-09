@@ -4,7 +4,7 @@
 use std::sync::{Arc, Mutex};
 
 use a3_input::{ActionMap, InputCode, InputState, MouseAxis, actions};
-use a3_landscape_render::{HeightField, TerrainRenderer, TerrainStats};
+use a3_landscape_render::{HeightField, SeaConfig, SeaRenderer, TerrainRenderer, TerrainStats};
 use a3_render::texture::{bc1_block, rgb565};
 use a3_render::{
     Camera, ColorSpace, DrawList, FreeFlyController, FreeFlyInput, Gpu, MeshData, MeshDraw, MeshId,
@@ -373,7 +373,21 @@ impl DebugScene {
             env.set_sky_texture(sky_texture(&world).as_ref());
         }
         self.lights = world_lights(&world);
-        let terrain = TerrainRenderer::new(gpu, renderer, &world.landscape, Some(world.reader));
+        let terrain =
+            TerrainRenderer::new(gpu, renderer, &world.landscape, Some(world.reader.clone()));
+        let sea_config = SeaConfig::new(world.sea.waves, world.sea.water_ex);
+        let (sea, sea_params) = SeaRenderer::new(
+            gpu,
+            renderer,
+            &world.landscape.heights,
+            world.landscape.world_size,
+            sea_config,
+            Some(world.reader),
+        );
+        renderer.add_feature(Box::new(sea));
+        if let Some(environment) = &mut self.environment {
+            environment.attach_sea(sea_params, &world.sea);
+        }
         if let Some(objects) = world.objects {
             self.models = Some(objects.attach(gpu, renderer));
         }

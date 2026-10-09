@@ -1381,7 +1381,7 @@ impl ModelRenderer {
                     &self.shadow_draws[1],
                 ),
             ],
-            Phase::Ui => return,
+            Phase::Water | Phase::Ui => return,
         };
         for (pipeline, skinned_pipeline, draws) in lists {
             if draws.is_empty() {
