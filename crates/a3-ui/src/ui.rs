@@ -265,12 +265,32 @@ impl Ui {
         dialog: bool,
         eval: &mut dyn Eval,
     ) -> Result<DisplayId, Error> {
-        let cfg = config.root() >> class;
-        if !cfg.is_class() {
-            return Err(Error::NoClass(class.to_owned()));
+        self.create_display_at(config, &[class], parent, dialog, eval)
+    }
+
+    /// Like [`Ui::create_display`], for a display class nested in other classes, named by its
+    /// path from the config root (`["RscInGameUI", "RscUnitInfoSoldier"]`).
+    pub fn create_display_at(
+        &mut self,
+        config: &ConfigTree,
+        class_path: &[&str],
+        parent: Option<DisplayId>,
+        dialog: bool,
+        eval: &mut dyn Eval,
+    ) -> Result<DisplayId, Error> {
+        let mut cfg = config.root();
+        let mut path = Vec::with_capacity(class_path.len());
+        for name in class_path {
+            cfg = cfg.get(name);
+            if !cfg.is_class() {
+                return Err(Error::NoClass(class_path.join("/")));
+            }
+            path.push(cfg.name().to_owned());
+        }
+        if path.is_empty() {
+            return Err(Error::NoClass(String::new()));
         }
         let id = DisplayId(self.displays.len() as u32);
-        let path = vec![cfg.name().to_owned()];
         let mut display = Display {
             id,
             idd: read_number(&cfg, "idd", eval).unwrap_or(-1.0) as i32,
@@ -283,17 +303,22 @@ impl Ui {
             objects: Vec::new(),
             events: config_events(&cfg),
             variables: Vec::new(),
+            alpha: 1.0,
         };
         self.displays.push(None);
         // The engine loads `controls`, `objects` and `controlsBackground`, in that order.
         for list_name in ["controls", "objects", "controlsBackground"] {
             let list = cfg.get(list_name);
-            if !list.is_class() {
+            let ids = if list.is_class() {
+                let mut list_path = path.clone();
+                list_path.push(list.name().to_owned());
+                self.load_children(&list, &list_path, id, None, eval)
+            } else if list.is_array() {
+                // `controls[] = {"A", "B"};`: class names looked up in the display class.
+                self.load_named(&cfg, &list, &path, id, eval)
+            } else {
                 continue;
-            }
-            let mut list_path = path.clone();
-            list_path.push(list.name().to_owned());
-            let ids = self.load_children(&list, &list_path, id, None, eval);
+            };
             match list_name {
                 "controls" => display.controls = ids,
                 "objects" => display.objects = ids,
@@ -324,6 +349,33 @@ impl Ui {
             let mut path = list_path.to_vec();
             path.push(class.name().to_owned());
             ids.push(self.load_control(&class, path, display, parent, eval));
+        }
+        ids
+    }
+
+    /// Loads the controls an array-form list names (`controls[] = {"A", "B"};`): each name is
+    /// looked up in `display_cfg` through inheritance, in list order; a name that is not a
+    /// class is skipped (`FUN_141448350`, see `docs/re/ui.md`).
+    fn load_named(
+        &mut self,
+        display_cfg: &ConfigRef<'_>,
+        list: &ConfigRef<'_>,
+        display_path: &[String],
+        display: DisplayId,
+        eval: &mut dyn Eval,
+    ) -> Vec<ControlId> {
+        let mut ids = Vec::new();
+        for name in list.array() {
+            let a3_config::Value::String(name) = name else {
+                continue;
+            };
+            let class = display_cfg.get(&name);
+            if !class.is_class() {
+                continue;
+            }
+            let mut path = display_path.to_vec();
+            path.push(class.name().to_owned());
+            ids.push(self.load_control(&class, path, display, None, eval));
         }
         ids
     }
@@ -408,6 +460,15 @@ impl Ui {
             c.kind,
             ControlType::Slider | ControlType::XSlider | ControlType::Progress
         ) {
+            if c.kind == ControlType::Progress {
+                // A progress bar draws its bar in `colorBar` and its outline in `colorFrame`.
+                if let Some(v) = read_color(cfg, "colorBar", eval) {
+                    c.color_text = v;
+                }
+                if let Some(v) = read_color(cfg, "colorFrame", eval) {
+                    c.color_border = v;
+                }
+            }
             c.value = read_number(cfg, "sliderPosition", eval).unwrap_or(0.0);
             c.range = [
                 read_number(cfg, "sliderRangeMin", eval).unwrap_or(0.0),
@@ -483,23 +544,39 @@ impl Ui {
             }
         }
         for &d in &closed {
-            let mut ids = self.controls_in_order(d);
-            let mut stack: Vec<ControlId> = self
-                .display(d)
-                .map(|d| d.objects.clone())
-                .unwrap_or_default();
-            while let Some(id) = stack.pop() {
-                ids.push(id);
-                if let Some(c) = self.control(id) {
-                    stack.extend(c.children.iter().copied());
-                }
-            }
-            for c in ids {
-                self.controls[c.0 as usize] = None;
-            }
-            self.displays[d.0 as usize] = None;
+            self.free_display(d);
         }
         closed
+    }
+
+    /// Removes only `display` from the stack and the arena, leaving the displays above it
+    /// open: for layers of independent displays such as the in-game HUD. Returns whether it
+    /// was open.
+    pub fn remove_display(&mut self, display: DisplayId) -> bool {
+        let Some(pos) = self.stack.iter().position(|&d| d == display) else {
+            return false;
+        };
+        self.stack.remove(pos);
+        self.free_display(display);
+        true
+    }
+
+    fn free_display(&mut self, d: DisplayId) {
+        let mut ids = self.controls_in_order(d);
+        let mut stack: Vec<ControlId> = self
+            .display(d)
+            .map(|d| d.objects.clone())
+            .unwrap_or_default();
+        while let Some(id) = stack.pop() {
+            ids.push(id);
+            if let Some(c) = self.control(id) {
+                stack.extend(c.children.iter().copied());
+            }
+        }
+        for c in ids {
+            self.controls[c.0 as usize] = None;
+        }
+        self.displays[d.0 as usize] = None;
     }
 
     /// Deletes a control and its children (`ctrlDelete`).

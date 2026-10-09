@@ -182,4 +182,7 @@ pub struct Display {
     pub objects: Vec<ControlId>,
     pub events: Vec<EventHandler>,
     pub variables: Vec<(String, Value)>,
+    /// Opacity the whole display draws with, 0..1 (the engine's in-game displays fade as a
+    /// unit, `Display::DrawHUD(alpha)`); 1 for ordinary displays.
+    pub alpha: f32,
 }

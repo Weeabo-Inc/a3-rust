@@ -37,6 +37,7 @@ a3-environment = { path = "crates/a3-environment" }
 a3-landscape-render = { path = "crates/a3-landscape-render" }
 a3-render-ui = { path = "crates/a3-render-ui" }
 a3-ui = { path = "crates/a3-ui" }
+a3-ingame-ui = { path = "crates/a3-ingame-ui" }
 a3-physics = { path = "crates/a3-physics" }
 a3-vehicles = { path = "crates/a3-vehicles" }
 a3-nav = { path = "crates/a3-nav" }
@@ -148,6 +149,13 @@ opt-level = 3
 opt-level = 3
 
 [profile.dev.package.lzokay-native]
+opt-level = 3
+
+# Loading every stringtable of the game (the HUD's texts) parses ~40k keys of XML.
+[profile.dev.package.a3-stringtable]
+opt-level = 3
+
+[profile.dev.package.roxmltree]
 opt-level = 3
 
 # Collision building and queries over real terrains.

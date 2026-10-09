@@ -95,6 +95,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-ingame-ui"
+version = "0.1.0"
+dependencies = [
+ "a3-config",
+ "a3-fonts",
+ "a3-gamedata",
+ "a3-sqf",
+ "a3-stringtable",
+ "a3-ui",
+ "a3-vfs",
+]
+
+[[package]]
 name = "a3-input"
 version = "0.1.0"
 dependencies = [
@@ -630,7 +643,9 @@ dependencies = [
  "a3-config",
  "a3-core",
  "a3-environment",
+ "a3-fonts",
  "a3-gamedata",
+ "a3-ingame-ui",
  "a3-input",
  "a3-landscape",
  "a3-landscape-render",
@@ -641,6 +656,9 @@ dependencies = [
  "a3-pose",
  "a3-render",
  "a3-render-models",
+ "a3-render-ui",
+ "a3-stringtable",
+ "a3-ui",
  "a3-vfs",
  "a3-wrp",
  "anyhow",

@@ -295,6 +295,8 @@ pub struct DebugScene {
     soldier: Option<SoldierModel>,
     orbit: Option<Orbit>,
     environment: Option<crate::environment::SceneEnvironment>,
+    /// The player's in-game HUD, when playing over the game data.
+    hud: Option<crate::hud::Hud>,
     sim_time: f64,
 }
 
@@ -316,6 +318,7 @@ impl DebugScene {
             soldier: None,
             orbit: None,
             environment: None,
+            hud: None,
             sim_time: 0.0,
         }
     }
@@ -392,6 +395,15 @@ impl DebugScene {
                 },
                 player.position.y
             );
+            let strings = crate::hud::load_strings(&world.vfs);
+            self.hud = Some(crate::hud::Hud::new(
+                gpu,
+                renderer,
+                Arc::clone(&world.config),
+                world.vfs.clone(),
+                strings,
+                crate::player::PLAYER_CLASS,
+            ));
             if let Some(path) = &world.player_model {
                 log::info!("player Man model: {path}");
                 self.soldier = Some(SoldierModel::new(
@@ -442,6 +454,14 @@ impl DebugScene {
     pub fn prepare_render(&mut self, renderer: &mut Renderer, dt: f32) {
         if let Some(env) = &mut self.environment {
             env.apply(renderer, self.camera.position.y as f32, dt);
+        }
+    }
+
+    /// Brings the player's HUD up to date for a `size` output; call once per frame before
+    /// rendering.
+    pub fn update_hud(&mut self, size: (u32, u32), dt: f64) {
+        if let (Some(hud), Some(player)) = (&mut self.hud, &self.player) {
+            hud.frame(player, size, dt);
         }
     }
 

@@ -192,3 +192,53 @@ fn ctrl_create_uses_display_or_root_classes() {
     assert_eq!(ui.control(c).unwrap().idc, 300);
     assert_eq!(ui.find_control(d, 300), Some(c));
 }
+
+fn idcs(ui: &Ui, ids: &[a3_ui::ControlId]) -> Vec<i32> {
+    ids.iter().map(|&c| ui.control(c).unwrap().idc).collect()
+}
+
+/// The `RscInGameUI` displays name their controls with an array of class names instead of a
+/// class (`controls[] = {"A", "C"};`): the engine looks each name up in the display class
+/// (through inheritance) and loads only the listed ones, in list order.
+#[test]
+fn a_control_list_can_be_an_array_of_class_names() {
+    let config = ConfigTree::from_config(
+        &parse_text(
+            r#"
+            class RscText { type = 0; idc = -1; x = 0; y = 0; w = 0.1; h = 0.1; };
+            class RscBase {
+                idd = 300;
+                controls[] = {"A"};
+                class A: RscText { idc = 1; };
+                class B: RscText { idc = 2; };
+                class C: RscText { idc = 3; };
+            };
+            class RscDerived: RscBase {
+                controls[] = {"C", "A", "Missing"};
+                controlsBackground[] = {"B"};
+            };
+            "#,
+        )
+        .unwrap(),
+    );
+    let mut ui = Ui::new(Screen::new(1920, 1080));
+    let base = ui
+        .create_display(&config, "RscBase", None, false, &mut NoEval)
+        .unwrap();
+    let controls = ui.display(base).unwrap().controls.clone();
+    assert_eq!(idcs(&ui, &controls), [1], "only the listed classes load");
+
+    let derived = ui
+        .create_display(&config, "RscDerived", None, false, &mut NoEval)
+        .unwrap();
+    let display = ui.display(derived).unwrap().clone();
+    assert_eq!(
+        idcs(&ui, &display.controls),
+        [3, 1],
+        "list order, classes inherited from the base display, unknown names skipped"
+    );
+    assert_eq!(idcs(&ui, &display.background), [2]);
+    let c = ui.control(display.controls[0]).unwrap();
+    assert_eq!(c.class_name, "C");
+    assert_eq!(c.config_path, ["RscDerived", "C"]);
+}

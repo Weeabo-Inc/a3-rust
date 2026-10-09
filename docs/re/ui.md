@@ -58,6 +58,11 @@ vtable `+0x218` / `+0x210`) and resolves each entry by name through inheritance.
 missing `type` or `idc` logs `Warning: no type entry inside class %s/controls/%s` (or `no idc
 entry`). A failed control logs `Error loading control %s`.
 
+A list may instead be an **array of class names** (`controls[] = {"A", "B"};`, the form of
+every `RscInGameUI` display): each name is looked up in the display class through
+inheritance and loaded in list order; classes the array does not name are not created, and
+the `type`/`idc` warnings are not checked on this path _(high)_.
+
 Because only own entries are enumerated, derived control lists repeat every child: shipped config
 writes `class Controls: Controls { class Overlay: Overlay {}; ... }`. a3-ui does the same
 _(medium: the per-control loader was not traced)_.

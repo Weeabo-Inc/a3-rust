@@ -139,15 +139,18 @@ impl App for GameApp {
         };
         self.draws.clear();
         self.scene.draw(&mut self.draws);
-        self.scene.overlay(
-            &mut self.draws,
-            &self.fps,
-            &g.adapter,
-            captured,
-            &self.keys_description,
-        );
+        if !self.engine.hide_overlay {
+            self.scene.overlay(
+                &mut self.draws,
+                &self.fps,
+                &g.adapter,
+                captured,
+                &self.keys_description,
+            );
+        }
         self.scene
             .prepare_render(&mut g.renderer, time.real_dt as f32);
+        self.scene.update_hud(g.surface.size(), time.real_dt);
         let view = frame.texture.create_view(&Default::default());
         g.renderer.render(
             &g.gpu,
