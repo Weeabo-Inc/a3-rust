@@ -221,15 +221,128 @@ like adapted luminance and darkens the image is consistent with `exposure = 1/ap
 
 ## 4. Sky
 
-The sky and clouds use the Simul weather shaders (`VSSimulWeatherClouds`, `PSSimulWeatherClouds*`,
-`PSPostProcessSimulWeather*`), driven by the `rayleigh`, `mie`, `cloudsColor`, `sky`, `skyAroundSun`
-and `swBrightness` lighting fields. `PSHorizon`, `PSCloud` and `VSStar`/`PSPoint` handle horizon,
-legacy clouds and stars. These shaders have not been decoded. A first renderer can shade a sky
-gradient from `sky` (zenith) to `skyAroundSun` (around the sun), with `fogColor` at the horizon.
+### 4.1 The dome and its textures (high)
+
+The sky is a dome model, `CfgWorlds >> <world> >> skyObject`. Altis and Stratis share
+`A3\Map_Stratis\data\obloha.p3d`: ODOL, one resolution LOD, 335 vertices, 490 faces, one section.
+Its bbox is ±10.03 m wide and ±7.22 m tall, so the mesh is a squashed hemisphere. Its UVs depend
+on elevation only (constant in `u`, and no two elevations share a `v`):
+
+| elevation (deg) | `v` | elevation (deg) | `v` |
+|---|---|---|---|
+| −35.8 (skirt) | −0.052 | 41.01 | 0.707 |
+| 19.64 | 0.000 | 47.97 | 0.809 |
+| 22.74 | 0.156 | 56.35 | 0.891 |
+| 26.28 | 0.309 | 66.30 | 0.951 |
+| 30.39 | 0.454 | 77.69 | 0.988 |
+| 35.23 | 0.588 | 89.95 | 1.000 |
+
+Every elevation from the horizon up to 19.6° therefore has `v = 0` (the skirt), and `v = 1` is
+the zenith. `u` ranges over `[-0.01, 1.10]` around the dome.
+
+The dome's textures come from the world or, overriding it, from the overcast level
+(`Weather >> Overcast >> WeatherN >> sky` / `horizon` / `skyR`):
+
+| config | Altis/Stratis value | format | kind | size |
+|---|---|---|---|---|
+| `skyTexture` / overcast `sky` (clear) | `A3\Map_Stratis\Data\sky_semicloudy_sky.paa` / `sky_clear_gs.paa` | DXT5 / AI88 | `Sky` / `GreyScale` | 8×8 |
+| `skyTextureR` / overcast `skyR` | `sky_semicloudy_lco.paa` / `sky_clear_lco.paa` | DXT1 | `LayerColor` | 512×512 |
+
+A `Sky` texture carries its colour in R, B and (inverted) A, and its alpha in the inverted green
+channel: its PAA swizzle is `A<-InvertedGreen R<-Red G<-InvertedAlpha B<-Blue`. The shipped 8×8
+ramps are constant along `u`; the semicloudy one runs from `(13,22,60)` at the zenith to
+`(57,81,132)` at the horizon (8-bit, read as linear light), and the grey clear-weather one from
+127 to 255. So the horizon end of the ramp is both **brighter and less saturated** than the
+zenith end.
+
+### 4.2 `PSHorizon` (shader, high)
+
+`PSHorizon` (`61F433D2`, `Dta\bin.pbo` → `Shaders_5_0_PS.shdc`) shades the dome. With `t0` the
+`skyTexture`, `t1` the `skyTextureR`, `v1` TEXCOORD6 and `D` the view direction:
+
+```
+c     = lerp(t1, t0, v1.w)
+a     = c.g                                  // the swizzled alpha, see §4.1
+up    = saturate(D.y)
+cosl  = dot(LDirectionTransformed, D)
+glow  = (0.75 * (1 + cosl))³ * (1 - up)⁴ * a * (1 - a²)
+sky   = v1.xyz * (c.r, 1 - c.a, c.b) + PSC_Diffuse * glow
+```
+
+and then the fog/haze/water block of §2. So the dome's colour is **the sky texture times a
+per-vertex tint**, plus a glow that follows the light direction and fades out towards the zenith
+(`(1-up)⁴`). The glow is scaled by `PSC_Diffuse`, the sun's own light colour and level.
+
+`v1.xyz` (the tint) and `v1.w` (the `sky`/`skyR` blend) are produced by the dome's vertex shader;
+what the CPU sets them to is **not traced**. Everything above the tint is.
+
+### 4.3 What the render oracle measures (high)
+
+On the clear shots (sun 61–78° up, `Lighting11/12`), the mean linear RGB of Arma's sky, by
+elevation, against ours (filmic inverted to scene light, `docs/fidelity/render-oracle.md`):
+
+| elevation | Arma | ours (before #295) |
+|---|---|---|
+| ~4° (horizon) | matches ours | — |
+| 27–35° | (0.46, 0.76, 2.08) | (2.02, 4.30, 8.70) |
+| 30–43° | (0.51, 0.86, 2.71) | (2.20, 4.74, 9.95) |
+
+Arma's sky is 4× dimmer than ours above 25° and falls to **0.27 of the horizon's luminance**
+between 4° and 35°, while ours falls only to 0.67. The shipped ramp over the dome's UV (§4.1)
+has a zenith of **0.28** of the horizon's luminance for the same range — the dome's own texture
+already carries the gradient we were missing, with the hue shift from its own rows (its
+blue-over-red runs 1.0 at the horizon to 2.0 at the zenith).
+
+Two further checks of the same data:
+- The horizon's hue in Arma is `(0.3, 0.44, 0.74)` of luma 1 — exactly the lighting table's
+  `fogColor`. The zenith's is bluer, `(1 : 1.75 : 4.75)`, which the ramp's own ratio reproduces.
+- The table's `sky` value is *not* the rendered zenith. At `Lighting11/12` it is
+  `{{0.02, 0.12, 0.8}, 13.8}` = (1702, 10211, 68074), a hue of `1 : 6 : 40` and a luma of 0.44 of
+  `fogColor`'s — no exponent can bring that down to the measured 0.27, and no sky is that
+  saturated. It is the sky's colour for the Simul model and for reflections, not the dome's
+  radiance.
+
+### 4.4 The Simul keyframes (medium)
+
+`CfgWorlds >> <world> >> SimulWeather` holds the trueSKY atmosphere: `DefaultKeyframe` and the
+per-overcast `Overcast >> WeatherN` keyframes give `rayleigh[]`, `mie[]`, `haze`, `hazeBaseKm`,
+`hazeScaleKm`, `hazeEccentricity`, `brightnessAdjustment`, `cloudiness`, `cloudBaseKm`,
+`cloudHeightKm`, `directLight`, `indirectLight`, `ambientLight`, `extinction`, `diffusivity` and
+the noise parameters; `fadeNumAltitudes/Elevations/Distances` size its lookup grid, and
+`CfgWorlds >> swBrightness` scales it. `PSSimulWeatherClouds` (disassembled) shows the keyframe
+reaching the shaders as `PSC_SimulWeatherPars[8]` in `PSCB_NonFrequent` cb0[18..25]: `cb0[18].x`
+is the Henyey-Greenstein asymmetry (`mieAsymmetry = 0.5087`), `cb0[25]` the light direction.
+
+The lighting table's own `rayleigh[]` and `mie[]` vary per entry (Altis: `rayleigh` R is always
+0.007, G/B run 0.0139/0.035 at high sun, 0.038/0.0675 around 0–2°, 0.018/0.04 at 12°;
+`mie[] = {0.005}` throughout). The product `rayleigh ⊙ diffuse` reproduces the *hue* of the
+measured clear-sky zenith and horizon to within a few per cent, which is what single scattering
+predicts; its absolute scale is **not traced**, so our sky does not use it yet.
+
+### 4.5 What we do now
+
+The sky stays a gradient from the lighting table — `mix(fogColor, sky, saturate(dir.y)^0.45)`,
+plus the sun glow, the cloud layer, the moon and the stars — and the World's `skyTexture` is
+applied on top as the dome's ramp: the texture's `v` axis at the elevation the dome's UV table
+(§4.1) gives, divided by its value at the horizon, so the horizon is unchanged and the zenith
+keeps the shipped ramp's ratio and hue. That part is engine data and engine structure; the
+gradient under it, the `0.45` exponent, the glow, the clouds, the moon and the stars are ours.
+`sky[]` is still the gradient's zenith colour, which §4.3 shows is wrong — replacing the tint
+needs `v1.xyz`, which is the next thing to trace.
+
 
 ## 5. Open points
 
 - Where the cloud factor `c` comes from, sun/moon blending, and the CPU mapping of the lighting outputs
   to `PSC_*` constants (including any division by the aperture).
 - `PSC_RgbEyeCoef.w` (gamma), `PSC_AssumedLuminancePars1/2` values, and `PSC_PhysicalFog` source.
-- Simul sky model.
+- The sky dome's per-vertex tint `v1.xyz` and its `sky`/`skyR` blend `v1.w` (§4.2): which lighting
+  table colour drives them, and whether the tint varies over the dome. This is what stands between
+  our gradient and the engine's.
+- The absolute scale of the Simul atmosphere (§4.4): the sky's radiance in the engine's light units,
+  and how `swBrightness` and `brightnessAdjustment` enter it.
+- The Simul sky/cloud model at the horizon: a plane-parallel single-scattering integral over the
+  traced `rayleigh`/`mie` reproduces the *shape* of `PSHorizon`'s glow but is far too dark and too
+  saturated at the horizon, so the engine is doing something more (multiple scattering, the
+  `fadeNum*` lookup grid, or the horizon band's own texture).
+

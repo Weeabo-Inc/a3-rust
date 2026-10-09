@@ -12,6 +12,10 @@ struct Frame {
     sky_horizon: vec4<f32>,
     viewport: vec4<f32>,
     params: vec4<f32>,
+    // The lighting table's hemisphere ambient (AE, AmbientMid, GE); w = 0 when not set.
+    ambient_sky: vec4<f32>,
+    ambient_mid: vec4<f32>,
+    ambient_ground: vec4<f32>,
 }
 
 struct Terrain {
@@ -143,10 +147,21 @@ fn surface_normal(world_xz: vec2<f32>) -> vec3<f32> {
 
 fn lit(albedo: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
     let diffuse = max(dot(n, frame.sun_dir.xyz), 0.0);
-    // Hemispherical ambient: sky from above, a darker bounce from below.
+    return albedo * (frame.sun_color.rgb * diffuse + ambient(n.y));
+}
+
+// Terrain ambient: the engine's hemisphere ambient (AE, AmbientMid, GE on the normal's y,
+// docs/re/render-terrain.md §3.6 and render-materials.md §3.1). Without a lighting table the
+// sky colours stand in: sky from above, a darker bounce from below.
+fn ambient(y: f32) -> vec3<f32> {
+    if frame.ambient_sky.w > 0.0 {
+        if y > 0.0 {
+            return mix(frame.ambient_mid.rgb, frame.ambient_sky.rgb, saturate(y));
+        }
+        return mix(frame.ambient_ground.rgb, frame.ambient_mid.rgb, saturate(1.0 + y));
+    }
     let sky = mix(frame.sky_horizon.rgb, frame.sky_zenith.rgb, 0.5) * frame.sun_color.w * 2.0;
-    let ambient = mix(sky * 0.5, sky, n.y * 0.5 + 0.5);
-    return albedo * (frame.sun_color.rgb * diffuse + ambient);
+    return mix(sky * 0.5, sky, y * 0.5 + 0.5);
 }
 
 // The layer weights of PSTerrainSNX: each present layer (`present`, 0 or 1 per slot) paints

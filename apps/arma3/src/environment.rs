@@ -129,6 +129,27 @@ impl SceneEnvironment {
         }
     }
 
+    /// Sets the sky dome's elevation ramp from the World's `skyTexture` (`CfgWorlds >>
+    /// skyTexture`): the ramp the engine's own dome shades the sky with (`PSHorizon`, see
+    /// `docs/re/render-atmosphere.md` §4). Without it the sky keeps the lighting table's
+    /// gradient alone.
+    pub fn set_sky_texture(&mut self, texture: Option<&TextureData>) {
+        let Some(ramp) = texture.and_then(a3_render::sky::dome_ramp) else {
+            return;
+        };
+        log::info!(
+            "sky dome ramp: horizon ({:.3}, {:.3}, {:.3}), zenith ({:.3}, {:.3}, {:.3})",
+            ramp[0].x,
+            ramp[0].y,
+            ramp[0].z,
+            ramp[a3_render::sky::DOME_RAMP_STEPS - 1].x,
+            ramp[a3_render::sky::DOME_RAMP_STEPS - 1].y,
+            ramp[a3_render::sky::DOME_RAMP_STEPS - 1].z,
+        );
+        let mut sky = self.sky.lock().unwrap_or_else(|p| p.into_inner());
+        sky.dome_ramp = ramp;
+    }
+
     /// Evaluates the environment for a camera at `camera_height` and writes lighting, fog,
     /// exposure limits and sky parameters.
     pub fn apply(&mut self, renderer: &mut Renderer, camera_height: f32, dt: f32) {

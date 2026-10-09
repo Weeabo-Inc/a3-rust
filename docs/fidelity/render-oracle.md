@@ -85,8 +85,11 @@ arma3 --world altis --camera east,north,alt,heading,pitch --fov <fovTop> --date 
   --objects-quality Ultra --width 1600 --height 900 --no-overlay --frames 120 --screenshot ours.png
 ```
 
-`--fov` (RV `fovTop`) and `--no-overlay` were added for the oracle. Our camera altitude is
-already measured from `max(terrain, sea level)`, the same as the scenario.
+`--fov` (RV `fovTop`) was added for the oracle. `--no-overlay` leaves out the debug text. Our camera
+altitude is already measured from `max(terrain, sea level)`, the same as the scenario.
+
+The SQF server oracle (`tools/oracle/oracle.py`) needs a mission folder for the dedicated server.
+The client oracle needs none, because `playScriptedMission` starts the scenario.
 
 ### Camera FOV: `camSetFov` against `fovTop` (measured)
 
@@ -117,7 +120,7 @@ size:
 
 ## Results
 
-Run on 2026-10-09 against `main` at `2418a9c` (Arma 3 2.22.0.154103, 1600×900, AMD RX 6600).
+Baseline: run on 2026-10-09 against `main` at `2418a9c` (Arma 3 2.22.0.154103, 1600×900, AMD RX 6600).
 
 | shot | MAE lin | SSIM | lum Arma | lum ours | lum ratio | hist dist | MAE R/G/B (linear) |
 |---|---|---|---|---|---|---|---|
@@ -130,15 +133,59 @@ Run on 2026-10-09 against `main` at `2418a9c` (Arma 3 2.22.0.154103, 1600×900, 
 | altis_kavala_night_moon | 0.048 | 0.308 | 0.051 | 0.009 | 0.180 | 0.119 | 0.038/0.046/0.060 |
 | altis_kavala_overcast_fog | 0.084 | 0.952 | 0.708 | 0.615 | 0.869 | 0.057 | 0.117/0.091/0.045 |
 
+After #290 (the lighting table's hemisphere ambient in the model, terrain and road shaders),
+with the same client images:
+
+| shot | MAE lin | SSIM | lum Arma | lum ours | lum ratio | hist dist |
+|---|---|---|---|---|---|---|
+| altis_kavala_noon | 0.126 | 0.773 | 0.593 | 0.690 | 1.165 | 0.061 |
+| altis_kavala_sunset | 0.135 | 0.716 | 0.384 | 0.274 | 0.713 | 0.119 |
+| altis_hills_ground | 0.118 | 0.549 | 0.535 | 0.627 | 1.170 | 0.058 |
+| stratis_coast | 0.222 | 0.683 | 0.492 | 0.719 | 1.460 | 0.154 |
+| altis_building_close | 0.108 | 0.719 | 0.591 | 0.670 | 1.134 | 0.056 |
+| altis_vegetation_close | 0.139 | 0.677 | 0.472 | 0.546 | 1.155 | 0.096 |
+| altis_kavala_night_moon | 0.047 | 0.322 | 0.051 | 0.010 | 0.192 | 0.113 |
+| altis_kavala_overcast_fog | 0.067 | 0.957 | 0.708 | 0.639 | 0.903 | 0.041 |
+
+The MAE goes down on every shot. The largest changes: overcast fog 0.084 → 0.067, building
+0.118 → 0.108, sunset SSIM 0.642 → 0.716. The blue tree trunks and the blue shaded walls are
+gone, and roads keep their ambient at low sun. The terrain hue is closer to Arma's: the red/blue
+ratio of the bottom third in `altis_hills_ground` is 1.59 for Arma, 1.29 before and 1.48 after.
+Daylight exposure goes up by about 2 % (#296).
 Most informative side-by-sides: `stratis_coast` (water), `altis_vegetation_close` (blue tree
 trunks, missing grass) and `altis_kavala_night_moon` (night exposure, no lamps).
+
+After #295 (the sky dome's elevation ramp from the world's `skyTexture`), with the same client
+images:
+
+| shot | MAE lin | SSIM | lum Arma | lum ours | lum ratio | hist dist |
+|---|---|---|---|---|---|---|
+| altis_kavala_noon | 0.126 | 0.773 | 0.593 | 0.690 | 1.165 | 0.061 |
+| altis_kavala_sunset | 0.135 | 0.716 | 0.384 | 0.274 | 0.714 | 0.119 |
+| altis_hills_ground | 0.117 | 0.549 | 0.535 | 0.626 | 1.169 | 0.058 |
+| stratis_coast | 0.221 | 0.683 | 0.492 | 0.718 | 1.458 | 0.153 |
+| altis_building_close | 0.093 | 0.720 | 0.591 | 0.651 | 1.102 | 0.045 |
+| altis_vegetation_close | 0.120 | 0.678 | 0.472 | 0.498 | 1.054 | 0.073 |
+| altis_kavala_night_moon | 0.047 | 0.322 | 0.051 | 0.010 | 0.192 | 0.113 |
+| altis_kavala_overcast_fog | 0.067 | 0.957 | 0.708 | 0.639 | 0.903 | 0.041 |
+
+The ramp only touches the sky above 19.6° of elevation (the dome's first UV ring), so the two
+shots that matter are the ones looking up. `altis_building_close` 0.108 → 0.093 and
+`altis_vegetation_close` 0.139 → 0.120; its top third goes from (0.574, 0.741, 0.896) to
+(0.503, 0.692, 0.881) against Arma's (0.413, 0.559, 0.798), and its luminance ratio from 1.155
+to 1.054. Every other shot is unchanged to within a thousandth (`altis_kavala_noon` and
+`altis_kavala_sunset` look below 5° of elevation and keep their old images exactly), so this
+takes 14 % off the two worst sky shots without moving anything else. What is left is the sky's
+*level*: the shipped ramp carries the gradient and its hue, but the tint under it is still our
+own (`docs/re/render-atmosphere.md` §4.3, §4.5).
+
 
 ## Discrepancies
 
 Ranked by visible effect. Each discrepancy has a `fidelity` issue that gives its metric, the RE
 reference and a hypothesis.
 
-1. **Ambient is sky-coloured** (#290). Shaded walls, rocks and tree trunks are blue, and terrain is
+1. **Ambient is sky-coloured** (#290, fixed). Shaded walls, rocks and tree trunks are blue, and terrain is
    lavender. Ours lights ambient with the sky colours, not the lighting table's
    `ambient`/`ambientMid`/`groundReflection` (`render-materials.md` §3.1). Roads get almost no
    ambient and go black at low sun.
@@ -149,8 +196,12 @@ reference and a hypothesis.
 4. **Night exposure** (#293). Ours is 5.5× too dark under a full moon. Arma adapts until the moonlit
    terrain shows its colours.
 5. **No point lights** (#294). Street lamps light Kavala at dusk and at night in Arma. Ours has no lamps.
-6. **Sky colour** (#295). Our zenith is paler and more cyan, and brighter. Arma's sky is a deeper blue
-   with a stronger gradient towards the horizon.
+6. **Sky colour** (#295, the gradient fixed). Our zenith was paler, more cyan and brighter.
+   The sky now carries the shipped dome's own elevation ramp (`render-atmosphere.md` §4), which
+   took `altis_building_close` 0.108 → 0.093 and `altis_vegetation_close` 0.139 → 0.120. What is
+   left is the sky's overall level: the tint the engine multiplies the ramp by (`PSHorizon`'s
+   `v1.xyz`) is not traced, so our sky is still brighter than Arma's and its zenith a little
+   short on red.
 7. **Daylight exposure** (#296). Ours is 10–15 % brighter at noon.
 8. **Fog colour and density, overcast** (#297). Our fog is darker and bluer. Arma's fog is neutral
    white-grey.

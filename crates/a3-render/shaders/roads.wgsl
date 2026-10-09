@@ -10,6 +10,10 @@ struct Frame {
     sky_horizon: vec4<f32>,
     viewport: vec4<f32>,
     params: vec4<f32>,
+    // The lighting table's hemisphere ambient (AE, AmbientMid, GE); w = 0 when not set.
+    ambient_sky: vec4<f32>,
+    ambient_mid: vec4<f32>,
+    ambient_ground: vec4<f32>,
 }
 
 // Must match shadow.rs (ShadowUniforms).
@@ -90,6 +94,18 @@ fn sun_visibility(relative: vec3<f32>, normal: vec3<f32>) -> f32 {
     return mix(lit, 1.0, fade);
 }
 
+// The Road shader's hemisphere ambient (docs/re/render-materials.md §3.1); without a lighting
+// table, the flat ambient level.
+fn ambient(y: f32) -> vec3<f32> {
+    if frame.ambient_sky.w > 0.0 {
+        if y > 0.0 {
+            return mix(frame.ambient_mid.rgb, frame.ambient_sky.rgb, saturate(y));
+        }
+        return mix(frame.ambient_ground.rgb, frame.ambient_mid.rgb, saturate(1.0 + y));
+    }
+    return vec3<f32>(frame.sun_color.w);
+}
+
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     // Road shader: albedo x 2 x detail; the shipped detail stage is a constant 0.5 grey, so the
@@ -100,6 +116,6 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     if diffuse > 0.0 {
         diffuse *= sun_visibility(in.relative, n);
     }
-    let light = frame.sun_color.rgb * diffuse + vec3<f32>(frame.sun_color.w);
+    let light = frame.sun_color.rgb * diffuse + ambient(n.y);
     return vec4<f32>(albedo.rgb * light, albedo.a);
 }

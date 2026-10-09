@@ -427,7 +427,10 @@ fresnel/layer 1, t7 env/layer 2, t8 layer 3, t9–t11 layer normals 1–3, t12�
 **Colour spaces** follow §6: colour, layer, macro and env maps are sRGB; the rest are linear.
 
 **Approximations, pending the open points of §7:**
-- Hemisphere ambient: a3-render's sky colours stand in for `AE`/`AmbientMid`/`GE`.
+- Hemisphere ambient: `AE`, `AmbientMid` and `GE` are the lighting table's `ambient`, `ambientMid`
+  and `groundReflection` (the frame's `ambient_sky/mid/ground`), as in §3.1. The sky colours
+  stand in only when there is no lighting table (model viewer). The render oracle measured the
+  improvement (#290).
 - The env-map tint `GlassEnvColor × GlassMatSpecular` is replaced by sky level × material specular.
 - `DForced`, point/spot lights, SSAO/caustics, underwater extinction and the FogMode switch are
   not implemented. Fog and haze come from a3-render's post pass.
