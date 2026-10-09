@@ -170,6 +170,35 @@ SQF accessor semantics as implemented:
 | `getArray` | `[]` | `[]` | items (with `+=`) | `[]` |
 | `isNumber`/`isText`/`isArray`/`isClass` | by stored type; numeric strings are text | | | |
 
+## `scope`: which classes may be created
+
+`scope` is an ordinary entry, so a class that does not set it inherits its base's, up the base
+chain. `crates/a3-world`'s `TypeBank` maps the resolved number the way the engine documents it in
+its own refusal: 0 private (abstract), 1 protected, 2 public. A class with no `scope` anywhere in
+its chain resolves to 0.
+
+The engine refuses to create a `scope = 0` type and says so, both for a Mission-placed entity and
+for `createVehicle` _(verified on `arma3server_x64.exe` 2.22.0.154103: a synthetic `version=12`
+Mission placing the class, then `getVariable`/`isNull` and a `createVehicle` call)_:
+
+```
+Cannot create entity with abstract type WeaponHolder (scope = private?)
+Cannot create non-ai vehicle 'WeaponHolder',''
+```
+
+- `CfgVehicles/WeaponHolder` resolves to `scope = 0` (inherited from `Static`), with
+  `simulation = "house"`, `model = \A3\Weapons_f\dummyweapon.p3d`, `isGround = 1`. Both the
+  mission-placed entity and the `createVehicle` one are absent: the placed variable stays nil and
+  `createVehicle` returns `objNull`. The creatable ground holders are `GroundWeaponHolder` and
+  `GroundWeaponHolder_Scripted`. A Mission that places `WeaponHolder`
+  (`a3\missions_f_beta\mpscenarios\mp_coop_m04.stratis` and its `missions_f_curator` twin, 4
+  units) therefore gets nothing, exactly as `a3-mission` reports it — the sweep's `unspawned`
+  entry is the engine's behaviour, not a gap in `TypeBank`
+  (`docs/re/missions.md` §What the engine refuses to create).
+- A name no loaded addon defines is refused the same way (`Error::UnknownType`): the Mark DLC's
+  `ModuleHvt*_F` classes are in no config of this install, so a Mission referencing them is
+  stale content rather than a lookup we get wrong.
+
 ## Verification (2.22.0.154103, `cargo test -p a3-config --release --test real_data`)
 
 | kind | files | read | rap round-trip | byte-identical | text round-trip |

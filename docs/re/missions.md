@@ -66,7 +66,7 @@ Fields, as shipped missions use them:
 
 | key | meaning | notes |
 |---|---|---|
-| `position[]={x, y, z}` | east, **height above sea level**, north | world space as it is: X east, Y up, Z north (ADR 0003) _(verified: `boot_m02` `{6687.77, 48.0, 15982.78}`)_; `{x, y}` (two elements, east and north) means "place on the surface" _(assumed)_ |
+| `position[]={x, y, z}` | east, height, north | world space as it is: X east, Y up, Z north (ADR 0003) _(verified: `boot_m02` `{6687.77, 48.0, 15982.78}`)_. The 2D editor's `y` is **not** the entity's place: the engine stands every entity of this format on the ground at its `x`/`z` (see "Placement" below); `{x, y}` (two elements, east and north) has no height at all |
 | `azimut` | degrees clockwise from north, `getDir` convention | negative values occur (`-5`, `-131`) and wrap _(verified)_ |
 | `placement` | `"CAN_COLLIDE"` etc. | absent on most units |
 | `special` | `"NONE"`, `"FLY"`, `"FORM"`, `"CARGO"` | on every placed object in `boot_m02` |
@@ -125,10 +125,11 @@ class Mission
 - `dataType` says what an item is: `Group` (its `class Entities` holds `Object`/`Logic` units and
   `Waypoint`s), `Object`/`Logic` outside a group, `Marker`, `Trigger`, `Layer` (an editor folder
   with its own `class Entities`, read recursively), `Comment` (ignored).
-- `position[]` is `{east, height, north}` like the 2D editor's, with the height of the **surface
-  under the entity**; `atlOffset` lifts the entity above it (helicopter crew: `atlOffset=54`;
-  markers on the sea floor have negative heights) _(verified in the files; that the sum is the
-  ASL height is assumed)_. `angles[]` are radians, `angles[1]` the heading.
+- `position[]` is `{east, height, north}` and the height is the entity's **own place**; the item's
+  `atlOffset` records how far the entity stands above the terrain there and is **not** added when
+  the mission loads _(verified against the Oracle: a `Key_F` 130 m above the terrain sits at its
+  `position[]`; see "Where a placed entity ends up")_. `angles[]` are radians, `angles[1]` the
+  heading.
 - Crew seated in a vehicle may have no `position[]` at all (`faction_blufor`: a UAV's AI);
   `class CrewLinks` links unit `item0` to vehicle `item1`, with the seat in `CustomData`
   (`role`, `turretPath[]`). `a3-mission` puts such a unit at its vehicle's position; seating is
@@ -144,6 +145,78 @@ class Mission
   `class value` list of further `class data`).
 - A cutscene saved with only `class Intro` (`malden_intro.malden`, `enoch_intro1.enoch`) has no
   `class Mission`; `a3-mission` loads the intro then _(assumed: what the engine plays)_.
+
+## Placement: where a placed entity ends up
+
+_(Verified against the Oracle, `arma3server_x64.exe` 2.22.0.154103: copies of shipped Missions
+and synthetic ones started with `-autoInit` and read back from `initServer.sqf` with
+`getPosASL`, `getPosATL` and `getTerrainHeightASL`.)_ The two editors store different things in
+the same key, and the engine uses them differently:
+
+| SQM | stored `position[]` | what the engine does |
+|---|---|---|
+| 2D editor (`version=12`) | `{east, y, north}` | **ignores `y`**: the entity is placed on the ground at its `x`/`z` — and on the sea surface, not the sea floor, where the terrain lies below sea level |
+| 3D editor (`version=52..54`) | `{east, y, north}`, the entity's own place, plus `atlOffset`, its height above the terrain there | places the entity at `position[]`; `atlOffset` is **not** added |
+
+The measurements (Stratis; "ground" is the engine's `getTerrainHeightASL`, which never differed
+from `a3-wrp`'s `Terrain::surface_height` by more than 0.000 m at any probed spot — our height
+sampling is not the problem):
+
+| case | SQM `y` | ground there | engine `getPosASL` |
+|---|---:|---:|---:|
+| 2D `Land_CanisterFuel_F`, `special="NONE"` | 200 | 60.44 | **60.44** |
+| 2D crate, `placement="CAN_COLLIDE"` | 200 | 70.16 | **70.16** |
+| 2D crate over deep water | 0 | −26.45 (sea floor) | **0** (sea surface) |
+| 2D `B_Soldier_F` | 200 | 71.04 | **71.04** |
+| 2D crate, `y` = −100 | −100 | 68.10 | **68.10** |
+| 2D helicopter, `special="FLY"` | 200 (and 0) | 71.94 | 48.2209 m above the ground, either way |
+| 3D `Key_F`, `atlOffset=130.111` | 241.087 | 110.976 | **241.087** (= `y`) |
+| 3D `Land_ClutterCutter_small_F`, `atlOffset=3e-5` | 203.986 | 203.986 | **203.986** |
+| 3D crate, `atlOffset=50`, `y` = 60 | 60 | 60.44 | **59.73** (`y`, not `ground+atlOffset` = 110.4) |
+
+Shipped content agrees. In `b_m02_2.stratis` (2D) 126 of its 305 placed entities carry `y=0`; in
+the camp at (2977, 1873) the terrain is 171.4 m and every probed unit there stands on the surface
+(`getPosASL` 171.401, `getPosATL` ≈ 0.001 m), which is the 97 entities the sweep reports as below
+terrain for that Mission. Its boats (`y ≈ 0` over a sea floor at −63 m) are the other half: a
+crate placed over deep water in the controlled run sat at y = 0, the sea surface, not on the
+floor. Issue #349's 388 "below terrain" entities are this one mistake: a stored height the engine
+does not use, read as the entity's place. In `Intro2.Enoch` (3D) every object with an `atlOffset` from −18 to +173 that was
+probed sits at its `position[]`; a few objects the editor left stale (a `Land_Smokestack_F` whose
+`y` is 29 m above the terrain, `atlOffset=0`; one `CargoPlaftorm` 2 m below it) do not — they are
+29 m and 3 m lower than `y`, which is either their settling onto the ground during the (heavy)
+mission load or a `ground + atlOffset` placement; the controlled 3D Mission, read 0.2 s after
+creation with nothing yet settled, shows `y` alone, so `position[]` is the place.
+
+What `a3-mission` does with that (`crates/a3-mission/src/spawn.rs`):
+
+- a 2D-editor entity or a two-element position sets `Unit::on_surface` and is created at
+  `max(surface_height(x, z), 0)` — the ground, or the sea surface over sea, where the whole map
+  is at y = 0;
+- a 3D-editor entity is created at its `position[]`; `atlOffset` is parsed past, not added;
+- `special="FLY"` (the one 2D case whose stored height the engine reads) keeps the stored `y` for
+  now: the engine's own lift to 48.2209 m above the ground is issue #126's air work, and the
+  author's `y` is closer to the intent than the ground.
+
+Open: the collision world's Roadway surfaces (a bridge deck, a house floor) are the engine's real
+"ground" (`CONTEXT.md` §Ground); `spawn.rs` uses the terrain, since a Mission is spawned before
+its land cells are streamed.
+
+## What the engine refuses to create
+
+_(Verified against the Oracle.)_ Both kinds of unit the sweep reports as unspawned are refused by
+the engine itself, so they are abstract or stale Mission content and nothing is missing here:
+
+| class | scenarios | the engine's own behaviour |
+|---|---|---|
+| `WeaponHolder` | `mp_coop_m04.stratis` (β and Curator) | logs `Cannot create entity with abstract type WeaponHolder (scope = private?)`, the placed variable stays nil, and `createVehicle ["WeaponHolder", …]` adds `Cannot create non-ai vehicle 'WeaponHolder',''` |
+| `ModuleHvtObjectiveObjectsManager_F`, `ModuleHvtTwinObjective_F`, `ModuleHvtEndGameTwinObjective_F` | `mp_marksmen_02.altis` (Mark DLC) | the class is nowhere: `isClass (configFile >> "CfgVehicles" >> "ModuleHvtObjectiveObjectsManager_F")` is `false` on the engine, and a scan of all 508 mounted PBOs (1432 addon configs, Mark DLC included) finds the string only in that Mission's own `mission.sqm` |
+
+`CfgVehicles/WeaponHolder` resolves to `scope = 0` (inherited from `Static`); the creatable ground
+holders are `GroundWeaponHolder` and `GroundWeaponHolder_Scripted`. See `docs/re/config.md`
+§`scope` for the rule. `a3-world`'s `TypeBank` refuses the same two ways
+(`Error::AbstractType`, `Error::UnknownType`), so `Spawned::unspawned` names exactly the units the
+engine drops, and `Unspawned::engine_skips` marks them so a report can tell stale content from a
+class we failed to create.
 
 ## Start-up order
 
@@ -188,10 +261,12 @@ gives **42 commands**, headed by `allowDamage` (13×), `clearMagazineCargo`/`cle
 - Which `class Mission` fields the engine applies beyond `addOns`: `addOnsAuto` is used by the
   editor, and which scene's `randomSeed` seeds the mission RNG is not known _(assumed: the
   `Mission` scene's)_.
-- Whether the two-element `position[]` means surface placement or "at height 0" _(assumed_; the
-  World treats it as surface placement, `spawn.rs`).
-- `special` ("FLY"/"FORM"/"CARGO") semantics: `CARGO` needs a carrier's cargo index, which the
-  World has no model for yet.
+- The two-element `position[]`: the engine places the entity on the ground either way, so "no
+  height" and "height 0" are the same thing for the 2D editor.
+- `special="FLY"` lifts an aircraft to 48.2209 m above the ground whatever its stored height
+  (measured twice); whether that number is a config value (`flyInHeight`?) or the engine's own
+  default is not known. `FORM` and `CARGO` need a formation slot and a carrier's cargo index,
+  which the World has no model for yet.
 - Whether `Intro`/`OutroWin`/`OutroLoose` scenes are loaded at mission start or only when the
   intro/outro plays _(assumed: the latter; `a3-mission` parses `class Mission` only, or
   `class Intro` when there is no `class Mission`)_.

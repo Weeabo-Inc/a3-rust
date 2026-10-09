@@ -29,7 +29,16 @@ class CfgVehicles {
 
 /// A World whose terrain is 12 m high everywhere, and the types of [`CONFIG`].
 pub fn world_and_types() -> (World, TypeBank) {
-    let terrain = Arc::new(TerrainBuilder::new(4, 8, 50.0).heights(|_, _| 12.0).build());
+    world_and_types_at(12.0)
+}
+
+/// Like [`world_and_types`], with the terrain at `height` everywhere (0 or below is sea).
+pub fn world_and_types_at(height: f32) -> (World, TypeBank) {
+    let terrain = Arc::new(
+        TerrainBuilder::new(4, 8, 50.0)
+            .heights(|_, _| height)
+            .build(),
+    );
     let mut world = World::new(ClientId::SERVER);
     world.load_terrain(terrain).unwrap();
     let config = parse_text(CONFIG).unwrap();

@@ -219,8 +219,9 @@ fn the_player_the_leader_and_the_height_above_the_surface() {
     let boss = &m.groups[0].units[1];
     assert!(boss.player.is_some(), "Attributes isPlayer=1");
     assert!(boss.leader, "flags bit 2");
-    // atlOffset lifts the object above the surface height in position[].
-    assert!(near(boss.position.y, 14.5));
+    // `position[]` is the entity's own place; `atlOffset` only records how far it stands above
+    // the terrain there and is not added (`docs/re/missions.md` §Placement).
+    assert!(near(boss.position.y, 12.0));
     assert_eq!(m.player().map(|u| u.id), Some(8));
 }
 

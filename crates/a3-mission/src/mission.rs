@@ -129,10 +129,14 @@ pub struct Unit {
     /// `side` of the entry; [`Side::Unknown`] when absent.
     pub side: Side,
     /// `position[]` in world space ([ADR 0003](../../../docs/adr/0003-coordinates-and-precision.md)):
-    /// `{x, y, z}` is east, height above sea level, north. A two-element position has no height
-    /// and sets [`Unit::on_surface`].
+    /// `{x, y, z}` is east, height, north. What the height is depends on the editor: the 3D
+    /// editor stores the entity's own place, the 2D editor a height the engine does not use
+    /// ([`Unit::on_surface`]); a two-element position has no height.
     pub position: DVec3,
-    /// The position gave no height; place the Entity on the terrain surface.
+    /// The stored height is not the Entity's place: the World puts it on the ground at its
+    /// `x`/`z` (`docs/re/missions.md` §Placement). Set for a two-element `position[]` and for
+    /// every entity of the 2D editor's format, whose `y` the engine ignores — except an
+    /// aircraft the editor placed flying (`special = "FLY"`), which keeps its stored altitude.
     pub on_surface: bool,
     /// `azimut`: heading in degrees clockwise from north (`getDir`).
     pub azimut: Option<f64>,
@@ -513,15 +517,22 @@ fn unit(item: &ConfigClass) -> Result<Unit, MissionError> {
         id,
         class: class.clone(),
     })?;
+    let special = text(item, "special");
+    // The 2D editor's stored height is not a place: the engine puts every entity it places on
+    // the ground at its `x`/`z`, whatever the height says (`docs/re/missions.md` §Placement).
+    // Only an aircraft the editor set flying keeps its stored altitude.
+    let flying = special
+        .as_deref()
+        .is_some_and(|s| s.eq_ignore_ascii_case("FLY"));
     Ok(Unit {
         id,
         class,
         side: text(item, "side").map_or(Side::Unknown, |s| side_from_sqm(&s)),
         position,
-        on_surface,
+        on_surface: on_surface || !flying,
         azimut: number(item, "azimut"),
         placement: text(item, "placement"),
-        special: text(item, "special"),
+        special,
         player: text(item, "player"),
         leader: integer(item, "leader") == Some(1),
         rank: text(item, "rank"),
@@ -614,9 +625,10 @@ fn items(list: &ConfigClass) -> impl Iterator<Item = &ConfigClass> {
 
 /// A `position[]` entry as world space and whether it had no height (`{x, y}`).
 ///
-/// Both editors write `{east, height above sea level, north}` (`boot_m02.altis`:
+/// Both editors write `{east, height, north}` (the 2D editor's `boot_m02.altis`:
 /// `{6687.77, 48.0, 15982.78}`), which is world space as it is (ADR 0003: X east, Y up, Z
-/// north). A two-element `{east, north}` has no height.
+/// north). A two-element `{east, north}` has no height. What the height means is the editor's;
+/// see [`Unit::on_surface`].
 fn position(c: &ConfigClass) -> Option<(DVec3, bool)> {
     match entry_numbers(c, "position")?.as_slice() {
         [east, height, north, ..] => Some((DVec3::new(*east, *height, *north), false)),
@@ -740,9 +752,10 @@ fn eden_number(item: &ConfigClass, name: &str) -> Option<f64> {
 
 /// A 3D-editor object or logic.
 ///
-/// `class PositionInfo { position[]; angles[]; }`: `position[]` is `{east, height, north}` with
-/// the height of the surface under the object, and the item's `atlOffset` lifts it above that
-/// surface (a crew member in a hovering helicopter: `atlOffset=54`). `angles[]` are radians;
+/// `class PositionInfo { position[]; angles[]; }`: `position[]` is `{east, height, north}` and
+/// the height is the entity's own place — the editor writes the entity's ASL height there and
+/// records how far it stands above the terrain next to it as the item's `atlOffset`, which the
+/// loader does not add (`docs/re/missions.md` §Placement). `angles[]` are radians;
 /// `angles[1]` is the heading. Bit 2 of `flags` marks the group's leader and
 /// `Attributes >> isPlayer` the player _(assumed from shipped files: `flags` 2, 6, 7 on group
 /// leaders, 4 or 5 on the others)_. Crew seated in a vehicle may have no `position[]`; it is
@@ -755,10 +768,7 @@ fn eden_object(item: &ConfigClass, crew: &mut Crew) -> Result<Unit, MissionError
     }
     let info = item.class("PositionInfo");
     let position = match info.and_then(position) {
-        Some((mut position, _)) => {
-            position.y += number(item, "atlOffset").unwrap_or(0.0);
-            position
-        }
+        Some((position, _)) => position,
         None => {
             crew.unplaced.push(id);
             DVec3::ZERO

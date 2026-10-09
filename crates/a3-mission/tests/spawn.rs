@@ -91,7 +91,7 @@ fn position(world: &World, id: a3_world::EntityId) -> glam::DVec3 {
 }
 
 #[test]
-fn creates_every_present_unit_at_its_sqm_position() {
+fn creates_every_present_unit_at_its_place() {
     let (mut world, mut types) = common::world_and_types();
     let mission = Mission::parse(SQM.as_bytes()).unwrap();
     let spawned = spawn_mission(&mut world, &mut types, &mission);
@@ -102,15 +102,16 @@ fn creates_every_present_unit_at_its_sqm_position() {
     assert_eq!(spawned.unspawned[0].class, "O_Missing_F");
     assert!(spawned.unspawned[0].reason.contains("O_Missing_F"));
 
-    // A 3-component position is `CAN_COLLIDE`: the height is kept, as `{east, height, north}`.
+    // The 2D editor's stored height is not a place (`docs/re/missions.md` §Placement): the
+    // engine stands the entity on the ground at its `x`/`z`, which is 12 m here.
     let boss = spawned.units[&7];
     assert_eq!(
         position(&world, boss),
-        glam::DVec3::new(1000.0, 0.0, 2000.0)
+        glam::DVec3::new(1000.0, 12.0, 2000.0)
     );
     assert_eq!(world.entity(boss).unwrap().type_name(), "B_Soldier_F");
 
-    // A 2-component position is placed on the terrain (12 m here).
+    // A 2-component position likewise.
     let player = spawned.units[&3];
     assert_eq!(
         position(&world, player),
@@ -119,9 +120,57 @@ fn creates_every_present_unit_at_its_sqm_position() {
 
     // The ungrouped object, with its own heading.
     let cargo = spawned.units[&32];
-    assert_eq!(position(&world, cargo), glam::DVec3::new(500.0, 1.5, 600.0));
+    assert_eq!(
+        position(&world, cargo),
+        glam::DVec3::new(500.0, 12.0, 600.0)
+    );
     assert_eq!(world.entity(cargo).unwrap().type_name(), "Land_Cargo10_F");
     assert_eq!(world.entity(cargo).unwrap().group(), None);
+}
+
+/// The 2D editor's `special="FLY"` is the one case whose stored height the engine reads (as the
+/// aircraft's altitude), so the Entity is created where the SQM put it, not on the ground.
+#[test]
+fn a_flying_entity_keeps_its_stored_altitude() {
+    let sqm = r#"version=12;
+class Mission
+{
+	class Vehicles
+	{
+		items=1;
+		class Item0
+		{
+			position[]={500,200,600};
+			special="FLY";
+			id=40;
+			vehicle="Land_Cargo10_F";
+		};
+	};
+};
+"#;
+    let (mut world, mut types) = common::world_and_types();
+    let mission = Mission::parse(sqm.as_bytes()).unwrap();
+    let spawned = spawn_mission(&mut world, &mut types, &mission);
+
+    assert_eq!(
+        position(&world, spawned.units[&40]),
+        glam::DVec3::new(500.0, 200.0, 600.0)
+    );
+}
+
+/// Over sea the ground is the water surface, not the sea floor: a 2D-editor entity stands at
+/// y = 0 above a terrain 30 m below it (measured on the Oracle, `docs/re/missions.md`
+/// §Placement).
+#[test]
+fn an_entity_over_sea_stands_on_the_water_surface() {
+    let (mut world, mut types) = common::world_and_types_at(-30.0);
+    let mission = Mission::parse(SQM.as_bytes()).unwrap();
+    let spawned = spawn_mission(&mut world, &mut types, &mission);
+
+    assert_eq!(
+        position(&world, spawned.units[&7]),
+        glam::DVec3::new(1000.0, 0.0, 2000.0)
+    );
 }
 
 #[test]
