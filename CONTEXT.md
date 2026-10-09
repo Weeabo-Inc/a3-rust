@@ -325,9 +325,35 @@ The engine's legacy sound format: raw or delta-compressed PCM with a short heade
 **OGG**:
 Ogg Vorbis audio, the main sound format in Arma 3.
 
-**Sound shader / sound set**:
-Config-defined descriptions of how a sound is played (sample choice, volume curves, range) used
-by the modern sound system.
+**Sound shader**:
+A `CfgSoundShaders` class: the samples a sound is chosen from (each with a probability), its
+volume and frequency expressions, and its audible range.
+_Avoid_: sound definition (that is an old-style `sound[]` entry)
+
+**Sound set**:
+A `CfgSoundSets` class: the sound shaders played together, with the set-level volume, curve,
+randomisation and 3D parameters. What `playSound` and `say3D` name, and what a CfgEnvSounds
+class selects with `soundSetEnvironment`.
+_Avoid_: sound group
+
+**Sound curve**:
+A sound's gain as a function of a normalised distance (0..1 of the range it is scaled by),
+named in `CfgSoundCurves` or written inline as points.
+_Avoid_: falloff curve, attenuation table
+
+**Distance filter**:
+A `CfgDistanceFilters` class: the low-pass a spatial sound passes through as its distance from
+the listener grows.
+
+**Sound 3D processor**:
+A `CfgSound3DProcessors` class: whether a source is heard as a ring of channels around itself
+(emitter) or folded into a point that pans (panner).
+
+**Simple expression**:
+The small float expression language of sound controllers, evaluated per frame against named
+variables such as `forest`, `windy` or `distance`; an expression naming anything else fails to
+compile.
+_Avoid_: sound controller script
 
 ## Scripting
 

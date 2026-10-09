@@ -82,7 +82,10 @@ fn the_shader_limit_keeps_the_loudest_limited_shaders() {
         audible_shaders(&volumes, &limited, 0),
         [true, true, true, false, true]
     );
-    assert!((AUDIBLE_THRESHOLD - 10f32.powf(-50.0 / 20.0)).abs() < 1e-7, "-50 dB");
+    assert!(
+        (AUDIBLE_THRESHOLD - 10f32.powf(-50.0 / 20.0)).abs() < 1e-7,
+        "-50 dB"
+    );
 }
 
 #[test]
