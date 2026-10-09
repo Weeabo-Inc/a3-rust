@@ -32,10 +32,13 @@ a3-wrp = { path = "crates/a3-wrp" }
 a3-paa = { path = "crates/a3-paa" }
 a3-landscape = { path = "crates/a3-landscape" }
 a3-world = { path = "crates/a3-world" }
+a3-mission = { path = "crates/a3-mission" }
 a3-environment = { path = "crates/a3-environment" }
 a3-landscape-render = { path = "crates/a3-landscape-render" }
+a3-render-ui = { path = "crates/a3-render-ui" }
 a3-ui = { path = "crates/a3-ui" }
 a3-physics = { path = "crates/a3-physics" }
+a3-nav = { path = "crates/a3-nav" }
 
 # Physics (ADR 0001, ADR 0008)
 rapier3d-f64 = "0.36"
@@ -88,6 +91,8 @@ clap = { version = "4", features = ["derive", "env"] }
 
 # Collections
 indexmap = "2"
+smallvec = { version = "1", features = ["union"] }
+rustc-hash = "2"
 
 # Text
 fancy-regex = "0.14"
@@ -152,6 +157,10 @@ opt-level = 3
 opt-level = 3
 
 [profile.dev.package.a3-physics]
+opt-level = 3
+
+# Baking the grid of a real terrain and planning many paths in the nav tests.
+[profile.dev.package.a3-nav]
 opt-level = 3
 
 # Each git worktree has its own target/. Keep it small: line tables keep backtraces readable,

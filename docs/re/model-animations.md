@@ -148,6 +148,19 @@ animation object carries its attach bone at `+0x90` (`int`) and that bone's blen
   None of this contradicts the emitted matrices — an unblended frame's translation is exactly the
   file's `t` (the `M*Q` term only appears while blending), and `a3-pose` reproduces `a3-anim`'s
   frames to 1e-4 — but the arm records are evidently not a complete Man pose on their own.
+- **Measured on the mesh** (issue #247): with the drawn triangles of `B_Soldier_01`'s visual LODs,
+  the rest mesh is a `1.45 x 1.83 x 0.34` m box and the flat `idle` palette inflates it to
+  `2.02 x 3.34 x 2.15` m **with no lift of any kind**, the worst drawn vertex (a right-hand one)
+  2.53 m from its rest position. Per bone, `pelvis` goes `(0, 0, 0) -> (0, 0.912, 0)` while
+  `spine1`..`head` move at most 1 cm; `launcher` moves 2.92 m through 149.9 deg, `camera` 1.45 m,
+  `face_hub` 0.88 m. All eight readings tried (flat vs. hierarchical composition, conjugate vs. raw
+  quaternion, `T = R*Q + t` vs. `T = t` vs. no `t`, child `t` by parent or own rotation) give a box
+  1.95..3.88 m wide: **no composition rule of these records alone makes a Man**, which is the same
+  conclusion the rest-distance measurements reach by a different route.
+- **Placement** (implementation rule): the pose is in the pivots model's space, so a caller that
+  has to lift the mesh (the app lifts the rest mesh's `y = -1.852` so the feet meet the ground) must
+  lift the **instance transform**. Folding the lift into each bone (`bone * up`) multiplies it by
+  the bone's own rotation, dragging posed bones sideways by up to the lift.
 - **Blending** (high): a layer's two record buffers — two keyframes of one RTM, or an animation
   layer's two sources — are blended in `0x12102c0` by **slerping the quaternions** (`0x35d140`)
   and **lerping the converted translations** by `phase`. With one buffer present the record is

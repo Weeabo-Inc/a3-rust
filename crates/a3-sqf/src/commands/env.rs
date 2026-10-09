@@ -2,7 +2,7 @@
 //! frame timing, profile saving) and more diagnostics: `diag_scope`,
 //! `diag_stacktrace`.
 
-use indexmap::IndexMap;
+use crate::value::HashMapEntries;
 
 use super::*;
 use crate::symbol::Sym;
@@ -46,7 +46,7 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
     r.nular("diag_stacktrace", ARR, |ctx| {
         let frames = ctx.stack_trace();
         Ok(Value::array(frames.into_iter().map(|f| {
-            let mut vars = IndexMap::new();
+            let mut vars = HashMapEntries::default();
             for (name, v) in f.locals {
                 vars.insert(HashKey::String(name.as_str().into()), v);
             }

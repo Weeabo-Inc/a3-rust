@@ -227,6 +227,15 @@ impl Entity {
         self.visual
     }
 
+    /// Makes the current transform the interpolation anchor, so the renderer draws the Entity
+    /// where it is now instead of blending from the transform before it. A state received from the
+    /// network sets this: mode of interpolation between received states is open (issue #117).
+    pub fn anchor_visual_state(&mut self) {
+        self.visual.previous_position = self.position;
+        self.visual.previous_orientation = self.orientation;
+        self.visual.since_step = 0.0;
+    }
+
     /// The position to draw: interpolated from the previous step's position towards the
     /// current one by the time elapsed since the last step.
     pub fn render_position(&self) -> DVec3 {

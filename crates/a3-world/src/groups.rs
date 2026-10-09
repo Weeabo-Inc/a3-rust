@@ -8,6 +8,7 @@ use std::collections::HashMap;
 
 pub use a3_sqf::Side;
 
+use crate::ai::GroupAi;
 use crate::{ClientId, EntityId, Error, Locality, NetworkId, World};
 
 /// Our handle to a group, with the same generational rule as [`EntityId`].
@@ -43,6 +44,8 @@ pub struct Group {
     pub(crate) units: Vec<EntityId>,
     pub(crate) leader: Option<EntityId>,
     pub(crate) delete_when_empty: bool,
+    /// What the group is doing and what it knows: waypoints, modes and targets (#129).
+    pub(crate) ai: GroupAi,
 }
 
 impl Group {
@@ -235,6 +238,7 @@ impl World {
             units: Vec::new(),
             leader: None,
             delete_when_empty,
+            ai: GroupAi::default(),
         });
         groups.by_network_id.insert(network_id, id);
         id
@@ -242,6 +246,11 @@ impl World {
 
     pub fn group(&self, id: GroupId) -> Option<&Group> {
         self.groups().get(id)
+    }
+
+    /// The group to change.
+    pub fn group_mut(&mut self, id: GroupId) -> Option<&mut Group> {
+        self.groups_mut().get_mut(id)
     }
 
     /// Every group, in arena order (`allGroups`).

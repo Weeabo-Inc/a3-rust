@@ -612,6 +612,35 @@ impl<'a> ConfigRef<'a> {
         }
     }
 
+    /// The own entry ids of a class that [`entries`](Self::entries) lists.
+    fn own_entry_ids(&self) -> impl Iterator<Item = NodeId> + '_ {
+        self.id()
+            .and_then(|id| self.tree.class(id))
+            .into_iter()
+            .flat_map(|class| class.entries.iter().copied())
+            .filter(|&e| self.tree.class(e).is_none_or(|c| !c.external))
+    }
+
+    /// `count config`: the number of [`entries`](Self::entries), without building them.
+    pub fn entry_count(&self) -> usize {
+        self.own_entry_ids().count()
+    }
+
+    /// `config select index`: entry `index` of [`entries`](Self::entries), or null.
+    pub fn entry_at(&self, index: usize) -> ConfigRef<'a> {
+        match self.own_entry_ids().nth(index) {
+            Some(e) => {
+                let mut path = self.path.clone();
+                path.push(e);
+                Self {
+                    tree: self.tree,
+                    path,
+                }
+            }
+            None => Self::null(self.tree),
+        }
+    }
+
     /// Own entries in order (`count` / `select` on a config), excluding inherited ones and
     /// unresolved `class X;` placeholders.
     pub fn entries(&self) -> Vec<ConfigRef<'a>> {

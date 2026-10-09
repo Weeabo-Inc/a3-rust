@@ -1,0 +1,22 @@
+[package]
+name = "a3-nav"
+description = "AI navigation: a terrain cost grid with A*, road following and building path meshes"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+a3-landscape.workspace = true
+a3-p3d.workspace = true
+a3-physics.workspace = true
+a3-wrp.workspace = true
+glam.workspace = true
+
+[dev-dependencies]
+a3-config.workspace = true
+a3-gamedata.workspace = true
+a3-wrp.workspace = true
+
+[lints]
+workspace = true

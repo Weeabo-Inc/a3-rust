@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use crate::keys::KeySources;
 use crate::models::{ModelSpec, ObjectOptions};
+use crate::player::CameraMode;
 use crate::world::CameraSpec;
 
 /// Engine-wide settings and paths, created once at startup.
@@ -16,24 +17,21 @@ pub struct EngineContext {
     pub keys: KeySources,
     /// The World (CfgWorlds class) to fly over, if any.
     pub world: Option<String>,
-    /// Initial camera placement over the World.
+    /// Initial camera placement over the World, and where the player spawns when playing.
     pub camera: Option<CameraSpec>,
-    /// Distance fog density override.
-    pub fog: Option<f32>,
+    /// Play as a Man on the terrain instead of flying the free camera.
+    pub play: bool,
+    /// Which camera `--play` starts in; the `personView` key toggles it at runtime.
+    pub camera_mode: CameraMode,
     /// Placed objects of the World.
     pub objects: ObjectOptions,
     /// Show one model instead (the model viewer).
     pub model: Option<ModelSpec>,
+    /// Date, time, weather and fog overrides over the World.
+    pub environment: crate::environment::EnvironmentSpec,
 }
 
 impl EngineContext {
-    /// Apply command-line overrides of the render settings.
-    pub fn configure(&self, renderer: &mut a3_render::Renderer) {
-        if let Some(fog) = self.fog {
-            renderer.settings.fog_density = fog;
-        }
-    }
-
     /// Mount the game data for the model viewer, if a model is requested.
     pub fn load_model_vfs(&self) -> anyhow::Result<Option<(a3_vfs::Vfs, ModelSpec)>> {
         let Some(spec) = &self.model else {

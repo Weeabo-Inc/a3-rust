@@ -67,15 +67,27 @@ pub fn screenshot(
     log::info!("offscreen renderer: {adapter}");
     let mut renderer = Renderer::new(&gpu, a3_render::wgpu::TextureFormat::Rgba8UnormSrgb);
     let mut scene = DebugScene::new();
-    engine.configure(&mut renderer);
     scene.load(&gpu, &mut renderer);
     if let Some(world) = engine.load_world()? {
-        scene.load_world(&gpu, &mut renderer, world, engine.camera);
+        let play = engine.play.then_some(engine.camera_mode);
+        scene.load_world(
+            &gpu,
+            &mut renderer,
+            world,
+            engine.camera,
+            &engine.environment,
+            play,
+        );
     }
     if let Some((vfs, spec)) = engine.load_model_vfs()? {
         scene.load_model(&gpu, &mut renderer, vfs, spec);
     }
-    let input = InputState::new();
+    let mut input = InputState::new();
+    if engine.play {
+        // An offscreen run has no keyboard, so a `--play` capture holds the forward key: the
+        // Man is caught mid-stride rather than standing in his idle Move.
+        input.press(InputCode::Key(Dik::W));
+    }
     let mut fps = FpsCounter::default();
     let mut draws = DrawList::default();
     let start = Instant::now();
@@ -86,6 +98,7 @@ pub fn screenshot(
         draws.clear();
         scene.draw(&mut draws);
         scene.overlay(&mut draws, &fps, &adapter, false, "BUILT-IN");
+        scene.prepare_render(&mut renderer, FRAME.as_secs_f32());
         let image = renderer.render_to_image(
             &gpu,
             width,

@@ -12,8 +12,8 @@ use glam::DVec3;
 use crate::groups::Groups;
 use crate::statics::StaticObjects;
 use crate::{
-    ClientId, Entity, EntityId, EntityType, Error, ListKind, Locality, NetworkId, ObjectRef, Scope,
-    StaticKey,
+    ClientId, Entity, EntityId, EntityType, Error, GroupId, ListKind, Locality, NetworkId,
+    ObjectRef, Scope, StaticKey, net::SentStates,
 };
 
 /// The original clamps created positions to this box on every axis (`World_CreateVehicleImpl`).
@@ -94,6 +94,9 @@ pub enum WorldEvent {
         instigator: Option<EntityId>,
         use_effects: bool,
     },
+    /// A group finished the waypoint at `index` and moved on (#129); a CYCLE waypoint reports
+    /// the waypoint it left, so a mission sees each completion once.
+    WaypointCompleted { group: GroupId, index: usize },
 }
 
 #[derive(Debug, Default)]
@@ -113,6 +116,9 @@ pub struct World {
     by_network_id: HashMap<NetworkId, EntityId>,
     lists: [Vec<EntityId>; ListKind::COUNT],
     pending_deletions: Vec<EntityId>,
+    /// What each receiver has been sent for each Entity (`net::mark_sent`); the baseline
+    /// [`World::updates_owed`] measures against. The original's `NetworkObjectInfo` per player.
+    pub(crate) sent: SentStates,
     terrain: Option<Arc<Terrain>>,
     /// The collision world of this World: the terrain, its Static objects and every Entity's
     /// body (ADR 0008). A Man walks on its surfaces, so without one no Man moves.
@@ -144,6 +150,7 @@ impl World {
             by_network_id: HashMap::new(),
             lists: Default::default(),
             pending_deletions: Vec::new(),
+            sent: SentStates::default(),
             terrain: None,
             collision_world: None,
             moves: None,
@@ -311,6 +318,7 @@ impl World {
             slot.generation = slot.generation.wrapping_add(1) & ENTITY_GENERATION_MASK;
             self.free.push(id.index);
             self.lists[entity.list as usize].retain(|&e| e != id);
+            self.sent.remove(&id);
             if let Some(net) = entity.network_id {
                 self.by_network_id.remove(&net);
                 if let Some(key) = StaticKey::from_network_id(net) {
@@ -372,6 +380,12 @@ impl World {
     /// Takes the events recorded since the last call, oldest first.
     pub fn drain_events(&mut self) -> Vec<WorldEvent> {
         std::mem::take(&mut self.events)
+    }
+
+    /// Records an event for the next [`World::drain_events`]. For the simulation modules, which
+    /// cannot reach the private event list.
+    pub(crate) fn push_event(&mut self, event: WorldEvent) {
+        self.events.push(event);
     }
 
     /// Simulated time since the World was created, in seconds (`time`).

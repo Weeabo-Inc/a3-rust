@@ -10,6 +10,8 @@ description = "SQF language core: values, lexer, parser, compiler, command regis
 a3-preproc.workspace = true
 thiserror.workspace = true
 indexmap.workspace = true
+smallvec.workspace = true
+rustc-hash.workspace = true
 fancy-regex.workspace = true
 
 [dev-dependencies]

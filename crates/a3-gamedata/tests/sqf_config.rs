@@ -161,6 +161,16 @@ fn count_and_select() {
 }
 
 #[test]
+fn config_select_rounds_indices_like_arrays() {
+    // Round half to even (cvtss2si), matching `array select` (tests/vm.rs in a3-sqf).
+    let c = "(configFile >> \"CfgVehicles\")";
+    assert_eq!(s(&format!("configName ({c} select 0.5)")), "\"All\"");
+    assert_eq!(s(&format!("configName ({c} select 0.6)")), "\"Car\"");
+    assert_eq!(s(&format!("configName ({c} select 1.5)")), "\"Truck\"");
+    assert_eq!(s(&format!("configName ({c} select 2.5)")), "\"Truck\"");
+}
+
+#[test]
 fn config_classes_and_properties() {
     assert_eq!(
         s("(\"true\" configClasses (configFile >> \"CfgVehicles\")) apply { configName _x }"),
