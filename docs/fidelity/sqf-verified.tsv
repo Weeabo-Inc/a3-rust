@@ -274,3 +274,4 @@ clearRadio	nular	*	stub	wiki	no radio sentences to stop
 enableRadio	unary	*	stub	wiki	no radio sentences
 displayCtrl	unary	*	stub	wiki	display stack is in a3-ui, not reachable from the world host; answers the null control
 displayCtrl	binary	*	stub	wiki	as above
+setGroupId	binary	0x191f70	verified	decompiled 0x191f70	OBJECT overload: a unit names the group it belongs to (the function library calls it that way)
