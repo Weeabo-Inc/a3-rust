@@ -15,7 +15,10 @@ use wgpu::util::DeviceExt;
 use crate::batch::InstanceBatcher;
 use crate::cull::{Frustum, ObjectGrid};
 use crate::loader::{Job, Loaded, Loader, TextureKey, TextureUse};
-use crate::lod::{LodMetrics, LodSelector, ObjectBounds, ViewScale, Visibility, object_size};
+use crate::lod::{
+    LodMetrics, LodRequest, LodSelector, ObjectBounds, ViewScale, Visibility, object_size,
+    surface_distance,
+};
 use crate::material::{AlphaMode, MaterialDesc, Slot};
 use crate::prepare::{ModelVertex, PreparedModel};
 use crate::shader::ShaderFamily;
@@ -214,7 +217,8 @@ struct GpuLod {
 struct GpuModel {
     lods: Vec<GpuLod>,
     metrics: Vec<LodMetrics>,
-    density: f32,
+    lod_density: f32,
+    draw_importance: f32,
     radius: f32,
     /// Bounding box of the drawn geometry, model space.
     bbox: (Vec3, Vec3),
@@ -259,6 +263,15 @@ struct DrawCmd {
 struct Root {
     object: PlacedObject,
     palette: u32,
+}
+
+/// A root or proxy that passed the draw test: its fade and visible area (pixels).
+#[derive(Debug, Clone, Copy)]
+struct Drawn {
+    root: Root,
+    fade: f32,
+    area: f32,
+    casts_shadow: bool,
 }
 
 /// A skinned instance staged for this frame: a placed object and the slice of the frame's bone
@@ -312,6 +325,8 @@ pub struct ModelRenderer {
     draws: [Vec<DrawCmd>; 3],
     shadow_draws: [Vec<DrawCmd>; 2],
     stats: ModelStats,
+    /// Last view pass's faces per pixel (`docs/re/render-lod.md` §6), for proxies and shadows.
+    lod_ratio: f32,
 }
 
 impl ModelRenderer {
@@ -552,6 +567,7 @@ impl ModelRenderer {
             draws: Default::default(),
             shadow_draws: Default::default(),
             stats: ModelStats::default(),
+            lod_ratio: 0.3,
         }
     }
 
@@ -866,7 +882,8 @@ impl ModelRenderer {
         let model = GpuModel {
             lods,
             metrics: prepared.lod_metrics(),
-            density: prepared.lod_density_coef,
+            lod_density: prepared.lod_density_coef,
+            draw_importance: prepared.draw_importance,
             radius: prepared.radius,
             bbox: prepared.bbox,
         };
@@ -1014,10 +1031,15 @@ impl ModelRenderer {
     fn cull_and_batch(&mut self, cx: &PrepareContext<'_>) {
         let camera = cx.camera.position;
         let frustum = Frustum::from_view_projection(cx.view_projection);
-        let aspect = cx.viewport.0.max(1) as f32 / cx.viewport.1.max(1) as f32;
         let view = CullView {
             camera,
-            scale: ViewScale::new(cx.camera.fov.top, aspect),
+            scale: ViewScale::new(cx.camera.fov.top, cx.viewport.0, cx.viewport.1),
+            near: cx.camera.near,
+            lod: LodSelector {
+                view_distance: self.settings.view_distance,
+                object_view_distance: self.settings.view_distance,
+                ..self.settings.lod
+            },
         };
         let view_distance = f64::from(self.settings.view_distance);
         let shadow_distance = f64::from(
@@ -1141,6 +1163,10 @@ impl ModelRenderer {
     }
 
     /// Select LODs for `roots` and their proxies and queue them as instances of `pass`.
+    ///
+    /// The view pass shares the frame's face budget between the roots that pass the draw test
+    /// (`docs/re/render-lod.md` §6) and keeps the resulting faces-per-pixel ratio; proxies and
+    /// the shadow pass pick their LOD at that ratio.
     fn gather(
         &mut self,
         pass: Pass,
@@ -1149,78 +1175,167 @@ impl ModelRenderer {
         frustum: Option<&Frustum>,
         max_distance: f64,
     ) {
-        let mut stack: Vec<(Root, u32)> = roots.into_iter().map(|r| (r, 0)).collect();
+        // The roots that pass the culling and draw tests, with their visible area.
+        let mut drawn = Vec::with_capacity(roots.len());
+        for root in roots {
+            if let Some(d) = self.test(pass, root, 0, view, frustum, max_distance) {
+                drawn.push(d);
+            }
+        }
+        // Their LODs.
+        let lods: Vec<Option<usize>> = {
+            let models = &self.models;
+            let metrics = |d: &Drawn| match &models[d.root.object.model as usize].state {
+                ModelState::Ready(m) => &m.metrics[..],
+                _ => &[],
+            };
+            match (pass, self.settings.force_lod) {
+                (_, Some(lod)) => drawn
+                    .iter()
+                    .map(|d| (!metrics(d).is_empty()).then(|| lod.min(metrics(d).len() - 1)))
+                    .collect(),
+                (Pass::View, None) => {
+                    let mut requests: Vec<LodRequest> = drawn
+                        .iter()
+                        .map(|d| {
+                            let mut r = LodRequest::new(metrics(d), d.area, None);
+                            r.shadow_share = if d.casts_shadow { 1.0 / 32.0 } else { 0.0 };
+                            r
+                        })
+                        .collect();
+                    self.lod_ratio = view.lod.assign(&mut requests);
+                    requests.iter().map(|r| r.lod).collect()
+                }
+                (Pass::Shadow, None) => drawn
+                    .iter()
+                    .map(|d| view.lod.pick(metrics(d), d.area, self.lod_ratio, None))
+                    .collect(),
+            }
+        };
+        let mut stack: Vec<(Root, u32)> = Vec::new();
+        for (d, lod) in drawn.into_iter().zip(lods) {
+            if let Some(lod) = lod {
+                self.emit(pass, &d, lod, 0, view.camera, &mut stack);
+            }
+        }
+        // Proxies, at the frame's ratio.
         while let Some((root, depth)) = stack.pop() {
-            let object = root.object;
-            let relative = object.transform.translation - view.camera;
-            let distance = relative.length();
-            let horizontal = (relative.x * relative.x + relative.z * relative.z).sqrt();
-            let model = match &self.models[object.model as usize].state {
-                ModelState::Ready(m) => m,
-                ModelState::Unrequested => {
-                    if pass == Pass::View && horizontal <= max_distance {
-                        self.load_requests.push((distance, object.model));
-                    }
-                    continue;
+            let Some(d) = self.test(pass, root, depth, view, frustum, max_distance) else {
+                continue;
+            };
+            let ModelState::Ready(model) = &self.models[d.root.object.model as usize].state else {
+                continue;
+            };
+            let lod = match self.settings.force_lod {
+                Some(lod) if !model.lods.is_empty() => Some(lod.min(model.lods.len() - 1)),
+                _ => view.lod.pick(&model.metrics, d.area, self.lod_ratio, None),
+            };
+            if let Some(lod) = lod {
+                self.emit(pass, &d, lod, depth, view.camera, &mut stack);
+            }
+        }
+    }
+
+    /// The culling, draw and shadow tests of one object, and its visible area for the LOD
+    /// budget; `None` when it is not drawn in `pass` (or its model is not loaded yet).
+    fn test(
+        &mut self,
+        pass: Pass,
+        root: Root,
+        depth: u32,
+        view: &CullView,
+        frustum: Option<&Frustum>,
+        max_distance: f64,
+    ) -> Option<Drawn> {
+        let object = root.object;
+        let relative = object.transform.translation - view.camera;
+        let distance = relative.length();
+        let horizontal = (relative.x * relative.x + relative.z * relative.z).sqrt();
+        let model = match &self.models[object.model as usize].state {
+            ModelState::Ready(m) => m,
+            ModelState::Unrequested => {
+                if pass == Pass::View && horizontal <= max_distance {
+                    self.load_requests.push((distance, object.model));
                 }
-                _ => continue,
-            };
-            let scale = max_scale(&object.transform.matrix3);
-            let radius = model.radius * scale;
-            if frustum.is_some_and(|f| !f.intersects_sphere(relative.as_vec3(), radius)) {
-                continue;
+                return None;
             }
-            if depth == 0 && horizontal - f64::from(radius) > max_distance {
-                continue;
-            }
-            let bounds = ObjectBounds {
-                size: object_size(model.bbox.0, model.bbox.1, scale),
-                density: model.density,
-            };
-            let lod_settings = &self.settings.lod;
-            if pass == Pass::Shadow
-                && !lod_settings.casts_shadow(bounds, distance as f32, view.scale)
-            {
-                continue;
-            }
-            let selected = match self.settings.force_lod {
-                Some(lod) if !model.lods.is_empty() => {
-                    Some((lod.min(model.lods.len() - 1), Visibility::Full))
-                }
-                _ => lod_settings.select(&model.metrics, bounds, distance as f32, view.scale),
-            };
-            let Some((lod, visibility)) = selected else {
-                continue;
-            };
-            let fade = match visibility {
-                Visibility::Fade(f) if pass == Pass::View => f,
-                _ => 1.0,
-            };
-            // Skinned when the instance carries a bone palette and the LOD has bone weights; an
-            // unweighted LOD (or an unstaged object) draws in the rest pose.
-            let skinned = root.palette != 0 && model.lods[lod].skin.is_some();
-            self.batcher.push(
-                (pass, object.model, lod as u16, skinned),
-                InstanceRaw::new(&object.transform, view.camera, fade, root.palette),
-            );
-            if depth < self.settings.max_proxy_depth {
-                for (proxy, transform) in &model.lods[lod].proxies {
-                    let local = DAffine3 {
-                        matrix3: transform.matrix3.as_dmat3(),
-                        translation: transform.translation.as_dvec3(),
-                    };
-                    stack.push((
-                        Root {
-                            object: PlacedObject {
-                                model: *proxy,
-                                transform: object.transform * local,
-                            },
-                            // Proxies are placed by their own model's skeleton, not the host's.
-                            palette: 0,
+            _ => return None,
+        };
+        let scale = max_scale(&object.transform.matrix3);
+        let radius = model.radius * scale;
+        if frustum.is_some_and(|f| !f.intersects_sphere(relative.as_vec3(), radius)) {
+            return None;
+        }
+        if depth == 0 && horizontal - f64::from(radius) > max_distance {
+            return None;
+        }
+        let bounds = ObjectBounds {
+            size: object_size(model.bbox.0, model.bbox.1, scale),
+            radius,
+            draw_importance: model.draw_importance,
+            lod_density: model.lod_density,
+        };
+        let lod = &view.lod;
+        let d_surface = surface_distance(distance as f32, radius, view.near);
+        let casts_shadow = lod.casts_shadow(bounds, d_surface, view.scale);
+        if pass == Pass::Shadow && !casts_shadow {
+            return None;
+        }
+        let fade = match (
+            self.settings.force_lod,
+            lod.draw_test(bounds, distance as f32, view.scale),
+        ) {
+            (Some(_), _) => 1.0,
+            (None, Visibility::Hidden) => return None,
+            (None, Visibility::Fade(f)) if pass == Pass::View => f,
+            _ => 1.0,
+        };
+        Some(Drawn {
+            root,
+            fade,
+            area: lod.lod_area(bounds, d_surface, view.scale),
+            casts_shadow,
+        })
+    }
+
+    /// Queue `d` at Resolution LOD `lod` as an instance of `pass`, and its proxies on `stack`.
+    fn emit(
+        &mut self,
+        pass: Pass,
+        d: &Drawn,
+        lod: usize,
+        depth: u32,
+        camera: DVec3,
+        stack: &mut Vec<(Root, u32)>,
+    ) {
+        let ModelState::Ready(model) = &self.models[d.root.object.model as usize].state else {
+            return;
+        };
+        let object = d.root.object;
+        // Skinned when the instance carries a bone palette and the LOD has bone weights; an
+        // unweighted LOD (or an unstaged object) draws in the rest pose.
+        let skinned = d.root.palette != 0 && model.lods[lod].skin.is_some();
+        self.batcher.push(
+            (pass, object.model, lod as u16, skinned),
+            InstanceRaw::new(&object.transform, camera, d.fade, d.root.palette),
+        );
+        if depth < self.settings.max_proxy_depth {
+            for (proxy, transform) in &model.lods[lod].proxies {
+                let local = DAffine3 {
+                    matrix3: transform.matrix3.as_dmat3(),
+                    translation: transform.translation.as_dvec3(),
+                };
+                stack.push((
+                    Root {
+                        object: PlacedObject {
+                            model: *proxy,
+                            transform: object.transform * local,
                         },
-                        depth + 1,
-                    ));
-                }
+                        // Proxies are placed by their own model's skeleton, not the host's.
+                        palette: 0,
+                    },
+                    depth + 1,
+                ));
             }
         }
     }
@@ -1340,6 +1455,10 @@ enum Pass {
 struct CullView {
     camera: DVec3,
     scale: ViewScale,
+    /// Near plane distance, metres.
+    near: f32,
+    /// The LOD policy with this frame's view distances.
+    lod: LodSelector,
 }
 
 fn family_code(family: ShaderFamily) -> u32 {

@@ -55,6 +55,9 @@ pub struct PreparedLod {
     pub radius: f32,
     /// Triangle count.
     pub faces: u32,
+    /// Face count as the engine counts it for LOD selection: polygons (a quad is one face),
+    /// proxy faces included.
+    pub polygons: u32,
 }
 
 /// A model's Resolution LODs, most detailed first.
@@ -63,6 +66,8 @@ pub struct PreparedModel {
     pub lods: Vec<PreparedLod>,
     /// Config `lodDensityCoef` from the model info (1 when unset).
     pub lod_density_coef: f32,
+    /// Config `drawImportance` from the model info (1 when unset).
+    pub draw_importance: f32,
     /// Bounding radius around the model origin over all Resolution LODs.
     pub radius: f32,
     /// Bounding box (min, max) of the drawn geometry of all Resolution LODs.
@@ -89,10 +94,18 @@ impl PreparedModel {
         if bbox.0.x > bbox.1.x {
             bbox = (Vec3::ZERO, Vec3::ZERO);
         }
-        let coef = model.info.lod_density_coef;
+        // The engine clamps both to 0.001..=10000; 0 (never written) means unset.
+        let coef = |v: f32| {
+            if v > 0.0 {
+                v.clamp(0.001, 10_000.0)
+            } else {
+                1.0
+            }
+        };
         PreparedModel {
             lods,
-            lod_density_coef: if coef > 0.0 { coef } else { 1.0 },
+            lod_density_coef: coef(model.info.lod_density_coef),
+            draw_importance: coef(model.info.draw_importance),
             radius,
             bbox,
         }
@@ -104,7 +117,7 @@ impl PreparedModel {
             .iter()
             .map(|l| LodMetrics {
                 resolution: l.resolution,
-                faces: l.faces,
+                faces: l.polygons,
             })
             .collect()
     }
@@ -198,6 +211,7 @@ fn prepare_lod(lod: &Lod, skeleton: Option<&Skeleton>) -> PreparedLod {
     PreparedLod {
         resolution: lod.resolution.0,
         faces: indices.len() as u32 / 3,
+        polygons: lod.faces.len() as u32,
         vertices,
         indices,
         sections,
@@ -299,6 +313,7 @@ mod tests {
             quad_lod(1.0),
         ];
         model.info.lod_density_coef = 1.5;
+        model.info.draw_importance = 0.5;
         model
     }
 
@@ -319,7 +334,10 @@ mod tests {
         let resolutions: Vec<f32> = p.lods.iter().map(|l| l.resolution).collect();
         assert_eq!(resolutions, vec![1.0, 2.0]);
         assert_eq!(p.lod_density_coef, 1.5);
-        assert_eq!(p.lod_metrics()[0].faces, 4);
+        assert_eq!(p.draw_importance, 0.5);
+        // LOD selection counts faces as the engine does: two triangles and a quad are three.
+        assert_eq!(p.lods[0].faces, 4);
+        assert_eq!(p.lod_metrics()[0].faces, 3);
     }
 
     #[test]
