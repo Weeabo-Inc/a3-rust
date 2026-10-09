@@ -12,11 +12,7 @@ use crate::transport::{MAX_DATAGRAM, MAX_PAYLOAD};
 pub enum NetError {
     // ---- transport ------------------------------------------------------
     #[error("datagram of {len} bytes is outside the accepted {min}..={max} range")]
-    DatagramLength {
-        len: usize,
-        min: usize,
-        max: usize,
-    },
+    DatagramLength { len: usize, min: usize, max: usize },
     #[error("datagram header declares {declared} bytes but {actual} arrived")]
     DatagramSize { declared: u16, actual: usize },
     #[error("datagram crc: header {declared:#010x}, computed {computed:#010x}")]
@@ -35,6 +31,8 @@ pub enum NetError {
     ConnectId { id: u32, len: usize },
     #[error("connect net magic {found:#010x} is not the server's {expected:#010x}")]
     Magic { found: u32, expected: u32 },
+    #[error("RESULT carries unknown code {0}")]
+    UnknownResultCode(u32),
     #[error("steam blob does not start with its marker byte")]
     SteamBlob,
 
@@ -51,7 +49,9 @@ pub enum NetError {
     },
     #[error("a2s rules: serialised block of {len} bytes exceeds the engine's {max}-byte limit")]
     RulesBlockTooLong { len: usize, max: usize },
-    #[error("a2s rules: {chunks} chunks of {chunk}-byte escaped data exceed the 64 the client reads")]
+    #[error(
+        "a2s rules: {chunks} chunks of {chunk}-byte escaped data exceed the 64 the client reads"
+    )]
     RulesChunks { chunks: usize, chunk: usize },
 
     // ---- io -------------------------------------------------------------

@@ -13,7 +13,7 @@ pub use flags::{
     NOCHANNEL, ORDERED, RELIABLE, RTT_REQ, URGENT, USES_EXTRA,
 };
 pub use keys::{Keys, MAGIC};
-pub use packet::{HEADER_SIZE, MAX_DATAGRAM, MAX_PAYLOAD, Header, pack, unpack};
+pub use packet::{HEADER_SIZE, Header, MAX_DATAGRAM, MAX_PAYLOAD, pack, unpack};
 
 /// The offset of the payload inside a datagram; the header is fixed at 24 bytes.
 pub const PAYLOAD_OFFSET: usize = HEADER_SIZE;

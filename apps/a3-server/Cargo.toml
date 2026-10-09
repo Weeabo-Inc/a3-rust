@@ -1,0 +1,25 @@
+[package]
+name = "a3-server"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+description = "The a3-rust dedicated server"
+
+[[bin]]
+name = "a3-server"
+path = "src/main.rs"
+
+[dependencies]
+a3-config.workspace = true
+a3-net.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

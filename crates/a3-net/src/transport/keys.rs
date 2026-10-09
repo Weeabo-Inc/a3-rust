@@ -129,14 +129,14 @@ fn interleave(x: u32, y: u32) -> u32 {
     acc |= y & 1;
     y >>= 1;
     for _ in 0..3 {
-        acc = acc * 2 | (x & 1);
+        acc = (acc * 2) | (x & 1);
         x >>= 1;
-        acc = acc * 2 | (y & 1);
+        acc = (acc * 2) | (y & 1);
         y >>= 1;
     }
-    acc = acc * 2 | (x & 1);
+    acc = (acc * 2) | (x & 1);
     let tail_bit = x & 2;
-    acc = acc * 2 | (y & 1);
+    acc = (acc * 2) | (y & 1);
     y >>= 1;
     ((acc << 2) | (y & 1) | tail_bit) as u32
 }
@@ -169,7 +169,8 @@ mod tests {
     /// Key and table values printed by `python tools/re/a3net.py keys` (the reference codec).
     const REF_HEADER_KEY_1: &str = "b1c1c66c642ffb918ff96c2833048e02f1c91ba0";
     const REF_HEADER_KEY_2: &str = "74b04acc32e57f05e87ca93f813eab171ec8cd4a";
-    const REF_TABLE_PREFIX: &str = "9249a4d269b4daedf67b3d1e0f8743a15028944a259249a45229148ac5e27138";
+    const REF_TABLE_PREFIX: &str =
+        "9249a4d269b4daedf67b3d1e0f8743a15028944a259249a45229148ac5e27138";
 
     fn decode_hex(s: &str) -> Vec<u8> {
         (0..s.len() / 2)
@@ -214,7 +215,10 @@ mod tests {
     #[test]
     fn payload_table_starts_like_the_reference_implementation() {
         let keys = Keys::default();
-        assert_eq!(keys.payload_table()[..32].to_vec(), decode_hex(REF_TABLE_PREFIX));
+        assert_eq!(
+            keys.payload_table()[..32].to_vec(),
+            decode_hex(REF_TABLE_PREFIX)
+        );
     }
 
     #[test]

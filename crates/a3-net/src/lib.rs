@@ -21,10 +21,15 @@
 //! extended ack block, RTT probes, bandwidth control, the `DContext` message encryption and the
 //! game message catalogue.
 
+mod bytes;
+
 pub mod channel;
 pub mod crc32;
 pub mod crypto;
 pub mod error;
+pub mod handshake;
+pub mod random;
+pub mod server;
 pub mod transport;
 
 pub use error::NetError;

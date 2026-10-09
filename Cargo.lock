@@ -363,6 +363,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "a3-server"
+version = "0.1.0"
+dependencies = [
+ "a3-config",
+ "a3-net",
+ "anyhow",
+ "clap",
+ "tempfile",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "a3-signing"
 version = "0.1.0"
 dependencies = [

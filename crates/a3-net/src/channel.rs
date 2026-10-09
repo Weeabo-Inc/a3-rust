@@ -292,7 +292,10 @@ mod tests {
         let mut serial = 1000;
         while serial < 3000 {
             serial += 250;
-            assert!(old.accept(&header(0, serial)).is_ok(), "advance to {serial}");
+            assert!(
+                old.accept(&header(0, serial)).is_ok(),
+                "advance to {serial}"
+            );
         }
         let floor = serial - (RING - 1);
         assert!(
@@ -308,7 +311,10 @@ mod tests {
         let mut channel = Channel::new(10);
         // Out-of-order arrival is normal: 98 starts the channel, 100 jumps ahead, 99 fills the gap.
         for serial in [98, 100, 99] {
-            assert!(channel.accept(&header(0, serial)).is_ok(), "serial {serial}");
+            assert!(
+                channel.accept(&header(0, serial)).is_ok(),
+                "serial {serial}"
+            );
         }
         let mut out = header(flags::RELIABLE, 0);
         channel.fill_ack(&mut out);
@@ -360,14 +366,22 @@ mod tests {
         assert!(channel.awaiting_ack(serial));
 
         // Not yet due.
-        assert!(channel.resend_due(t0 + RESEND_AFTER - Duration::from_millis(1)).is_empty());
+        assert!(
+            channel
+                .resend_due(t0 + RESEND_AFTER - Duration::from_millis(1))
+                .is_empty()
+        );
         // Due: a fresh serial, the same payload.
         let resends = channel.resend_due(t0 + RESEND_AFTER);
         assert_eq!(resends.len(), 1);
         assert_eq!(resends[0].payload, b"RESULT");
         assert_ne!(resends[0].header.serial, serial);
         assert!(channel.awaiting_ack(resends[0].header.serial));
-        assert_eq!(channel.pending(), 1, "the original is replaced by the resend");
+        assert_eq!(
+            channel.pending(),
+            1,
+            "the original is replaced by the resend"
+        );
 
         // The peer acknowledges the resend: nothing left to resend.
         let mut ack = header(flags::RELIABLE, 0);
@@ -388,7 +402,12 @@ mod tests {
         let mut channel = Channel::new(200);
         let t0 = Instant::now();
         let serials: Vec<u32> = (0..3)
-            .map(|_| channel.send(flags::RELIABLE, b"x".to_vec(), 0, t0).header.serial)
+            .map(|_| {
+                channel
+                    .send(flags::RELIABLE, b"x".to_vec(), 0, t0)
+                    .header
+                    .serial
+            })
             .collect();
         assert_eq!(serials, [200, 201, 202]);
         assert_eq!(channel.pending(), 3);
@@ -404,13 +423,23 @@ mod tests {
     fn a_64_bit_mask_acknowledges_older_reliable_serials() {
         let mut channel = Channel::new(7);
         let t0 = Instant::now();
-        let first = channel.send(flags::RELIABLE, b"a".to_vec(), 0, t0).header.serial;
-        let second = channel.send(flags::RELIABLE, b"b".to_vec(), 0, t0).header.serial;
+        let first = channel
+            .send(flags::RELIABLE, b"a".to_vec(), 0, t0)
+            .header
+            .serial;
+        let second = channel
+            .send(flags::RELIABLE, b"b".to_vec(), 0, t0)
+            .header
+            .serial;
         let mut ack = header(flags::RELIABLE, 0);
         ack.ack = second;
         ack.ack_mask = 1 << 63 | 1 << 62; // `second` and `first`
         channel.acknowledge(&ack);
-        assert_eq!(channel.pending(), 0, "both {first} and {second} are covered");
+        assert_eq!(
+            channel.pending(),
+            0,
+            "both {first} and {second} are covered"
+        );
     }
 
     #[test]

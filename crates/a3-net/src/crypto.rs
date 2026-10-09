@@ -27,9 +27,7 @@ pub fn rc4_drop512(key: &[u8], out: &mut [u8]) {
     }
     let mut j = 0u8;
     for i in 0..256usize {
-        j = j
-            .wrapping_add(s[i])
-            .wrapping_add(key[i % key.len()]);
+        j = j.wrapping_add(s[i]).wrapping_add(key[i % key.len()]);
         s.swap(i, usize::from(j));
     }
     let (mut i, mut j) = (0u8, 0u8);
@@ -53,10 +51,7 @@ mod tests {
 
     #[test]
     fn sha1_matches_the_published_vectors() {
-        assert_eq!(
-            sha1(b""),
-            hex("da39a3ee5e6b4b0d3255bfef95601890afd80709")
-        );
+        assert_eq!(sha1(b""), hex("da39a3ee5e6b4b0d3255bfef95601890afd80709"));
         assert_eq!(
             sha1(b"abc"),
             hex("a9993e364706816aba3e25717850c26c9cd0d89d")
@@ -72,10 +67,7 @@ mod tests {
         // The reference codec `tools/re/a3net.py rc4_drop` produced these 24 bytes after dropping
         // 512, for the key SHA-1("a3-rust rc4 test"). Independent implementation, same algorithm.
         let mut out = [0u8; 24];
-        rc4_drop512(
-            &sha1(b"a3-rust rc4 test"),
-            &mut out,
-        );
+        rc4_drop512(&sha1(b"a3-rust rc4 test"), &mut out);
         assert_eq!(
             out.to_vec(),
             decode_hex("8765ffdc849c97f9876f80dc8dac41c4f5b557ebf464ff8e")
