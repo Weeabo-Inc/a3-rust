@@ -107,12 +107,12 @@ The `syntax` case (an unterminated class) logs
 `Warning Message: File mpmissions\...\description.ext, line 12: /A3ROBroken/: Missing '}'`, leaves
 the mission config empty the same way, and starts the mission.
 
-Implemented as: [`load_text_config`](../crates/a3-gamedata) fails, as it did — our
+Implemented as: `load_text_config` (`crates/a3-gamedata/src/scripts.rs`) fails, as it did — our
 `ErrorKind::Include` is the engine's error 1, and we too stop at the first one — while
-`load_mission` now logs the failure and loads the mission with an empty mission config instead of
-failing the load. Our message text differs from the engine's (`cannot include \a3\...: file ... not
-found` for `Cannot include file \a3\...` plus `Preprocessor failed on file '<path>' - error 1`);
-log-text parity is not attempted here.
+`load_mission` (`crates/a3-mission/src/load.rs`) now logs the failure and loads the mission with an
+empty mission config instead of failing the load. Our message text differs from the engine's
+(`cannot include \a3\...: file ... not found` for `Cannot include file \a3\...` plus
+`Preprocessor failed on file '<path>' - error 1`); log-text parity is not attempted here.
 
 ## Merging addon configs (configFile)
 
