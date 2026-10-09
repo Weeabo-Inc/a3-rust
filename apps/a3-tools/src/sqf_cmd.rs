@@ -274,6 +274,9 @@ pub fn exec_in_world(
     world
         .load_terrain(std::sync::Arc::new(terrain))
         .map_err(|e| anyhow::anyhow!("{e}"))?;
+    // `worldName` and the sun/moon of the terrain just loaded, as the engine's mission start
+    // installs them (a3-mission needs the same wiring for missions, issue #286 follow-up).
+    world.set_world(&config.class, config.latitude, config.longitude);
     let types = a3_world::TypeBank::new(data.config.clone());
     let mut vm = a3_mission::MissionVmHost::for_game(world, types, data).vm();
     let errors_in_log = options.errors_in_log;

@@ -200,6 +200,9 @@ pub struct World {
     /// Where the world is on Earth, for the sun and the moon; `None` until the caller installs
     /// the world config's observer, and `moonPhase` is 0 then.
     observer: Option<Observer>,
+    /// The `CfgWorlds` class of the loaded terrain (`worldName`), set with
+    /// [`World::set_world`]; "" until a loader sets it.
+    world_name: String,
     /// `accTime`: how fast simulated time runs against real time.
     acc_time: f64,
     /// `timeMultiplier`: the mission's time scale.
@@ -243,6 +246,7 @@ impl World {
             handlers: Handlers::default(),
             environment: EnvironmentState::default(),
             observer: None,
+            world_name: String::new(),
             acc_time: 1.0,
             time_multiplier: 1.0,
             script: Default::default(),
@@ -519,6 +523,23 @@ impl World {
     /// `moonPhase` need.
     pub fn set_observer(&mut self, observer: Observer) {
         self.observer = Some(observer);
+    }
+
+    /// The `CfgWorlds` class of the loaded terrain, which `worldName` answers.
+    pub fn world_name(&self) -> &str {
+        &self.world_name
+    }
+
+    /// `worldName`: set by the loader that chose the terrain.
+    pub fn set_world_name(&mut self, name: impl Into<String>) {
+        self.world_name = name.into();
+    }
+
+    /// Sets both the world's name and its observer from a `CfgWorlds >> <world>` class
+    /// (`worldName` and the class's `latitude`/`longitude`).
+    pub fn set_world(&mut self, name: &str, latitude: f32, longitude: f32) {
+        self.set_world_name(name);
+        self.set_observer(Observer::from_world_config(latitude, longitude));
     }
 
     pub fn observer(&self) -> Option<&Observer> {

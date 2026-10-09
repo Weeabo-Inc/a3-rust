@@ -11,6 +11,7 @@ a3-config.workspace = true
 a3-core.workspace = true
 a3-preproc.workspace = true
 a3-sqf.workspace = true
+a3-stringtable.workspace = true
 a3-vfs.workspace = true
 thiserror.workspace = true
 

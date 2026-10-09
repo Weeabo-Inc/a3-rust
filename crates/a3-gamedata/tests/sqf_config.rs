@@ -135,15 +135,19 @@ fn inheritance() {
         s(&format!("str inheritsFrom {truck}")),
         "\"bin\\config.bin/CfgVehicles/Car\""
     );
+    // configName of the root is the tree's name (`bin\config.bin`); the engine's
+    // `configHierarchy (configFile >> "CfgVehicles" >> "B_Soldier_F")` starts with it.
     assert_eq!(
         s(&format!(
             "configHierarchy {truck} apply {{ configName _x }}"
         )),
-        "[\"\",\"CfgVehicles\",\"Truck\"]"
+        "[\"bin\\config.bin\",\"CfgVehicles\",\"Truck\"]"
     );
+    // An entry inherited from a base class prints at the class that declares it (oracle probe
+    // `cfg.configfile_str_path`: arifle_MX_F >> "Single" is arifle_MX_Base_F >> "Single").
     assert_eq!(
         s(&format!("str ({truck} >> \"Turrets\" >> \"Main\")")),
-        "\"bin\\config.bin/CfgVehicles/Truck/Turrets/Main\""
+        "\"bin\\config.bin/CfgVehicles/Car/Turrets/Main\""
     );
 }
 

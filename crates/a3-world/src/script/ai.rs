@@ -323,9 +323,11 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
             Ok(Value::Nothing)
         });
         r.unary("behaviour", left, STR, |ctx, g| {
+            // A null unit or group has no behaviour; the engine answers "ERROR" (see the
+            // `wvr.group_formation` probe: `behaviour leader grpNull`).
             let s = group_of_arg(ctx.host.world(), &g)
                 .and_then(|g| ctx.host.world().group_behaviour(g))
-                .map_or("", Behaviour::name);
+                .map_or("ERROR", Behaviour::name);
             Ok(Value::string(s))
         });
         r.binary("setCombatMode", left, STR, NOTHING, |ctx, g, s| {

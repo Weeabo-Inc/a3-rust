@@ -66,16 +66,20 @@ fn external_declaration_refers_to_the_inherited_class() {
 }
 
 #[test]
-fn inherited_subclass_keeps_the_access_path() {
+fn inherited_subclass_reports_the_declaring_path() {
+    // The engine's configs resolve an inherited entry to the class that declares it:
+    // `str (configFile >> "CfgWeapons" >> "arifle_MX_F" >> "Single")` is
+    // "bin\config.bin/CfgWeapons/arifle_MX_Base_F/Single" in 2.22 (oracle probe
+    // `cfg.configfile_str_path`).
     let t = tree(&["class A { class Sub { v = 1; }; }; class B: A {};"]);
     let sub = t.root() >> "B" >> "Sub";
-    assert_eq!(sub.path_string(), "bin\\config.bin/B/Sub");
+    assert_eq!(sub.path_string(), "bin\\config.bin/A/Sub");
     let names: Vec<_> = sub
         .hierarchy()
         .iter()
         .map(|c| c.name().to_owned())
         .collect();
-    assert_eq!(names, ["", "B", "Sub"]);
+    assert_eq!(names, ["bin\\config.bin", "A", "Sub"]);
 }
 
 #[test]

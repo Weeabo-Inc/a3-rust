@@ -76,6 +76,11 @@ pub fn register_headless<H: Host>(r: &mut Registry<H>) {
         TypeSet::of(Type::Nothing),
         |_, _| Ok(Value::Nothing),
     );
+    // Serializing UI variables: the headless game has no displays, and the function library
+    // calls this before touching them (`BIS_fnc_typeText2` and friends). Issue #281.
+    r.nular("disableSerialization", TypeSet::of(Type::Nothing), |_| {
+        Ok(Value::Nothing)
+    });
 }
 
 /// The command registry for game scripts: core commands over [`engine_command_table`], config

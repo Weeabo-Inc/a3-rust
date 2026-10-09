@@ -38,10 +38,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use a3_config::{ConfigRef, ConfigTree, NodeId, Value as CfgValue};
-use a3_sqf::vm::{Continuation, Ctx, Flow, Invoke};
-use a3_sqf::{
-    Array, Code, Handle, HandleKind, Host, Registry, SqfError, Sym, Type, TypeSet, Value,
-};
+use a3_sqf::vm::Ctx;
+use a3_sqf::{Handle, HandleKind, Host, Registry, SqfError, Sym, Type, TypeSet, Value};
 
 /// Which config root a handle belongs to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -85,7 +83,8 @@ impl SqfConfigs {
             trees: [
                 config_file,
                 Arc::new(ConfigTree::with_root_name("description.ext")),
-                Arc::new(ConfigTree::with_root_name("description.ext")),
+                // No campaign loaded: `str campaignConfigFile` is "".
+                Arc::new(ConfigTree::with_root_name("")),
             ],
             paths: Vec::new(),
             ids: HashMap::new(),
@@ -150,10 +149,11 @@ impl SqfConfigs {
         Some((*root, self.trees[root.index()].clone(), path.clone()))
     }
 
-    /// `str config`: `bin\config.bin/CfgVehicles/Car`, or `""` for null.
+    /// `str config`: `bin\config.bin/CfgVehicles/Car`, `"<NULL-config>"` for `configNull`.
     pub fn format(&self, handle: Handle) -> String {
         match self.resolve(handle) {
             Some((_, tree, path)) => tree.from_node_path(&path).path_string(),
+            None if handle.kind == HandleKind::Config => "<NULL-config>".to_owned(),
             None => String::new(),
         }
     }
@@ -166,6 +166,11 @@ impl SqfConfigs {
 pub trait ConfigHost: Host {
     fn configs(&self) -> &SqfConfigs;
     fn configs_mut(&mut self) -> &mut SqfConfigs;
+
+    /// The language `localize` resolves for (`language`), e.g. `English`.
+    fn language(&self) -> &str {
+        a3_stringtable::ENGLISH
+    }
 }
 
 const CONFIG: TypeSet = TypeSet::of(Type::Config);
@@ -263,57 +268,32 @@ fn is_number_literal(s: &str) -> bool {
 
 /// Filters config entries with an SQF condition string (`configClasses`,
 /// `configProperties`); `_x` is the entry.
-struct ConfigFilter {
-    condition: Code,
-    items: Vec<Handle>,
-    index: usize,
-    out: Vec<Value>,
-}
-
-impl ConfigFilter {
-    fn next<H: Host>(&mut self) -> Flow<H> {
-        match self.items.get(self.index) {
-            Some(h) => {
-                Flow::Call(Invoke::new(self.condition.clone()).local(Sym::X, Value::Handle(*h)))
-            }
-            None => Flow::Value(Value::Array(Array::from_vec(std::mem::take(&mut self.out)))),
-        }
-    }
-}
-
-impl<H: Host> Continuation<H> for ConfigFilter {
-    fn resume(&mut self, _: &mut Ctx<'_, H>, result: Value) -> Result<Flow<H>, SqfError> {
-        match result {
-            Value::Bool(true) => self.out.push(Value::Handle(self.items[self.index])),
-            Value::Bool(false) | Value::Nil | Value::Nothing => {}
-            other => return Err(SqfError::type_error(&other, BOOL)),
-        }
-        self.index += 1;
-        Ok(self.next())
-    }
-}
-
+///
+/// The condition runs once per entry and errors do not stop the filter: a failing condition
+/// drops that entry and is reported, as the engine does with script errors inside a condition
+/// (issue #271). `false` (and `nil`) drop the entry, any other result reports a type error.
 fn filter<H: ConfigHost>(
     ctx: &mut Ctx<'_, H>,
     condition: &str,
     items: Vec<Handle>,
-) -> Result<Flow<H>, SqfError> {
+) -> Result<Value, SqfError> {
     if condition.trim().eq_ignore_ascii_case("true") {
-        return Ok(Flow::Value(handles_value(items)));
+        return Ok(handles_value(items));
     }
     let code = ctx
         .compile("", condition)
         .map_err(|e| SqfError::Generic(e.message))?;
-    let mut f = ConfigFilter {
-        condition: code,
-        items,
-        index: 0,
-        out: Vec::new(),
-    };
-    Ok(match f.next::<H>() {
-        Flow::Call(inv) => Flow::CallThen(inv, Box::new(f)),
-        other => other,
-    })
+    let mut out = Vec::new();
+    for handle in items {
+        match ctx.call_unscheduled_with_locals(&code, None, vec![(Sym::X, Value::Handle(handle))]) {
+            // The error is already reported to the host.
+            Err(_) => {}
+            Ok(Value::Bool(true)) => out.push(Value::Handle(handle)),
+            Ok(Value::Bool(false)) | Ok(Value::Nil) | Ok(Value::Nothing) => {}
+            Ok(other) => return Err(SqfError::type_error(&other, BOOL)),
+        }
+    }
+    Ok(Value::array(out))
 }
 
 /// Registers the config commands.
@@ -345,22 +325,29 @@ pub fn register_config_commands<H: ConfigHost>(r: &mut Registry<H>) {
         let Some(expr) = expr else {
             return Ok(Value::Number(n));
         };
-        let code = ctx
-            .compile("", &expr)
-            .map_err(|e| SqfError::Generic(e.message))?;
+        // The text is an SQF expression (`getNumber` of `"(1 + 2)"` is 3). Text that does not
+        // compile or does not evaluate to a number gives 0, as the engine's error recovery does.
+        let Ok(code) = ctx.compile("", &expr) else {
+            return Ok(Value::Number(0.0));
+        };
         Ok(match ctx.call_unscheduled(&code, None) {
             Ok(Value::Number(n)) => Value::Number(n),
             Ok(Value::Bool(b)) => Value::Number(if b { 1.0 } else { 0.0 }),
             _ => Value::Number(0.0),
         })
     });
+    // Only a text entry has text: a number, array or class entry gives "".
     r.unary("getText", CONFIG, STR, |ctx, a| {
-        let text = with_entry(ctx, &a, |e| e.map(|(_, e)| e.text()).unwrap_or_default());
+        let text = with_entry(ctx, &a, |e| match e {
+            Some((_, e)) if e.is_text() => e.text(),
+            _ => String::new(),
+        });
         Ok(Value::from(localized(ctx, text)))
     });
     r.unary("getTextRaw", CONFIG, STR, |ctx, a| {
-        Ok(Value::from(with_entry(ctx, &a, |e| {
-            e.map(|(_, e)| e.text()).unwrap_or_default()
+        Ok(Value::from(with_entry(ctx, &a, |e| match e {
+            Some((_, e)) if e.is_text() => e.text(),
+            _ => String::new(),
         })))
     });
     r.unary("getArray", CONFIG, ARR, |ctx, a| {
@@ -394,6 +381,8 @@ pub fn register_config_commands<H: ConfigHost>(r: &mut Registry<H>) {
             e.map(|(_, e)| e.name().to_owned()).unwrap_or_default()
         })))
     });
+    // `configHierarchy config` (parent to child) and
+    // `configHierarchy [config, classesOnly, includeBases, reversedOrder, configNames]`.
     r.unary("configHierarchy", CONFIG, ARR, |ctx, a| {
         Ok(handles_value(related(ctx, &a, |e| {
             e.hierarchy()
@@ -401,6 +390,47 @@ pub fn register_config_commands<H: ConfigHost>(r: &mut Registry<H>) {
                 .map(|c| c.node_path().to_vec())
                 .collect()
         })))
+    });
+    r.unary("configHierarchy", ARR, ARR, |ctx, a| {
+        let args = a.as_array().map(|x| x.borrow().clone()).unwrap_or_default();
+        let config = args.first().cloned().unwrap_or(Value::Nil);
+        if !matches!(config, Value::Handle(_)) {
+            return Err(SqfError::type_error(&config, CONFIG));
+        }
+        let flag = |i: usize| args.get(i).and_then(Value::as_bool).unwrap_or(false);
+        let (classes_only, include_bases, reversed, names) = (flag(1), flag(2), flag(3), flag(4));
+        let handles = related(ctx, &config, |e| {
+            // `include_bases` walks the inheritance chain (child first), the plain form the
+            // access path from the root (parent first).
+            let mut chain: Vec<ConfigRef<'_>> = if include_bases {
+                let mut chain = vec![e.clone()];
+                chain.extend(e.bases());
+                chain
+            } else {
+                e.hierarchy()
+            };
+            if classes_only {
+                chain.retain(|c| c.is_class());
+            }
+            if include_bases {
+                chain.reverse();
+            }
+            if reversed {
+                chain.reverse();
+            }
+            chain.iter().map(|c| c.node_path().to_vec()).collect()
+        });
+        if !names {
+            return Ok(handles_value(handles));
+        }
+        let mut out = Vec::with_capacity(handles.len());
+        for handle in handles {
+            let name = with_entry(ctx, &config_value(handle), |e| {
+                e.map(|(_, e)| e.name().to_owned()).unwrap_or_default()
+            });
+            out.push(Value::string(name));
+        }
+        Ok(Value::array(out))
     });
     r.unary("inheritsFrom", CONFIG, CONFIG, |ctx, a| {
         Ok(related_one(ctx, &a, |e| {
@@ -423,7 +453,7 @@ pub fn register_config_commands<H: ConfigHost>(r: &mut Registry<H>) {
             e.entry_at(i as usize).node_path().to_vec()
         }))
     });
-    r.binary_flow("configClasses", STR, CONFIG, ARR, |ctx, a, b| {
+    r.binary("configClasses", STR, CONFIG, ARR, |ctx, a, b| {
         let classes = related(ctx, &b, |e| {
             e.entries()
                 .iter()
@@ -433,7 +463,7 @@ pub fn register_config_commands<H: ConfigHost>(r: &mut Registry<H>) {
         });
         filter(ctx, a.as_str().unwrap_or("true"), classes)
     });
-    r.unary_flow("configProperties", ARR, ARR, |ctx, a| {
+    r.unary("configProperties", ARR, ARR, |ctx, a| {
         let Value::Array(args) = &a else {
             return Err(SqfError::type_error(&a, ARR));
         };
@@ -484,6 +514,79 @@ pub fn register_config_commands<H: ConfigHost>(r: &mut Registry<H>) {
     r.unary("configOf", TypeSet::of(Type::Object), CONFIG, |_, _| {
         Ok(config_value(Handle::null(HandleKind::Config)))
     });
+
+    // `language`: the language the stringtables resolve for, e.g. "English".
+    r.nular("language", STR, |ctx| {
+        Ok(Value::string(ctx.host.language().to_owned()))
+    });
+
+    // `"class" isKindOf "base"` and `"class" isKindOf ["base", targetConfig]`. The class is
+    // looked up in CfgVehicles, then CfgAmmo, then CfgNonAIVehicles (the roots the engine
+    // searches for the string forms).
+    r.binary("isKindOf", STR, STR, BOOL, |ctx, a, b| {
+        let (class, base) = (
+            a.as_str().unwrap_or_default().to_owned(),
+            b.as_str().unwrap_or_default().to_owned(),
+        );
+        Ok(Value::Bool(class_is_kind_of(ctx, &class, &base, None)))
+    });
+    r.binary("isKindOf", STR, ARR, BOOL, |ctx, a, b| {
+        let class = a.as_str().unwrap_or_default().to_owned();
+        let args = b.as_array().map(|x| x.borrow().clone()).unwrap_or_default();
+        let base = args
+            .first()
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_owned();
+        let target = args.get(1).cloned();
+        Ok(Value::Bool(class_is_kind_of(
+            ctx,
+            &class,
+            &base,
+            target.as_ref(),
+        )))
+    });
+}
+
+/// The config roots `isKindOf` searches for a class name (the engine's order).
+const IS_KIND_OF_ROOTS: [&str; 3] = ["CfgVehicles", "CfgAmmo", "CfgNonAIVehicles"];
+
+/// `class isKindOf base`: whether `class` is `base` or inherits from it. `target` is the config
+/// to search when the caller named one (`isKindOf ["base", configFile >> "CfgWeapons"]`).
+fn class_is_kind_of<H: ConfigHost>(
+    ctx: &mut Ctx<'_, H>,
+    class: &str,
+    base: &str,
+    target: Option<&Value>,
+) -> bool {
+    if let Some(Value::Handle(h)) = target
+        .filter(|v| matches!(v, Value::Handle(h) if h.kind == HandleKind::Config && h.id != 0))
+    {
+        let Some((_, tree, path)) = ctx.host.configs().resolve(*h) else {
+            return false;
+        };
+        let class_entry = tree.from_node_path(&path).get(class);
+        return class_entry.is_class() && entry_is_kind_of(&class_entry, class, base);
+    }
+    let tree = ctx.host.configs().tree(ConfigRoot::Game).clone();
+    for root in IS_KIND_OF_ROOTS {
+        let entry = tree.root().get(root).get(class);
+        if entry.is_class() {
+            return entry_is_kind_of(&entry, class, base);
+        }
+    }
+    false
+}
+
+/// Whether the class `entry` (named `class`) is `base` or inherits from it.
+fn entry_is_kind_of(entry: &ConfigRef<'_>, class: &str, base: &str) -> bool {
+    if class.eq_ignore_ascii_case(base) {
+        return true;
+    }
+    entry
+        .bases()
+        .iter()
+        .any(|b| b.name().eq_ignore_ascii_case(base))
 }
 
 fn mission_value<H: ConfigHost>(ctx: &Ctx<'_, H>, key: &str) -> Option<Value> {
