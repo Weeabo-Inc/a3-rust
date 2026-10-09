@@ -33,8 +33,11 @@ pub fn side_from_sqm(side: &str) -> Side {
             return candidate;
         }
     }
+    // The 3D editor spells sides in words.
     match side.to_ascii_uppercase().as_str() {
         "AMBIENTLIFE" | "AMBIENT_LIFE" => Side::AmbientLife,
+        "INDEPENDENT" | "RESISTANCE" => Side::Independent,
+        "CIVILIAN" => Side::Civilian,
         _ => Side::Unknown,
     }
 }
@@ -149,15 +152,52 @@ pub struct Unit {
     pub init: Option<String>,
     /// `presence`: editor probability of presence (0 = absent).
     pub presence: Option<f64>,
+    /// `presenceCondition` (3D editor): SQF that decides at mission start whether the entity is
+    /// created.
+    pub presence_condition: Option<String>,
     /// `lock`: "LOCKED", "UNLOCKED", "DEFAULT".
     pub lock: Option<String>,
+    /// The 3D editor's attributes of the entity (`class CustomAttributes`), in file order.
+    pub attributes: Vec<EntityAttribute>,
+}
+
+/// One 3D-editor attribute of an entity: at mission start, after the init fields, `expression`
+/// runs with `_this` the entity and `_value` the attribute's value (community wiki,
+/// "Initialisation Order": "Expressions of Eden Editor entity attributes").
+#[derive(Debug, Clone, PartialEq)]
+pub struct EntityAttribute {
+    /// `property`: the attribute's name (`allowDamage`, `speaker`, a module's `#type`, ...).
+    pub property: String,
+    /// `expression`: the SQF to run.
+    pub expression: String,
+    /// `class Value >> class data`, typed by its `type[]`.
+    pub value: AttributeValue,
+}
+
+/// A typed 3D-editor attribute value (`class data { class type { type[]={"SCALAR"}; };
+/// value=...; }`).
+#[derive(Debug, Clone, PartialEq)]
+pub enum AttributeValue {
+    /// No value, or a type the loader does not know.
+    Nil,
+    Bool(bool),
+    Number(f64),
+    String(String),
+    /// `ARRAY`: `class value { class ItemK { class data {...}; }; }`.
+    Array(Vec<AttributeValue>),
 }
 
 impl Unit {
-    /// Whether the editor's presence condition excludes the unit (`presence=0`, as in the
-    /// campaign missions' briefing units).
+    /// Whether the editor's presence settings exclude the unit: `presence=0` (the campaign
+    /// missions' briefing units) or a `presenceCondition` that is the literal `false` (3D-editor
+    /// modules that are switched off). Other conditions are not evaluated _(the engine evaluates
+    /// them at mission start)_.
     pub fn is_absent(&self) -> bool {
         self.presence == Some(0.0)
+            || self
+                .presence_condition
+                .as_deref()
+                .is_some_and(|c| c.trim().eq_ignore_ascii_case("false"))
     }
 }
 
@@ -286,17 +326,29 @@ impl Mission {
         crate::load::load_mission(vfs, folder, vm)
     }
 
-    /// Builds a [`Mission`] from a parsed `mission.sqm` config.
+    /// Builds a [`Mission`] from a parsed `mission.sqm` config: the 2D editor's format
+    /// (`version=12`: `class Groups`, `Vehicles`, `Markers`, `Sensors`) or the 3D editor's
+    /// (`version=5x`: one `class Entities` list whose items carry a `dataType`). A file with no
+    /// `class Mission` but a `class Intro` (a 3D-editor cutscene) gives its intro
+    /// _(assumed: what the engine plays for such a scene)_.
     pub fn from_config(config: &Config) -> Result<Mission, MissionError> {
         let mission = config
             .root
             .class("Mission")
+            .or_else(|| config.root.class("Intro"))
             .ok_or(MissionError::NoMission)?;
+        // The 3D editor keeps the header at the root, the 2D editor in the scene.
+        let addons = match strings(mission, "addOns") {
+            addons if addons.is_empty() => strings(&config.root, "addons"),
+            addons => addons,
+        };
         let mut out = Mission {
             version: integer(&config.root, "version").unwrap_or(0) as i32,
-            addons: strings(mission, "addOns"),
+            addons,
             addons_auto: strings(mission, "addOnsAuto"),
-            random_seed: integer(mission, "randomSeed").unwrap_or(0) as i32,
+            random_seed: integer(mission, "randomSeed")
+                .or_else(|| integer(&config.root, "randomSeed"))
+                .unwrap_or(0) as i32,
             intel: intel(mission),
             groups: Vec::new(),
             objects: Vec::new(),
@@ -304,6 +356,11 @@ impl Mission {
             triggers: Vec::new(),
             ..Mission::default()
         };
+        if let Some(entities) = mission.class("Entities") {
+            let mut crew = Crew::default();
+            eden_entities(entities, &mut out, &mut crew)?;
+            crew.place(&mut out);
+        }
         if let Some(groups) = mission.class("Groups") {
             for item in items(groups) {
                 out.groups.push(group(item)?);
@@ -350,6 +407,20 @@ impl Mission {
         self.groups
             .iter()
             .find(|g| g.units.iter().any(|u| u.id == id))
+    }
+
+    /// The mission's name, what `missionName` returns: the folder's last component without the
+    /// world extension (`...\boot_m02.altis` → `boot_m02`). Empty without a folder.
+    pub fn name(&self) -> String {
+        let last = self
+            .folder
+            .rsplit(['\\', '/'])
+            .next()
+            .unwrap_or(&self.folder);
+        match last.rsplit_once('.') {
+            Some((stem, _)) if !stem.is_empty() => stem.to_owned(),
+            _ => last.to_owned(),
+        }
     }
 
     /// The variables the mission defines: each named unit's `text` (the editor's variable name),
@@ -458,7 +529,9 @@ fn unit(item: &ConfigClass) -> Result<Unit, MissionError> {
         text: text(item, "text"),
         init: text(item, "init"),
         presence: number(item, "presence"),
+        presence_condition: text(item, "presenceCondition"),
         lock: text(item, "lock"),
+        attributes: Vec::new(),
     })
 }
 
@@ -540,11 +613,281 @@ fn items(list: &ConfigClass) -> impl Iterator<Item = &ConfigClass> {
 }
 
 /// A `position[]` entry as world space and whether it had no height (`{x, y}`).
+///
+/// Both editors write `{east, height above sea level, north}` (`boot_m02.altis`:
+/// `{6687.77, 48.0, 15982.78}`), which is world space as it is (ADR 0003: X east, Y up, Z
+/// north). A two-element `{east, north}` has no height.
 fn position(c: &ConfigClass) -> Option<(DVec3, bool)> {
     match entry_numbers(c, "position")?.as_slice() {
-        [x, y, z, ..] => Some((DVec3::new(*x, *z, *y), false)),
-        [x, y] => Some((DVec3::new(*x, 0.0, *y), true)),
+        [east, height, north, ..] => Some((DVec3::new(*east, *height, *north), false)),
+        [east, north] => Some((DVec3::new(*east, 0.0, *north), true)),
         _ => None,
+    }
+}
+
+/// Reads a 3D-editor `class Entities` list into `out`, descending into layers.
+///
+/// Each item says what it is with `dataType`: a `Group` (its own `class Entities` holds its
+/// objects and waypoints), an `Object` or `Logic` outside any group, a `Marker`, a `Trigger`, a
+/// `Layer` (an editor folder with its own `class Entities`), or a `Comment` (ignored).
+fn eden_entities(
+    list: &ConfigClass,
+    out: &mut Mission,
+    crew: &mut Crew,
+) -> Result<(), MissionError> {
+    for item in items(list) {
+        let kind = text(item, "dataType").unwrap_or_default();
+        match kind.to_ascii_lowercase().as_str() {
+            "group" => out.groups.push(eden_group(item, crew)?),
+            "object" | "logic" => out.objects.push(eden_object(item, crew)?),
+            "marker" => out.markers.push(marker(item)),
+            "trigger" => out.triggers.push(eden_trigger(item)),
+            "layer" => {
+                if let Some(entities) = item.class("Entities") {
+                    eden_entities(entities, out, crew)?;
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+/// A 3D-editor group: its objects (and logics) and its waypoints, in `class Entities`, and the
+/// `class CrewLinks` that seat its units in vehicles.
+fn eden_group(item: &ConfigClass, crew: &mut Crew) -> Result<MissionGroup, MissionError> {
+    let mut out = MissionGroup {
+        side: text(item, "side").map_or(Side::Unknown, |s| side_from_sqm(&s)),
+        init: eden_text(item, "init"),
+        units: Vec::new(),
+        waypoints: Vec::new(),
+    };
+    if let Some(entities) = item.class("Entities") {
+        for entry in items(entities) {
+            let kind = text(entry, "dataType").unwrap_or_default();
+            match kind.to_ascii_lowercase().as_str() {
+                "object" | "logic" => out.units.push(eden_object(entry, crew)?),
+                "waypoint" => out.waypoints.push(eden_waypoint(entry)),
+                _ => {}
+            }
+        }
+    }
+    crew.read_links(item);
+    Ok(out)
+}
+
+/// Units the 3D editor seated in vehicles (`class CrewLinks`). Such a unit may have no
+/// `position[]` of its own; it takes its vehicle's. Seating it (driver, turret, cargo) is not
+/// done yet: the World has no vehicle crew positions.
+#[derive(Debug, Default)]
+struct Crew {
+    /// Unit id → vehicle id (`item0` → `item1` of each link).
+    vehicle_of: std::collections::HashMap<i32, i32>,
+    /// Units that had no position.
+    unplaced: Vec<i32>,
+}
+
+impl Crew {
+    fn read_links(&mut self, group: &ConfigClass) {
+        let Some(links) = group.class("CrewLinks").and_then(|c| c.class("Links")) else {
+            return;
+        };
+        for link in items(links) {
+            if let (Some(unit), Some(vehicle)) = (integer(link, "item0"), integer(link, "item1")) {
+                self.vehicle_of.insert(unit as i32, vehicle as i32);
+            }
+        }
+    }
+
+    /// Moves each unplaced unit to its vehicle's position.
+    fn place(&self, mission: &mut Mission) {
+        let positions: std::collections::HashMap<i32, DVec3> =
+            mission.units().map(|u| (u.id, u.position)).collect();
+        let units = mission
+            .groups
+            .iter_mut()
+            .flat_map(|g| g.units.iter_mut())
+            .chain(mission.objects.iter_mut());
+        for unit in units {
+            if !self.unplaced.contains(&unit.id) {
+                continue;
+            }
+            if let Some(position) = self
+                .vehicle_of
+                .get(&unit.id)
+                .and_then(|vehicle| positions.get(vehicle))
+            {
+                unit.position = *position;
+            }
+        }
+    }
+}
+
+/// The text of `name` in the item's `class Attributes`, or on the item itself (a `Logic`
+/// keeps `name` and `init` there).
+fn eden_text(item: &ConfigClass, name: &str) -> Option<String> {
+    item.class("Attributes")
+        .and_then(|a| text(a, name))
+        .or_else(|| text(item, name))
+        .filter(|s| !s.is_empty())
+}
+
+fn eden_number(item: &ConfigClass, name: &str) -> Option<f64> {
+    item.class("Attributes")
+        .and_then(|a| number(a, name))
+        .or_else(|| number(item, name))
+}
+
+/// A 3D-editor object or logic.
+///
+/// `class PositionInfo { position[]; angles[]; }`: `position[]` is `{east, height, north}` with
+/// the height of the surface under the object, and the item's `atlOffset` lifts it above that
+/// surface (a crew member in a hovering helicopter: `atlOffset=54`). `angles[]` are radians;
+/// `angles[1]` is the heading. Bit 2 of `flags` marks the group's leader and
+/// `Attributes >> isPlayer` the player _(assumed from shipped files: `flags` 2, 6, 7 on group
+/// leaders, 4 or 5 on the others)_. Crew seated in a vehicle may have no `position[]`; it is
+/// placed at its vehicle once the whole list is read ([`Crew`]).
+fn eden_object(item: &ConfigClass, crew: &mut Crew) -> Result<Unit, MissionError> {
+    let id = integer(item, "id").unwrap_or(0) as i32;
+    let class = text(item, "type").unwrap_or_default();
+    if class.is_empty() {
+        return Err(MissionError::NoClass { id });
+    }
+    let info = item.class("PositionInfo");
+    let position = match info.and_then(position) {
+        Some((mut position, _)) => {
+            position.y += number(item, "atlOffset").unwrap_or(0.0);
+            position
+        }
+        None => {
+            crew.unplaced.push(id);
+            DVec3::ZERO
+        }
+    };
+    let azimut = info
+        .and_then(|i| entry_numbers(i, "angles"))
+        .and_then(|a| a.get(1).copied())
+        .map(f64::to_degrees);
+    let flags = integer(item, "flags").unwrap_or(0);
+    let is_player = eden_number(item, "isPlayer").is_some_and(|v| v != 0.0);
+    Ok(Unit {
+        id,
+        class,
+        side: text(item, "side").map_or(Side::Unknown, |s| side_from_sqm(&s)),
+        position,
+        on_surface: false,
+        azimut,
+        placement: None,
+        special: None,
+        player: is_player.then(|| "PLAYER COMMANDER".to_owned()),
+        leader: flags & 2 != 0,
+        rank: eden_text(item, "rank"),
+        skill: eden_number(item, "skill"),
+        text: eden_text(item, "name"),
+        init: eden_text(item, "init"),
+        presence: eden_number(item, "presence"),
+        presence_condition: eden_text(item, "presenceCondition"),
+        lock: eden_text(item, "lock"),
+        attributes: custom_attributes(item),
+    })
+}
+
+/// The `class AttributeK` entries of an item's `class CustomAttributes`.
+fn custom_attributes(item: &ConfigClass) -> Vec<EntityAttribute> {
+    let Some(list) = item.class("CustomAttributes") else {
+        return Vec::new();
+    };
+    list.entries
+        .iter()
+        .filter_map(|e| match &e.kind {
+            EntryKind::Class(c)
+                if e.name
+                    .get(..9)
+                    .is_some_and(|p| p.eq_ignore_ascii_case("Attribute")) =>
+            {
+                Some(c)
+            }
+            _ => None,
+        })
+        .map(|c| EntityAttribute {
+            property: text(c, "property").unwrap_or_default(),
+            expression: text(c, "expression").unwrap_or_default(),
+            value: c
+                .class("Value")
+                .and_then(|v| v.class("data"))
+                .map_or(AttributeValue::Nil, attribute_value),
+        })
+        .collect()
+}
+
+/// A `class data { class type { type[]={...}; }; value=...; }`.
+fn attribute_value(data: &ConfigClass) -> AttributeValue {
+    let kind = data
+        .class("type")
+        .map(|t| strings(t, "type"))
+        .and_then(|types| types.into_iter().next())
+        .unwrap_or_default();
+    match kind.to_ascii_uppercase().as_str() {
+        "BOOL" => AttributeValue::Bool(flag(data, "value")),
+        "SCALAR" => number(data, "value").map_or(AttributeValue::Nil, AttributeValue::Number),
+        "STRING" => text(data, "value").map_or(AttributeValue::Nil, AttributeValue::String),
+        "ARRAY" => AttributeValue::Array(
+            data.class("value")
+                .map(|list| {
+                    items(list)
+                        .map(|i| i.class("data").map_or(AttributeValue::Nil, attribute_value))
+                        .collect()
+                })
+                .unwrap_or_default(),
+        ),
+        _ => AttributeValue::Nil,
+    }
+}
+
+/// A 3D-editor waypoint: `position[]` and `type` on the item, the rest on the item or in its
+/// `class Attributes`.
+fn eden_waypoint(item: &ConfigClass) -> Waypoint {
+    Waypoint {
+        position: position(item).map_or(DVec3::ZERO, |(p, _)| p),
+        placement: eden_text(item, "placement"),
+        kind: text(item, "type"),
+        speed: eden_text(item, "speed"),
+        combat_mode: eden_text(item, "combatMode"),
+        behaviour: eden_text(item, "behaviour"),
+        formation: eden_text(item, "formation"),
+        description: eden_text(item, "description"),
+        show_wp: eden_text(item, "showWP"),
+        timeout: eden_number(item, "timeout"),
+        synchronizations: Vec::new(),
+        sync_id: None,
+    }
+}
+
+/// A 3D-editor trigger: `position[]` and `angle` on the item, the trigger's settings in
+/// `class Attributes` (`condition`, `onActivation`, `onDeactivation`, `sizeA`, `sizeB`,
+/// `activationBy`, `activationType`, `repeatable`, `type`).
+fn eden_trigger(item: &ConfigClass) -> Sensor {
+    let attributes = item.class("Attributes");
+    let attr_flag = |name: &str| attributes.is_some_and(|a| flag(a, name));
+    Sensor {
+        name: eden_text(item, "name"),
+        text: eden_text(item, "text"),
+        position: position(item).map_or(DVec3::ZERO, |(p, _)| p),
+        a: eden_number(item, "sizeA"),
+        b: eden_number(item, "sizeB"),
+        angle: eden_number(item, "angle"),
+        kind: attributes.and_then(|a| text(a, "type")),
+        activation_by: eden_text(item, "activationBy"),
+        activation_type: eden_text(item, "activationType"),
+        repeating: attr_flag("repeatable"),
+        interruptable: attr_flag("interuptable") || attr_flag("interruptable"),
+        age: eden_text(item, "age"),
+        id_vehicle: None,
+        exp_activ: eden_text(item, "onActivation"),
+        exp_cond: eden_text(item, "condition"),
+        exp_desactiv: eden_text(item, "onDeactivation"),
+        synchronizations: Vec::new(),
+        sync_id: None,
     }
 }
 

@@ -5,7 +5,8 @@
 //!   `name[] = {...};`, `name[] += {...};`, `enum { A, B = 2 };`.
 //! - A value is a quoted string (`"..."` or `'...'`, the quote doubled to escape it) or raw text up
 //!   to the next `;` (or `,`/`}` inside arrays, or end of line). Raw text that is a number literal
-//!   becomes a number; anything else becomes a string, as the engine tolerates.
+//!   becomes a number; anything else becomes a string, as the engine tolerates. An empty value
+//!   (`name = ;`) is the empty string.
 //! - Number literals: decimal integers become `Int` when they fit in i32 and `Int64` when they fit
 //!   in i64; `0x` hex integers become `Int`; anything with a `.` or exponent becomes `Float`.
 //! - `"a" \n "b"` (a backslash-n between two quoted strings, line breaks allowed around it) is
@@ -278,6 +279,9 @@ impl Parser {
         let value = if self.peek() == Some('{') {
             // Tolerated: `name = {...};` without `[]`.
             Value::Array(self.array(depth)?)
+        } else if self.peek() == Some(';') {
+            // `name = ;` is the empty string (shipped campaign descriptions write `lost = ;`).
+            Value::String(String::new())
         } else {
             self.scalar(&[';', '}'])?
         };
@@ -348,7 +352,9 @@ impl Parser {
                 self.scalar(&[',', '}', ';'])?
             };
             items.push(item);
-            if !self.eat(',') {
+            // A `;` between items is tolerated as a separator (East Wind's campaign description
+            // ends an item list with `{...};` before the closing `}`).
+            if !self.eat(',') && !self.eat(';') {
                 self.expect('}', "`,` or `}`")?;
                 return Ok(items);
             }

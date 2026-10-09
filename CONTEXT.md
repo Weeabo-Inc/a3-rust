@@ -449,6 +449,22 @@ entities, groups, waypoints, markers and triggers.
 **Campaign**:
 An ordered set of missions with branching defined in a `description.ext` campaign config.
 
+**Mission fragment**:
+A folder with a `mission.sqm` that is not a Mission on its own: a Contact site, an Old Man
+per-area layer beside the Old Man mission, a folder nested inside another mission. Nothing
+lists it in `CfgMissions`; it is merged into or spawned by a real Mission.
+_Avoid_: sub-mission, template
+
+**Scenario sweep**:
+The automated whole-game compatibility run (`apps/a3-sweep`): every shipped Mission is loaded,
+started and simulated headlessly, and the results are ranked by how many Missions each problem
+affects (`docs/fidelity/scenario-sweep.md`).
+_Avoid_: smoke test, regression run
+
+**Error signature**:
+A script error report reduced to its message (no source excerpt or position), the key by which
+the Scenario sweep groups errors across Missions.
+
 **Profile**:
 The per-player data folder holding settings, keybindings and profileNamespace variables.
 

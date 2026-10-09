@@ -77,6 +77,11 @@ fn unit_values(world: &World, units: impl IntoIterator<Item = EntityId>) -> Valu
 }
 
 pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
+    // `createCenter side` -> side. Handler 0x18db90 creates the side's AI center when it has
+    // none and returns its argument; the World's sides need no center object (a group creates
+    // what it needs), so only the result is observable. `deleteCenter` (0x18dc60) likewise.
+    r.unary("createCenter", SIDE, SIDE, |_, a| Ok(a));
+    r.unary("deleteCenter", SIDE, NOTHING, |_, _| Ok(Value::Nothing));
     // AL EG.
     r.unary("createGroup", SIDE, GRP, |ctx, a| {
         let Value::Side(side) = a else {

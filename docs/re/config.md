@@ -50,6 +50,17 @@ Observations:
 - Numbers _(assumed rapifier rules)_: decimal integer -> int32 if it fits, else int64; `0x` hex ->
   int32 (u32 bit pattern); with `.` or exponent -> f32.
 - Tolerated: missing `;` after `}` of a class and before `}`; `#` lines (preprocessor line markers).
+- An empty value `n = ;` is the empty string _(verified: the game loads the Apex, Laws of War and
+  Contact campaign descriptions, which write `lost = ;`, `cutscene = ;`)_.
+- `"line 1" \n "line 2"`: quoted strings joined by `\n` tokens are one string with line breaks; the
+  3D editor saves multi-line init fields and trigger statements this way
+  (`showcase_lawsofwar.vr`) _(verified in shipped files)_.
+- A `;` between array items is taken as a separator: East Wind's campaign description has
+  `add[] = { {...}, {...}; };` and loads in the game _(the engine's exact reading is assumed)_.
+- A failing `__EXEC`/`__EVAL` does not stop the config: the game loads Laws of War's menu scene,
+  whose shared `description.inc` reads `_overviewLines`, which only the campaign missions define.
+  `load_text_config` reports the script error and goes on; a failed `__EVAL` gives `""`
+  _(assumed)_.
 - Floats print with Rust's shortest round-trip form and keep a `.0` (`2.0`), so they re-parse as
   floats.
 

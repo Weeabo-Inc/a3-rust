@@ -181,14 +181,15 @@ impl Host for VfsHost {
 
 /// Preprocesses and parses the text config at `path` (config.cpp, description.ext, ...).
 /// `__EXEC`/`__EVAL` run on `vm` in `parsingNamespace`, which persists across configs as in the
-/// engine.
+/// engine. One that fails is reported to the host as a script error and the config goes on
+/// ([`SqfEvaluator::lenient`]), as the game loads such configs.
 pub fn load_text_config<H: Host>(vfs: &Vfs, vm: &mut Vm<H>, path: &str) -> Result<Config, String> {
     let path = join_virtual_path("", path);
     let source = read_text(vfs, &path).map_err(|e| e.to_string())?;
     let resolver = VfsResolver::new(vfs);
     let output = Preprocessor::new(&resolver)
         .with_options(Options::config())
-        .with_evaluator(SqfEvaluator::new(vm))
+        .with_evaluator(SqfEvaluator::lenient(vm))
         .preprocess_str(&path, &source)
         .map_err(|e| e.to_string())?;
     parse_text(&output.text).map_err(|e| format!("{path}: {e}"))

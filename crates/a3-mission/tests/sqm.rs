@@ -53,7 +53,7 @@ class Mission
 				items=2;
 				class Item0
 				{
-					position[]={1000,2000,0};
+					position[]={1000,0,2000};
 					azimut=45;
 					id=7;
 					side="WEST";
@@ -67,7 +67,7 @@ class Mission
 				class Item1
 				{
 					id=3;
-					position[]={1010,2020,5.5};
+					position[]={1010,5.5,2020};
 					vehicle="B_soldier_AR_F";
 					player="PLAYER COMMANDER";
 					init="";
@@ -78,7 +78,7 @@ class Mission
 				items=1;
 				class Item0
 				{
-					position[]={1100,2100,0};
+					position[]={1100,0,2100};
 					type="MOVE";
 					speed="NORMAL";
 					combatMode="YELLOW";
@@ -120,7 +120,7 @@ class Mission
 		class Item0
 		{
 			id=32;
-			position[]={500,600,1.5};
+			position[]={500,1.5,600};
 			azimut=-90;
 			vehicle="Land_Cargo10_F";
 		};
@@ -130,7 +130,7 @@ class Mission
 		items=2;
 		class Item0
 		{
-			position[]={100,200,0};
+			position[]={100,0,200};
 			name="marker_start";
 			text="Start";
 			markerType="mil_dot";
@@ -143,7 +143,7 @@ class Mission
 		};
 		class Item1
 		{
-			position[]={110,210,0};
+			position[]={110,0,210};
 			name="BIS_return";
 			text="BIS_return";
 			type="Empty";
@@ -154,7 +154,7 @@ class Mission
 		items=1;
 		class Item0
 		{
-			position[]={4000,5000,0};
+			position[]={4000,0,5000};
 			a=50;
 			b=60;
 			angle=30;
@@ -242,7 +242,7 @@ fn groups_units_and_leaders() {
         "the player unit carries the editor's player string"
     );
 
-    // `position[]` is {east, north, height}: world (x, z, y).
+    // `position[]` is {east, height above sea level, north}, as world space (x, y, z).
     assert_eq!(
         west.units[0].position,
         glam::DVec3::new(1000.0, 0.0, 2000.0)

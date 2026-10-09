@@ -22,7 +22,7 @@ class Mission
 				items=2;
 				class Item0
 				{
-					position[]={1000,2000,0};
+					position[]={1000,0,2000};
 					azimut=45;
 					id=7;
 					side="WEST";
@@ -67,7 +67,7 @@ class Mission
 		class Item0
 		{
 			id=32;
-			position[]={500,600,1.5};
+			position[]={500,1.5,600};
 			azimut=-90;
 			vehicle="Land_Cargo10_F";
 		};
@@ -77,7 +77,7 @@ class Mission
 		items=1;
 		class Item0
 		{
-			position[]={100,200,0};
+			position[]={100,0,200};
 			name="marker_start";
 			text="Start";
 			type="Empty";
@@ -102,8 +102,7 @@ fn creates_every_present_unit_at_its_sqm_position() {
     assert_eq!(spawned.unspawned[0].class, "O_Missing_F");
     assert!(spawned.unspawned[0].reason.contains("O_Missing_F"));
 
-    // A 3-component position is `CAN_COLLIDE`: the height is kept, unwrapped from
-    // {east, north, height}.
+    // A 3-component position is `CAN_COLLIDE`: the height is kept, as `{east, height, north}`.
     let boss = spawned.units[&7];
     assert_eq!(
         position(&world, boss),
