@@ -271,7 +271,7 @@ class Mission
 					id=1;
 					position[]={100,0,200};
 					vehicle="B_Soldier_F";
-					init="this enableMimics false;";
+					init="this createDiarySubject [""a"",""b""];";
 				};
 			};
 		};
@@ -303,7 +303,7 @@ fn commands_the_unit_init_fields_use_are_reported_even_though_they_store_nothing
         report
             .missing_commands
             .iter()
-            .any(|(name, _)| name.starts_with("enableMimics")),
+            .any(|(name, _)| name.starts_with("createDiarySubject")),
         "{:?}",
         report.missing_commands
     );

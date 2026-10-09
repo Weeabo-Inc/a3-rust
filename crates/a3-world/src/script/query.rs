@@ -6,12 +6,77 @@ use a3_sqf::{Registry, Value};
 use glam::DVec3;
 
 use super::{ARR, NUM, OBJ, STR, WorldHost, null_object, object_value, position_or_object};
-use crate::{Near, ObjectRef, SimulationClass};
+use crate::{EntityId, Near, ObjectRef, SimulationClass};
+
+/// Every entity with its type name, for the `entities` filters. With `alive_only`, dead ones are
+/// dropped here rather than by the caller, because `is_alive` needs the world borrow.
+fn entity_candidates<H: WorldHost>(ctx: &Ctx<'_, H>, alive_only: bool) -> Vec<(EntityId, String)> {
+    ctx.host
+        .world()
+        .entities()
+        .filter(|e| !alive_only || e.is_alive())
+        .map(|e| (e.id(), e.type_name().to_owned()))
+        .collect()
+}
 
 /// `nearestObject [position, type]` searches this far (the original's 50 m).
 const NEAREST_OBJECT_RADIUS: f64 = 50.0;
 
 pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
+    // `entities type`: every alive and dead entity that is kind of `type`; `""` is every entity.
+    r.unary("entities", STR, ARR, |ctx, a| {
+        let ty = a.as_str().unwrap_or("").to_owned();
+        let candidates = entity_candidates(ctx, false);
+        let ids: Vec<EntityId> = candidates
+            .into_iter()
+            .filter(|(_, name)| ty.is_empty() || ctx.host.types().is_kind_of(name, &ty))
+            .map(|(id, _)| id)
+            .collect();
+        let w = ctx.host.world();
+        Ok(Value::array(
+            ids.into_iter()
+                .map(|id| object_value(w, ObjectRef::Entity(id)))
+                .collect::<Vec<_>>(),
+        ))
+    });
+    // `entities [typesInclude, typesExclude, includeCrews, excludeDead]`. We have no crew model
+    // yet, so `includeCrews` changes nothing: nobody is ever inside a vehicle.
+    r.unary("entities", ARR, ARR, |ctx, a| {
+        let Value::Array(args) = &a else {
+            return Err(a3_sqf::SqfError::type_error(&a, ARR));
+        };
+        let args = args.borrow().clone();
+        let strings = |v: Option<&Value>| -> Vec<String> {
+            match v {
+                Some(Value::Array(items)) => items
+                    .borrow()
+                    .iter()
+                    .filter_map(|x| x.as_str().map(str::to_owned))
+                    .collect(),
+                _ => Vec::new(),
+            }
+        };
+        let include = strings(args.first());
+        let exclude = strings(args.get(1));
+        let exclude_dead = matches!(args.get(3), Some(Value::Bool(true)));
+        let candidates = entity_candidates(ctx, exclude_dead);
+        let ids: Vec<EntityId> = candidates
+            .into_iter()
+            .filter(|(_, name)| {
+                let types = ctx.host.types();
+                (include.is_empty() || include.iter().any(|t| types.is_kind_of(name, t)))
+                    && !exclude.iter().any(|t| types.is_kind_of(name, t))
+            })
+            .map(|(id, _)| id)
+            .collect();
+        let w = ctx.host.world();
+        Ok(Value::array(
+            ids.into_iter()
+                .map(|id| object_value(w, ObjectRef::Entity(id)))
+                .collect::<Vec<_>>(),
+        ))
+    });
+
     // `nearestObject [x, y, z]`, `nearestObject [position, type]`, `nearestObject [position, id]`.
     r.unary("nearestObject", ARR, OBJ, |ctx, a| {
         let items = a.as_array().map(|x| x.borrow().clone()).unwrap_or_default();

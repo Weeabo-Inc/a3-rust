@@ -227,3 +227,22 @@ cutFadeOut	binary	0x488090	stub	wiki	no cut-layer rendering; the named form answ
 getFatigue	unary	0x52b930	stub	wiki	no stamina subsystem; answers 0
 getOxygenRemaining	unary	0x52e9d0	stub	wiki	no diving subsystem; answers 1
 isBurning	unary	0x5358b0	stub	wiki	no fire subsystem; answers false
+entities	unary	0x4a0b70	verified	wiki+decompiled 0x4a0b70	whole type form: alive and dead entities that are kind of the type, '' is every entity
+entities	unary	0x4a0860	verified	wiki+decompiled 0x4a0860	array form [typesInclude, typesExclude, includeCrews, excludeDead]; includeCrews is inert with no crew model
+UAVControl	unary	0x5648a0	stub	wiki	no UAV terminal; answers [objNull, '']
+ppEffectCreate	unary	0xb4c150	stub	wiki	no post-process pipeline; hands back a counter handle
+ppEffectDestroy	unary	*	stub	wiki	no post-process pipeline
+ppEffectEnable	binary	*	stub	wiki	no post-process pipeline
+ppEffectAdjust	binary	*	stub	wiki	no post-process pipeline
+ppEffectCommit	binary	*	stub	wiki	no post-process pipeline
+ppEffectCommitted	unary	*	stub	wiki	no post-process pipeline; answers true
+ppEffectEnabled	unary	*	stub	wiki	no post-process pipeline; answers true
+ppEffectForceInNVG	binary	*	stub	wiki	no post-process pipeline
+onTeamSwitch	unary	*	stub	wiki	no team switching; nothing runs the code
+enableTeamSwitch	unary	*	stub	wiki	no team switching
+fadeSound	binary	0x557200	stub	wiki	no sound-fade bus
+enableSaving	unary	0x48d330	stub	wiki	no save system
+cutText	*	*	stub	wiki	no cut-text rendering; the named form answers layer 0
+enableMimics	binary	*	stub	wiki	no facial animation
+disableCollisionWith	binary	0x568f80	stub	wiki	no per-pair collision filter yet
+driver	unary	*	implemented	wiki	no crew model, so nobody is in a vehicle and the answer is objNull
