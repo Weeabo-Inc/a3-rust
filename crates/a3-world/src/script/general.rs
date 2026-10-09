@@ -172,4 +172,18 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     r.binary("targetsQuery", OBJ, ARR, ARR, |_, _, _| {
         Ok(Value::array(std::iter::empty()))
     });
+
+    // `lockIdentity object`: whether the object's identity is locked. We keep no identity lock,
+    // so the answer is "not locked" (`stub`).
+    r.unary("lockIdentity", OBJ, BOOL, |_, _| Ok(Value::Bool(false)));
+
+    // `setViewDistance metres`: the view distance the engine renders at. Our render distance is
+    // a renderer setting, not a script one, so the setter stores nothing (`stub`).
+    r.unary("setViewDistance", NUM, NOTHING, |_, _| Ok(Value::Nothing));
+
+    // `setLightBrightness light, value`: the brightness of a placed light. Our lamps come from
+    // `Reflectors` in the config (#294) and take no script override yet (`stub`).
+    r.binary("setLightBrightness", OBJ, NUM, NOTHING, |_, _, _| {
+        Ok(Value::Nothing)
+    });
 }
