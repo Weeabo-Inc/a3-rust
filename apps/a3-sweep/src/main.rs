@@ -10,6 +10,7 @@
 mod inventory;
 mod report;
 mod runner;
+mod stubs;
 mod summary;
 mod supervisor;
 mod worker;
@@ -17,6 +18,7 @@ mod worker;
 use std::ffi::OsString;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use a3_config::ConfigTree;
@@ -27,6 +29,7 @@ use clap::Parser;
 use crate::inventory::{Kind, Listing, Scenario, inventory, mount_loose_missions};
 use crate::report::{ScenarioResult, Status, Sweep, SweepOptions};
 use crate::runner::{Engine, RunOptions};
+use crate::stubs::Stubs;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -82,6 +85,11 @@ struct Args {
     /// Folder for the sweep's JSON.
     #[arg(long, default_value = ".work/sweep")]
     out: PathBuf,
+    /// The verification ledger whose `stub` records say which commands only have a stand-in
+    /// effect; the summary reports `pass with no stubs` from them. Missing means the summary says
+    /// the stub count is unknown.
+    #[arg(long, default_value = "docs/fidelity/sqf-verified.tsv")]
+    stubs: PathBuf,
     /// Write the Markdown summary here (e.g. docs/fidelity/scenario-sweep.md).
     #[arg(long)]
     doc: Option<PathBuf>,
@@ -119,6 +127,8 @@ impl Args {
             self.budget.to_string().into(),
             "--frame-budget-ms".into(),
             self.frame_budget_ms.to_string().into(),
+            "--stubs".into(),
+            self.stubs.as_os_str().to_owned(),
         ];
         if self.no_terrain {
             args.push("--no-terrain".into());
@@ -138,9 +148,11 @@ impl Args {
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     if args.worker {
+        // The worker reads the ledger itself: every scenario must count stubs the same way.
         let game_dir = args.game_dir()?.to_owned();
         let options = args.run_options();
-        return on_big_stack(move || worker::serve(&game_dir, options));
+        let stubs = args.stubs.clone();
+        return on_big_stack(move || worker::serve(&game_dir, options, &stubs));
     }
     if let Some(json) = &args.summarize {
         let sweep: Sweep = serde_json::from_slice(
@@ -155,6 +167,20 @@ fn main() -> anyhow::Result<()> {
     }
 
     let game_dir = args.game_dir()?.to_owned();
+    let stubs = Arc::new(match Stubs::load(&args.stubs) {
+        Ok(stubs) => stubs,
+        Err(e) => {
+            eprintln!("warning: {e:#}: stubbed commands are not counted");
+            Stubs::unknown()
+        }
+    });
+    if !stubs.is_empty() {
+        eprintln!(
+            "{} stubbed command record(s) from {}",
+            stubs.len(),
+            args.stubs.display()
+        );
+    }
     let started = chrono::Local::now();
     let start = Instant::now();
     let all = load_inventory(&game_dir)?;
@@ -208,9 +234,10 @@ fn main() -> anyhow::Result<()> {
     let results = if args.in_process {
         let options = args.run_options();
         let scenarios = selected.clone();
+        let stubs = Arc::clone(&stubs);
         let results = on_big_stack(move || {
             worker::install_panic_hook();
-            let mut engine = Engine::new(&game_dir, options);
+            let mut engine = Engine::new(&game_dir, options, stubs);
             Ok(scenarios
                 .iter()
                 .map(|s| worker::run_caught(&mut engine, s, |_| {}))
@@ -241,6 +268,7 @@ fn main() -> anyhow::Result<()> {
             filters: args.filter.clone(),
             profile: build_profile().to_owned(),
         },
+        stubs: stubs.index().cloned(),
         elapsed_s: start.elapsed().as_secs_f64(),
         scenarios: results,
     };
@@ -375,13 +403,22 @@ fn print_summary(sweep: &Sweep) {
         .iter()
         .filter(|r| r.status == Status::Pass)
         .count();
-    println!(
-        "{pass} of {total} scenarios pass ({:.1}%)",
+    let no_stubs = sweep
+        .scenarios
+        .iter()
+        .filter(|r| r.status == Status::Pass && r.stubbed_static.is_empty())
+        .count();
+    let percent = |n: usize| {
         if total == 0 {
             0.0
         } else {
-            pass as f64 * 100.0 / total as f64
+            n as f64 * 100.0 / total as f64
         }
+    };
+    println!("{pass} of {total} scenarios pass ({:.1}%)", percent(pass));
+    println!(
+        "{no_stubs} of {total} pass with no stubbed command ({:.1}%)",
+        percent(no_stubs)
     );
     for status in Status::ALL {
         let n = sweep
@@ -394,6 +431,10 @@ fn print_summary(sweep: &Sweep) {
     println!("top unimplemented commands (scenarios blocked / using):");
     for c in summary::command_ranking(&sweep.scenarios).iter().take(15) {
         println!("  {:<32} {:>4} {:>4}", c.name, c.blocked, c.used_by);
+    }
+    println!("top stubbed commands (scenarios using / uses):");
+    for s in summary::stub_ranking(&sweep.scenarios).iter().take(10) {
+        println!("  {:<32} {:>4} {:>4}", s.name, s.scenarios, s.uses);
     }
     println!("top error signatures (scenarios / reports):");
     for s in summary::signature_ranking(&sweep.scenarios).iter().take(15) {

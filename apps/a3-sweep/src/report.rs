@@ -4,9 +4,11 @@
 
 use std::collections::BTreeMap;
 
+use a3_sqf::Form;
 use serde::{Deserialize, Serialize};
 
 use crate::inventory::Scenario;
+use crate::stubs::StubIndex;
 
 /// How a scenario's run ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -216,8 +218,14 @@ pub struct ScenarioResult {
     /// Commands that stopped a script at runtime ("Unimplemented command").
     pub unimplemented_runtime: Vec<CommandUse>,
     /// Commands with no implementation that the mission's own scripts use (every `.sqf` of the
-    /// mission folder, the init fields, the trigger expressions), counted statically.
+    /// mission folder, the init fields, the trigger expressions, the 3D editor's attribute
+    /// expressions), counted statically.
     pub unimplemented_static: Vec<CommandUse>,
+    /// Commands the mission's own scripts use whose record in the verification ledger says
+    /// `stub`: they run, but their effect is a stand-in, so a pass that uses one does not rest on
+    /// the engine. See [`crate::stubs`].
+    #[serde(default)]
+    pub stubbed_static: Vec<CommandUse>,
     /// Mission `.sqf` files that did not compile, with the message.
     pub compile_errors: Vec<(String, String)>,
     /// Scheduled scripts still running at the end.
@@ -249,6 +257,7 @@ impl ScenarioResult {
             error_count: 0,
             unimplemented_runtime: Vec::new(),
             unimplemented_static: Vec::new(),
+            stubbed_static: Vec::new(),
             compile_errors: Vec::new(),
             scripts_running: 0,
             sanity: Sanity::default(),
@@ -279,6 +288,11 @@ pub struct Sweep {
     #[serde(default)]
     pub engine: String,
     pub options: SweepOptions,
+    /// The stub records the run's `pass with no stubs` count is based on; `None` when the
+    /// verification ledger could not be read, in which case no pass can be told apart from a
+    /// stubbed one.
+    #[serde(default)]
+    pub stubs: Option<StubIndex>,
     /// Wall-clock duration of the sweep in seconds.
     pub elapsed_s: f64,
     pub scenarios: Vec<ScenarioResult>,
@@ -413,6 +427,22 @@ pub fn ranked(counts: BTreeMap<String, usize>) -> Vec<CommandUse> {
         .collect();
     out.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.name.cmp(&b.name)));
     out
+}
+
+/// The `(name, form, uses)` of compiled code that `keep` accepts, summed per command name, most
+/// used first. Both static scans (no implementation, stub record) come from one walk of the
+/// code.
+pub fn ranked_uses(
+    uses: impl IntoIterator<Item = (String, Form, usize)>,
+    mut keep: impl FnMut(&str, Form) -> bool,
+) -> Vec<CommandUse> {
+    let mut counts: BTreeMap<String, usize> = BTreeMap::new();
+    for (name, form, count) in uses {
+        if keep(&name, form) {
+            *counts.entry(name).or_default() += count;
+        }
+    }
+    ranked(counts)
 }
 
 #[cfg(test)]

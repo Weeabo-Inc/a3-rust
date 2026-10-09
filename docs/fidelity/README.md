@@ -71,11 +71,19 @@ loaded; all others run on the base game and its default DLC, as a player would s
 **What it records** (per scenario, in `.work/sweep/<timestamp>.json`): status, the last stage
 reached, timings (ms per simulated frame), script errors grouped by Error signature,
 "Unimplemented command" hits at runtime, unimplemented commands the mission's own scripts use
-(every `.sqf` of the folder, init fields and trigger expressions, compiled statically), files
-that do not compile, units that could not be created, units the World placed more than a metre
-from their SQM position (this is the check a misread coordinate lands in; a unit merely high
-above the terrain does not), model files missing from the VFS, and sanity checks (player present
-and alive, no non-finite positions, nothing below the terrain).
+(every `.sqf` of the folder, init fields, trigger and 3D-editor attribute expressions, compiled
+statically), stubbed commands those scripts use, files that do not compile, units that could not
+be created, units the World placed more than a metre from their SQM position (this is the check a
+misread coordinate lands in; a unit merely high above the terrain does not), model files missing
+from the VFS, and sanity checks (player present and alive, no non-finite positions, nothing below
+the terrain).
+
+**Two pass numbers.** A `pass` is a scenario with no finding at all. A command whose record in
+the verification ledger (`docs/fidelity/sqf-verified.tsv`, `stub` rows, `--stubs` to point
+elsewhere) says *stub* runs without error while its effect is a stand-in, so a scenario that
+calls one passes on the stand-in. The summary therefore reports **pass** and **pass with no
+stubbed command** side by side, with the stub set's record count and sha1: the second number is
+the one to quote, and the gap between them is what the stubs are hiding.
 
 **Status.** `pass` (no finding at all), `errors` (ran to the end with findings), `load_failed`
 (`mission.sqm`, `description.ext` or the terrain did not load), `panic` (caught, the worker goes

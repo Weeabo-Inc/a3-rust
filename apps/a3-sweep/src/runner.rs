@@ -5,7 +5,7 @@
 //! function library compiled once at "game start" (uiNamespace, copied into each scenario's
 //! VM), and the last terrain loaded. Each scenario gets a fresh World and VM.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -15,15 +15,16 @@ use a3_gamedata::{ConfigRoot, GameData, LoadOptions, VfsHost, init_functions, sc
 use a3_mission::{
     Mission, MissionVmHost, Spawned, StartOptions, load_mission, spawn_mission, start_mission, step,
 };
-use a3_sqf::{Code, Namespace, Vm};
+use a3_sqf::{Code, Form, Namespace, Vm};
 use a3_world::{ClientId, TypeBank, World};
 use a3_wrp::Terrain;
 use anyhow::Context as _;
 
 use crate::inventory::{Scenario, mount_loose_missions};
 use crate::report::{
-    Misplaced, Sanity, ScenarioResult, Stage, Status, Unspawned, group_errors, ranked,
+    Misplaced, Sanity, ScenarioResult, Stage, Status, Unspawned, group_errors, ranked_uses,
 };
+use crate::stubs::Stubs;
 
 /// How each scenario is run.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -49,6 +50,9 @@ pub struct Runner {
     /// The last loaded terrain, by CfgWorlds class.
     terrain: Option<(String, Arc<Terrain>)>,
     pub options: RunOptions,
+    /// The commands the verification ledger records as stubs: they run, but their effect is a
+    /// stand-in, so the sweep counts their uses separately.
+    pub stubs: Arc<Stubs>,
     /// Whether the optional DLC folders (Contact, creator DLC) are loaded.
     pub optional_mods: bool,
     /// Time [`Runner::new`] took.
@@ -73,14 +77,16 @@ impl a3_gamedata::Localizer for Strings {
 pub struct Engine {
     game_dir: std::path::PathBuf,
     options: RunOptions,
+    stubs: Arc<Stubs>,
     current: Option<Runner>,
 }
 
 impl Engine {
-    pub fn new(game_dir: &Path, options: RunOptions) -> Engine {
+    pub fn new(game_dir: &Path, options: RunOptions, stubs: Arc<Stubs>) -> Engine {
         Engine {
             game_dir: game_dir.to_owned(),
             options,
+            stubs,
             current: None,
         }
     }
@@ -93,7 +99,12 @@ impl Engine {
             .is_none_or(|r| r.optional_mods != optional_mods)
         {
             self.current = None;
-            self.current = Some(Runner::new(&self.game_dir, self.options, optional_mods)?);
+            self.current = Some(Runner::new(
+                &self.game_dir,
+                self.options,
+                optional_mods,
+                Arc::clone(&self.stubs),
+            )?);
         }
         Ok(self.current.as_mut().expect("loaded above"))
     }
@@ -106,6 +117,7 @@ impl Runner {
         game_dir: &Path,
         options: RunOptions,
         optional_mods: bool,
+        stubs: Arc<Stubs>,
     ) -> anyhow::Result<Runner> {
         let start = Instant::now();
         let mut data =
@@ -131,6 +143,7 @@ impl Runner {
             library,
             terrain: None,
             options,
+            stubs,
             optional_mods,
             load_time: start.elapsed(),
             functions: report.compiled,
@@ -158,7 +171,7 @@ impl Runner {
         // Terrain.
         on_stage(Stage::Terrain);
         let t = Instant::now();
-        let terrain = match self.terrain_for(&scenario.world) {
+        let (world_name, terrain) = match self.terrain_for(&scenario.world) {
             Ok(terrain) => terrain,
             Err(e) => return fail(result, Stage::Terrain, format!("{e:#}")),
         };
@@ -173,6 +186,9 @@ impl Runner {
         {
             return fail(result, Stage::Load, format!("terrain: {e}"));
         }
+        // The loader that chose the terrain names it, so `worldName` answers while the mission
+        // loads (`description.ext` may ask) as well as while it runs.
+        world.set_world_name(&world_name);
         let types = TypeBank::new(self.data.config.clone());
         let mut vm = MissionVmHost::for_game(world, types, &self.data).vm();
         self.copy_library(&mut vm);
@@ -254,22 +270,22 @@ impl Runner {
         result
     }
 
-    /// The terrain of `world` (a folder extension), loading it unless it is the cached one.
-    /// `None` when terrain loading is off.
-    fn terrain_for(&mut self, world: &str) -> anyhow::Result<Option<Arc<Terrain>>> {
+    /// The terrain of `world` (a folder extension), loading it unless it is the cached one: the
+    /// `CfgWorlds` class name (`worldName`) and the terrain, `None` when terrain loading is off.
+    fn terrain_for(&mut self, world: &str) -> anyhow::Result<(String, Option<Arc<Terrain>>)> {
         let class = self.data.config.root().get("CfgWorlds").get(world);
         anyhow::ensure!(
             !world.is_empty() && class.is_class(),
             "no world `{world}` in CfgWorlds"
         );
-        if !self.options.terrain {
-            return Ok(None);
-        }
         let name = class.name().to_owned();
+        if !self.options.terrain {
+            return Ok((name, None));
+        }
         if let Some((cached, terrain)) = &self.terrain
             && cached.eq_ignore_ascii_case(&name)
         {
-            return Ok(Some(terrain.clone()));
+            return Ok((name, Some(terrain.clone())));
         }
         self.terrain = None;
         let config = a3_landscape::WorldConfig::load(&self.data.config, &name)
@@ -282,8 +298,8 @@ impl Runner {
             .with_context(|| format!("cannot open {wrp}"))?;
         let terrain =
             Arc::new(Terrain::parse(&bytes).with_context(|| format!("cannot parse {wrp}"))?);
-        self.terrain = Some((name, terrain.clone()));
-        Ok(Some(terrain))
+        self.terrain = Some((name.clone(), terrain.clone()));
+        Ok((name, Some(terrain)))
     }
 
     /// Copies the game-start uiNamespace (the compiled function library) into `vm`. Arrays and
@@ -295,7 +311,7 @@ impl Runner {
         }
     }
 
-    /// Fills in errors, unimplemented commands, missing models and the sanity checks.
+    /// Fills in errors, unimplemented and stubbed commands, missing models and the sanity checks.
     fn inspect(
         &self,
         vm: &mut Vm<MissionVmHost>,
@@ -310,13 +326,13 @@ impl Runner {
 
         let (codes, compile_errors) = compile_mission_scripts(vm, mission);
         result.compile_errors = compile_errors;
-        let mut counts: BTreeMap<String, usize> = BTreeMap::new();
-        for (name, count) in a3_gamedata::unimplemented_usage_in(vm, &codes) {
-            // `name (form)`: the sweep ranks by name.
-            let name = name.split(" (").next().unwrap_or(&name).to_owned();
-            *counts.entry(name).or_default() += count;
-        }
-        result.unimplemented_static = ranked(counts);
+        // One walk of the mission's compiled code answers both questions: which commands the VM
+        // cannot run at all, and which it only stubs.
+        let uses = command_uses(vm, &codes);
+        result.unimplemented_static = ranked_uses(uses.iter().cloned(), |name, form| {
+            !vm.registry().is_implemented(name, form)
+        });
+        result.stubbed_static = ranked_uses(uses, |name, form| self.stubs.contains(name, form));
 
         let world = &vm.host.world;
         let vfs = &self.data.vfs;
@@ -358,11 +374,50 @@ impl Runner {
     }
 }
 
+/// Every command the compiled `codes` call, as `(name, form, uses)`, the code blocks inside them
+/// included and each block counted once.
+fn command_uses<H: a3_sqf::Host>(vm: &Vm<H>, codes: &[Code]) -> Vec<(String, Form, usize)> {
+    let mut counts: HashMap<(String, Form), usize> = HashMap::new();
+    let mut seen = HashSet::new();
+    for code in codes {
+        collect_uses(vm, code, &mut seen, &mut counts);
+    }
+    counts
+        .into_iter()
+        .map(|((name, form), uses)| (name, form, uses))
+        .collect()
+}
+
+/// Adds the command calls of `code` to `out`.
+fn collect_uses<H: a3_sqf::Host>(
+    vm: &Vm<H>,
+    code: &Code,
+    seen: &mut HashSet<*const a3_sqf::Instr>,
+    out: &mut HashMap<(String, Form), usize>,
+) {
+    if !seen.insert(code.instructions().as_ptr()) {
+        return;
+    }
+    for instr in code.instructions() {
+        let (id, form) = match instr {
+            a3_sqf::Instr::Nular(id) => (*id, Form::Nular),
+            a3_sqf::Instr::Unary(id) => (*id, Form::Unary),
+            a3_sqf::Instr::Binary(id) => (*id, Form::Binary),
+            a3_sqf::Instr::Push(a3_sqf::Value::Code(inner)) => {
+                collect_uses(vm, inner, seen, out);
+                continue;
+            }
+            _ => continue,
+        };
+        let name = vm.table().get(id).name.clone();
+        *out.entry((name, form)).or_default() += 1;
+    }
+}
+
 /// How far from the SQM position a spawned Entity may sit before it counts as misplaced. SQM
 /// coordinates are metres in world space, so a correct spawn reproduces them exactly; the
 /// tolerance only absorbs rounding.
 const PLACEMENT_TOLERANCE: f64 = 1.0;
-
 /// Entities the World placed away from where the SQM put them, right after spawning: the count
 /// and up to [`MAX_MISPLACED`] of them in full. A unit with a two-component `position[]` (place
 /// on the surface) only has its plane checked: the terrain supplies the height.
@@ -424,7 +479,8 @@ fn install_campaign_config(data: &GameData, vm: &mut Vm<MissionVmHost>, campaign
 }
 
 /// Compiles every script the mission brings: each `.sqf` in its folder, the unit and group
-/// init fields and the trigger expressions. Returns the code and the compile errors.
+/// init fields, the 3D editor's attribute expressions and the trigger expressions. Returns the
+/// code and the compile errors.
 fn compile_mission_scripts(
     vm: &mut Vm<MissionVmHost>,
     mission: &Mission,
@@ -458,6 +514,16 @@ fn compile_mission_scripts(
     for unit in mission.units() {
         if let Some(init) = &unit.init {
             expressions.push((format!("init of unit {}", unit.id), init));
+        }
+        // The 3D editor's attribute expressions run at start-up too (see `a3-mission`'s
+        // `run_unit_attributes`), so the mission's command surface includes them.
+        for attribute in &unit.attributes {
+            if !attribute.expression.trim().is_empty() {
+                expressions.push((
+                    format!("{} attribute of unit {}", attribute.property, unit.id),
+                    &attribute.expression,
+                ));
+            }
         }
     }
     for (i, trigger) in mission.triggers.iter().enumerate() {

@@ -7,13 +7,14 @@ use std::cell::Cell;
 use std::io::{BufRead, Write};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 
 use crate::inventory::Scenario;
 use crate::report::{ScenarioResult, Stage, Status};
 use crate::runner::{Engine, RunOptions};
+use crate::stubs::Stubs;
 
 /// Marks the protocol's lines on standard output; anything else there is ignored.
 pub const PREFIX: &str = "@@sweep ";
@@ -110,9 +111,16 @@ pub fn run_caught(
 
 /// The worker process: loads the game, says [`Message::Ready`], then serves scenarios until
 /// standard input closes.
-pub fn serve(game_dir: &Path, options: RunOptions) -> anyhow::Result<()> {
+pub fn serve(game_dir: &Path, options: RunOptions, stubs: &Path) -> anyhow::Result<()> {
     install_panic_hook();
-    let mut engine = Engine::new(game_dir, options);
+    let stubs = Arc::new(match Stubs::load(stubs) {
+        Ok(stubs) => stubs,
+        Err(e) => {
+            eprintln!("warning: {e:#}: stubbed commands are not counted");
+            Stubs::unknown()
+        }
+    });
+    let mut engine = Engine::new(game_dir, options, stubs);
     // Most scenarios run on the base game; load it before saying ready.
     let runner = engine.runner(false)?;
     send(&Message::Ready {

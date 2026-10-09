@@ -103,6 +103,42 @@ pub fn signature_ranking(results: &[ScenarioResult]) -> Vec<SignatureRank> {
     out
 }
 
+/// One command recorded as a stub, over the whole sweep.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StubRank {
+    pub name: String,
+    /// Scenarios whose own scripts use it.
+    pub scenarios: usize,
+    /// Its uses in those scripts.
+    pub uses: usize,
+}
+
+/// Stubbed commands ranked by the scenarios whose scripts use them.
+pub fn stub_ranking(results: &[ScenarioResult]) -> Vec<StubRank> {
+    let mut ranks: BTreeMap<String, StubRank> = BTreeMap::new();
+    for result in results {
+        for c in &result.stubbed_static {
+            let rank = ranks
+                .entry(c.name.to_ascii_lowercase())
+                .or_insert_with(|| StubRank {
+                    name: c.name.clone(),
+                    scenarios: 0,
+                    uses: 0,
+                });
+            rank.scenarios += 1;
+            rank.uses += c.count;
+        }
+    }
+    let mut out: Vec<StubRank> = ranks.into_values().collect();
+    out.sort_by(|a, b| {
+        b.scenarios
+            .cmp(&a.scenarios)
+            .then(b.uses.cmp(&a.uses))
+            .then(a.name.cmp(&b.name))
+    });
+    out
+}
+
 /// Counts per status for a set of results.
 fn status_counts<'a>(
     results: impl IntoIterator<Item = &'a ScenarioResult>,
@@ -217,6 +253,19 @@ pub fn markdown(sweep: &Sweep) -> String {
         percent(count(Status::Pass), total),
         count(Status::Pass)
     );
+    let no_stubs = results
+        .iter()
+        .filter(|r| r.status == Status::Pass && r.stubbed_static.is_empty())
+        .count();
+    let stub_used = results
+        .iter()
+        .filter(|r| !r.stubbed_static.is_empty())
+        .count();
+    let _ = writeln!(
+        out,
+        "- **Pass rate with no stubbed command: {} ({no_stubs} of {total})**",
+        percent(no_stubs, total)
+    );
     let _ = writeln!(
         out,
         "- Ran to the end (pass or errors): {} ({ran})",
@@ -224,6 +273,31 @@ pub fn markdown(sweep: &Sweep) -> String {
     );
     for status in Status::ALL {
         let _ = writeln!(out, "- {}: {}", status.as_str(), count(status));
+    }
+    out.push('\n');
+    match &sweep.stubs {
+        Some(index) => {
+            let _ = writeln!(
+                out,
+                "A **pass** is a scenario with no finding at all. **Pass with no stubbed command** is \
+                 the same pass with one more condition: none of the mission's own scripts (its `.sqf` \
+                 files, init fields, trigger and 3D-editor attribute expressions) calls a command \
+                 whose record in the verification ledger says `stub`. A stub implements a command's \
+                 contract while its effect is a stand-in, so it raises no error and a pass that uses \
+                 one rests on a stand-in, not on the engine: the second number is the one to quote. \
+                 This run's stub set is {} record(s) of `{}` (sha1 `{}`); **{stub_used} of {total}** \
+                 scenarios use at least one of them.\n",
+                index.records, index.source, index.sha1,
+            );
+        }
+        None => {
+            out.push_str(
+                "A **pass** is a scenario with no finding at all. The stub records were **not read** \
+                 (`docs/fidelity/sqf-verified.tsv` missing or unreadable), so no pass here can be \
+                 told apart from one resting on a stubbed command: fix `--stubs` before quoting a \
+                 pass rate.\n",
+            );
+        }
     }
     out.push('\n');
 
@@ -277,6 +351,26 @@ pub fn markdown(sweep: &Sweep) -> String {
         );
     }
     out.push('\n');
+
+    out.push_str("## Stubbed commands, by scenarios using them\n\n");
+    out.push_str("Commands whose record in the verification ledger says `stub`: their contract is implemented and their effect is a stand-in, so they raise no error. A scenario that uses one passes on the stand-in; `pass with no stubs` in [Totals](#totals) leaves those out.\n\n");
+    let stubs = stub_ranking(results);
+    if stubs.is_empty() {
+        out.push_str("No scenario's own scripts call a stubbed command.\n\n");
+    } else {
+        out.push_str("| # | command | scenarios | static uses |\n|--:|---|--:|--:|\n");
+        for (i, s) in stubs.iter().take(TOP).enumerate() {
+            let _ = writeln!(
+                out,
+                "| {} | `{}` | {} | {} |",
+                i + 1,
+                s.name,
+                s.scenarios,
+                s.uses
+            );
+        }
+        out.push('\n');
+    }
 
     out.push_str("## Top error signatures\n\n");
     out.push_str("| # | signature | scenarios | reports | examples |\n|--:|---|--:|--:|---|\n");
@@ -375,7 +469,7 @@ pub fn markdown(sweep: &Sweep) -> String {
     out.push('\n');
 
     out.push_str("## Scenarios\n\n");
-    out.push_str("| scenario | kind | world | status | errors | blocked by | sim s | ms/frame | notes |\n|---|---|---|---|--:|---|--:|--:|---|\n");
+    out.push_str("| scenario | kind | world | status | errors | stubs | blocked by | sim s | ms/frame | notes |\n|---|---|---|---|--:|--:|---|--:|--:|---|\n");
     let mut rows: Vec<&ScenarioResult> = results.iter().collect();
     rows.sort_by(|a, b| {
         a.scenario
@@ -391,6 +485,15 @@ pub fn markdown(sweep: &Sweep) -> String {
             .map(|c| c.name.as_str())
             .collect();
         let mut notes = r.sanity.failures();
+        if !r.stubbed_static.is_empty() {
+            let names: Vec<&str> = r
+                .stubbed_static
+                .iter()
+                .take(3)
+                .map(|c| c.name.as_str())
+                .collect();
+            notes.push(format!("stubs: {}", names.join(", ")));
+        }
         if !r.unspawned.is_empty() {
             notes.push(format!("{} unspawned", r.unspawned.len()));
         }
@@ -414,12 +517,13 @@ pub fn markdown(sweep: &Sweep) -> String {
         }
         let _ = writeln!(
             out,
-            "| {} | {} | {} | {} | {} | {} | {:.0} | {:.2} | {} |",
+            "| {} | {} | {} | {} | {} | {} | {} | {:.0} | {:.2} | {} |",
             cell(&r.scenario.folder),
             r.scenario.kind.as_str(),
             r.scenario.world,
             r.status.as_str(),
             r.error_count,
+            r.stubbed_static.len(),
             cell(&blocked.join(", ")),
             r.sim_seconds,
             r.timings.frame_ms_mean,
@@ -555,7 +659,12 @@ mod tests {
             count: 1,
         }];
         b.error_count = 1;
-        let c = result("a3\\m\\c.altis", Status::Pass);
+        // A scenario with no finding at all, one that passes but calls a stubbed command, and a
+        // crash.
+        let mut c = result("a3\\m\\c.altis", Status::Pass);
+        let mut stubbed = result("a3\\m\\c_stub.altis", Status::Pass);
+        stubbed.stubbed_static = uses(&[("playMove", 2)]);
+        c.stubbed_static = Vec::new();
         let d = result("a3\\m\\d.altis", Status::Crash);
         Sweep {
             started: "2026-10-09 12:00:00".into(),
@@ -569,8 +678,13 @@ mod tests {
                 filters: vec![],
                 profile: "release".into(),
             },
+            stubs: Some(crate::stubs::StubIndex {
+                source: "docs/fidelity/sqf-verified.tsv".into(),
+                records: 8,
+                sha1: "01234567".into(),
+            }),
             elapsed_s: 10.0,
-            scenarios: vec![a, b, c, d],
+            scenarios: vec![a, b, c, stubbed, d],
         }
     }
 
@@ -603,7 +717,11 @@ mod tests {
     #[test]
     fn the_summary_has_totals_rankings_and_a_row_per_scenario() {
         let md = markdown(&sweep());
-        assert!(md.contains("**Pass rate: 25.0% (1 of 4)**"), "{md}");
+        assert!(md.contains("**Pass rate: 40.0% (2 of 5)**"), "{md}");
+        assert!(
+            md.contains("**Pass rate with no stubbed command: 20.0% (1 of 5)**"),
+            "{md}"
+        );
         assert!(md.contains("| 1 | `allowDamage` | 2 | 4 | 2 | 6 |"), "{md}");
         assert!(md.contains("| a3\\m\\d.altis | crash |"), "{md}");
         assert!(md.contains("engine `abc123`, release build"), "{md}");
@@ -613,6 +731,36 @@ mod tests {
                 "{folder}"
             );
         }
+    }
+
+    /// The stub metric is the point of the second pass line: a pass that calls a stubbed command
+    /// is a pass on a stand-in, so it is not counted there.
+    #[test]
+    fn a_pass_that_calls_a_stub_is_not_counted_as_a_pass_with_no_stubs() {
+        let md = markdown(&sweep());
+        assert!(
+            md.contains("rests on a stand-in"),
+            "the summary explains the difference between the two pass lines:\n{md}"
+        );
+        assert!(md.contains("This run's stub set is 8 record(s)"), "{md}");
+        assert!(md.contains("**1 of 5** scenarios use at least one"), "{md}");
+        // The stubbed command's own table ranks it, and the scenario's row carries its column and
+        // its note.
+        assert!(md.contains("| 1 | `playMove` | 1 | 2 |"), "{md}");
+        assert!(
+            md.contains("| a3\\m\\c_stub.altis | unlisted | altis | pass | 0 | 1 |"),
+            "{md}"
+        );
+    }
+
+    #[test]
+    fn a_sweep_without_the_ledger_says_the_pass_rate_cannot_be_split() {
+        let mut sweep = sweep();
+        sweep.stubs = None;
+        let md = markdown(&sweep);
+        assert!(md.contains("Pass rate with no stubbed command"), "{md}");
+        assert!(md.contains("were **not read**"), "{md}");
+        assert!(md.contains("fix `--stubs`"), "{md}");
     }
 
     #[test]
