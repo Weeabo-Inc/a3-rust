@@ -6,6 +6,7 @@
 
 mod engine;
 mod environment;
+mod gear;
 mod hud;
 mod keys;
 mod man;
@@ -102,6 +103,10 @@ struct Cli {
     /// Model viewer: the phase of `--move`'s cycle to pose, 0..1.
     #[arg(long, default_value_t = 0.0, requires = "move_")]
     move_phase: f32,
+    /// Model viewer: dress the posed Man in the gear of this `CfgVehicles` class (e.g.
+    /// `B_Soldier_F`): head, vest, helmet, NVG and rifle.
+    #[arg(long, value_name = "CLASS", requires = "move_")]
+    loadout: Option<String>,
     /// `--screenshot`: after loading, time this many frames and print the average.
     #[arg(long, default_value_t = 0)]
     bench_frames: u64,
@@ -165,6 +170,7 @@ fn main() -> anyhow::Result<()> {
             zoom: cli.view_zoom,
             lod: cli.lod,
             pose: cli.move_.clone().map(|name| (name, cli.move_phase)),
+            loadout: cli.loadout.clone(),
         }),
         environment: environment::EnvironmentSpec {
             date: cli.date,

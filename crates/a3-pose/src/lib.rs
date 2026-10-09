@@ -251,17 +251,92 @@ impl ManRig {
     /// model's space and the ground under the posed Man is at `y = -offset.y`
     /// ([`ManRig::ground_offset`]).
     pub fn skinning_pose(&self, pose: &ManPose, model_offset: Vec3) -> a3_anim::Pose {
-        let to_pivot = Affine3A::from_translation(model_offset);
-        let back = Affine3A::from_translation(-model_offset);
-        let bones: Vec<Affine3A> = self
-            .compose(pose)
-            .into_iter()
-            .map(|m| back * m * to_pivot)
-            .collect();
+        let bones = self.palette(&self.compose(pose), model_offset);
         a3_anim::Pose {
             hidden: vec![false; bones.len()],
             bones,
         }
+    }
+
+    /// The bone palette, in this rig's bone order, of a model at `model_offset` (see
+    /// [`ManRig::skinning_pose`]) from an already [composed](ManRig::compose) pose.
+    pub fn palette(&self, composed: &[Affine3A], model_offset: Vec3) -> Vec<Affine3A> {
+        let to_pivot = Affine3A::from_translation(model_offset);
+        let back = Affine3A::from_translation(-model_offset);
+        composed.iter().map(|m| back * *m * to_pivot).collect()
+    }
+
+    /// The bone palette of another model the Man wears (a head, a vest, a helmet), in that
+    /// model's own `skeleton` order: each bone takes the Man's bone of the same name (ignoring
+    /// case), and a bone the Man does not have stays at rest. `model_offset` is that model's
+    /// own offset from the pivots model's origin (its `bounding_center` when autocentred).
+    pub fn palette_for(
+        &self,
+        composed: &[Affine3A],
+        skeleton: &Skeleton,
+        model_offset: Vec3,
+    ) -> Vec<Affine3A> {
+        let mine = self.palette(composed, model_offset);
+        skeleton
+            .bones
+            .iter()
+            .map(|b| {
+                self.bone_index(&b.name)
+                    .and_then(|i| mine.get(i).copied())
+                    .unwrap_or(Affine3A::IDENTITY)
+            })
+            .collect()
+    }
+
+    /// A per-bone mask, in this rig's order: 1 for the bone named `root` and every bone below
+    /// it, 0 elsewhere (all 0 when there is no such bone).
+    pub fn subtree(&self, root: &str) -> Vec<f32> {
+        let Some(root) = self.bone_index(root) else {
+            return vec![0.0; self.names.len()];
+        };
+        (0..self.names.len())
+            .map(|mut b| {
+                // Walk up to the root of the skeleton; the bone count bounds a broken cycle.
+                for _ in 0..=self.names.len() {
+                    if b == root {
+                        return 1.0;
+                    }
+                    match self.parents[b] {
+                        Some(p) => b = p,
+                        None => return 0.0,
+                    }
+                }
+                0.0
+            })
+            .collect()
+    }
+
+    /// `pose` with another animation laid over it by per-bone `weights` (in this rig's order;
+    /// missing entries count as 0): each bone's rotation slerps and its joint lerps towards the
+    /// layer's by its weight, clamped to 0..1, as the engine folds a layer in (`0x12105b0`).
+    pub fn overlay(&self, pose: &ManPose, layer: MoveSample<'_>, weights: &[f32]) -> ManPose {
+        let bones = pose
+            .bones
+            .iter()
+            .enumerate()
+            .map(|(bone, base)| {
+                let w = weights.get(bone).copied().unwrap_or(0.0);
+                let w = if w.is_nan() { 0.0 } else { w.clamp(0.0, 1.0) };
+                // The engine skips a layer weight at or below 0.001.
+                if w <= 0.001 {
+                    return *base;
+                }
+                let rest = self.rest_pivot(bone);
+                let top = sample_bone(&self.pivots, bone, &self.names[bone], layer);
+                let rotation = base.rotation.slerp(top.rotation, w);
+                let joint = base.posed_pivot(rest).lerp(top.joint, w);
+                BonePose {
+                    translation: joint - Mat3::from_quat(rotation) * rest,
+                    rotation,
+                }
+            })
+            .collect();
+        ManPose { bones }
     }
 
     /// Where the ground under a posed Man is in the space of a model whose vertices sit at
