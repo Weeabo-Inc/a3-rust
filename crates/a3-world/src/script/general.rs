@@ -221,14 +221,39 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     // `display displayCtrl idc` / `idc displayCtrl`: the control with that id. The display stack
     // lives in a3-ui and is not reachable from the world host yet, so the lookup answers the null
     // control (`stub`). A script that only stores the handle is unaffected.
-    r.unary("displayCtrl", NUM, HandleKind::Control.ty(), |_, _| {
+    let control = HandleKind::Control.ty();
+    r.unary("displayCtrl", NUM, control, |_, _| {
         Ok(Value::Handle(Handle::null(HandleKind::Control)))
     });
-    r.binary(
-        "displayCtrl",
-        HandleKind::Control.ty(),
-        NUM,
-        HandleKind::Control.ty(),
-        |_, _, _| Ok(Value::Handle(Handle::null(HandleKind::Control))),
-    );
+    r.binary("displayCtrl", control, NUM, control, |_, _, _| {
+        Ok(Value::Handle(Handle::null(HandleKind::Control)))
+    });
+
+    // `callExtension`: a call into a native extension DLL. We load no extensions, so the engine's
+    // answer for an unknown extension is what we give: the empty string, or an empty array for the
+    // array form (`stub`).
+    r.binary("callExtension", STR, STR, STR, |_, _, _| {
+        Ok(Value::string(""))
+    });
+    r.binary("callExtension", STR, ARR, ARR, |_, _, _| {
+        Ok(Value::array(std::iter::empty()))
+    });
+
+    // `enableVehicleCargo`: whether a vehicle's cargo can be loaded. We have no loadmaster or
+    // sling-load system, so the switch stores nothing (`stub`).
+    r.binary("enableVehicleCargo", OBJ, BOOL, NOTHING, |_, _, _| {
+        Ok(Value::Nothing)
+    });
+
+    // `removeFromRemainsCollector`: stops the engine cleaning up a body. We have no remains
+    // collector, so nothing is removed from it (`stub`).
+    r.unary("removeFromRemainsCollector", ARR, NOTHING, |_, _| {
+        Ok(Value::Nothing)
+    });
+
+    // `setFlagTexture`: the texture on a flag pole. We draw no flags, so the setter stores nothing
+    // (`stub`).
+    r.binary("setFlagTexture", OBJ, STR, NOTHING, |_, _, _| {
+        Ok(Value::Nothing)
+    });
 }
