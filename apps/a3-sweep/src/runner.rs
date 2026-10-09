@@ -235,6 +235,21 @@ impl Runner {
             .filter(|s| !s.ok)
             .map(|s| s.name.clone())
             .collect();
+        // The error that ended each of those scripts. Keeping only the name loses the reason:
+        // a script reports its *first* error, which may be one the engine logs and carries on
+        // from, so the name alone sends the reader after the wrong command.
+        result.failed_script_errors = report
+            .scripts
+            .iter()
+            .filter(|s| !s.ok)
+            .map(|s| {
+                format!(
+                    "{}: {}",
+                    s.name,
+                    s.error.as_deref().unwrap_or("failed with no message")
+                )
+            })
+            .collect();
         result.timings.start_ms = ms(t.elapsed());
 
         // Simulation.
