@@ -1,8 +1,10 @@
 //! The post chain: atmosphere into HDR, eye adaptation, bloom, tonemapping and anti-aliasing.
 //!
-//! Follows RV's HDR chain as reverse engineered in `docs/re/render-atmosphere.md` §3: log-average
-//! luminance meter, assumed-luminance adaptation, bloom mixed before the curve, `tonemapMethod`
-//! curves and a final gamma. Defaults mirror `CfgWorlds >> Altis >> HDRNewPars`.
+//! Follows RV's HDR chain as reverse engineered in `docs/re/render-atmosphere.md` §3: the
+//! lighting entry's aperture stage (`exposure = 1 / aperture²`, the measured-luminance curve of
+//! [`HdrSettings::aperture`]), the log-average luminance meter, assumed-luminance adaptation
+//! between the aperture's limits, bloom mixed before the curve, `tonemapMethod` curves and a
+//! final gamma. Defaults mirror `CfgWorlds >> Altis >> HDRNewPars` and `Lighting0`.
 
 use bytemuck::{Pod, Zeroable};
 
@@ -117,22 +119,42 @@ pub struct HdrSettings {
     /// `tonemapLinearWhiteReinhard`: white point of the Reinhard curve.
     pub reinhard_white: f32,
     pub bloom: BloomSettings,
-    /// `minAperture` / `maxAperture`: range of the adapted luminance (exposure is
-    /// `key / adapted`).
+    /// `HDRNewPars >> minAperture` / `maxAperture`: the global clamp of the aperture value
+    /// (not of the exposure; exposure is `1 / aperture²`).
     pub min_aperture: f32,
     pub max_aperture: f32,
-    /// `eyeAdaptFactorLight`: speed of RV's slow CPU exposure stage towards a brighter scene
-    /// (`docs/re/render-atmosphere.md` §3.3). That stage is not implemented yet; the GPU stage's
-    /// speed comes from [`cpu_exposure`](Self::cpu_exposure).
+    /// `LightingN >> apertureMin`: the aperture a scene at the dark end of the range
+    /// (`standardAvgLum / apertureRatioMin`) is exposed with.
+    pub aperture_min: f32,
+    /// `LightingN >> apertureStandard`: the aperture at `standardAvgLum`. **0 means no aperture
+    /// stage**: without a lighting entry (world-less renders, synthetic scenes) the exposure
+    /// falls back to the assumed-luminance step `key / measured`.
+    pub aperture_standard: f32,
+    /// `LightingN >> apertureMax`: the aperture at `standardAvgLum · apertureRatioMax`.
+    pub aperture_max: f32,
+    /// `LightingN >> standardAvgLum`: the measured scene luminance the lighting entry is
+    /// calibrated for, in the meter's units.
+    pub standard_avg_lum: f32,
+    /// `HDRNewPars >> apertureRatioMin` / `apertureRatioMax`: how far below / above
+    /// `standard_avg_lum` the measured luminance must be for the aperture to reach
+    /// `aperture_min` / `aperture_max`.
+    pub aperture_ratio_min: f32,
+    pub aperture_ratio_max: f32,
+    /// `eyeAdaptFactorLight`: speed of RV's CPU exposure stage towards a brighter scene
+    /// (`docs/re/render-atmosphere.md` §3.3). The stage's curve is [`Self::aperture_exposure`];
+    /// its interpolation runs on the GPU as part of the assumed-luminance pass.
     pub eye_adapt_light: f32,
     /// `eyeAdaptFactorDark`: the same towards a darker scene.
     pub eye_adapt_dark: f32,
-    /// Target of the adaptation: exposure = key / measured log-average luminance (RV's
-    /// `PSC_AssumedLuminancePars1.z` = `engine+0x368 · brightness · 0.5`; the engine value is
-    /// not identified, ours is chosen by eye).
+    /// Assumed-luminance target of the fallback stage (`PSC_AssumedLuminancePars1.z`): the
+    /// exposure is `key / measured` when no lighting entry supplies an aperture stage
+    /// ([`aperture_standard`](Self::aperture_standard) `<= 0`). RV takes it from
+    /// `engine+0x368 · brightness · 0.5`, whose first factor is not identified; ours is chosen by
+    /// eye (the client's steady-state exposure does not depend on it, see `docs/re/hdr.md`).
     pub key: f32,
-    /// The exposure of RV's CPU stage (`1 / aperture²` from the lighting table), which sets how
-    /// fast the GPU stage may adapt. 1 until that stage is implemented.
+    /// The exposure RV's CPU stage currently holds (`state+0x20`, `1 / aperture²` after its
+    /// interpolation). It sets how fast the GPU stage may adapt; 1 until the CPU stage's
+    /// per-frame state is read back.
     pub cpu_exposure: f32,
     /// Final power applied after the curve: `PSC_RgbEyeCoef.w`, which RV always sets to 1. The
     /// sRGB encode for display follows separately.
@@ -152,6 +174,15 @@ impl Default for HdrSettings {
             bloom: BloomSettings::default(),
             min_aperture: 1e-5,
             max_aperture: 256.0,
+            // No lighting entry sampled yet: the assumed-luminance step is used. A World's
+            // `LightingN` entry overwrites all five per frame in
+            // `SceneEnvironment::apply` (docs/re/render-atmosphere.md §1.3).
+            aperture_min: 4.0,
+            aperture_standard: 0.0,
+            aperture_max: 8.0,
+            standard_avg_lum: 4.0,
+            aperture_ratio_min: 10.0,
+            aperture_ratio_max: 4.0,
             eye_adapt_light: 3.3,
             eye_adapt_dark: 0.75,
             key: 0.3,
@@ -164,11 +195,76 @@ impl Default for HdrSettings {
 }
 
 impl HdrSettings {
-    /// Exposure range implied by the aperture limits: `key / maxAperture ..= key / minAperture`.
+    /// `true` when a lighting entry supplied an aperture stage.
+    pub fn has_aperture_stage(&self) -> bool {
+        self.aperture_standard > 0.0 && self.standard_avg_lum > 0.0
+    }
+
+    /// RV's CPU aperture stage (`0x14175ac10`, `docs/re/render-atmosphere.md` §3.3): the aperture
+    /// the lighting entry asks for at a measured scene luminance, in the entry's own units.
+    ///
+    /// At `standard_avg_lum` the aperture is `aperture_standard`; it moves linearly towards
+    /// `aperture_min` / `aperture_max` as the luminance falls / rises, reaching them at
+    /// `standard_avg_lum / aperture_ratio_min` and `standard_avg_lum · aperture_ratio_max`.
+    /// The dark branch is the engine's, including its discontinuity at `standard_avg_lum` when
+    /// `aperture_standard != aperture_min`. The result is clamped to
+    /// `[min_aperture, max_aperture]`.
+    pub fn aperture(&self, luminance: f32) -> f32 {
+        let (pmin, pstd, pmax) = (self.aperture_min, self.aperture_standard, self.aperture_max);
+        let lstd = self.standard_avg_lum;
+        if pstd <= 0.0 || lstd <= 0.0 {
+            return 1.0;
+        }
+        let ap = if luminance <= lstd {
+            let x = -lstd / luminance.max(1e-6);
+            let rmin = self.aperture_ratio_min;
+            if rmin <= 1.0 || x < -rmin {
+                pmin
+            } else {
+                pmin + (x + rmin) / (1.0 + rmin) * (pstd - pmin)
+            }
+        } else {
+            let y = luminance / lstd;
+            let rmax = self.aperture_ratio_max;
+            if rmax <= 1.0 || y > rmax {
+                pmax
+            } else {
+                pstd + (y - 1.0) / (rmax - 1.0) * (pmax - pstd)
+            }
+        };
+        ap.clamp(self.min_aperture, self.max_aperture.max(self.min_aperture))
+    }
+
+    /// The exposure RV's aperture stage produces: `1 / aperture²`.
+    pub fn aperture_exposure(&self, luminance: f32) -> f32 {
+        let ap = self.aperture(luminance).max(1e-12);
+        1.0 / (ap * ap)
+    }
+
+    /// The exposure range the adaptation clamps to: the aperture stage at the two ends of the
+    /// entry's luminance range, i.e. `1 / apertureMax² ..= 1 / apertureMin²`. Without a lighting
+    /// entry it is the fallback stage's own bounds, `key / maxAperture ..= key / minAperture`.
     pub fn exposure_range(&self) -> (f32, f32) {
-        let max_ap = self.max_aperture.max(self.min_aperture).max(1e-12);
-        let min_ap = self.min_aperture.max(1e-12);
-        (self.key / max_ap, self.key / min_ap)
+        if !self.has_aperture_stage() {
+            let max_ap = self.max_aperture.max(self.min_aperture).max(1e-12);
+            let min_ap = self.min_aperture.max(1e-12);
+            return (self.key / max_ap, self.key / min_ap);
+        }
+        let lstd = self.standard_avg_lum;
+        let lo = self.aperture_exposure(lstd * self.aperture_ratio_max.max(1.0));
+        let hi = self.aperture_exposure(lstd / self.aperture_ratio_min.max(1.0));
+        (lo.min(hi), hi.max(lo))
+    }
+
+    /// The target of the assumed-luminance stage: `key` without a lighting entry, and
+    /// `standardAvgLum / apertureStandard²` with one — where the aperture stage and the
+    /// assumed-luminance step agree exactly.
+    pub fn assumed_key(&self) -> f32 {
+        if !self.has_aperture_stage() {
+            return self.key.max(0.0);
+        }
+        let pstd = self.aperture_standard.max(self.min_aperture).max(1e-6);
+        (self.standard_avg_lum / (pstd * pstd)).max(0.0)
     }
 
     /// Per-frame limits of the exposure ratio (RV's `PSC_AssumedLuminancePars2.zw`,
@@ -207,7 +303,7 @@ impl HdrSettings {
             exposure: [
                 min_exposure,
                 max_exposure,
-                self.key,
+                self.assumed_key(),
                 self.fixed_exposure.unwrap_or(0.0),
             ],
             adaptation: [ratio_min, ratio_max, dt.max(0.0), flag(reset)],
@@ -224,6 +320,18 @@ impl HdrSettings {
                 self.bloom.exponent,
             ],
             output: [self.final_gamma, flag(self.bloom.enabled), 0.0, 0.0],
+            aperture: [
+                self.aperture_min,
+                self.aperture_standard,
+                self.aperture_max,
+                self.standard_avg_lum,
+            ],
+            aperture_ratios: [
+                self.aperture_ratio_min,
+                self.aperture_ratio_max,
+                self.min_aperture,
+                self.max_aperture,
+            ],
         }
     }
 }
@@ -238,6 +346,10 @@ struct PostUniforms {
     misc: [f32; 4],
     bloom: [f32; 4],
     output: [f32; 4],
+    /// `apertureMin, apertureStandard, apertureMax, standardAvgLum` of the lighting entry.
+    aperture: [f32; 4],
+    /// `apertureRatioMin, apertureRatioMax, minAperture, maxAperture`.
+    aperture_ratios: [f32; 4],
 }
 
 /// Format of the intermediate HDR image after the atmosphere pass, and of the bloom targets.
@@ -776,11 +888,135 @@ mod tests {
     }
 
     #[test]
-    fn exposure_range_follows_the_aperture_limits() {
+    fn aperture_stage_follows_the_lighting_entry() {
+        // Altis Lighting0 (the night entry): 4 / 4 / 8 at a standard luminance of 4.
+        let night = HdrSettings {
+            aperture_min: 4.0,
+            aperture_standard: 4.0,
+            aperture_max: 8.0,
+            standard_avg_lum: 4.0,
+            ..HdrSettings::default()
+        };
+        assert!(night.has_aperture_stage());
+        assert_eq!(night.aperture(4.0), 4.0);
+        // apertureStandard == apertureMin: the dark branch cannot open further.
+        assert_eq!(night.aperture(0.4), 4.0);
+        assert_eq!(night.aperture(1e-3), 4.0);
+        // Brighter: linearly towards apertureMax, reached at 4 * apertureRatioMax = 16.
+        assert!(
+            (night.aperture(10.0) - 6.0).abs() < 1e-6,
+            "{}",
+            night.aperture(10.0)
+        );
+        assert_eq!(night.aperture(16.0), 8.0);
+        assert_eq!(night.aperture(1000.0), 8.0);
+        assert!((night.aperture_exposure(16.0) - 1.0 / 64.0).abs() < 1e-9);
+        let (lo, hi) = night.exposure_range();
+        assert!((lo - 1.0 / 64.0).abs() < 1e-9, "{lo}");
+        assert!((hi - 1.0 / 16.0).abs() < 1e-9, "{hi}");
+        assert!((night.assumed_key() - 0.25).abs() < 1e-6);
+    }
+
+    #[test]
+    fn aperture_stage_follows_the_noon_entry() {
+        // Altis Lighting11/12 (noon): 70 / 120 / 120 at a standard luminance of 8000.
+        let noon = HdrSettings {
+            aperture_min: 70.0,
+            aperture_standard: 120.0,
+            aperture_max: 120.0,
+            standard_avg_lum: 8000.0,
+            ..HdrSettings::default()
+        };
+        // Just above the standard luminance the bright branch starts at the standard aperture;
+        // at the standard luminance itself the engine's literal dark branch is below it.
+        assert_eq!(noon.aperture(8001.0), 120.0);
+        assert_eq!(noon.aperture(32000.0), 120.0);
+        assert_eq!(noon.aperture(1e6), 120.0);
+        // apertureRatioMin = 10: the minimum is reached at 800.
+        assert_eq!(noon.aperture(8000.0), 110.909_09);
+        assert!(
+            (noon.aperture(7999.0) - 110.909).abs() < 1e-3,
+            "{}",
+            noon.aperture(7999.0)
+        );
+        assert!(
+            (noon.aperture(4000.0) - 106.3636).abs() < 1e-3,
+            "{}",
+            noon.aperture(4000.0)
+        );
+        assert!(
+            (noon.aperture(800.0) - 70.0).abs() < 1e-4,
+            "{}",
+            noon.aperture(800.0)
+        );
+        assert_eq!(noon.aperture(10.0), 70.0);
+        assert!((noon.aperture_exposure(32000.0) - 1.0 / 14400.0).abs() < 1e-12);
+        let (lo, hi) = noon.exposure_range();
+        assert!((lo - 1.0 / 14400.0).abs() < 1e-12, "{lo}");
+        assert!((hi - 1.0 / 4900.0).abs() < 1e-12, "{hi}");
+        assert!((noon.assumed_key() - 8000.0 / 14400.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn aperture_is_clamped_to_the_global_limits() {
+        // Altis Lighting0 with an HDRNewPars floor above the entry's own minimum: the aperture
+        // cannot open past it, so the whole range collapses onto it.
+        let floored = HdrSettings {
+            min_aperture: 8.0,
+            max_aperture: 16.0,
+            aperture_min: 4.0,
+            aperture_standard: 4.0,
+            aperture_max: 8.0,
+            standard_avg_lum: 4.0,
+            ..HdrSettings::default()
+        };
+        assert_eq!(floored.aperture(4.0), 8.0);
+        assert_eq!(floored.aperture(1e-3), 8.0);
+        assert_eq!(floored.aperture(1000.0), 8.0);
+        assert!((floored.aperture_exposure(4.0) - 1.0 / 64.0).abs() < 1e-12);
+        assert_eq!(floored.exposure_range(), (1.0 / 64.0, 1.0 / 64.0));
+        // A ceiling below the entry's own maximum (HDRNewPars maxAperture).
+        let closed = HdrSettings {
+            min_aperture: 1e-5,
+            max_aperture: 6.0,
+            aperture_min: 4.0,
+            aperture_standard: 4.0,
+            aperture_max: 8.0,
+            standard_avg_lum: 4.0,
+            ..HdrSettings::default()
+        };
+        assert_eq!(closed.aperture(1000.0), 6.0);
+        assert!((closed.aperture_exposure(1000.0) - 1.0 / 36.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn without_a_lighting_entry_the_assumed_luminance_step_stays() {
+        // World-less renders and synthetic scenes: no aperture stage, so the exposure is
+        // key / measured within key / maxAperture ..= key / minAperture, as before the stage.
         let s = HdrSettings::default();
+        assert!(!s.has_aperture_stage());
+        assert_eq!(s.assumed_key(), 0.3);
         let (lo, hi) = s.exposure_range();
-        assert!((lo - 0.3 / 256.0).abs() < 1e-7);
-        assert!((hi - 0.3 / 1e-5).abs() < 1.0);
+        assert!((lo - 0.3 / 256.0).abs() < 1e-7, "{lo}");
+        assert!((hi - 0.3 / 1e-5).abs() < 1.0, "{hi}");
+        let u = s.uniforms(0.016, false, false);
+        assert_eq!(u.exposure[2], 0.3);
+        assert_eq!(u.aperture[1], 0.0);
+    }
+
+    #[test]
+    fn uniforms_carry_the_aperture_exposure_range() {
+        let noon = HdrSettings {
+            aperture_min: 70.0,
+            aperture_standard: 120.0,
+            aperture_max: 120.0,
+            standard_avg_lum: 8000.0,
+            ..HdrSettings::default()
+        };
+        let u = noon.uniforms(0.016, false, false);
+        assert!((u.exposure[0] - 1.0 / 14400.0).abs() < 1e-12);
+        assert!((u.exposure[1] - 1.0 / 4900.0).abs() < 1e-12);
+        assert!((u.exposure[2] - 8000.0 / 14400.0).abs() < 1e-6);
     }
 
     #[test]

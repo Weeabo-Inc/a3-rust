@@ -57,6 +57,31 @@ impl Scene {
         s.sky_zenith *= factor;
         s.sky_horizon *= factor;
     }
+
+    /// An aperture stage wide enough that the test scene's luminance stays between its limits,
+    /// so the per-frame limits are the only thing shaping the step.
+    fn wide_aperture(&mut self) {
+        self.renderer.settings.hdr = HdrSettings {
+            aperture_min: 0.25,
+            aperture_standard: 4.0,
+            aperture_max: 64.0,
+            standard_avg_lum: 4.0,
+            ..HdrSettings::default()
+        };
+    }
+
+    /// The exposure the CPU-side stage asks for at the measured luminance: the aperture stage, or
+    /// the assumed-luminance step without a lighting entry.
+    fn expected_exposure(&self, measured: f32) -> f32 {
+        let hdr = &self.renderer.settings.hdr;
+        let wanted = if hdr.has_aperture_stage() {
+            hdr.aperture_exposure(measured)
+        } else {
+            hdr.assumed_key() / measured
+        };
+        let (lo, hi) = hdr.exposure_range();
+        wanted.clamp(lo, hi)
+    }
 }
 
 fn mean_rgb(image: &[u8]) -> f32 {
@@ -68,12 +93,46 @@ fn mean_rgb(image: &[u8]) -> f32 {
 }
 
 #[test]
-fn eye_adaptation_compensates_for_scene_brightness() {
+fn the_exposure_pass_applies_the_aperture_stage() {
+    let Some(gpu) = gpu() else { return };
+    for settings in [
+        HdrSettings::default(),
+        HdrSettings {
+            aperture_min: 0.25,
+            aperture_standard: 4.0,
+            aperture_max: 64.0,
+            standard_avg_lum: 4.0,
+            ..HdrSettings::default()
+        },
+    ] {
+        let mut s = scene(&gpu);
+        s.renderer.settings.hdr = settings;
+        for _ in 0..120 {
+            s.render(&gpu, DT);
+        }
+        let settled = s.renderer.read_exposure(&gpu).unwrap();
+        let wanted = s.expected_exposure(settled.average_luminance);
+        assert!(
+            (settled.exposure / wanted - 1.0).abs() < 0.01,
+            "the pass must settle on 1 / aperture(measured)²: {settled:?} vs {wanted} \
+             for {settings:?}"
+        );
+    }
+}
+
+#[test]
+fn eye_adaptation_follows_the_aperture_stage() {
     let Some(gpu) = gpu() else { return };
     let mut s = scene(&gpu);
+    s.wide_aperture();
+    for _ in 0..120 {
+        s.render(&gpu, DT);
+    }
     let normal = mean_rgb(&s.render(&gpu, DT));
     let normal_exposure = s.renderer.read_exposure(&gpu).unwrap();
 
+    // 16x brighter light: the aperture stage lets less light through, so the image changes far
+    // less than the light does (the aperture alone cannot hold the mean, see the unit tests).
     s.scale_light(16.0);
     s.renderer.reset_eye_adaptation();
     let bright = mean_rgb(&s.render(&gpu, DT));
@@ -81,12 +140,12 @@ fn eye_adaptation_compensates_for_scene_brightness() {
 
     let ratio = normal_exposure.exposure / bright_exposure.exposure;
     assert!(
-        (8.0..32.0).contains(&ratio),
-        "exposure should drop about 16x: {normal_exposure:?} vs {bright_exposure:?}"
+        ratio > 4.0,
+        "exposure should follow the aperture stage: {normal_exposure:?} vs {bright_exposure:?}"
     );
     assert!(
-        (bright - normal).abs() < 0.15 * normal,
-        "adapted images should look alike: mean {normal} vs {bright}"
+        bright < 4.0 * normal,
+        "the adapted image should change far less than the light: mean {normal} vs {bright}"
     );
 }
 
@@ -94,6 +153,7 @@ fn eye_adaptation_compensates_for_scene_brightness() {
 fn adaptation_steps_are_limited_per_frame() {
     let Some(gpu) = gpu() else { return };
     let mut s = scene(&gpu);
+    s.wide_aperture();
     s.render(&gpu, DT);
     let start = s.renderer.read_exposure(&gpu).unwrap();
 
@@ -110,10 +170,10 @@ fn adaptation_steps_are_limited_per_frame() {
         s.render(&gpu, 0.1);
     }
     let settled = s.renderer.read_exposure(&gpu).unwrap();
-    let key = s.renderer.settings.hdr.key;
+    let wanted = s.expected_exposure(settled.average_luminance);
     assert!(
-        (settled.exposure * settled.average_luminance / key - 1.0).abs() < 0.02,
-        "exposure should settle at key / measured: {settled:?}"
+        (settled.exposure / wanted - 1.0).abs() < 0.02,
+        "exposure should settle on the aperture stage: {settled:?} vs {wanted}"
     );
 
     // 16x darker again: it may double every 1 s: 0.1 stops in 0.1 s.
@@ -125,6 +185,38 @@ fn adaptation_steps_are_limited_per_frame() {
         (ratio - 2f32.powf(0.1)).abs() < 1e-3,
         "ratio {ratio}: {settled:?} -> {darker:?}"
     );
+}
+
+#[test]
+fn the_aperture_stage_pins_the_exposure_at_the_entry_limits() {
+    let Some(gpu) = gpu() else { return };
+    let exposure = |settings: HdrSettings| {
+        let mut s = scene(&gpu);
+        s.renderer.settings.hdr = settings;
+        s.render(&gpu, DT);
+        s.renderer.read_exposure(&gpu).unwrap().exposure
+    };
+    // A scene far darker than the entry's standard luminance: the aperture is fully open and
+    // the exposure is 1 / apertureMin² (Altis Lighting0 at night).
+    let night = HdrSettings {
+        aperture_min: 4.0,
+        aperture_standard: 4.0,
+        aperture_max: 8.0,
+        standard_avg_lum: 1.0e6,
+        ..HdrSettings::default()
+    };
+    let open = exposure(night);
+    assert!((open - 1.0 / 16.0).abs() < 1e-6, "{open}");
+    // A scene far brighter: the aperture is closed, exposure 1 / apertureMax².
+    let noon = HdrSettings {
+        aperture_min: 70.0,
+        aperture_standard: 120.0,
+        aperture_max: 120.0,
+        standard_avg_lum: 1.0e-6,
+        ..HdrSettings::default()
+    };
+    let closed = exposure(noon);
+    assert!((closed - 1.0 / 14400.0).abs() < 1e-9, "{closed}");
 }
 
 #[test]

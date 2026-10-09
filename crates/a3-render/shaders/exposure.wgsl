@@ -1,6 +1,12 @@
 // Eye adaptation as RV does it (docs/re/render-atmosphere.md §3.3): a log-average (geometric
-// mean) luminance meter, then the "assumed luminance" step towards key / measured with a soft
-// step near the target, per-frame change limits and clamps.
+// mean) luminance meter, then the aperture stage of the lighting entry (`1 / aperture²` at the
+// measured luminance, `0x14175ac10`), stepped towards its target with the soft step near the
+// target and the per-frame change limits of `PSC_AssumedLuminancePars2.zw`.
+//
+// The engine runs the aperture stage on the CPU from the luminance read back off the GPU, divided
+// by the exposure it was rendered with. We meter the unexposed HDR buffer, so `measured` below is
+// already that absolute scene luminance; the same stage therefore runs in this pass and the
+// per-frame GPU-to-CPU read-back is not needed.
 
 // Must match post.rs (PostUniforms).
 struct Post {
@@ -8,7 +14,8 @@ struct Post {
     filmic_abcd: vec4<f32>,
     // Hable E, F, W, exposure bias.
     filmic_efw_bias: vec4<f32>,
-    // min exposure, max exposure, key, fixed exposure (<= 0: automatic).
+    // exposure range (min, max), key of the assumed-luminance fallback, fixed exposure
+    // (<= 0: automatic).
     exposure: vec4<f32>,
     // lowest per-frame ratio, highest per-frame ratio, dt, reset (1 = jump to target).
     adaptation: vec4<f32>,
@@ -19,6 +26,10 @@ struct Post {
     bloom: vec4<f32>,
     // final gamma (PSC_RgbEyeCoef.w), bloom on, unused, unused.
     output: vec4<f32>,
+    // apertureMin, apertureStandard, apertureMax, standardAvgLum of the lighting entry.
+    aperture: vec4<f32>,
+    // apertureRatioMin, apertureRatioMax, minAperture, maxAperture.
+    aperture_ratios: vec4<f32>,
 }
 
 struct ExposureState {
@@ -81,6 +92,35 @@ fn measure(
     }
 }
 
+// The aperture the lighting entry asks for at an absolute scene luminance (`0x14175ac10`): the
+// standard aperture at `standardAvgLum`, moving linearly towards apertureMin / apertureMax as the
+// luminance falls / rises, reaching them at `standardAvgLum / apertureRatioMin` and
+// `standardAvgLum * apertureRatioMax`. The dark branch is the engine's literal one, so the curve
+// jumps at the standard luminance when apertureStandard != apertureMin. Clamped to
+// `[minAperture, maxAperture]` like the engine.
+fn aperture_at(luminance: f32) -> f32 {
+    let p = post.aperture;
+    let r = post.aperture_ratios;
+    var ap: f32;
+    if p.y <= 0.0 || p.w <= 0.0 {
+        return 1.0;
+    }
+    if luminance <= p.w {
+        let x = -p.w / max(luminance, 1e-6);
+        ap = select(p.x + (x + r.x) / (1.0 + r.x) * (p.y - p.x), p.x, r.x <= 1.0 || x < -r.x);
+    } else {
+        let y = luminance / p.w;
+        ap = select(p.y + (y - 1.0) / (r.y - 1.0) * (p.z - p.y), p.z, r.y <= 1.0 || y > r.y);
+    }
+    return clamp(ap, r.z, max(r.w, r.z));
+}
+
+// RV's aperture stage output: the exposure the scene is rendered with.
+fn aperture_exposure(luminance: f32) -> f32 {
+    let ap = max(aperture_at(luminance), 1e-12);
+    return 1.0 / (ap * ap);
+}
+
 @compute @workgroup_size(256)
 fn adapt(@builtin(local_invocation_index) index: u32) {
     let slots = arrayLength(&partials) / 2u;
@@ -98,9 +138,16 @@ fn adapt(@builtin(local_invocation_index) index: u32) {
         return;
     }
     let mean_ln = min(sums[0] / max(counts[0], 1.0), 1637.6);
-    let measured = max(min(exp(mean_ln), 1000.0), 1e-4);
-    // RV adapts an exposure-like value: target = key / measured.
-    var wanted = post.exposure.z / measured;
+    // The meter's own cap (`min(t0.x, 1000)` in PSPostProcessAssumedLuminance) is not applied:
+    // the engine meters the already exposed HDR buffer, while this meter reads the unexposed
+    // scene, so its value is absolute luminance and that bound would clamp every daylit frame.
+    let measured = max(exp(mean_ln), 1e-4);
+    // RV adapts the aperture stage's exposure: 1 / aperture² at the measured luminance. Entries
+    // without a usable aperture stage fall back to the assumed-luminance step key / measured.
+    var wanted = aperture_exposure(measured);
+    if post.aperture.y <= 0.0 || post.aperture.w <= 0.0 {
+        wanted = post.exposure.z / measured;
+    }
     let previous = state.exposure;
     if post.adaptation.w < 0.5 && previous > 0.0 {
         var ratio = wanted / previous;
@@ -115,6 +162,6 @@ fn adapt(@builtin(local_invocation_index) index: u32) {
         exposure = post.exposure.w;
     }
     state.exposure = exposure;
-    state.adapted_luminance = post.exposure.z / exposure;
+    state.adapted_luminance = measured;
     state.average_luminance = measured;
 }

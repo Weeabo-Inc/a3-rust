@@ -178,17 +178,14 @@ impl SceneEnvironment {
             s.fog_end = end;
         }
         s.procedural_sky = false;
-        // The table's apertures say how far exposure may follow the scene: `standardAvgLum` is
-        // exposed like `apertureStandard`, and the aperture stays within apertureMin..Max
-        // (exposure 1/aperture², docs/re/render-atmosphere.md §3.3). Our eye adaptation
-        // tracks the scene's average luminance, so bound that: never darker than the
-        // standard luminance scaled by (min / standard)² (night stays night), and allow
-        // brighter scenes than the table's maximum, which the engine's own meter handles in
-        // ways not traced yet.
-        let standard = l.aperture_standard.max(1e-3);
-        let lum = l.standard_avg_lum.max(1e-3);
-        s.hdr.min_aperture = lum * (l.aperture_min / standard).powi(2);
-        s.hdr.max_aperture = lum * (l.aperture_max / standard).max(1.0).powi(2) * 16.0;
+        // The lighting entry's aperture stage (docs/re/render-atmosphere.md §3.3): the aperture
+        // moves from `apertureMin` to `apertureMax` around `apertureStandard` as the measured
+        // luminance moves from `standardAvgLum / apertureRatioMin` to
+        // `standardAvgLum * apertureRatioMax`, and the exposure is `1 / aperture²`.
+        s.hdr.aperture_min = l.aperture_min;
+        s.hdr.aperture_standard = l.aperture_standard;
+        s.hdr.aperture_max = l.aperture_max;
+        s.hdr.standard_avg_lum = l.standard_avg_lum;
 
         let mut sky = self.sky.lock().unwrap_or_else(|p| p.into_inner());
         sky.zenith = l.sky;
