@@ -96,6 +96,7 @@ mod ai;
 mod class;
 mod damage;
 mod entity;
+mod fire;
 mod groups;
 mod handlers;
 mod id;
@@ -104,6 +105,7 @@ mod moves;
 pub mod net;
 mod object_ref;
 mod query;
+mod random;
 pub mod script;
 mod script_state;
 mod sim;
@@ -125,6 +127,7 @@ pub use damage::{
     FatalHitPoint, HitPoint, Ruin,
 };
 pub use entity::{Attachment, Entity, ListKind, Locality, VisualState};
+pub use fire::FireRequest;
 pub use groups::{ENEMY_THRESHOLD, Group, GroupId, Side, default_group_name, side_from_config};
 pub use handlers::{Handler, Handlers};
 pub use id::{ClientId, EntityId, NetworkId, ParseNetworkIdError};
@@ -179,6 +182,19 @@ pub enum Error {
     /// parameters.
     #[error("the world has no config; call World::set_config first")]
     NoConfig,
+    /// The weapon has no muzzle of this name.
+    #[error("weapon {weapon:?} has no muzzle {muzzle:?}")]
+    NoSuchMuzzle { weapon: String, muzzle: String },
+    /// The muzzle has no fire mode of this name.
+    #[error("muzzle {muzzle:?} of weapon {weapon:?} has no mode {mode:?}")]
+    NoSuchMode {
+        weapon: String,
+        muzzle: String,
+        mode: String,
+    },
+    /// A shot needs a direction to fly in.
+    #[error("cannot fire along a zero direction")]
+    ZeroDirection,
     /// The class's `simulation` value has no engine class (yet).
     #[error("config class {type_name:?} has unknown simulation {simulation:?}")]
     UnknownSimulation {

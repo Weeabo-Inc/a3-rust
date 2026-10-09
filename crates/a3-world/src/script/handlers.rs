@@ -315,7 +315,8 @@ pub fn raise_mission_event<H: WorldHost>(ctx: &mut Ctx<'_, H>, event_type: &str,
 /// The handlers the World's queued events amount to, taking the queue.
 fn take_calls(world: &mut World) -> Vec<Call> {
     let mut calls = Vec::new();
-    for event in world.drain_events() {
+    let (events, shots) = world.drain_events_and_shots();
+    for event in events {
         match event {
             WorldEvent::EntityCreated(entity) => {
                 let this = Value::array([object_value(world, ObjectRef::Entity(entity))]);
@@ -364,6 +365,142 @@ fn take_calls(world: &mut World) -> Vec<Call> {
             // the event carries the hit point index and the change. Mapping it is follow-up
             // work (#256) together with the other engine-raised object events.
             WorldEvent::Dammaged { .. } => {}
+            WorldEvent::Fired {
+                shot,
+                shooter,
+                weapon,
+            } => {
+                let Some(fired) = shots.get(&shot) else {
+                    continue;
+                };
+                let unit = ObjectRef::Entity(shooter);
+                let s = |text: &str| Value::string(text);
+                let entity = |id: Option<EntityId>| {
+                    id.map_or_else(super::null_object, |id| {
+                        object_value(world, ObjectRef::Entity(id))
+                    })
+                };
+                // `[unit, weapon, muzzle, mode, ammo, magazine, projectile, gunner]`.
+                let this = Value::array([
+                    object_value(world, unit),
+                    s(&weapon),
+                    s(&fired.muzzle),
+                    s(&fired.mode),
+                    s(&fired.ammo),
+                    s(&fired.magazine),
+                    object_value(world, ObjectRef::Entity(shot)),
+                    entity(fired.gunner),
+                ]);
+                calls.extend(calls_of(
+                    world.handlers().object_list(unit, "Fired"),
+                    "Fired",
+                    this.clone(),
+                ));
+                // `FiredMan`: the last element is the vehicle whose weapon fired, objNull on foot.
+                if world
+                    .entity(shooter)
+                    .is_some_and(|e| e.class().is_kind_of(crate::EntityClass::Person))
+                {
+                    let this = Value::array([
+                        object_value(world, unit),
+                        s(&weapon),
+                        s(&fired.muzzle),
+                        s(&fired.mode),
+                        s(&fired.ammo),
+                        s(&fired.magazine),
+                        object_value(world, ObjectRef::Entity(shot)),
+                        super::null_object(),
+                    ]);
+                    calls.extend(calls_of(
+                        world.handlers().object_list(unit, "FiredMan"),
+                        "FiredMan",
+                        this,
+                    ));
+                }
+            }
+            WorldEvent::Hit {
+                shot,
+                shooter,
+                target,
+                ammo,
+                position,
+                normal,
+                velocity,
+                direct,
+                component,
+                surface,
+                radius,
+                damage,
+                ..
+            } => {
+                let ammo_info = world
+                    .weapon_bank()
+                    .and_then(|bank| bank.ammo(&ammo).ok())
+                    .map(|a| (a.hit, a.indirect_hit, a.indirect_hit_range, a.explosive))
+                    .unwrap_or_default();
+                let world = &*world;
+                let who = |id: Option<EntityId>| {
+                    id.map_or_else(super::null_object, |id| {
+                        object_value(world, ObjectRef::Entity(id))
+                    })
+                };
+                // `HitPart`: `[[target, shooter, projectile, positionASL, velocity, selections,
+                // [hit, indirectHit, indirectHitRange, explosive, ammo], vector, radius,
+                // surfaceType, isDirect, instigator]]`.
+                let part = Value::array([
+                    object_value(world, target),
+                    who(shooter),
+                    object_value(world, ObjectRef::Entity(shot)),
+                    super::position_value(position),
+                    super::vector_value(velocity),
+                    Value::array(component.iter().map(Value::string)),
+                    Value::array([
+                        Value::Number(ammo_info.0 as f32),
+                        Value::Number(ammo_info.1 as f32),
+                        Value::Number(ammo_info.2 as f32),
+                        Value::Number(ammo_info.3 as f32),
+                        Value::string(&ammo),
+                    ]),
+                    super::vector_value(normal),
+                    Value::Number(radius as f32),
+                    Value::string(surface.as_deref().unwrap_or("")),
+                    Value::Bool(direct),
+                    who(shooter),
+                ]);
+                calls.extend(calls_of(
+                    world.handlers().object_list(target, "HitPart"),
+                    "HitPart",
+                    Value::array([part]),
+                ));
+                if damage > 0.0 {
+                    // `Hit`: `[unit, source, damage, instigator]`.
+                    let this = Value::array([
+                        object_value(world, target),
+                        who(shooter),
+                        Value::Number(damage as f32),
+                        who(shooter),
+                    ]);
+                    calls.extend(calls_of(
+                        world.handlers().object_list(target, "Hit"),
+                        "Hit",
+                        this,
+                    ));
+                    if !direct {
+                        // `Explosion`: `[vehicle, damage, source]`.
+                        let this = Value::array([
+                            object_value(world, target),
+                            Value::Number(damage as f32),
+                            who(shooter),
+                        ]);
+                        calls.extend(calls_of(
+                            world.handlers().object_list(target, "Explosion"),
+                            "Explosion",
+                            this,
+                        ));
+                    }
+                }
+            }
+            WorldEvent::Exploded { .. } => {}
             WorldEvent::WaypointCompleted { group, index } => {
                 // `[group, waypointIndex]`, the index one-based as scripts address waypoints
                 // (the engine's implicit start waypoint is 0).

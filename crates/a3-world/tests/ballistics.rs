@@ -29,6 +29,15 @@ fn f32v(v: f32) -> f64 {
     f64::from(v)
 }
 
+/// The velocity of a `B_Ball` shot fired at `v0` after `t` seconds of flight within one step.
+/// A shot that hits something moves to the hit point and its velocity takes one Euler step for
+/// the time that took (`0x140e6c3d0`, `docs/re/sim-ballistics.md` §3), so `v_in` at the hit is
+/// not the muzzle velocity: `v + (k·|v|·v − (0, g, 0))·t`.
+fn ball_velocity_after(v0: DVec3, t: f64) -> DVec3 {
+    let k = f32v(-0.0012);
+    v0 + (k * v0.length() * v0 - DVec3::new(0.0, GRAVITY, 0.0)) * t
+}
+
 /// An empty World with the weapons config: firing and flight, no collision world.
 fn bare() -> World {
     let mut world = World::new(ClientId::SERVER);
@@ -288,11 +297,21 @@ fn a_shot_that_cannot_penetrate_stops_and_is_deleted() {
         .into_iter()
         .find(|(t, ..)| *t == target)
         .expect("the wall was hit");
-    assert_eq!(hit.1, 900.0, "v_in is the speed before the impact");
+    // v_in is the speed at the wall face, 13.5 m (0.015 s) downrange.
+    let speed_in = ball_velocity_after(DVec3::new(900.0, 0.0, 0.0), 13.5 / 900.0).length();
+    assert!(
+        (hit.1 - speed_in).abs() < 1e-9,
+        "v_in {} (want {speed_in})",
+        hit.1
+    );
     assert_eq!(hit.2, 0.0, "nothing left of it");
-    // 0.5 m of plank at R = 1e6/100 over caliber 0.9 costs 11111 m/s: e = 900/800 (typical
-    // speed), value = hit 8 × e = 9.
-    assert!((hit.3 - 9.0).abs() < 1e-9, "value {}", hit.3);
+    // 1 m of plank at R = 1e6/100 over caliber 0.9 costs 11111 m/s: e = v_in/800 (typical
+    // speed), value = hit 8 × e.
+    assert!(
+        (hit.3 - 8.0 * speed_in / 800.0).abs() < 1e-9,
+        "value {}",
+        hit.3
+    );
     assert!(world.entity(shot).is_none(), "a stopped bullet is deleted");
 }
 
@@ -318,7 +337,10 @@ fn a_shot_penetrates_a_thin_plate_and_keeps_going() {
     // R = 1e6/100 = 1e4; loss = (R/caliber)·L, L = the plate's 10 mm thickness. `SurfaceInfo`
     // keeps `thickness` as `f32` metres (`mm * 0.001` in `f32`), so the expected loss must round
     // through `f32` the same way.
-    let thickness = f32v(10.0_f32 * 0.001_f32);
+    // The plate's face is 13.995 m downrange; the thickness counts along the flight, whose
+    // direction gravity has tipped by a hair.
+    let v_in = ball_velocity_after(DVec3::new(900.0, 0.0, 0.0), 13.995 / 900.0);
+    let thickness = f32v(10.0_f32 * 0.001_f32) / (v_in.x / v_in.length());
     let loss = (1e4 / f32v(0.9)) * thickness;
     let events = world.drain_events();
     let target = static_at(&world, plate);
@@ -326,14 +348,20 @@ fn a_shot_penetrates_a_thin_plate_and_keeps_going() {
         .into_iter()
         .find(|(t, ..)| *t == target)
         .expect("the plate was hit");
-    assert_eq!(hit.1, 900.0);
-    assert!((hit.2 - (900.0 - loss)).abs() < 1e-6, "speed_out {}", hit.2);
+    assert!((hit.1 - v_in.length()).abs() < 1e-6, "speed_in {}", hit.1);
+    let speed_out = v_in.length() - loss;
+    assert!((hit.2 - speed_out).abs() < 1e-6, "speed_out {}", hit.2);
     // A punch-through barely damages: hit 8 × (loss / typicalSpeed 800).
     assert!((hit.3 - 8.0 * loss / 800.0).abs() < 1e-9, "value {}", hit.3);
 
+    // After the exit the shot flies on for the rest of the step, under drag again.
     let e = world.entity(shot).expect("a penetrating bullet flies on");
     assert!(e.position().x > 90.0, "x {}", e.position().x);
-    assert!((e.velocity().length() - (900.0 - loss)).abs() < 1e-6);
+    let speed = e.velocity().length();
+    assert!(
+        speed < speed_out && speed > 0.95 * speed_out,
+        "|v| {speed} after leaving at {speed_out}"
+    );
 }
 
 #[test]
@@ -358,28 +386,36 @@ fn a_grazing_shot_ricochets() {
         .into_iter()
         .next()
         .expect("the top face was hit");
-    // The direction is a normalized vector, so the muzzle speed is 900 to rounding, not exactly.
-    assert!((hit.1 - 900.0).abs() < 1e-9, "speed_in {}", hit.1);
-    // maxSin = sin(deflecting 15° · surfDeflect 1), sinG = −n'·v̂ = 0.2/√1.04 = 0.196.
-    let sin_g = 0.2 / 1.04_f64.sqrt();
-    let max_sin = 15_f64.to_radians().sin();
+    // The shot meets the top face √1.04 m from the muzzle; its velocity has stepped for that time.
+    let v_in = ball_velocity_after(direction * 900.0, 1.04_f64.sqrt() / 900.0);
+    assert!((hit.1 - v_in.length()).abs() < 1e-6, "speed_in {}", hit.1);
+    // maxSin = sin(deflecting 15° · surfDeflect 1), sinG = −n'·v̂ ≈ 0.2/√1.04 = 0.196.
+    let sin_g = -v_in.normalize().y;
+    let max_sin = f32v(15.0).to_radians().sin();
     assert!(sin_g < max_sin, "{sin_g} vs {max_sin}");
+    // k = min(max(1 − (sinG/maxSin)², 0), deflectionSlowDown 1) · Rand_MinMidMax(0.6, 0.9, 1)
+    // (`0x140e65820`).
+    let k = 1.0 - (sin_g / max_sin).powi(2);
+    let (lo, hi) = (hit.1 * k * 0.6, hit.1 * k);
+    assert!(
+        hit.2 > lo - 1e-6 && hit.2 < hi + 1e-6,
+        "speed_out {} not in {lo}..{hi}",
+        hit.2
+    );
+    assert!(hit.3 > 0.0, "a ricochet damages: {}", hit.3);
 
+    // It flies on for the rest of the step, up and away, under drag again.
     let e = world
         .entity(shot)
         .expect("a ricochet does not delete the shot");
     let v = e.velocity();
     assert!(v.y > 0.0, "it bounced up: {v:?}");
-    // k = min(max(1 − (sinG/maxSin)², 0), deflectionSlowDown 1) · U(0.6, 0.9).
-    let k = 1.0 - (sin_g / max_sin).powi(2);
-    let (lo, hi) = (900.0 * k * 0.6, 900.0 * k * 0.9);
     assert!(
-        v.length() > lo - 1e-9 && v.length() < hi + 1e-9,
-        "|v| {}",
-        v.length()
+        v.length() < hit.2 && v.length() > 0.9 * hit.2,
+        "|v| {} after leaving at {}",
+        v.length(),
+        hit.2
     );
-    assert!((v.length() - hit.2).abs() < 1e-9, "speed_out {}", hit.2);
-    assert!(hit.3 > 0.0, "a ricochet damages: {}", hit.3);
 }
 
 #[test]
@@ -426,7 +462,7 @@ fn an_explosive_shell_explodes_on_impact_and_blasts_nearby_objects() {
     // `explosive` is a config number, stored as `f32`, so the expected value carries that
     // rounding: the arithmetic has to be laid out the same way.
     let explosive = f32v(0.6_f32);
-    let direct_value = 30.0 * ((300.0 / 900.0).min(2.0) * (1.0 - explosive) + explosive);
+    let direct_value = 30.0 * ((300.0_f64 / 900.0).min(2.0) * (1.0 - explosive) + explosive);
     let direct = h
         .iter()
         .find(|(t, ..)| *t == wall_key)

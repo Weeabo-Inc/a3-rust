@@ -33,6 +33,9 @@ pub struct LayerShape {
     components: Vec<Component>,
     /// Mesh layers: the surface of each triangle.
     triangle_surfaces: Vec<Option<SurfaceId>>,
+    /// The model's bounding sphere radius (ODOL `ModelInfo::bounding_sphere`; 0 for an MLOD,
+    /// which does not store it).
+    model_sphere: f64,
 }
 
 impl std::fmt::Debug for LayerShape {
@@ -57,6 +60,25 @@ impl LayerShape {
 
     pub fn is_mesh(&self) -> bool {
         self.shape.as_trimesh().is_some()
+    }
+
+    /// The bounding sphere radius of the model the layer belongs to (ODOL
+    /// `ModelInfo::bounding_sphere`, the engine's `shape+0x7c`); 0 for an MLOD model, which does
+    /// not store one. Explosions measure the near and far side of an Object by it
+    /// (`docs/re/sim-ballistics.md` §6).
+    pub fn model_bounding_sphere(&self) -> f64 {
+        self.model_sphere
+    }
+
+    /// The radius of the sphere around the model origin that holds the whole layer: the farthest
+    /// corner of its model-space bounding box. The explosion falloff measures objects by it
+    /// (`docs/re/sim-ballistics.md` §6).
+    pub fn bounding_radius(&self) -> f64 {
+        let aabb = self.shape.compute_local_aabb();
+        conv::dvec(aabb.mins)
+            .abs()
+            .max(conv::dvec(aabb.maxs).abs())
+            .length()
     }
 
     /// Number of triangles of a mesh layer.
@@ -95,6 +117,7 @@ impl LayerShape {
             shape: SharedShape::compound(shapes),
             components,
             triangle_surfaces: Vec::new(),
+            model_sphere: 0.0,
         })
     }
 
@@ -113,6 +136,7 @@ impl LayerShape {
             shape,
             components: Vec::new(),
             triangle_surfaces,
+            model_sphere: 0.0,
         })
     }
 
@@ -142,6 +166,7 @@ impl LayerShape {
             shape,
             components: self.components.clone(),
             triangle_surfaces: self.triangle_surfaces.clone(),
+            model_sphere: self.model_sphere * s,
         })
     }
 }
@@ -189,19 +214,24 @@ impl ModelCollision {
         let roadway = index(special.roadway).or_else(|| by_kind(&[LodKind::Roadway]));
         let physx = index(special.geometry_physx).or_else(|| by_kind(&[LodKind::GeometryPhysx]));
 
+        let sphere = f64::from(model.info.bounding_sphere);
+        let with_sphere = |mut l: LayerShape| {
+            l.model_sphere = sphere;
+            Arc::new(l)
+        };
         let mut built: HashMap<usize, Option<Arc<LayerShape>>> = HashMap::new();
         let mut convex = |i: Option<usize>, surfaces: &mut SurfaceBank| {
             let i = i?;
             built
                 .entry(i)
-                .or_insert_with(|| convex_layer(&model.lods[i], surfaces).map(Arc::new))
+                .or_insert_with(|| convex_layer(&model.lods[i], surfaces).map(with_sphere))
                 .clone()
         };
         let layers = [
             convex(geometry, surfaces),
             convex(fire, surfaces),
             convex(view, surfaces),
-            roadway.and_then(|i| mesh_layer(&model.lods[i], surfaces).map(Arc::new)),
+            roadway.and_then(|i| mesh_layer(&model.lods[i], surfaces).map(with_sphere)),
         ];
         let physx = convex(physx, surfaces);
 

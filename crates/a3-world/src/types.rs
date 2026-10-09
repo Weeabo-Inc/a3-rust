@@ -106,7 +106,7 @@ impl EntityType {
         self
     }
 
-    fn from_config(source: TypeSource, cfg: &ConfigRef<'_>) -> Result<Self, Error> {
+    pub(crate) fn from_config(source: TypeSource, cfg: &ConfigRef<'_>) -> Result<Self, Error> {
         let simulation = cfg.get("simulation").text().to_ascii_lowercase();
         let class = SimulationClass::from_simulation(&simulation).ok_or_else(|| {
             Error::UnknownSimulation {

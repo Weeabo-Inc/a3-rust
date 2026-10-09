@@ -24,6 +24,12 @@ impl ObjectRef {
         }
     }
 
+    /// The key of the Object's body in the World's collision world
+    /// ([`a3_physics::CollisionWorld::add_body`]): Entities add their bodies under this key.
+    pub fn to_body_key(self) -> u64 {
+        self.to_handle_id()
+    }
+
     /// The inverse of [`to_handle_id`](Self::to_handle_id); `None` for 0 and malformed ids.
     /// Whether the Object still exists is a question for the World.
     pub fn from_handle_id(handle: u64) -> Option<ObjectRef> {
