@@ -6,28 +6,53 @@ Lighting/tonemap/atmosphere shader maths: see `render-materials.md` and the rend
 
 ## Sun and moon position
 
+The engine has its **own** sun and moon model, and it is the one that lights the scene. An
+earlier revision of this page said the directions came from trueSKY and that we therefore used
+real ephemerides; the oracle's own client disproves it (below), and the consequence was a night
+with no moonlight at all (#293).
+
 - The world config is read at `0x1155750` into the Landscape object: `latitude` (default -40)
   and `longitude` (default 15) in radians at +0x2e34 / +0x2e38, `elevationOffset`. **high**
-- **With trueSKY (all A3 worlds with `class SimulWeather`)** the sun and moon directions come
-  from trueSKY. `0x1670830` hands it the latitude **negated** (`^0x80000000`), the longitude, and
-  a time zone of `longitude · 12/π` hours (= longitude° / 15), plus date and time of day.
-  `0x10851a0` reads the directions back and maps trueSKY's (east, north, up) to RV axes. So the
-  config's `latitude = -35.152` (Altis) means 35.152° N, Tanoa's `17.698` means 17.7° S, and
-  the clock runs on local mean solar time. **high** for the plumbing; trueSKY's own ephemeris is
-  not in the exe, so `a3-environment` uses standard ones (NOAA solar position; Meeus' truncated
-  lunar theory with topocentric parallax), good to a fraction of a degree.
-- **Without trueSKY** `0x10813c0` builds the directions from rotation matrices: tilt
-  `RotX(0.40142)` (23.0°), daily `RotY(2π·t)`, yearly `RotY(2π·(d/365 − 0.030137))` (offset
-  11 days: the December solstice), `RotX(latitude)`, `RotX(−π/2)`; the moon adds an orbit tilt
-  `RotZ(5°)` and an angle `((year + d/365) − 1985.0082)·81.90581 + π`. Not used by A3 worlds;
-  not implemented. **high**
-- The **moon phase** (`0x1080fc0`, SQF `moonPhase`): `x = acos(−dot(Ls, Lm))/(2π) + 0.5` with
-  `L` the light directions; `moonPhase = 2 − 2x` = sun-moon elongation / π (0 new, 1 full).
-  **high**
+- **`0x10813c0` builds the sun and moon directions** from rotation matrices, and it is called
+  unconditionally by `0x10851a0`, the function that produces the light the renderer shades with.
+  `0x10851a0` also has a trueSKY branch, but it only fills the directions itself when the Simul
+  object and its data are present, and it passes the builder *null* direction outputs in that
+  case; which branch runs in the shipped client is settled by the oracle, not by the code. **high
+  for the call chain, medium for which branch wins**
+  - helpers, each decompiled: `0x35c410(m, a)` is `RotX(−a)`, `0x35c560(m, a)` is `RotY(a)`,
+    `0x35c6b0(m, a)` is `RotZ(a)`, `0x35bc40` transposes, `0x35acb0` normalises. **high**
+  - the chain: `A = RotY(2π·t)` daily (`t` the day fraction), `B = RotY(2π·(f − 0.030136986))`
+    yearly with `f = (day_of_year_0based + t)/365`, `G = RotX(−0.40142)` (23° tilt),
+    `L = RotX(−latitude)`; `D = B·A·G`, `F = L·D`, `E = Fᵀ·RotX(−π/2)`. **high**
+  - the sun is `E` applied to `B`'s third row; the moon is `E` applied to `M`'s third row carried
+    through `RotZ(5°)`, where `M = RotY((year + f − 1985.0082)·81.90581 + π)`. The x and z
+    components are negated in both, and the engine's `(east, north, up)` frame is the model's
+    negated as a whole. **high**
+  - the config's `latitude = -35.152` (Altis) means 35.152° N and the clock is the world's local
+    time; `longitude` and the time zone do not enter this builder. **high**
+- The **moon phase** (`0x1080fc0`, SQF `moonPhase` at `0x4a6d70`): `x = acos(−dot(Ls, Lm))/(2π) +
+  0.5` with `L` the same builder's two directions, `moonPhase = 2 − 2x` = sun-moon elongation / π
+  (0 new, 1 full). The SQF command hands the builder a time of day of zero, so `moonPhase` is the
+  same all day; the renderer passes the real hour. **high**
+- The **oracle says the legacy model is what the client shows.** Its scenario logs
+  `moonPhase date`, `sunOrMoon` and `date` for every shot:
+  - `2035-06-06 23:30` → `moonPhase=0.704879 sunOrMoon=0`, and the night capture is moonlit: its
+    ground is about five times our moonless ground. The real Moon that night is **new**
+    (elongation 11°, 34° below the horizon), which is what our ephemeris gave us.
+  - `2035-06-24` (all shots) → `moonPhase=0.107916`, identical at 12:00 and 19:50: the hour does
+    not enter the command, as above.
+  - A port of the chain above reproduces both to 0.0003. Its sun is within 2° of the real
+    ephemeris at noon over Altis (76.5° against 78.2°) and 6-9° in azimuth, so the day shots keep
+    their shadows. **high**
+- `a3-environment` implements this model (`celestial.rs`, `legacy_directions`). The NOAA and
+  Meeus ephemerides it used before are gone; `0x1670830`/`0x10851a0`'s trueSKY plumbing is not
+  implemented. **high**
 - The **light direction** used for shading is the sun when the table's `sunOrMoon` ≥ 0.5, else
   the moon. A copy used for shadows has its height forced to at least 0.4 before
   renormalising (`0x10851a0`, `if (-0.4 < y) y = -0.4` on the light-travel vector). **high**
-- Calendar: days per month with Gregorian leap years (`0x1088ab0`). **high**
+- Calendar: days per month with Gregorian leap years (`0x1088ab0`); index 0 is January and only
+  index 1 takes the leap day. **high**
+
 
 ## Lighting table: `CfgWorlds >> W >> Weather >> LightingNew`
 
