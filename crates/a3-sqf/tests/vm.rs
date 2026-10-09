@@ -225,10 +225,191 @@ fn global_variables_and_namespaces() {
 fn compile_final_cannot_be_overwritten() {
     let mut vm = vm();
     vm.eval("fnc = compileFinal \"1\"").unwrap();
-    // Logged, not fatal: the assignment does not happen.
+    // Logged, not fatal: the assignment does not happen. Server oracle:
+    // `finB = compileFinal "1"; finB = "2"; str finB` is `"{1}"`.
     let v = vm.eval("fnc = {2}; fnc").unwrap();
     assert_eq!(v.to_sqf_string(), "{1}");
     assert!(vm.host.errors[0].contains("final"), "{:?}", vm.host.errors);
+}
+
+#[test]
+fn compile_final_override_keeps_the_script_running() {
+    // Server oracle (`err.final_global_continues`): `finA = compileFinal "1"; finA = "2";
+    // "after"` is `"after"`.
+    let mut vm = vm();
+    let v = vm
+        .eval("finA = compileFinal \"1\"; finA = \"2\"; \"after\"")
+        .unwrap();
+    assert_eq!(v.to_sqf_string(), "\"after\"");
+    assert_eq!(vm.eval("str finA").unwrap().to_sqf_string(), "\"{1}\"");
+    assert_eq!(vm.host.errors.len(), 1, "{:?}", vm.host.errors);
+}
+
+#[test]
+fn compile_final_override_error_names_the_variable_lower_cased() {
+    // Server oracle (`err.final_global_casing`, `err.final_casing_define_mixed`): the
+    // engine logs `Attempt to override final function - finc_keeps_case` for
+    // `finC_KeEpS_CaSe = compileFinal "1"; finC_KeEpS_CaSe = 2` — the name is the
+    // stored variable name, which is lower-cased, not the name as spelled. Issue #347
+    // expected the spelling; the probe says otherwise.
+    let mut vm = vm();
+    vm.eval("finC_KeEpS_CaSe = compileFinal \"1\"; finC_KeEpS_CaSe = 2")
+        .unwrap();
+    assert_eq!(vm.host.errors.len(), 1, "{:?}", vm.host.errors);
+    assert!(
+        vm.host.errors[0].contains("Attempt to override final function - finc_keeps_case"),
+        "{:?}",
+        vm.host.errors
+    );
+}
+
+#[test]
+fn a_function_library_boot_survives_an_override() {
+    // The 35 campaign Missions (#347): `functions init` compiles the campaign's
+    // functions over the final ones the library installed. The boot has to reach its
+    // last statement; only the error line may change.
+    let mut vm = vm();
+    let v = vm
+        .eval(concat!(
+            "bis_fnc_camp_onmissioninit = compileFinal \"1\"; ",
+            "bis_fnc_camp_onmissioninit = {2}; \"booted\""
+        ))
+        .unwrap();
+    assert_eq!(v.to_sqf_string(), "\"booted\"");
+    assert_eq!(vm.host.errors.len(), 1, "{:?}", vm.host.errors);
+    assert!(
+        vm.host.errors[0].contains("bis_fnc_camp_onmissioninit"),
+        "{:?}",
+        vm.host.errors
+    );
+}
+
+#[test]
+fn a_local_holding_final_code_may_be_reassigned() {
+    // Server oracle (`err.final_local`): the check covers namespace variables only,
+    // `private _f = compileFinal "1"; _f = "2"` is allowed with no error at all.
+    let mut vm = vm();
+    let v = vm
+        .eval("private _f = compileFinal \"1\"; _f = \"2\"; _f")
+        .unwrap();
+    assert_eq!(v.to_sqf_string(), "\"2\"");
+    assert!(vm.host.errors.is_empty(), "{:?}", vm.host.errors);
+}
+
+#[test]
+fn a_final_hash_map_is_protected_like_final_code() {
+    // Server oracle (`err.final_hashmap_var`): the assignment is refused, the value
+    // stays a HASHMAP, and the error still says "final function".
+    let mut vm = vm();
+    let v = vm
+        .eval("finN = compileFinal createHashMap; finN = 1; typeName finN")
+        .unwrap();
+    assert_eq!(v.to_sqf_string(), "\"HASHMAP\"");
+    assert!(vm.host.errors[0].contains("final"), "{:?}", vm.host.errors);
+}
+
+#[test]
+fn setvariable_refuses_to_overwrite_a_final_value() {
+    // Server oracle (`err.final_setvariable`, `err.final_ui_namespace`).
+    for ns in ["missionNamespace", "uiNamespace"] {
+        let mut vm = vm();
+        let v = vm
+            .eval(&format!(
+                "{ns} setVariable [\"finK\", compileFinal \"1\"]; \
+                 {ns} setVariable [\"finK\", \"2\"]; str ({ns} getVariable \"finK\")"
+            ))
+            .unwrap();
+        assert_eq!(v.to_sqf_string(), "\"{1}\"", "{ns}");
+        assert!(
+            vm.host.errors[0].contains("final"),
+            "{ns}: {:?}",
+            vm.host.errors
+        );
+    }
+}
+
+#[test]
+fn setvariable_refuses_to_overwrite_a_final_hash_map() {
+    // Server oracle (`err.final_hashmap_setvariable`).
+    let mut vm = vm();
+    let v = vm
+        .eval(concat!(
+            "missionNamespace setVariable [\"finQ\", compileFinal createHashMap]; ",
+            "missionNamespace setVariable [\"finQ\", 1]; ",
+            "typeName (missionNamespace getVariable \"finQ\")"
+        ))
+        .unwrap();
+    assert_eq!(v.to_sqf_string(), "\"HASHMAP\"");
+    assert!(vm.host.errors[0].contains("final"), "{:?}", vm.host.errors);
+}
+
+#[test]
+fn nil_over_a_final_value_is_a_silent_no_op() {
+    // Server oracle (`err.final_nil_final_global`, `err.final_nil_final_global_read`):
+    // assigning nil is how a variable is deleted, and over a final value the engine
+    // refuses that **silently** — no error line, and the value stays.
+    let mut vm = vm();
+    let v = vm
+        .eval("nilC = compileFinal \"1\"; nilC = nil; isNil nilC")
+        .unwrap();
+    assert_eq!(v.to_sqf_string(), "false");
+    assert_eq!(vm.eval("call nilC").unwrap().to_sqf_string(), "1");
+    assert!(vm.host.errors.is_empty(), "{:?}", vm.host.errors);
+}
+
+#[test]
+fn nil_over_a_final_hash_map_reports_an_override() {
+    // Server oracle (`err.final_nil_hashmap_var_type`): unlike final code, a final hash
+    // map reports the attempt — the value still stays.
+    let mut vm = vm();
+    let v = vm
+        .eval("nilG = compileFinal createHashMap; nilG = nil; typeName nilG")
+        .unwrap();
+    assert_eq!(v.to_sqf_string(), "\"HASHMAP\"");
+    assert_eq!(vm.host.errors.len(), 1, "{:?}", vm.host.errors);
+    assert!(
+        vm.host.errors[0].contains("Attempt to override final function - nilg"),
+        "{:?}",
+        vm.host.errors
+    );
+}
+
+#[test]
+fn setvariable_nil_over_a_final_value_logs_a_delete_attempt() {
+    // Server oracle (`err.final_nil_setvariable_final`, `..._read`): `setVariable` with
+    // nil over a final value is refused with its own message and the value stays.
+    for (src, expected) in [
+        (
+            "nilD = compileFinal \"1\"; \
+             missionNamespace setVariable [\"nilD\", nil]; typeName nilD",
+            "\"CODE\"",
+        ),
+        (
+            "nilI = compileFinal createHashMap; \
+             missionNamespace setVariable [\"nilI\", nil]; typeName nilI",
+            "\"HASHMAP\"",
+        ),
+    ] {
+        let mut vm = vm();
+        let v = vm.eval(src).unwrap();
+        assert_eq!(v.to_sqf_string(), expected, "{src}");
+        assert_eq!(vm.host.errors.len(), 1, "{src}: {:?}", vm.host.errors);
+        assert!(
+            vm.host.errors[0].contains("Attempt to delete final function - nil"),
+            "{src}: {:?}",
+            vm.host.errors
+        );
+    }
+}
+
+#[test]
+fn setvariable_nil_on_a_plain_variable_still_deletes_it() {
+    // Control for the case above: `nilD = 1; missionNamespace setVariable ["nilD", nil]`
+    // logs nothing (server oracle `err.final_nil_setvariable`).
+    let mut vm = vm();
+    vm.eval("nilE = 1; missionNamespace setVariable [\"nilE\", nil]")
+        .unwrap();
+    assert!(vm.host.errors.is_empty(), "{:?}", vm.host.errors);
 }
 
 #[test]

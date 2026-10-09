@@ -9,6 +9,7 @@ use super::*;
 use crate::symbol::Sym;
 use crate::value::Namespace;
 use crate::vm::Ctx;
+use crate::vm::exec::is_final;
 
 pub(super) fn register<H: Host>(r: &mut Registry<H>) {
     r.nular("missionNamespace", NS, |_| {
@@ -67,10 +68,14 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         let name = Sym::new(expect_str(args.first().unwrap_or(&Value::Nil))?);
         let value = args.get(1).cloned().unwrap_or(Value::Nil);
         let vars = ctx.namespace_mut(ns);
-        if let Some(Value::Code(c)) = vars.get(name) {
-            if c.is_final() {
+        if let Some(held) = vars.get(name) {
+            if is_final(held) {
+                // Deleting a final value is refused as loudly as overwriting it, with its
+                // own message (server oracle: `missionNamespace setVariable ["nilh", nil]`
+                // logs `Attempt to delete final function - nilh` and the value stays).
+                let what = if value.is_nil() { "delete" } else { "override" };
                 return Err(SqfError::generic(format!(
-                    "Attempt to override final function - {name}"
+                    "Attempt to {what} final function - {name}"
                 )));
             }
         }

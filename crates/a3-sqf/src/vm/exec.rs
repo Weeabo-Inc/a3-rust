@@ -308,6 +308,17 @@ pub(crate) fn read_var<H: Host>(vm: &VmState<H>, script: &ScriptState<H>, name: 
 }
 
 /// Assigns a variable as `name = value` does.
+///
+/// A namespace variable that holds a final value cannot be overwritten: the
+/// engine logs `Attempt to override final function - <name>` and leaves the
+/// variable alone, and the script goes on (server oracle:
+/// `finA = compileFinal "1"; finA = "2"; "after"` is `"after"`, `str finA` stays
+/// `"{1}"`). Assigning `nil` — how a variable is deleted — over a final
+/// **function** is refused *silently* instead (`nilF = compileFinal "1";
+/// nilF = nil; isNil nilF` is `false` with no error line), while over a final
+/// **hash map** it still reports an override attempt (`nilJ = compileFinal
+/// createHashMap; nilJ = nil` logs `- nilj` and stays a HASHMAP). Locals are not
+/// protected at all: `private _f = compileFinal "1"; _f = "2"` is allowed.
 pub(crate) fn assign_var<H: Host>(
     vm: &mut VmState<H>,
     script: &mut ScriptState<H>,
@@ -319,8 +330,11 @@ pub(crate) fn assign_var<H: Host>(
         return Ok(());
     }
     let vars = vm.namespaces.get_mut(script.current_namespace());
-    if let Some(Value::Code(c)) = vars.get(name) {
-        if c.is_final() {
+    if let Some(held) = vars.get(name) {
+        if is_final(held) {
+            if value.is_nil() && matches!(held, Value::Code(_)) {
+                return Ok(());
+            }
             return Err(SqfError::generic(format!(
                 "Attempt to override final function - {name}"
             )));
@@ -328,6 +342,23 @@ pub(crate) fn assign_var<H: Host>(
     }
     vars.set(name, value);
     Ok(())
+}
+
+/// Whether `value` is final, so a variable holding it cannot be overwritten:
+/// the code of `compileFinal`, or the hash map of `compileFinal createHashMap`
+/// (both give "Attempt to override final function", server oracle:
+/// `finN = compileFinal createHashMap; finN = 1` leaves a HASHMAP).
+///
+/// The name in the message is the stored variable name, which the engine — and
+/// [`Sym`] — lower-cases, not the name as spelled at the assignment (server
+/// oracle: `finC_KeEpS_CaSe = compileFinal "1"; finC_KeEpS_CaSe = 2` logs
+/// `- finc_keeps_case`).
+pub(crate) fn is_final(value: &Value) -> bool {
+    match value {
+        Value::Code(c) => c.is_final(),
+        Value::HashMap(m) => m.is_read_only(),
+        _ => false,
+    }
 }
 
 /// Reports a script error, once per script: the engine writes the first
