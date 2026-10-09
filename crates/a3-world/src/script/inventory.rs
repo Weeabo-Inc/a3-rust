@@ -1,23 +1,23 @@
-//! Unit inventory commands: containers, worn items, assigned items, weapons, attachments,
-//! magazines. From the decompiled handlers and the oracle probes
+//! Unit inventory commands: containers, worn items, assigned items, attachments and the
+//! magazines and items inside containers. From the decompiled handlers and the oracle probes
 //! (`tools/oracle/probes/97_inventory_vr.probes`); see `docs/re/sqf-inventory.md`.
 //!
-//! A unit's gear is created from its config default on first use. Commands on anything that is
-//! not a Man return `""` / `[]` / nothing. RPT-only warnings of the original ("Inventory item
-//! with given name: [%s] not found", ...) are not reproduced.
+//! The weapons and magazines themselves are the [`Loadout`](crate::Loadout)'s
+//! (`crate::script::weapons`, `crate::loadout`): an equipped weapon with the magazine in its
+//! muzzle, and a carried but unloaded magazine in a container ([`Gear`]). Commands on anything
+//! that is not a Man return `""` / `[]` / nothing. RPT-only warnings of the original ("Inventory
+//! item with given name: [%s] not found", ...) are not reproduced.
 
 use a3_config::ConfigTree;
 use a3_sqf::vm::Ctx;
 use a3_sqf::{Registry, SqfError, Value};
 
 use super::{ARR, BOOL, NOTHING, NUM, OBJ, STR, WorldHost, object_arg};
+use crate::gear::{make_container, stored, wear};
 use crate::inventory::{
-    ANY_CONTAINER, ContainerSlot, Gear, ItemInfo, ItemKind, LinkSlot, Stored, Weapon, WeaponSlot,
-    classify, compatible_magazines, slot,
+    ANY_CONTAINER, ContainerSlot, Gear, ItemInfo, ItemKind, LinkSlot, WeaponSlot, classify, slot,
 };
-use crate::gear::{
-    default_gear, load_from_containers, make_container, make_magazine, make_weapon, stored, wear,
-};
+use crate::loadout::Loadout;
 use crate::{EntityClass, EntityId, ObjectRef, World};
 
 fn string_list(items: impl IntoIterator<Item = String>) -> Value {
@@ -39,30 +39,52 @@ fn man(world: &World, value: &Value) -> Option<EntityId> {
     }
 }
 
-/// Runs `f` on a unit's gear (created from the config default on first use).
-fn with_gear<H: WorldHost, R>(
-    host: &mut H,
-    id: EntityId,
-    f: impl FnOnce(&ConfigTree, &mut Gear) -> R,
-) -> R {
-    let config = host.types().config_arc();
-    let mut gear = match host.world_mut().take_gear(id) {
-        Some(g) => g,
-        None => {
-            let type_name = host
-                .world()
-                .entity(id)
-                .map(|e| e.type_name().to_owned())
-                .unwrap_or_default();
-            default_gear(&config, &type_name).0
-        }
+/// Gives a unit created before the World had a config its loadout now ([`World::arm_from_config`]
+/// arms every later one at creation).
+fn seed_loadout<H: WorldHost>(ctx: &mut Ctx<'_, H>, id: EntityId) {
+    super::weapons::ensure_config(ctx);
+    if ctx.host.world().gear(id).is_none_or(|g| g.initialized) {
+        return;
+    }
+    let config = ctx.host.types().config_arc();
+    let Some(name) = ctx
+        .host
+        .world()
+        .entity(id)
+        .map(|e| e.type_name().to_owned())
+    else {
+        return;
     };
-    let result = f(&config, &mut gear);
-    host.world_mut().set_gear(id, gear);
-    result
+    let start = crate::gear::default_loadout(&config, &name);
+    let weapons: Vec<String> = start
+        .weapons
+        .iter()
+        .map(|w| w.class.clone())
+        .chain(start.gear.pseudo_weapons.iter().cloned())
+        .collect();
+    if let Some(gear) = ctx.host.world_mut().gear_mut(id) {
+        *gear = start.gear;
+        gear.initialized = true;
+    }
+    for weapon in weapons {
+        let _ = ctx.host.world_mut().add_weapon(id, &weapon);
+    }
 }
 
-/// A gear query on a Man; `default` for anything else.
+/// Runs `f` on a unit's gear and Loadout.
+fn with_unit<H: WorldHost, R>(
+    ctx: &mut Ctx<'_, H>,
+    id: EntityId,
+    f: impl FnOnce(&ConfigTree, &mut Gear, &mut Loadout) -> R,
+) -> Option<R> {
+    seed_loadout(ctx, id);
+    let config = ctx.host.types().config_arc();
+    let (loadout, gear) = ctx.host.world_mut().loadout_and_gear_mut(id)?;
+    Some(f(&config, gear, loadout))
+}
+
+/// A query on a Man's gear (containers, worn items, stored weapons and magazines); `default` for
+/// anything else.
 fn query<H: WorldHost>(
     ctx: &mut Ctx<'_, H>,
     unit: &Value,
@@ -70,12 +92,12 @@ fn query<H: WorldHost>(
     f: impl FnOnce(&ConfigTree, &Gear) -> Value,
 ) -> Value {
     match man(ctx.host.world(), unit) {
-        Some(id) => with_gear(ctx.host, id, |c, g| f(c, g)),
+        Some(id) => with_unit(ctx, id, |c, g, _| f(c, g)).unwrap_or(default),
         None => default,
     }
 }
 
-/// A gear change on a local Man (the original forwards a remote unit's change to its owner).
+/// A change to a local Man's gear (the original forwards a remote unit's change to its owner).
 fn change<H: WorldHost, R: Default>(
     ctx: &mut Ctx<'_, H>,
     unit: &Value,
@@ -83,7 +105,37 @@ fn change<H: WorldHost, R: Default>(
 ) -> R {
     let w = ctx.host.world();
     match man(w, unit) {
-        Some(id) if w.entity(id).is_some_and(|e| e.is_local()) => with_gear(ctx.host, id, f),
+        Some(id) if w.entity(id).is_some_and(|e| e.is_local()) => {
+            with_unit(ctx, id, |c, g, _| f(c, g)).unwrap_or_default()
+        }
+        _ => R::default(),
+    }
+}
+
+/// A query on a Man that reads the Loadout too (equipped weapons, attachments, magazines).
+fn unit_query<H: WorldHost>(
+    ctx: &mut Ctx<'_, H>,
+    unit: &Value,
+    default: Value,
+    f: impl FnOnce(&ConfigTree, &Gear, &Loadout) -> Value,
+) -> Value {
+    match man(ctx.host.world(), unit) {
+        Some(id) => with_unit(ctx, id, |c, g, l| f(c, g, l)).unwrap_or(default),
+        None => default,
+    }
+}
+
+/// A change to a local Man's gear and Loadout.
+fn unit_change<H: WorldHost, R: Default>(
+    ctx: &mut Ctx<'_, H>,
+    unit: &Value,
+    f: impl FnOnce(&ConfigTree, &mut Gear, &mut Loadout) -> R,
+) -> R {
+    let w = ctx.host.world();
+    match man(w, unit) {
+        Some(id) if w.entity(id).is_some_and(|e| e.is_local()) => {
+            with_unit(ctx, id, f).unwrap_or_default()
+        }
         _ => R::default(),
     }
 }
@@ -101,51 +153,55 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     register_items(r);
 }
 
-fn weapon_items(gear: &Gear, slot: WeaponSlot) -> Value {
-    let att = gear
-        .weapon(slot)
+/// The equipped weapon of a slot (the Loadout's).
+fn equipped(loadout: &Loadout, slot: WeaponSlot) -> Option<&crate::loadout::WeaponSlot> {
+    loadout.weapons.iter().find(|w| w.slot == slot)
+}
+
+fn weapon_items(loadout: &Loadout, slot: WeaponSlot) -> Value {
+    let att = equipped(loadout, slot)
         .map(|w| w.attachments.clone())
         .unwrap_or_default();
     string_list(att)
 }
 
-fn weapon_magazine(gear: &Gear, slot: WeaponSlot) -> Value {
+fn weapon_magazine(loadout: &Loadout, slot: WeaponSlot) -> Value {
     string_list(
-        gear.weapon(slot)
-            .and_then(|w| w.magazine.as_ref())
-            .map(|m| m.class.clone()),
+        equipped(loadout, slot)
+            .and_then(|w| w.muzzles.first())
+            .and_then(|m| m.magazine.as_ref())
+            .map(|m| m.name().to_owned()),
     )
 }
 
-/// Every worn item's and attachment's mass, for `load`.
-fn worn_mass(config: &ConfigTree, gear: &Gear) -> f32 {
+/// Every worn item's, weapon's and attachment's mass, for `load`.
+fn worn_mass(config: &ConfigTree, gear: &Gear, loadout: &Loadout) -> f32 {
     let mass = |c: &str| classify(config, c).map_or(0.0, |i| i.mass);
-    let attachments: f32 = gear
+    let equipped: f32 = loadout
+        .weapons
+        .iter()
+        .map(|w| {
+            mass(&w.kind.name)
+                + w.muzzles
+                    .iter()
+                    .filter_map(|m| m.magazine.as_ref())
+                    .map(|m| mass(m.name()))
+                    .sum::<f32>()
+        })
+        .sum();
+    let attachments: f32 = loadout
         .weapons
         .iter()
         .flat_map(|w| w.attachments.iter())
         .filter(|a| !a.is_empty())
         .map(|a| mass(a))
         .sum();
-    gear.total_mass(mass) + attachments
+    gear.total_mass(mass) + equipped + attachments
 }
 
 fn register_getters<H: WorldHost>(r: &mut Registry<H>) {
-    // 0x83e540 → 0x82e950: equipped weapons in the order added, then the weapons stored in the
-    // containers. `Throw` and `Put` are not listed.
-    r.unary("weapons", OBJ, ARR, |ctx, a| {
-        Ok(query(ctx, &a, Value::array([]), |_, g| {
-            string_list(
-                g.weapons.iter().map(|w| w.class.clone()).chain(
-                    g.containers()
-                        .flat_map(|c| c.weapons.iter().map(|w| w.class.clone())),
-                ),
-            )
-        }))
-    });
-    r.unary("primaryWeapon", OBJ, STR, |ctx, a| {
-        slot_name(ctx, a, WeaponSlot::Primary)
-    });
+    // `weapons` and `primaryWeapon` are the Loadout's (`script::weapons`): the equipped weapons in
+    // the order they were added, then the weapons stored in the containers.
     r.unary("secondaryWeapon", OBJ, STR, |ctx, a| {
         slot_name(ctx, a, WeaponSlot::Secondary)
     });
@@ -156,33 +212,33 @@ fn register_getters<H: WorldHost>(r: &mut Registry<H>) {
         slot_name(ctx, a, WeaponSlot::Binocular)
     });
     r.unary("primaryWeaponItems", OBJ, ARR, |ctx, a| {
-        Ok(query(ctx, &a, Value::array([]), |_, g| {
-            weapon_items(g, WeaponSlot::Primary)
+        Ok(unit_query(ctx, &a, Value::array([]), |_, _, l| {
+            weapon_items(l, WeaponSlot::Primary)
         }))
     });
     r.unary("secondaryWeaponItems", OBJ, ARR, |ctx, a| {
-        Ok(query(ctx, &a, Value::array([]), |_, g| {
-            weapon_items(g, WeaponSlot::Secondary)
+        Ok(unit_query(ctx, &a, Value::array([]), |_, _, l| {
+            weapon_items(l, WeaponSlot::Secondary)
         }))
     });
     r.unary("handgunItems", OBJ, ARR, |ctx, a| {
-        Ok(query(ctx, &a, Value::array([]), |_, g| {
-            weapon_items(g, WeaponSlot::Handgun)
+        Ok(unit_query(ctx, &a, Value::array([]), |_, _, l| {
+            weapon_items(l, WeaponSlot::Handgun)
         }))
     });
     r.unary("primaryWeaponMagazine", OBJ, ARR, |ctx, a| {
-        Ok(query(ctx, &a, Value::array([]), |_, g| {
-            weapon_magazine(g, WeaponSlot::Primary)
+        Ok(unit_query(ctx, &a, Value::array([]), |_, _, l| {
+            weapon_magazine(l, WeaponSlot::Primary)
         }))
     });
     r.unary("secondaryWeaponMagazine", OBJ, ARR, |ctx, a| {
-        Ok(query(ctx, &a, Value::array([]), |_, g| {
-            weapon_magazine(g, WeaponSlot::Secondary)
+        Ok(unit_query(ctx, &a, Value::array([]), |_, _, l| {
+            weapon_magazine(l, WeaponSlot::Secondary)
         }))
     });
     r.unary("handgunMagazine", OBJ, ARR, |ctx, a| {
-        Ok(query(ctx, &a, Value::array([]), |_, g| {
-            weapon_magazine(g, WeaponSlot::Handgun)
+        Ok(unit_query(ctx, &a, Value::array([]), |_, _, l| {
+            weapon_magazine(l, WeaponSlot::Handgun)
         }))
     });
     // Worn containers and items: the class, "" without one.
@@ -231,19 +287,8 @@ fn register_getters<H: WorldHost>(r: &mut Registry<H>) {
             }))
         }))
     });
-    // 0x83dfa0: stored magazines that are not empty, uniform first; loaded magazines are not
-    // listed.
-    r.unary("magazines", OBJ, ARR, |ctx, a| {
-        Ok(query(ctx, &a, Value::array([]), |_, g| {
-            string_list(g.containers().flat_map(|c| {
-                c.magazines
-                    .iter()
-                    .filter(|m| m.ammo > 0)
-                    .map(|m| m.class.clone())
-                    .collect::<Vec<_>>()
-            }))
-        }))
-    });
+    // `magazines` is the Loadout's (`script::weapons`): the magazines in the containers that are
+    // not empty, uniform first; a loaded magazine is in a muzzle, not a container.
     // 0x83e090: `[class, ammo]` of the stored magazines; empty ones only with
     // `[unit, true]`.
     r.unary("magazinesAmmo", OBJ, ARR, |ctx, a| {
@@ -264,30 +309,30 @@ fn register_getters<H: WorldHost>(r: &mut Registry<H>) {
     r.unary("backpackItems", OBJ, ARR, |ctx, a| {
         container_items(ctx, a, ContainerSlot::Backpack)
     });
-    // 0x83c530: map, compass, watch, radio, GPS, NVG; `[unit, goggles, headgear]` (exactly three
-    // elements) adds goggles and headgear when the first flag is set — the original checks only
-    // that flag for both.
+    // 0x83c530: map, compass, watch, radio, GPS, NVG; `[unit, goggles, headgear]` adds goggles
+    // and headgear when the first flag is set — the original checks only that flag for both. An
+    // array shorter than three elements gives `[]` (oracle: `assignedItems [unit]`), not a DIM
+    // error.
     r.unary("assignedItems", OBJ, ARR, |ctx, a| {
         Ok(assigned(ctx, &a, false))
     });
     r.unary("assignedItems", ARR, ARR, |ctx, a| {
         let items = a.as_array().map(|x| x.borrow().clone()).unwrap_or_default();
         if items.len() < 3 {
-            return Err(dim(items.len(), 3));
+            return Ok(Value::array([]));
         }
         let worn = items[1].as_bool().unwrap_or(false);
         Ok(assigned(ctx, &items[0], worn))
     });
-    // 0x5353e0: weapons, stored weapons and pseudo weapons, any case.
+    // 0x5353e0: equipped weapons, stored weapons and pseudo weapons, any case.
     r.binary("hasWeapon", OBJ, STR, BOOL, |ctx, a, b| {
         let name = text(&b);
-        Ok(query(ctx, &a, Value::Bool(false), |_, g| {
-            let eq = |c: &String| c.eq_ignore_ascii_case(&name);
+        Ok(unit_query(ctx, &a, Value::Bool(false), |_, g, l| {
+            let eq = |c: &str| c.eq_ignore_ascii_case(&name);
             Value::Bool(
-                g.weapons.iter().any(|w| eq(&w.class))
-                    || g.pseudo_weapons.iter().any(eq)
-                    || g.containers()
-                        .any(|c| c.weapons.iter().any(|w| eq(&w.class))),
+                l.weapons.iter().any(|w| eq(&w.kind.name))
+                    || g.pseudo_weapons.iter().any(|w| eq(w))
+                    || g.stored_weapons().any(|w| eq(&w.class)),
             )
         }))
     });
@@ -302,8 +347,8 @@ fn register_getters<H: WorldHost>(r: &mut Registry<H>) {
         container_load(ctx, a, ContainerSlot::Backpack)
     });
     r.unary("loadAbs", OBJ, NUM, |ctx, a| {
-        Ok(query(ctx, &a, Value::Number(0.0), |c, g| {
-            Value::Number(worn_mass(c, g))
+        Ok(unit_query(ctx, &a, Value::Number(0.0), |c, g, l| {
+            Value::Number(worn_mass(c, g, l))
         }))
     });
     r.unary("load", OBJ, NUM, |ctx, a| {
@@ -328,9 +373,9 @@ fn register_getters<H: WorldHost>(r: &mut Registry<H>) {
             }
             None => 1000.0,
         };
-        Ok(query(ctx, &a, Value::Number(0.0), |c, g| {
+        Ok(unit_query(ctx, &a, Value::Number(0.0), |c, g, l| {
             Value::Number(if max > 0.0 {
-                worn_mass(c, g) / max
+                worn_mass(c, g, l) / max
             } else {
                 0.0
             })
@@ -357,8 +402,8 @@ fn slot_name<H: WorldHost>(
     a: Value,
     slot: WeaponSlot,
 ) -> Result<Value, SqfError> {
-    Ok(query(ctx, &a, Value::from(""), |_, g| {
-        Value::string(g.weapon(slot).map_or(String::new(), |w| w.class.clone()))
+    Ok(unit_query(ctx, &a, Value::from(""), |_, _, l| {
+        Value::string(equipped(l, slot).map_or(String::new(), |w| w.kind.name.clone()))
     }))
 }
 
@@ -403,8 +448,9 @@ fn assigned<H: WorldHost>(ctx: &mut Ctx<'_, H>, unit: &Value, worn: bool) -> Val
 }
 
 /// Puts a worn item of `expected` type in its slot (`addHeadgear` & co., 0x843710 →
-/// 0x8438c0): the slot is emptied first; an item of another type is the script error "Tried
-/// to add inventory item with type 'X' into slot of type 'Y'" and the slot stays empty.
+/// 0x8438c0): the slot is emptied first; an item of another type leaves it empty and the original
+/// only logs "Tried to add inventory item with type 'X' into slot of type 'Y'" (oracle:
+/// `addHeadgear "ItemMap"` runs on).
 fn add_worn<H: WorldHost>(
     ctx: &mut Ctx<'_, H>,
     unit: &Value,
@@ -428,25 +474,17 @@ fn add_worn<H: WorldHost>(
         .entity(id)
         .map(|e| e.entity_type().side())
         .unwrap_or(-1);
-    let error = with_gear(ctx.host, id, |config, gear| {
+    with_unit(ctx, id, |config, gear, _| {
         clear_slot(gear, expected);
         if info.item_type() != expected {
-            return Some(SqfError::generic(format!(
-                "Tried to add inventory item with type '{}' into slot of type '{}'",
-                slot::name(info.item_type()),
-                slot::name(expected)
-            )));
+            return;
         }
         if check_side && !uniform_allowed(config, &info.class, unit_side) {
-            return None;
+            return;
         }
         wear(config, gear, &info);
-        None
     });
-    match error {
-        Some(e) => Err(e),
-        None => Ok(Value::Nothing),
-    }
+    Ok(Value::Nothing)
 }
 
 trait InventoryClass {
@@ -562,14 +600,16 @@ fn register_links<H: WorldHost>(r: &mut Registry<H>) {
     // 0x842c20: an inventory item into its slot, replacing (and dropping) what was there.
     r.binary("linkItem", OBJ, STR, NOTHING, |ctx, a, b| {
         let name = text(&b);
-        change(ctx, &a, |config, gear| link(config, gear, &name));
+        change(ctx, &a, |config, gear| {
+            crate::gear::link(config, gear, &name)
+        });
         Ok(Value::Nothing)
     });
     // 0x847510 → 0x84a0f0: removes an assigned or worn item.
     r.binary("unlinkItem", OBJ, STR, NOTHING, |ctx, a, b| {
         let name = text(&b);
         change(ctx, &a, |_, gear| {
-            unassign(gear, &name);
+            crate::gear::unassign(gear, &name);
         });
         Ok(Value::Nothing)
     });
@@ -577,7 +617,7 @@ fn register_links<H: WorldHost>(r: &mut Registry<H>) {
     r.binary("unassignItem", OBJ, STR, NOTHING, |ctx, a, b| {
         let name = text(&b);
         change(ctx, &a, |config, gear| {
-            if let Some(class) = unassign(gear, &name) {
+            if let Some(class) = crate::gear::unassign(gear, &name) {
                 if let Some(info) = classify(config, &class) {
                     gear.store(stored(config, &info), &info.allowed, &ANY_CONTAINER);
                 }
@@ -643,74 +683,15 @@ fn current_worn(gear: &Gear, item_type: i32) -> Option<String> {
     }
 }
 
-/// `linkItem` (and `addWeapon` with an item): link slot items, headgear, goggles, vest and
-/// uniform go to their slot; anything else is ignored.
-fn link(config: &ConfigTree, gear: &mut Gear, name: &str) {
-    if let Some(info) = classify(config, name).filter(ItemInfo::is_inventory_item) {
-        wear(config, gear, &info);
-    }
-}
-
-/// Removes an assigned or worn item (link slots, headgear, goggles) by class; returns it.
-fn unassign(gear: &mut Gear, name: &str) -> Option<String> {
-    for s in LinkSlot::ALL {
-        if gear.link(s).is_some_and(|c| c.eq_ignore_ascii_case(name)) {
-            let class = gear.link(s).map(str::to_owned);
-            gear.set_link(s, None);
-            return class;
-        }
-    }
-    if gear
-        .headgear
-        .as_deref()
-        .is_some_and(|c| c.eq_ignore_ascii_case(name))
-    {
-        return gear.headgear.take();
-    }
-    if gear
-        .goggles
-        .as_deref()
-        .is_some_and(|c| c.eq_ignore_ascii_case(name))
-    {
-        return gear.goggles.take();
-    }
-    None
-}
-
 fn register_weapons<H: WorldHost>(r: &mut Registry<H>) {
-    // 0x83b700 → 0x83bc10: a weapon replaces the one of its slot (dropped with its magazine
-    // and attachments), goes to the end of the list, gets its linked attachments and loads the
-    // first compatible stored magazine. An inventory item is linked instead (as `linkItem`).
-    r.binary("addWeapon", OBJ, STR, NOTHING, |ctx, a, b| {
-        add_weapon(ctx, &a, &text(&b));
-        Ok(Value::Nothing)
-    });
-    r.binary("addWeapon", OBJ, ARR, NOTHING, |ctx, a, b| {
-        let first = b
-            .as_array()
-            .and_then(|x| x.borrow().first().cloned())
-            .unwrap_or(Value::Nil);
-        add_weapon(ctx, &a, &text(&first));
-        Ok(Value::Nothing)
-    });
-    // 0x8462d0: a weapon with its loaded magazine; an inventory item is unlinked instead.
-    r.binary("removeWeapon", OBJ, STR, NOTHING, |ctx, a, b| {
-        remove_weapon(ctx, &a, &text(&b));
-        Ok(Value::Nothing)
-    });
-    r.binary("removeWeapon", OBJ, ARR, NOTHING, |ctx, a, b| {
-        let first = b
-            .as_array()
-            .and_then(|x| x.borrow().first().cloned())
-            .unwrap_or(Value::Nil);
-        remove_weapon(ctx, &a, &text(&first));
-        Ok(Value::Nothing)
-    });
+    // `addWeapon` and `removeWeapon` are the Loadout's (`script::weapons`).
     // 0x844790: every weapon, every stored magazine and item _(the oracle: `items` is empty
     // afterwards too)_; worn items stay.
     r.unary("removeAllWeapons", OBJ, NOTHING, |ctx, a| {
-        change(ctx, &a, |_, g| {
-            g.weapons.clear();
+        unit_change(ctx, &a, |_, g, l| {
+            l.weapons.clear();
+            l.current = None;
+            l.request = None;
             for c in g.containers_mut() {
                 c.clear();
             }
@@ -741,52 +722,6 @@ fn register_weapons<H: WorldHost>(r: &mut Registry<H>) {
     });
 }
 
-fn add_weapon<H: WorldHost>(ctx: &mut Ctx<'_, H>, unit: &Value, name: &str) {
-    change(ctx, unit, |config, gear| {
-        let Some(info) = classify(config, name) else {
-            return;
-        };
-        match info.kind {
-            ItemKind::Weapon(slot) => {
-                let weapon = make_weapon(config, &info, slot);
-                gear.equip(weapon);
-                let last = gear.weapons.len() - 1;
-                load_from_containers(config, gear, last);
-            }
-            ItemKind::PseudoWeapon => {
-                if !gear
-                    .pseudo_weapons
-                    .iter()
-                    .any(|w| w.eq_ignore_ascii_case(&info.class))
-                {
-                    gear.pseudo_weapons.push(info.class.clone());
-                }
-            }
-            _ if info.is_inventory_item() => link(config, gear, name),
-            _ => {}
-        }
-    });
-}
-
-fn remove_weapon<H: WorldHost>(ctx: &mut Ctx<'_, H>, unit: &Value, name: &str) {
-    change(ctx, unit, |config, gear| {
-        if classify(config, name).is_some_and(|i| i.is_inventory_item()) {
-            unassign(gear, name);
-            return;
-        }
-        if let Some(i) = gear
-            .weapons
-            .iter()
-            .position(|w| w.class.eq_ignore_ascii_case(name))
-        {
-            gear.weapons.remove(i);
-        } else {
-            gear.pseudo_weapons
-                .retain(|w| !w.eq_ignore_ascii_case(name));
-        }
-    });
-}
-
 /// `addPrimaryWeaponItem` & co.: an attachment replaces the one of its kind; a compatible
 /// magazine replaces the loaded one; anything else is ignored.
 fn add_weapon_item<H: WorldHost>(
@@ -796,31 +731,11 @@ fn add_weapon_item<H: WorldHost>(
     slot: WeaponSlot,
 ) -> Result<Value, SqfError> {
     let name = text(&b);
-    change(ctx, &a, |config, gear| {
-        let Some(info) = classify(config, &name) else {
-            return;
-        };
-        let compatible = gear
-            .weapon(slot)
-            .map(|w| compatible_magazines(config, &w.class))
-            .unwrap_or_default();
-        let Some(weapon) = gear.weapon_mut(slot) else {
-            return;
-        };
-        match info.kind {
-            ItemKind::Magazine { count } => {
-                if compatible.contains(&info.class.to_ascii_lowercase()) {
-                    weapon.magazine = Some(make_magazine(&info, count));
-                }
-            }
-            ItemKind::Item(t) => {
-                if let Some(i) = Weapon::attachment_index(t) {
-                    weapon.attachments[i] = info.class.clone();
-                }
-            }
-            _ => {}
-        }
-    });
+    if let Some(id) = man(ctx.host.world(), &a)
+        .filter(|id| ctx.host.world().entity(*id).is_some_and(|e| e.is_local()))
+    {
+        ctx.host.world_mut().add_weapon_item(id, slot, &name);
+    }
     Ok(Value::Nothing)
 }
 
@@ -831,53 +746,17 @@ fn remove_weapon_item<H: WorldHost>(
     slot: WeaponSlot,
 ) -> Result<Value, SqfError> {
     let name = text(&b);
-    change(ctx, &a, |_, gear| {
-        let Some(weapon) = gear.weapon_mut(slot) else {
-            return;
-        };
-        if let Some(att) = weapon
-            .attachments
-            .iter_mut()
-            .find(|c| c.eq_ignore_ascii_case(&name))
-        {
-            att.clear();
-        } else if weapon
-            .magazine
-            .as_ref()
-            .is_some_and(|m| m.class.eq_ignore_ascii_case(&name))
-        {
-            weapon.magazine = None;
-        }
-    });
+    if let Some(id) = man(ctx.host.world(), &a)
+        .filter(|id| ctx.host.world().entity(*id).is_some_and(|e| e.is_local()))
+    {
+        ctx.host.world_mut().remove_weapon_item(id, slot, &name);
+    }
     Ok(Value::Nothing)
 }
 
 fn register_magazines<H: WorldHost>(r: &mut Registry<H>) {
-    // 0x839ba0: a full magazine into the first container with room.
-    r.binary("addMagazine", OBJ, STR, NOTHING, |ctx, a, b| {
-        add_magazines(ctx, &a, &text(&b), None, 1);
-        Ok(Value::Nothing)
-    });
-    // 0x83a4a0: `[class, ammo]`; ammo above the magazine's count, or negative, is the count.
-    r.binary("addMagazine", OBJ, ARR, NOTHING, |ctx, a, b| {
-        let items = b.as_array().map(|x| x.borrow().clone()).unwrap_or_default();
-        let name = items.first().map(text).unwrap_or_default();
-        let ammo = items.get(1).and_then(Value::as_number);
-        add_magazines(ctx, &a, &name, ammo, 1);
-        Ok(Value::Nothing)
-    });
-    // 0x83b290: `[class, count]`.
-    r.binary("addMagazines", OBJ, ARR, NOTHING, |ctx, a, b| {
-        let items = b.as_array().map(|x| x.borrow().clone()).unwrap_or_default();
-        let name = items.first().map(text).unwrap_or_default();
-        let count = items
-            .get(1)
-            .and_then(Value::as_number)
-            .unwrap_or(0.0)
-            .max(0.0) as usize;
-        add_magazines(ctx, &a, &name, None, count);
-        Ok(Value::Nothing)
-    });
+    // `addMagazine` and `addMagazines` are the Loadout's (`script::weapons`): a magazine the unit
+    // is given goes into a container.
     // 0x844c90: one stored magazine (`[class, ammo]`: one with that ammo count).
     r.binary("removeMagazine", OBJ, STR, NOTHING, |ctx, a, b| {
         let name = text(&b);
@@ -906,36 +785,6 @@ fn register_magazines<H: WorldHost>(r: &mut Registry<H>) {
             }
         });
         Ok(Value::Nothing)
-    });
-}
-
-fn add_magazines<H: WorldHost>(
-    ctx: &mut Ctx<'_, H>,
-    unit: &Value,
-    name: &str,
-    ammo: Option<f32>,
-    times: usize,
-) {
-    change(ctx, unit, |config, gear| {
-        // "Warning: "%s" is not a valid magazine name" for anything else.
-        let Some(info) = classify(config, name) else {
-            return;
-        };
-        let ItemKind::Magazine { count } = info.kind else {
-            return;
-        };
-        // Negative or more than the magazine holds: full; 0 adds an empty magazine.
-        let rounds = match ammo {
-            Some(n) if n >= 0.0 && (n as u32) < count => n as u32,
-            _ => count,
-        };
-        for _ in 0..times {
-            gear.store(
-                Stored::Magazine(make_magazine(&info, rounds)),
-                &info.allowed,
-                &ANY_CONTAINER,
-            );
-        }
     });
 }
 

@@ -19,8 +19,11 @@ use glam::DVec3;
 const CONFIG: &str = r#"
 class CfgVehicles {
     class All { scope = 0; simulation = ""; side = 3; };
-    class Man: All { simulation = "soldier"; };
-    class B_Soldier_F: Man { scope = 2; side = 1; };
+    class Man: All { simulation = "soldier"; maximumLoad = 1000; };
+    class U_Test_Container { maximumLoad = 200; };
+    // A soldier carries his magazines in his uniform: without one there is nowhere to put them
+    // (`crate::inventory::Gear`).
+    class B_Soldier_F: Man { scope = 2; side = 1; uniformClass = "U_Test"; };
     class B_Rifleman_F: B_Soldier_F {
         weapons[] = { "rifle_F", "NoSuchWeapon_F" };
         magazines[] = { "Mag_30", "Mag_30", "Mag_30", "NoSuchMag" };
@@ -40,6 +43,9 @@ class CfgMagazines {
 };
 class Mode_SemiAuto { reloadTime = 0.1; burst = 1; autoFire = 0; dispersion = 0; };
 class CfgWeapons {
+    class Default { type = 0; };
+    class ItemCore: Default { type = 131072; };
+    class U_Test: ItemCore { class ItemInfo { type = 801; containerClass = "U_Test_Container"; }; };
     class Rifle_Base_F { type = 1; };
     class rifle_F: Rifle_Base_F {
         magazines[] = { "Mag_30", "Mag_30_Tracer" };

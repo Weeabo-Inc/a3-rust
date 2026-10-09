@@ -63,8 +63,6 @@ pub struct ScriptState {
     dynamic_simulation_groups: HashSet<GroupId>,
     player: Option<EntityId>,
     camera_on: Option<EntityId>,
-    /// Units' gear, created from their config default on first use (`inventory.rs`).
-    gear: HashMap<EntityId, crate::inventory::Gear>,
 }
 
 impl std::fmt::Debug for ScriptState {
@@ -85,7 +83,6 @@ impl ScriptState {
         self.identities.remove(&id);
         self.var_names.remove(&id);
         self.dynamic_simulation.remove(&id);
-        self.gear.remove(&id);
         if let Some(links) = self.synced.remove(&id) {
             for other in links {
                 if let Some(list) = self.synced.get_mut(&other) {
@@ -197,25 +194,6 @@ impl World {
         } else {
             self.script.dynamic_simulation.remove(&id);
         }
-    }
-
-    /// A unit's gear, if it was ever created.
-    pub fn gear(&self, id: EntityId) -> Option<&crate::inventory::Gear> {
-        self.script.gear.get(&id)
-    }
-
-    pub fn gear_mut(&mut self, id: EntityId) -> Option<&mut crate::inventory::Gear> {
-        self.script.gear.get_mut(&id)
-    }
-
-    /// Removes and returns a unit's gear (to change it with other borrows held).
-    pub fn take_gear(&mut self, id: EntityId) -> Option<crate::inventory::Gear> {
-        self.script.gear.remove(&id)
-    }
-
-    /// Sets a unit's gear.
-    pub fn set_gear(&mut self, id: EntityId, gear: crate::inventory::Gear) {
-        self.script.gear.insert(id, gear);
     }
 
     /// Whether the dynamic simulation system manages the group.

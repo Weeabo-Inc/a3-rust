@@ -1,4 +1,4 @@
-﻿//! Building gear from config: weapons with their linked attachments, containers with their
+//! Building gear from config: weapons with their linked attachments, containers with their
 //! config contents, worn items, and the default loadout a unit starts with.
 
 use a3_config::{ConfigRef, ConfigTree};
@@ -118,16 +118,69 @@ pub fn wear(config: &ConfigTree, gear: &mut Gear, info: &ItemInfo) -> bool {
     true
 }
 
-/// Loads the empty weapon at `index` with the first compatible stored magazine (uniform, vest,
+/// Puts an item where `linkItem` and `addWeapon` put it: link slot items, headgear, goggles, vest
+/// and uniform go to their worn slot; anything else is ignored.
+pub fn link(config: &ConfigTree, gear: &mut Gear, name: &str) {
+    if let Some(info) = classify(config, name).filter(ItemInfo::is_inventory_item) {
+        wear(config, gear, &info);
+    }
+}
+
+/// Removes an assigned or worn item (link slots, headgear, goggles) by class; returns it.
+pub fn unassign(gear: &mut Gear, name: &str) -> Option<String> {
+    for s in LinkSlot::ALL {
+        if gear.link(s).is_some_and(|c| c.eq_ignore_ascii_case(name)) {
+            let class = gear.link(s).map(str::to_owned);
+            gear.set_link(s, None);
+            return class;
+        }
+    }
+    if gear
+        .headgear
+        .as_deref()
+        .is_some_and(|c| c.eq_ignore_ascii_case(name))
+    {
+        return gear.headgear.take();
+    }
+    if gear
+        .goggles
+        .as_deref()
+        .is_some_and(|c| c.eq_ignore_ascii_case(name))
+    {
+        return gear.goggles.take();
+    }
+    None
+}
+
+/// Loads `weapon`'s empty muzzle with the first compatible stored magazine (uniform, vest,
 /// backpack).
-pub fn load_from_containers(config: &ConfigTree, gear: &mut Gear, index: usize) {
-    if gear.weapons[index].magazine.is_some() {
+pub fn load_weapon(config: &ConfigTree, gear: &mut Gear, weapon: &mut Weapon) {
+    if weapon.magazine.is_some() {
         return;
     }
-    let compatible = compatible_magazines(config, &gear.weapons[index].class);
+    let compatible = compatible_magazines(config, &weapon.class);
     if let Some(m) = gear.take_magazine(|m| compatible.contains(&m.class.to_ascii_lowercase())) {
-        gear.weapons[index].magazine = Some(m);
+        weapon.magazine = Some(m);
     }
+}
+
+/// Puts `weapon` in an equipped-weapon list: the weapon of its slot is dropped (with its magazine
+/// and attachments) and the new one goes to the end.
+pub fn equip(weapons: &mut Vec<Weapon>, weapon: Weapon) {
+    weapons.retain(|w| w.slot != weapon.slot);
+    weapons.push(weapon);
+}
+
+/// What a unit's CfgVehicles class starts with.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct ConfigLoadout {
+    /// The containers, their config contents, and the worn items.
+    pub gear: Gear,
+    /// The `weapons[]` to equip, in config order, with their linked attachments and the magazine
+    /// each one loads.
+    pub weapons: Vec<Weapon>,
+    /// The warnings the engine logs while building it.
+    pub warnings: Vec<String>,
 }
 
 /// The containers the default loadout stores into (mask 0x100: uniform, vest, backpack).
@@ -137,8 +190,7 @@ const DEFAULT_STORE: [ContainerSlot; 3] = [
     ContainerSlot::Backpack,
 ];
 
-/// The gear a unit of CfgVehicles class `unit` starts with, and the warnings the engine logs
-/// while building it.
+/// What a unit of CfgVehicles class `unit` starts with.
 ///
 /// Order (matches the oracle on `B_Soldier_F`, `B_soldier_LAT_F`, `B_Soldier_AR_F`):
 /// `uniformClass`; `linkedItems[]`; `backpack` with its contents; `weapons[]` with their linked
@@ -148,12 +200,17 @@ const DEFAULT_STORE: [ContainerSlot; 3] = [
 /// again (loading freed room) and the rest are dropped with "Some of magazines weren't stored in
 /// soldier Vest or Uniform?". Random headgear and facewear (`headgearList`, `identityTypes`)
 /// are not applied.
-pub fn default_gear(config: &ConfigTree, unit: &str) -> (Gear, Vec<String>) {
+pub fn default_loadout(config: &ConfigTree, unit: &str) -> ConfigLoadout {
     let mut gear = Gear::default();
+    let mut weapons: Vec<Weapon> = Vec::new();
     let mut warnings = Vec::new();
     let class = config.root().get("CfgVehicles").get(unit);
     if !class.is_class() {
-        return (gear, warnings);
+        return ConfigLoadout {
+            gear,
+            weapons,
+            warnings,
+        };
     }
     let lookup = |name: &str| classify(config, name);
     if let Some(info) = lookup(&class.get("uniformClass").text()) {
@@ -176,7 +233,7 @@ pub fn default_gear(config: &ConfigTree, unit: &str) -> (Gear, Vec<String>) {
             continue;
         };
         match info.kind {
-            ItemKind::Weapon(slot) => gear.equip(make_weapon(config, &info, slot)),
+            ItemKind::Weapon(slot) => equip(&mut weapons, make_weapon(config, &info, slot)),
             ItemKind::PseudoWeapon => gear.pseudo_weapons.push(info.class.clone()),
             _ => {}
         }
@@ -203,15 +260,15 @@ pub fn default_gear(config: &ConfigTree, unit: &str) -> (Gear, Vec<String>) {
             failed.push((magazine, info.allowed.clone()));
         }
     }
-    for i in 0..gear.weapons.len() {
-        load_from_containers(config, &mut gear, i);
-        if gear.weapons[i].magazine.is_none() {
-            let compatible = compatible_magazines(config, &gear.weapons[i].class);
+    for weapon in weapons.iter_mut() {
+        load_weapon(config, &mut gear, weapon);
+        if weapon.magazine.is_none() {
+            let compatible = compatible_magazines(config, &weapon.class);
             if let Some(k) = failed
                 .iter()
                 .position(|(m, _)| compatible.contains(&m.class.to_ascii_lowercase()))
             {
-                gear.weapons[i].magazine = Some(failed.remove(k).0);
+                weapon.magazine = Some(failed.remove(k).0);
             }
         }
     }
@@ -225,5 +282,9 @@ pub fn default_gear(config: &ConfigTree, unit: &str) -> (Gear, Vec<String>) {
             class.name()
         ));
     }
-    (gear, warnings)
+    ConfigLoadout {
+        gear,
+        weapons,
+        warnings,
+    }
 }

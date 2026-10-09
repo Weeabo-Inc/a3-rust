@@ -158,6 +158,8 @@ fn default_loadout_follows_the_config() {
         sqf(&mut vm, "assignedItems [u, true, false]"),
         r#"["ItemMap","ItemCompass","ItemWatch","ItemRadio","NVGoggles","H_HelmetB"]"#
     );
+    // An array shorter than three elements: `[]`, not a DIM error (oracle).
+    assert_eq!(sqf(&mut vm, "assignedItems [u]"), "[]");
     assert_eq!(sqf(&mut vm, "[loadUniform u, loadVest u]"), "[0.75,0.8]");
     assert_eq!(
         sqf(
@@ -219,12 +221,9 @@ fn link_unlink_assign() {
 #[test]
 fn worn_slots() {
     let mut vm = vm();
-    // Wrong type: the slot is emptied and the script error raised.
-    let err = vm.eval("u addHeadgear 'ItemMap'").unwrap_err().report;
-    assert!(
-        err.contains("Tried to add inventory item with type 'Map' into slot of type 'Headgear'"),
-        "{err}"
-    );
+    // Wrong type: the slot is emptied and nothing else happens (the original logs the type
+    // mismatch to the RPT only; the oracle's `addHeadgear "ItemMap"` probe runs on).
+    eval(&mut vm, "u addHeadgear 'ItemMap'");
     assert_eq!(sqf(&mut vm, "headgear u"), "");
     eval(
         &mut vm,

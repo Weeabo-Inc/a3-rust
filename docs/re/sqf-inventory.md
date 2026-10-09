@@ -2,9 +2,24 @@
 
 How the engine models a unit's gear and what the SQF inventory commands do. Sources: the
 decompiled handlers (RVAs from `docs/re/sqf-commands.tsv`) and oracle runs of
-`tools/oracle/probes/97_inventory_vr.probes` on `arma3server_x64.exe` (48 probes; our engine
-matches 40, see the end). Implemented in `crates/a3-world/src/{inventory,loadout}.rs` and
-`src/script/inventory.rs`.
+`tools/oracle/probes/97_inventory_vr.probes` on `arma3_server_x64.exe` (48 probes, see the end).
+
+## Where the gear lives
+
+The engine's inventory is the containers: a unit's uniform, vest and backpack hold its items, the
+weapons it is not holding and the magazines it has not loaded. A weapon the unit *holds* is in one
+of the weapon slots and its loaded magazine is in the weapon's muzzle, not in a container.
+
+a3-world models it the same way, in two halves:
+
+| What | Rust | Owned by |
+|---|---|---|
+| Uniform, vest, backpack with their items, stored weapons and loose magazines; headgear, goggles, link slots; pseudo weapons (`Throw`, `Put`) | [`crate::inventory::Gear`] | the Entity (`Entity::gear`), built by `crate::gear` |
+| Equipped weapons and their muzzles, fire modes, loaded magazine, reload clocks, selected muzzle, `fire` request | [`crate::Loadout`] | the Entity (`Entity::loadout`), `crate::loadout` |
+
+A command that moves a magazine between the two types borrows both (`World::loadout_and_gear_mut`).
+`weapons` and `magazines` are the Loadout's (`script/weapons.rs`); the container and item commands
+are `script/inventory.rs`.
 
 ## Item types and slots
 
@@ -83,14 +98,14 @@ gets `G_Combat`, `C_man_1` a random cap or bandanna).
 | `unassignItem` | 0x847170 | Moves an assigned item into the containers. |
 | `assignItem` | 0x83ccd0 | Moves a stored item into its slot; a missing one: RPT only. |
 | `removeAllAssignedItems` | 0x84b460 | The link slots; `[unit, goggles, headgear]` also those. |
-| `addWeapon` | 0x83b700 → 0x83bc10 | Replaces the weapon of its slot (dropped with magazine and attachments), adds the linked attachments, loads the first compatible stored magazine. An inventory item is linked (as `linkItem`). Unknown: RPT "Weapon type with given name: [%s] not found". |
+| `addWeapon` | 0x83b700 → 0x83bc10 | Replaces the Loadout's weapon of its slot (dropped with magazine and attachments), adds the linked attachments, loads the first compatible stored magazine. An inventory item is linked (as `linkItem`); `Throw`/`Put` become pseudo weapons. Unknown: RPT "Weapon type with given name: [%s] not found". |
 | `removeWeapon` | 0x8462d0 | An inventory item is unlinked; else the weapon with its magazine. |
 | `removeAllWeapons` | 0x844790 | All weapons and all container contents (items too). |
 | `addPrimaryWeaponItem` & co. | 0x8396a0 ... | An attachment replaces its kind; a compatible magazine replaces the loaded one; else ignored. |
 | `removePrimaryWeaponItem` & co. | 0x846290 ... | Removes the attachment or the loaded magazine. |
-| `addMagazine` | 0x839ba0 / 0x83a4a0 | Mask 0x80. `[class, ammo]`: negative or above the count → full, 0 → empty magazine. Not a magazine: RPT 'Warning: "%s" is not a valid magazine name'. Thrown magazines also load the `Throw` muzzle in the original (not reproduced). |
+| `addMagazine` | 0x839ba0 / 0x83a4a0 | Mask 0x80, into a container (`Gear::store`). `[class, ammo]`: negative or above the count → full, 0 → empty magazine. Not a magazine: RPT 'Warning: "%s" is not a valid magazine name'. Thrown magazines also load the `Throw` muzzle in the original (not reproduced). |
 | `addMagazines` | 0x83b290 | `[class, n]`. |
-| `removeMagazine` / `removeMagazines` | 0x844c90 / 0x845940 | One / all stored magazines of the class; loaded ones stay. |
+| `removeMagazine` / `removeMagazines` | 0x844c90 / 0x845940 | One / all magazines in the containers of the class; loaded ones stay. |
 | `addItem`, `addItemToUniform` / `Vest` / `Backpack` | 0x839160 / 0x8391a0 / 0x8391c0 / 0x839180 → 0x848380 | Masks 0x80 / 4 / 8 / 2. Items, weapons and magazines. |
 | `removeItem` | 0x844880 | The first stored item, weapon or magazine; assigned items stay. |
 | `removeItems` | 0x844a60 | Every stored item of the class (a magazine class is looked up as a weapon and fails). |
@@ -101,7 +116,14 @@ a vehicle's turret weapons (`weapons car` → `["TruckHorn2"]`) and has vehicle 
 
 ## Oracle status
 
-40 of 48 probes match. The rest: random facewear/headgear (`default_slots`, `remove_all_assigned`,
-`civilian`, `load`), handler errors that continue the script in the original (#271:
-`default_assigned_array`, `add_headgear_wrong_type`), vehicle weapons and cargo
-(`null_and_vehicle`, `vehicle_add`).
+41 of 48 probes match (both sides in the same world, #327). The seven that do not:
+
+- random facewear and headgear, which the engine draws per unit and we do not reproduce
+  (`default_slots`, `default_assigned_array`, `remove_all_assigned`, `civilian`, and `load`:
+  0.476 against our 0.472, exactly the G_Combat mass);
+- vehicles: a vehicle's turret weapons (`null_and_vehicle`) and vehicle cargo
+  (`vehicle_add`) are the next batch.
+
+Two differences the earlier run recorded as #271 handler errors are fixed and oracle-confirmed:
+`assignedItems [unit]` (fewer than three elements) is `[]` rather than a DIM error, and
+`addHeadgear "ItemMap"` does not raise — the original only logs the type mismatch and runs on.

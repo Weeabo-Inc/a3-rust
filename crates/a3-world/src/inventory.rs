@@ -467,7 +467,11 @@ impl Stored {
     }
 }
 
-/// A unit's gear.
+/// A unit's gear: the containers and what they hold, the worn items and the assigned (link) slots.
+///
+/// The equipped weapons and their loaded magazines belong to the [`Loadout`](crate::Loadout)
+/// (`crate::loadout`): a loose magazine lives in a container until a muzzle loads it, which is how
+/// the engine's inventory works. Only the weapons and magazines *inside* containers are here.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Gear {
     pub uniform: Option<Container>,
@@ -476,10 +480,11 @@ pub struct Gear {
     pub headgear: Option<String>,
     pub goggles: Option<String>,
     links: [Option<String>; 6],
-    /// Equipped weapons in the order they were added (`weapons` lists them so).
-    pub weapons: Vec<Weapon>,
     /// `Throw`, `Put` and other pseudo weapons (`hasWeapon` sees them, `weapons` does not).
     pub pseudo_weapons: Vec<String>,
+    /// Whether the type's config loadout was applied. A unit created before the World had a
+    /// config gets it on the first inventory command (`script::inventory`).
+    pub initialized: bool,
 }
 
 impl Gear {
@@ -519,22 +524,6 @@ impl Gear {
         self.links[slot.index()] = class;
     }
 
-    /// The equipped weapon of a slot.
-    pub fn weapon(&self, slot: WeaponSlot) -> Option<&Weapon> {
-        self.weapons.iter().find(|w| w.slot == slot)
-    }
-
-    pub fn weapon_mut(&mut self, slot: WeaponSlot) -> Option<&mut Weapon> {
-        self.weapons.iter_mut().find(|w| w.slot == slot)
-    }
-
-    /// Equips `weapon`, replacing (and dropping) the weapon of its slot; the new one goes to the
-    /// end of the list.
-    pub fn equip(&mut self, weapon: Weapon) {
-        self.weapons.retain(|w| w.slot != weapon.slot);
-        self.weapons.push(weapon);
-    }
-
     /// Stores `entry` in the first container of `order` that allows and fits it.
     pub fn store(&mut self, entry: Stored, allowed: &[i32], order: &[ContainerSlot]) -> bool {
         let mass = entry.mass();
@@ -566,6 +555,12 @@ impl Gear {
         None
     }
 
+    /// Takes the magazine at `index` of container `slot` (what a muzzle loads).
+    pub fn take_magazine_at(&mut self, slot: ContainerSlot, index: usize) -> Option<Magazine> {
+        let container = self.container_mut(slot).as_mut()?;
+        (index < container.magazines.len()).then(|| container.magazines.remove(index))
+    }
+
     /// Takes the first stored item of class `class` (any case).
     pub fn take_item(&mut self, class: &str) -> Option<StoredItem> {
         for c in self.containers_mut() {
@@ -594,10 +589,20 @@ impl Gear {
         None
     }
 
-    /// Mass of everything carried: containers with contents, weapons, worn items.
+    /// Every magazine a container holds, uniform, vest then backpack, in the order added.
+    pub fn magazines(&self) -> impl Iterator<Item = &Magazine> {
+        self.containers().flat_map(|c| c.magazines.iter())
+    }
+
+    /// Every weapon a container holds, uniform, vest then backpack, in the order added.
+    pub fn stored_weapons(&self) -> impl Iterator<Item = &Weapon> {
+        self.containers().flat_map(|c| c.weapons.iter())
+    }
+
+    /// Mass of the containers with their contents and the worn items; the equipped weapons are
+    /// the caller's (`crate::loadout`).
     pub fn total_mass(&self, item_mass: impl Fn(&str) -> f32) -> f32 {
         let containers: f32 = self.containers().map(|c| c.mass + c.load()).sum();
-        let weapons: f32 = self.weapons.iter().map(Weapon::total_mass).sum();
         let worn: f32 = self
             .headgear
             .iter()
@@ -605,6 +610,6 @@ impl Gear {
             .chain(self.links.iter().flatten())
             .map(|c| item_mass(c))
             .sum();
-        containers + weapons + worn
+        containers + worn
     }
 }

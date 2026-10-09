@@ -58,14 +58,14 @@ magazinesAmmo	unary	0x83e090	verified	decompiled 0x83e090 + oracle
 uniformItems	unary	0x8471b0	verified	decompiled 0x8471b0 + oracle	
 vestItems	unary	0x847550	verified	decompiled 0x847550 + oracle	
 backpackItems	unary	0x83d120	verified	decompiled 0x83d120 + oracle	
-assignedItems	unary	0x83c530	verified	decompiled 0x83c530 + oracle	
+assignedItems	unary	0x83c530	verified	decompiled 0x83c530 + oracle	an array shorter than 3 elements is [] (oracle)	
 hasWeapon	binary	0x5353e0	verified	decompiled 0x5353e0 + oracle	
 load	unary	0x83dd80	verified	decompiled 0x83dd80 + oracle	
 loadAbs	unary	0x83dee0	verified	decompiled 0x83dee0 + oracle	
 loadUniform	unary	0x840f60	verified	decompiled 0x840f60 + oracle	
 loadVest	unary	0x840ff0	verified	decompiled 0x840ff0 + oracle	
 loadBackpack	unary	0x840ed0	verified	decompiled 0x840ed0 + oracle	
-addHeadgear	binary	0x8436e0	verified	decompiled 0x8436e0 + oracle	
+addHeadgear	binary	0x8436e0	verified	decompiled 0x8436e0 + oracle	a wrong item type leaves the slot empty and does not raise (oracle)	
 addGoggles	binary	0x8436b0	verified	decompiled 0x8436b0 + oracle	
 addVest	binary	0x843fb0	verified	decompiled 0x843fb0 + oracle	
 addUniform	binary	0x843f80	verified	decompiled 0x843f80 + oracle	

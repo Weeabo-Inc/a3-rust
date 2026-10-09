@@ -309,6 +309,11 @@ impl WeaponBank {
         &self.config
     }
 
+    /// The merged config, shared: the inventory commands read the same tree.
+    pub fn config_arc(&self) -> Arc<ConfigTree> {
+        Arc::clone(&self.config)
+    }
+
     /// The weapon of `CfgWeapons` class `name`.
     pub fn weapon(&mut self, name: &str) -> Result<Arc<WeaponType>, Error> {
         let key = name.to_ascii_lowercase();

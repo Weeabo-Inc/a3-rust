@@ -20,6 +20,7 @@ use std::sync::Arc;
 use glam::DVec3;
 
 use crate::fire::FireRequest;
+use crate::inventory::{ANY_CONTAINER, ContainerSlot, Gear, ItemKind, Stored, classify};
 use crate::weapons::{MagazineType, ModeType, WeaponType};
 use crate::{EntityId, Error, World};
 
@@ -78,6 +79,12 @@ pub struct WeaponSlot {
     pub kind: Arc<WeaponType>,
     /// One per muzzle of the weapon, in `muzzles[]` order.
     pub muzzles: Vec<MuzzleSlot>,
+    /// The inventory slot the weapon occupies (`primaryWeapon`, `handgunWeapon`, `secondaryWeapon`,
+    /// `binocular`); `addWeapon` replaces the weapon of the same slot.
+    pub slot: crate::inventory::WeaponSlot,
+    /// The weapon class's linked items (`LinkedItems`): muzzle, side rail, optic, underbarrel;
+    /// `""` where the weapon has none.
+    pub attachments: [String; 4],
 }
 
 /// Where the unit's selected muzzle is and where it points, World space. The engine takes them
@@ -90,12 +97,15 @@ pub struct Aim {
     pub direction: DVec3,
 }
 
-/// A unit's weapons and magazines (`WeaponsState`).
+/// A unit's weapons and magazines (`WeaponsState`): the equipped weapons with the magazine in
+/// each muzzle.
+///
+/// A magazine the unit carries but has not loaded lives in a container ([`crate::inventory::Gear`]),
+/// which is where the engine keeps it: loading one takes it out of the container and the magazine
+/// a reload swaps out goes back into one.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Loadout {
     pub weapons: Vec<WeaponSlot>,
-    /// Carried magazines that are not loaded, in the order they were added.
-    pub magazines: Vec<Magazine>,
     /// The selected weapon and muzzle (indices; `WeaponsState+0x2c`).
     pub current: Option<(usize, usize)>,
     /// A `fire` request: weapon, muzzle and mode indices (`WeaponsState+0x30`).
@@ -167,28 +177,75 @@ impl Loadout {
         self.weapons.get(w)?.kind.muzzles.get(m)?.modes.get(mode)
     }
 
-    /// The carried magazine to load into `at` (`0x140fa51b0`): of the same class as `old`, the
+    /// Adds a weapon built from a config class: the weapon of the same slot is dropped with its
+    /// magazine and attachments, and the new one goes to the end of the list. The first weapon a
+    /// unit gets is selected.
+    pub fn equip(
+        &mut self,
+        kind: Arc<WeaponType>,
+        slot: crate::inventory::WeaponSlot,
+        attachments: [String; 4],
+    ) -> usize {
+        if let Some(index) = self.weapons.iter().position(|w| w.slot == slot) {
+            self.remove_at(index);
+        }
+        let index = self.weapons.len();
+        self.weapons.push(WeaponSlot {
+            muzzles: vec![MuzzleSlot::default(); kind.muzzles.len()],
+            kind,
+            slot,
+            attachments,
+        });
+        if self.current.is_none() {
+            self.current = Some((index, 0));
+        }
+        index
+    }
+
+    /// Removes the weapon at `index` (dropping what it held) and fixes the selection.
+    pub fn remove_at(&mut self, index: usize) -> Option<WeaponSlot> {
+        if index >= self.weapons.len() {
+            return None;
+        }
+        let removed = self.weapons.remove(index);
+        self.request = None;
+        self.current = match self.current {
+            Some((current, _)) if current == index => (!self.weapons.is_empty()).then_some((0, 0)),
+            Some((current, muzzle)) if current > index => Some((current - 1, muzzle)),
+            other => other,
+        };
+        Some(removed)
+    }
+
+    /// The carried magazine to load into a muzzle (`0x140fa51b0`): of the same class as `old`, the
     /// one with the most rounds (the first on a tie); otherwise, walking the muzzle's magazine
     /// list in order, the fullest of the first class that has any. Empty magazines do not count.
-    fn pick_magazine(&self, at: (usize, usize), old: Option<&str>) -> Option<usize> {
+    fn pick_magazine(
+        gear: &Gear,
+        accepted: &[String],
+        old: Option<&str>,
+    ) -> Option<(ContainerSlot, usize)> {
         let fullest = |class: &str| {
-            let mut best: Option<(usize, u32)> = None;
-            for (i, mag) in self.magazines.iter().enumerate() {
-                if mag.ammo > 0
-                    && mag.name().eq_ignore_ascii_case(class)
-                    && best.is_none_or(|(_, ammo)| mag.ammo > ammo)
-                {
-                    best = Some((i, mag.ammo));
+            let mut best: Option<(ContainerSlot, usize, u32)> = None;
+            for slot in ANY_CONTAINER {
+                let Some(container) = gear.container(slot) else {
+                    continue;
+                };
+                for (i, mag) in container.magazines.iter().enumerate() {
+                    if mag.ammo > 0
+                        && mag.class.eq_ignore_ascii_case(class)
+                        && best.is_none_or(|(_, _, ammo)| mag.ammo > ammo)
+                    {
+                        best = Some((slot, i, mag.ammo));
+                    }
                 }
             }
-            best.map(|(i, _)| i)
+            best.map(|(slot, i, _)| (slot, i))
         };
-        if let Some(i) = old.and_then(fullest) {
-            return Some(i);
+        if let Some(at) = old.and_then(fullest) {
+            return Some(at);
         }
-        let muzzle = self.weapons.get(at.0)?.kind.muzzles.get(at.1)?;
-        muzzle
-            .magazines
+        accepted
             .iter()
             .filter(|class| old.is_none_or(|o| !o.eq_ignore_ascii_case(class)))
             .find_map(|class| fullest(class))
@@ -214,12 +271,29 @@ impl World {
         self.loadout(unit)
     }
 
-    /// Gives a new unit the weapons and magazines its class lists (`CfgVehicles >> class >>
-    /// weapons[]`, `magazines[]`), as creation does: the magazines first, then each weapon, which
-    /// loads its muzzles from them. Needs the World's config ([`World::set_config`]); names the
-    /// config does not have are skipped.
+    /// A unit's gear: its containers, what they hold and its worn items.
+    pub fn gear(&self, unit: EntityId) -> Option<&Gear> {
+        self.entity(unit).map(|e| &e.gear)
+    }
+
+    /// A unit's gear, to change it.
+    pub fn gear_mut(&mut self, unit: EntityId) -> Option<&mut Gear> {
+        self.entity_mut(unit).map(|e| &mut e.gear)
+    }
+
+    /// A unit's Loadout and gear at once: they are separate fields of the Entity, so a command
+    /// that moves a magazine between them borrows both.
+    pub fn loadout_and_gear_mut(&mut self, unit: EntityId) -> Option<(&mut Loadout, &mut Gear)> {
+        self.entity_mut(unit).map(|e| (&mut e.loadout, &mut e.gear))
+    }
+
+    /// Gives a new unit the loadout its class lists: the containers and worn items of
+    /// `CfgVehicles >> class` (`uniformClass`, `linkedItems[]`, `backpack`, `items[]`) with the
+    /// `magazines[]` stored in them, then the `weapons[]` with their linked attachments, each
+    /// muzzle loading its magazine from what the containers hold
+    /// ([`crate::gear::default_loadout`]). Needs the World's config ([`World::set_config`]).
     pub(crate) fn arm_from_config(&mut self, unit: EntityId) {
-        let Some(armory) = self.armory.as_ref() else {
+        let Some(config) = self.armory.as_ref().map(|a| a.bank.config_arc()) else {
             return;
         };
         let Some(ty) = self.entity(unit).map(|e| e.entity_type().clone()) else {
@@ -231,121 +305,312 @@ impl World {
             return;
         }
         // By name: the type may come from another tree than the World's config.
-        let cfg = armory
-            .bank
-            .config()
-            .root()
-            .get("CfgVehicles")
-            .get(ty.name());
-        if !cfg.is_class() {
-            return;
+        let start = crate::gear::default_loadout(&config, ty.name());
+        if let Some(entity) = self.entity_mut(unit) {
+            entity.gear = start.gear;
+            entity.gear.initialized = true;
         }
-        let list = |name: &str| -> Vec<String> {
-            cfg.get(name)
-                .array()
-                .into_iter()
-                .filter_map(|v| match v {
-                    a3_config::Value::String(s) => Some(s),
-                    _ => None,
-                })
-                .collect()
-        };
-        let (weapons, magazines) = (list("weapons"), list("magazines"));
-        for magazine in magazines {
-            let _ = self.add_magazine(unit, &magazine, None);
-        }
-        for weapon in weapons {
-            let _ = self.add_weapon(unit, &weapon);
+        for weapon in start.weapons {
+            let _ = self.equip_weapon(unit, weapon);
         }
     }
 
-    /// `addWeapon`: gives the unit a weapon and loads each muzzle from its carried magazines at
-    /// once (the engine's reload of all weapons after creation). The first weapon a unit gets is
-    /// selected.
-    pub fn add_weapon(&mut self, unit: EntityId, weapon: &str) -> Result<(), Error> {
-        let kind = self
-            .armory
-            .as_mut()
-            .ok_or(Error::NoConfig)?
-            .bank
-            .weapon(weapon)?;
-        let loadout = self.loadout_mut(unit).ok_or(Error::NoSuchEntity(unit))?;
-        if loadout.weapon_index(&kind.name).is_some() {
-            return Ok(());
-        }
-        let w = loadout.weapons.len();
-        loadout.weapons.push(WeaponSlot {
-            muzzles: vec![MuzzleSlot::default(); kind.muzzles.len()],
-            kind,
-        });
-        for m in 0..loadout.weapons[w].muzzles.len() {
-            if let Some(i) = loadout.pick_magazine((w, m), None) {
-                let mag = loadout.magazines.remove(i);
-                if let Some(slot) = loadout.slot_mut((w, m)) {
-                    slot.magazine = Some(mag);
-                }
-            }
-        }
-        if loadout.current.is_none() {
-            loadout.current = Some((w, 0));
-        }
-        Ok(())
-    }
-
-    /// `removeWeapon`: drops the weapon and the magazines loaded in it. Returns whether the unit
-    /// had it.
-    pub fn remove_weapon(&mut self, unit: EntityId, weapon: &str) -> bool {
-        let Some(loadout) = self.loadout_mut(unit) else {
-            return false;
-        };
-        let Some(w) = loadout.weapon_index(weapon) else {
-            return false;
-        };
-        loadout.weapons.remove(w);
-        loadout.request = None;
-        loadout.current = match loadout.current {
-            Some((cw, _)) if cw == w => (!loadout.weapons.is_empty()).then_some((0, 0)),
-            Some((cw, cm)) if cw > w => Some((cw - 1, cm)),
-            other => other,
-        };
-        true
-    }
-
-    /// `addMagazine`: adds a magazine, full or with `ammo` rounds (clamped to its `count`).
-    pub fn add_magazine(
+    /// Equips a weapon built from the config: it replaces the weapon of its slot, keeps the
+    /// class's linked attachments, and every muzzle that has no magazine loads the fullest
+    /// compatible one the unit carries (the config loadout's own magazine first).
+    fn equip_weapon(
         &mut self,
         unit: EntityId,
-        magazine: &str,
-        ammo: Option<u32>,
+        weapon: crate::inventory::Weapon,
     ) -> Result<(), Error> {
         let kind = self
             .armory
             .as_mut()
             .ok_or(Error::NoConfig)?
             .bank
-            .magazine(magazine)?;
+            .weapon(&weapon.class)?;
+        let loaded = weapon.magazine.as_ref().map(|m| (m.class.clone(), m.ammo));
         let loadout = self.loadout_mut(unit).ok_or(Error::NoSuchEntity(unit))?;
-        let ammo = ammo.unwrap_or(kind.count).min(kind.count);
-        loadout.magazines.push(Magazine::new(kind, ammo));
+        let index = loadout.equip(kind, weapon.slot, weapon.attachments);
+        let muzzles = loadout.weapons[index].muzzles.len();
+        if let Some((class, ammo)) = loaded {
+            self.load_magazine(unit, (index, 0), &class, ammo);
+        }
+        for muzzle in 0..muzzles {
+            let at = (index, muzzle);
+            let empty = self
+                .loadout(unit)
+                .and_then(|l| l.slot(at).map(|s| s.magazine.is_none()))
+                .unwrap_or(false);
+            if empty {
+                self.load_muzzle_from_gear(unit, at);
+            }
+        }
         Ok(())
     }
 
-    /// `weapons`: the carried weapons' classes.
-    pub fn weapons_of(&self, unit: EntityId) -> Vec<String> {
-        self.loadout(unit)
-            .map(|l| l.weapons.iter().map(|w| w.kind.name.clone()).collect())
-            .unwrap_or_default()
+    /// Loads a magazine of `class` with `ammo` rounds into a muzzle: what the config loadout's
+    /// `magazines[]` put there, and what the engine's reload puts there.
+    fn load_magazine(&mut self, unit: EntityId, at: (usize, usize), class: &str, ammo: u32) {
+        let Some(kind) = self
+            .armory
+            .as_mut()
+            .and_then(|a| a.bank.magazine(class).ok())
+        else {
+            return;
+        };
+        let Some(loadout) = self.loadout_mut(unit) else {
+            return;
+        };
+        if let Some(slot) = loadout.slot_mut(at) {
+            slot.magazine = Some(Magazine::new(kind, ammo));
+        }
     }
 
-    /// `magazines`: the carried magazines that are not loaded and not empty, by class
-    /// (`0x14082cec0` skips empty ones).
+    /// Loads the fullest magazine the unit carries that the muzzle accepts; nothing when it
+    /// carries none (`reload_muzzle` without the reload time).
+    fn load_muzzle_from_gear(&mut self, unit: EntityId, at: (usize, usize)) {
+        let Some(loadout) = self.loadout(unit) else {
+            return;
+        };
+        let Some(weapon) = loadout.weapons.get(at.0) else {
+            return;
+        };
+        let Some(muzzle) = weapon.kind.muzzles.get(at.1) else {
+            return;
+        };
+        let accepted = muzzle.magazines.clone();
+        let old = loadout
+            .slot(at)
+            .and_then(|s| s.magazine.as_ref())
+            .map(|m| m.name().to_owned());
+        let Some((slot, index)) = self
+            .gear(unit)
+            .and_then(|g| Loadout::pick_magazine(g, &accepted, old.as_deref()))
+        else {
+            return;
+        };
+        let Some(loose) = self
+            .gear_mut(unit)
+            .and_then(|g| g.take_magazine_at(slot, index))
+        else {
+            return;
+        };
+        self.load_magazine(unit, at, &loose.class, loose.ammo);
+    }
+
+    /// `addWeapon`: gives the unit a weapon and loads its muzzles from its carried magazines at
+    /// once (the engine's reload of all weapons after creation), or links an inventory item the
+    /// way `linkItem` does. `Throw` and `Put` are pseudo weapons: `hasWeapon` sees them, `weapons`
+    /// does not.
+    pub fn add_weapon(&mut self, unit: EntityId, weapon: &str) -> Result<(), Error> {
+        let config = self
+            .armory
+            .as_ref()
+            .ok_or(Error::NoConfig)?
+            .bank
+            .config_arc();
+        let info =
+            classify(&config, weapon).ok_or_else(|| Error::UnknownWeapon(weapon.to_owned()))?;
+        match info.kind {
+            ItemKind::Weapon(slot) => {
+                let built = crate::gear::make_weapon(&config, &info, slot);
+                self.equip_weapon(unit, built)
+            }
+            ItemKind::PseudoWeapon => {
+                if let Some(gear) = self.gear_mut(unit) {
+                    if !gear
+                        .pseudo_weapons
+                        .iter()
+                        .any(|w| w.eq_ignore_ascii_case(&info.class))
+                    {
+                        gear.pseudo_weapons.push(info.class.clone());
+                    }
+                }
+                Ok(())
+            }
+            _ if info.is_inventory_item() => {
+                if let Some(gear) = self.gear_mut(unit) {
+                    crate::gear::wear(&config, gear, &info);
+                }
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    /// `removeWeapon`: drops the weapon and the magazine loaded in it, unlinks an inventory item,
+    /// and drops a pseudo weapon. Returns whether the unit had it.
+    pub fn remove_weapon(&mut self, unit: EntityId, weapon: &str) -> bool {
+        let Some(config) = self.armory.as_ref().map(|a| a.bank.config_arc()) else {
+            return false;
+        };
+        if classify(&config, weapon).is_some_and(|i| i.is_inventory_item()) {
+            if let Some(gear) = self.gear_mut(unit) {
+                crate::gear::unassign(gear, weapon);
+            }
+            return true;
+        }
+        let Some(loadout) = self.loadout_mut(unit) else {
+            return false;
+        };
+        match loadout.weapon_index(weapon) {
+            Some(index) => {
+                loadout.remove_at(index);
+                true
+            }
+            None => {
+                if let Some(gear) = self.gear_mut(unit) {
+                    gear.pseudo_weapons
+                        .retain(|w| !w.eq_ignore_ascii_case(weapon));
+                }
+                false
+            }
+        }
+    }
+
+    /// `addMagazine`: puts a magazine in the unit's containers, full or with `ammo` rounds (a
+    /// negative count, or one above the magazine's `count`, fills it; 0 adds an empty one).
+    /// Returns an error when the name is not a `CfgMagazines` class.
+    pub fn add_magazine(
+        &mut self,
+        unit: EntityId,
+        magazine: &str,
+        ammo: Option<f32>,
+    ) -> Result<(), Error> {
+        let config = self
+            .armory
+            .as_ref()
+            .ok_or(Error::NoConfig)?
+            .bank
+            .config_arc();
+        let info = classify(&config, magazine)
+            .filter(|i| matches!(i.kind, ItemKind::Magazine { .. }))
+            .ok_or_else(|| Error::UnknownMagazine(magazine.to_owned()))?;
+        let ItemKind::Magazine { count } = info.kind else {
+            return Err(Error::UnknownMagazine(magazine.to_owned()));
+        };
+        let rounds = match ammo {
+            Some(n) if n >= 0.0 && (n as u32) < count => n as u32,
+            _ => count,
+        };
+        let Some(gear) = self.gear_mut(unit) else {
+            return Err(Error::NoSuchEntity(unit));
+        };
+        gear.store(
+            Stored::Magazine(crate::gear::make_magazine(&info, rounds)),
+            &info.allowed,
+            &ANY_CONTAINER,
+        );
+        Ok(())
+    }
+
+    /// `addPrimaryWeaponItem` & co.: an attachment of the weapon's slot replaces the one of its
+    /// kind; a magazine the weapon accepts replaces the loaded one (full); anything else is
+    /// ignored.
+    pub fn add_weapon_item(
+        &mut self,
+        unit: EntityId,
+        slot: crate::inventory::WeaponSlot,
+        class: &str,
+    ) {
+        let Some(config) = self.armory.as_ref().map(|a| a.bank.config_arc()) else {
+            return;
+        };
+        let Some(info) = classify(&config, class) else {
+            return;
+        };
+        let Some(weapon) = self
+            .loadout(unit)
+            .and_then(|l| l.weapons.iter().find(|w| w.slot == slot))
+        else {
+            return;
+        };
+        match info.kind {
+            ItemKind::Magazine { count } => {
+                let accepts = crate::inventory::compatible_magazines(&config, &weapon.kind.name);
+                if !accepts.contains(&info.class.to_ascii_lowercase()) {
+                    return;
+                }
+                let Some(index) = self
+                    .loadout(unit)
+                    .and_then(|l| l.weapons.iter().position(|w| w.slot == slot))
+                else {
+                    return;
+                };
+                self.load_magazine(unit, (index, 0), &info.class, count);
+            }
+            ItemKind::Item(item_type) => {
+                let Some(attachment) = crate::inventory::Weapon::attachment_index(item_type) else {
+                    return;
+                };
+                if let Some(loadout) = self.loadout_mut(unit) {
+                    if let Some(weapon) = loadout.weapons.iter_mut().find(|w| w.slot == slot) {
+                        weapon.attachments[attachment] = info.class.clone();
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// `removePrimaryWeaponItem` & co.: clears the attachment of that class, or unloads the
+    /// magazine when it is the loaded one.
+    pub fn remove_weapon_item(
+        &mut self,
+        unit: EntityId,
+        slot: crate::inventory::WeaponSlot,
+        class: &str,
+    ) {
+        let Some(loadout) = self.loadout_mut(unit) else {
+            return;
+        };
+        let Some(weapon) = loadout.weapons.iter_mut().find(|w| w.slot == slot) else {
+            return;
+        };
+        if let Some(attachment) = weapon
+            .attachments
+            .iter_mut()
+            .find(|c| c.eq_ignore_ascii_case(class))
+        {
+            attachment.clear();
+            return;
+        }
+        if let Some(muzzle) = weapon.muzzles.first_mut() {
+            if muzzle
+                .magazine
+                .as_ref()
+                .is_some_and(|m| m.name().eq_ignore_ascii_case(class))
+            {
+                muzzle.magazine = None;
+            }
+        }
+    }
+
+    /// `weapons`: the equipped weapons' classes in the order they were added, then the weapons
+    /// stored in the containers (`0x83e540 → 0x82e950`). `Throw` and `Put` are not listed.
+    pub fn weapons_of(&self, unit: EntityId) -> Vec<String> {
+        let Some(entity) = self.entity(unit) else {
+            return Vec::new();
+        };
+        entity
+            .loadout
+            .weapons
+            .iter()
+            .map(|w| w.kind.name.clone())
+            .chain(entity.gear.stored_weapons().map(|w| w.class.clone()))
+            .collect()
+    }
+
+    /// `magazines`: the magazines in the unit's containers that are not empty, by class
+    /// (`0x14082cec0` skips empty ones); the loaded ones are in a muzzle, not a container.
     pub fn magazines_of(&self, unit: EntityId) -> Vec<String> {
-        self.loadout(unit)
-            .map(|l| {
-                l.magazines
-                    .iter()
+        self.entity(unit)
+            .map(|e| {
+                e.gear
+                    .magazines()
                     .filter(|m| m.ammo > 0)
-                    .map(|m| m.name().to_owned())
+                    .map(|m| m.class.clone())
                     .collect()
             })
             .unwrap_or_default()
@@ -467,34 +732,76 @@ impl World {
     }
 
     /// Changes the magazine of one muzzle when the unit carries one for it (`0x140fe0010`): the
-    /// new magazine goes in, the old one goes back to the inventory unless it is empty, and the
-    /// muzzle waits `magazineReloadTime · U(1 ± 0.2)` before the next round.
+    /// new magazine comes out of a container, the old one goes back into one unless it is empty,
+    /// and the muzzle waits `magazineReloadTime · U(1 ± 0.2)` before the next round.
     fn reload_muzzle(&mut self, unit: EntityId, at: (usize, usize)) {
         let Some(loadout) = self.loadout(unit) else {
             return;
         };
+        let Some(weapon) = loadout.weapons.get(at.0) else {
+            return;
+        };
+        let Some(muzzle) = weapon.kind.muzzles.get(at.1) else {
+            return;
+        };
+        let accepted = muzzle.magazines.clone();
+        let reload_time = muzzle.magazine_reload_time;
         let old = loadout
             .slot(at)
             .and_then(|s| s.magazine.as_ref())
             .map(|m| m.name().to_owned());
-        let Some(index) = loadout.pick_magazine(at, old.as_deref()) else {
+        let Some((slot, index)) = self
+            .gear(unit)
+            .and_then(|g| Loadout::pick_magazine(g, &accepted, old.as_deref()))
+        else {
             return;
         };
-        let reload_time = loadout.weapons[at.0].kind.muzzles[at.1].magazine_reload_time;
+        let Some(loose) = self
+            .gear_mut(unit)
+            .and_then(|g| g.take_magazine_at(slot, index))
+        else {
+            return;
+        };
+        let Some(kind) = self
+            .armory
+            .as_mut()
+            .and_then(|a| a.bank.magazine(&loose.class).ok())
+        else {
+            return;
+        };
         let reload = reload_time * spread_factor(self, 0.2);
         let factor = spread_factor(self, 0.1);
-        let Some(loadout) = self.loadout_mut(unit) else {
-            return;
-        };
-        let mut mag = loadout.magazines.remove(index);
+        let mut mag = Magazine::new(kind, loose.ammo);
         mag.reload_left = reload;
         mag.reload_total = reload;
         mag.round_phase = 0.0;
         mag.round_factor = if mag.kind.quick_reload { 1.0 } else { factor };
+        let Some(loadout) = self.loadout_mut(unit) else {
+            return;
+        };
         let slot = loadout.slot_mut(at).expect("checked");
         slot.burst_left = 0;
         if let Some(old) = slot.magazine.replace(mag).filter(|m| m.ammo > 0) {
-            loadout.magazines.push(old);
+            self.put_magazine_in_gear(unit, old);
+        }
+    }
+
+    /// Puts a magazine a muzzle unloaded back into a container, the way the engine's reload does.
+    fn put_magazine_in_gear(&mut self, unit: EntityId, magazine: Magazine) {
+        let mass = self
+            .config()
+            .and_then(|c| classify(c, magazine.name()))
+            .map_or(0.0, |i| i.mass);
+        if let Some(gear) = self.gear_mut(unit) {
+            gear.store(
+                Stored::Magazine(crate::inventory::Magazine {
+                    class: magazine.name().to_owned(),
+                    ammo: magazine.ammo,
+                    mass,
+                }),
+                &[],
+                &ANY_CONTAINER,
+            );
         }
     }
 
