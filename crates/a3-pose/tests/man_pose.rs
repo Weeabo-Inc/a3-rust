@@ -421,3 +421,58 @@ fn a_turned_parent_carries_its_child_around_its_joint() {
     let expected = SPINE + r * (HEAD - SPINE);
     assert!(head.abs_diff_eq(expected, 1e-4), "{head} vs {expected}");
 }
+
+#[test]
+fn a_part_with_its_own_skeleton_order_gets_its_bones_by_name() {
+    let rig = rig(None);
+    let move_ = offset(&["pelvis"], Vec3::new(0.0, 0.1, 0.0));
+    let pose = rig.pose(&MoveState::single(MoveSample::new(&move_, 0.0)));
+    let composed = rig.compose(&pose);
+    // A helmet's skeleton: the same bones, another order, one the Man does not have.
+    let part = Skeleton {
+        bones: ["head", "pelvis", "visor"]
+            .iter()
+            .map(|n| Bone {
+                name: (*n).to_string(),
+                parent: None,
+                parent_name: String::new(),
+            })
+            .collect(),
+        ..skeleton()
+    };
+    let at = Vec3::new(0.0, 0.4, 0.0);
+    let palette = rig.palette_for(&composed, &part, at);
+    assert_eq!(palette.len(), 3);
+    let up = Affine3A::from_translation(Vec3::new(0.0, 0.1, 0.0));
+    assert!(palette[0].abs_diff_eq(up, 1e-6), "head follows the pelvis");
+    assert!(palette[1].abs_diff_eq(up, 1e-6));
+    assert_eq!(
+        palette[2],
+        Affine3A::IDENTITY,
+        "a bone the Man lacks stays at rest"
+    );
+    // The Man's own palette is the same thing in his own order.
+    assert_eq!(
+        rig.palette(&composed, at),
+        rig.skinning_pose(&pose, at).bones
+    );
+}
+
+#[test]
+fn an_overlay_replaces_the_masked_bones_only() {
+    let rig = rig(None);
+    let base = offset(&["pelvis", "spine", "head"], Vec3::new(0.0, 0.1, 0.0));
+    let face = offset(&["pelvis", "spine", "head"], Vec3::new(0.0, 0.0, 0.3));
+    let pose = rig.pose(&MoveState::single(MoveSample::new(&base, 0.0)));
+    let mask = rig.subtree("spine");
+    assert_eq!(mask, vec![0.0, 1.0, 1.0]);
+    let layered = rig.overlay(&pose, MoveSample::new(&face, 0.0), &mask);
+    assert_eq!(layered.bones[0], pose.bones[0], "outside the mask");
+    // Inside it, the layer's own record.
+    close(layered.bones[1].translation, Vec3::new(0.0, 0.0, 0.3));
+    close(layered.bones[2].translation, Vec3::new(0.0, 0.0, 0.3));
+    // Half a weight lerps the joints halfway.
+    let half = rig.overlay(&pose, MoveSample::new(&face, 0.0), &[0.0, 0.5, 0.0]);
+    close(half.bones[1].translation, Vec3::new(0.0, 0.05, 0.15));
+    assert_eq!(rig.subtree("nothing"), vec![0.0; 3]);
+}

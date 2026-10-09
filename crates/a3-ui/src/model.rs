@@ -92,6 +92,9 @@ pub struct Control {
     pub texture_normal: String,
     /// Text inset of shortcut/menu buttons (`class TextPos`: left, top, right, bottom).
     pub text_pos: Option<[f32; 4]>,
+    /// Structured text's default alignment (`class Attributes >> align`), as a
+    /// [`crate::style`] horizontal position (`LEFT`, `CENTER`, `RIGHT`).
+    pub text_align: Option<u32>,
     pub show: bool,
     pub enabled: bool,
     /// Current fade (0 visible, 1 invisible).
@@ -144,6 +147,7 @@ impl Control {
             picture: String::new(),
             texture_normal: String::new(),
             text_pos: None,
+            text_align: None,
             show: true,
             enabled: true,
             fade: 0.0,

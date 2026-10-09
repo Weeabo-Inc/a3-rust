@@ -242,3 +242,33 @@ fn a_control_list_can_be_an_array_of_class_names() {
     assert_eq!(c.class_name, "C");
     assert_eq!(c.config_path, ["RscDerived", "C"]);
 }
+
+/// Structured text sizes its text with `size` (not an inherited `sizeEx`) and aligns by
+/// `class Attributes >> align` unless the text says otherwise.
+#[test]
+fn structured_text_takes_size_and_attributes() {
+    let config = ConfigTree::from_config(
+        &parse_text(
+            r#"
+            class RscDisplayT {
+                idd = 1;
+                class Controls {
+                    class Text {
+                        type = 13; idc = 2; x = 0; y = 0; w = 0.2; h = 0.1;
+                        sizeEx = 0.027; size = 0.032;
+                        class Attributes { align = "center"; };
+                    };
+                };
+            };
+            "#,
+        )
+        .unwrap(),
+    );
+    let mut ui = Ui::new(Screen::new(1920, 1080));
+    let d = ui
+        .create_display(&config, "RscDisplayT", None, false, &mut NoEval)
+        .unwrap();
+    let c = ui.control(ui.find_control(d, 2).unwrap()).unwrap();
+    assert_eq!(c.size_ex, 0.032);
+    assert_eq!(c.text_align, Some(style::CENTER));
+}

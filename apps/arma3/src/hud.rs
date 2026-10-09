@@ -57,6 +57,8 @@ pub struct Hud {
     /// The player's weapons as his class spawns him.
     info: UnitInfo,
     time: f64,
+    /// SQF to run once the HUD has its first frame.
+    exec: Option<String>,
 }
 
 impl Hud {
@@ -69,6 +71,7 @@ impl Hud {
         vfs: Vfs,
         strings: Arc<dyn a3_gamedata::Localizer>,
         class: &str,
+        exec: Option<String>,
     ) -> Hud {
         let feature = UiFeature::new(gpu, renderer);
         feature.lock().set_assets(Box::new(vfs.clone()));
@@ -87,6 +90,7 @@ impl Hud {
             feature,
             info,
             time: 0.0,
+            exec,
         }
     }
 
@@ -124,6 +128,11 @@ impl Hud {
             Stance::Prone => a3_ingame_ui::Stance::Prone,
         };
         self.igui.update(&self.info, self.time);
+        if let Some(code) = self.exec.take()
+            && let Err(e) = self.igui.exec(&code)
+        {
+            log::error!("--exec: {e}");
+        }
         let list = self.igui.draw(&mut self.fonts);
         self.feature.lock().set_draw_list(list);
     }

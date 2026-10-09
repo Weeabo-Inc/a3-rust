@@ -6,9 +6,7 @@ use crate::value::deep_copy_value;
 use crate::vm::Ctx;
 
 pub(super) fn register<H: Host>(r: &mut Registry<H>) {
-    r.binary("+", NUM, NUM, NUM, |_, a, b| {
-        Ok(Value::Number(num(&a) + num(&b)))
-    });
+    r.binary("+", NUM, NUM, NUM, |_, a, b| Ok(number(num(&a) + num(&b))));
     r.binary("+", STR, STR, STR, |_, a, b| {
         let mut s = String::with_capacity(string(&a).len() + string(&b).len());
         s.push_str(string(&a));
@@ -22,9 +20,7 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
     });
     r.unary("+", NUM, NUM, |_, a| Ok(a));
     r.unary("+", ARR, ARR, |_, a| Ok(deep_copy_value(&a)));
-    r.binary("-", NUM, NUM, NUM, |_, a, b| {
-        Ok(Value::Number(num(&a) - num(&b)))
-    });
+    r.binary("-", NUM, NUM, NUM, |_, a, b| Ok(number(num(&a) - num(&b))));
     r.binary("-", ARR, ARR, ARR, |_, a, b| {
         let remove = array(&b);
         let remove = remove.borrow();
@@ -37,15 +33,13 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         Ok(Value::Array(Array::from_vec(kept)))
     });
     r.unary("-", NUM, NUM, |_, a| Ok(Value::Number(-num(&a))));
-    r.binary("*", NUM, NUM, NUM, |_, a, b| {
-        Ok(Value::Number(num(&a) * num(&b)))
-    });
+    r.binary("*", NUM, NUM, NUM, |_, a, b| Ok(number(num(&a) * num(&b))));
     r.binary("/", NUM, NUM, NUM, |_, a, b| {
         let d = num(&b);
         if d == 0.0 {
             return Err(SqfError::ZeroDivisor);
         }
-        Ok(Value::Number(num(&a) / d))
+        Ok(number(num(&a) / d))
     });
     for name in ["%", "mod"] {
         r.binary(name, NUM, NUM, NUM, |_, a, b| {
@@ -53,17 +47,21 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
             if d == 0.0 {
                 return Err(SqfError::ZeroDivisor);
             }
-            Ok(Value::Number(num(&a) % d))
+            Ok(number(num(&a) % d))
         });
     }
     r.binary("^", NUM, NUM, NUM, |_, a, b| {
-        Ok(Value::Number(num(&a).powf(num(&b))))
+        Ok(number(num(&a).powf(num(&b))))
     });
+    // `a < b ? a : b` and `a > b ? a : b`: with a NaN operand the result is
+    // the right-hand one.
     r.binary("min", NUM, NUM, NUM, |_, a, b| {
-        Ok(Value::Number(num(&a).min(num(&b))))
+        let (x, y) = (num(&a), num(&b));
+        Ok(Value::Number(if x < y { x } else { y }))
     });
     r.binary("max", NUM, NUM, NUM, |_, a, b| {
-        Ok(Value::Number(num(&a).max(num(&b))))
+        let (x, y) = (num(&a), num(&b));
+        Ok(Value::Number(if x > y { x } else { y }))
     });
     r.binary("atan2", NUM, NUM, NUM, |_, a, b| {
         Ok(Value::Number(num(&a).atan2(num(&b)).to_degrees()))
@@ -71,7 +69,11 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
 
     r.unary("abs", NUM, NUM, |_, a| Ok(Value::Number(num(&a).abs())));
     register_unary_math(r);
-    r.unary("round", NUM, NUM, |_, a| Ok(Value::Number(num(&a).round())));
+    // floor(x + 0.5) in single precision: halves round up (`round -2.5` is
+    // -2), and 0.49999997 rounds to 1.
+    r.unary("round", NUM, NUM, |_, a| {
+        Ok(number((num(&a) + 0.5).floor()))
+    });
     r.unary("random", NUM, NUM, |ctx, a| {
         let x = num(&a);
         Ok(Value::Number(ctx.random() * x))
@@ -81,9 +83,10 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         Ok(Value::Bool(num(&a).is_finite()))
     });
     r.unary("linearConversion", ARR, NUM, linear_conversion);
-    r.binary("toFixed", NUM, NUM, STR, |_, a, b| {
-        let digits = num(&b).clamp(0.0, 20.0) as usize;
-        Ok(Value::from(format!("{:.*}", digits, f64::from(num(&a)))))
+    // Only finite numbers: infinity or NaN on the left fails the type check.
+    r.binary("toFixed", SCALAR, NUM, STR, |_, a, b| {
+        let digits = round_half_even(num(&b)).clamp(0, 20) as usize;
+        Ok(Value::from(crate::number::format_fixed(num(&a), digits)))
     });
     r.binary("bitAnd", NUM, NUM, NUM, |_, a, b| {
         Ok(bits(&a, &b, |x, y| x & y))
@@ -114,7 +117,7 @@ macro_rules! unary_math {
         $(
             $r.unary($name, NUM, NUM, |_, a| {
                 let f: fn(f32) -> f32 = $f;
-                Ok(Value::Number(f(num(&a))))
+                Ok(number(f(num(&a))))
             });
         )*
     };
@@ -151,16 +154,43 @@ fn linear_conversion<H: Host>(_: &mut Ctx<'_, H>, a: Value) -> Result<Value, Sqf
     }
     let n = |i: usize| expect_num(&items[i]);
     let (min_from, max_from, value, min_to, max_to) = (n(0)?, n(1)?, n(2)?, n(3)?, n(4)?);
-    let clip = items.get(5).is_some_and(boolean);
-    let t = (value - min_from) / (max_from - min_from);
-    let mut out = min_to + t * (max_to - min_to);
-    if clip {
-        let (lo, hi) = if min_to <= max_to {
-            (min_to, max_to)
-        } else {
-            (max_to, min_to)
-        };
-        out = out.clamp(lo, hi);
+    // A source range narrower than 1e-6 maps everything to `minTo`.
+    if (max_from - min_from).abs() < 1e-6 {
+        return Ok(items[3].clone());
     }
-    Ok(Value::Number(out))
+    let clip = items.get(5).is_some_and(boolean);
+    let mut out = ((max_to - min_to) * (value - min_from)) / (max_from - min_from) + min_to;
+    if clip {
+        if max_to <= min_to {
+            if out <= max_to {
+                out = max_to;
+            }
+            if min_to <= out {
+                out = min_to;
+            }
+        } else {
+            if out <= min_to {
+                out = min_to;
+            }
+            if max_to <= out {
+                out = max_to;
+            }
+        }
+    }
+    Ok(number(out))
+}
+
+/// A number result with subnormals flushed to zero (the engine runs with
+/// SSE flush-to-zero).
+pub(crate) fn number(x: f32) -> Value {
+    Value::Number(crate::number::ftz(x))
+}
+
+/// `cvtss2si`: rounds to the nearest integer, ties to even; out of range
+/// and NaN give `i32::MIN`.
+pub(crate) fn round_half_even(x: f32) -> i32 {
+    if !x.is_finite() || x.abs() >= 2_147_483_648.0 {
+        return i32::MIN;
+    }
+    x.round_ties_even() as i32
 }

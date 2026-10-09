@@ -143,11 +143,26 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         };
         Ok(Value::Number(out))
     });
-    // seed random x: deterministic for a given seed.
-    r.binary("random", NUM, NUM, NUM, |_, a, b| {
-        let mut rng = crate::vm::Rng::new(u64::from(num(&a).to_bits()) ^ 0x9E37_79B9_7F4A_7C15);
-        rng.next_u64();
-        Ok(Value::Number(rng.next_f32() * num(&b)))
+    // seed random x: a hash of the truncated seed, scaled by x.
+    r.binary("random", SCALAR, SCALAR, NUM, |_, a, b| {
+        let seed = truncate_to_int(num(&a));
+        Ok(Value::Number(seeded_random(seed) * num(&b)))
+    });
+    // seed random [x, y]: 2D noise, a hash of the interleaved bits of
+    // x * 100 + seed and y * 100 + seed.
+    r.binary("random", SCALAR, ARR, NUM, |_, a, b| {
+        let seed = num(&a);
+        let items = array(&b);
+        let items = items.borrow();
+        if items.len() != 2 {
+            return Err(SqfError::generic(format!(
+                "{} elements provided, 2 expected",
+                items.len()
+            )));
+        }
+        let coord = |v: &Value| truncate_to_int(v.as_number().unwrap_or(0.0) * 100.0 + seed);
+        let key = interleave_bits(coord(&items[0]), coord(&items[1]));
+        Ok(Value::Number(seeded_random(key)))
     });
 
     r.unary("selectMax", ARR, ANY, |_, a| {
@@ -260,4 +275,62 @@ pub(crate) fn parse_simple_array(text: &str) -> Option<Value> {
     }
     let v = item(&tokens, &mut pos, src)?;
     (tokens.get(pos)?.kind == TokenKind::Eof).then_some(v)
+}
+
+/// `cvttss2si`: truncates toward zero; NaN and out-of-range values give
+/// `i32::MIN`.
+fn truncate_to_int(x: f32) -> i32 {
+    if x.is_nan() || !(-2_147_483_648.0..2_147_483_648.0).contains(&x) {
+        i32::MIN
+    } else {
+        x as i32
+    }
+}
+
+/// The engine's seeded random number: a Wang-style integer hash of `seed`
+/// reduced to 15 bits, in `[0, 1]`.
+pub(crate) fn seeded_random(seed: i32) -> f32 {
+    let p = seed as u32;
+    let mut u = ((((p ^ 0x003d_0000) as i32) >> 16) as u32 ^ p).wrapping_mul(9);
+    u = (((u as i32) >> 4) as u32 ^ u).wrapping_mul(0x27d4_eb2d);
+    let bits = ((((u as i32) >> 15) as u32) ^ u) & 0x7fff;
+    // 1/32767 as the engine stores it (0x38000100).
+    bits as f32 * f32::from_bits(0x3800_0100)
+}
+
+/// Interleaves the low six bits of `a` and `b` (a5..a0 with b5..b0) the way
+/// the 2D form of seeded `random` does.
+fn interleave_bits(a: i32, b: i32) -> i32 {
+    let bit = |v: i32, n: u32| (v >> n) & 1;
+    let mut r = 0;
+    for n in 0..5 {
+        r = (r << 1) | bit(a, n);
+        r = (r << 1) | bit(b, n);
+    }
+    (r << 2) | bit(b, 5) | ((a >> 4) & 2)
+}
+
+#[cfg(test)]
+mod seeded_tests {
+    use super::*;
+
+    #[test]
+    fn seeded_random_matches_the_engine() {
+        // 15-bit hashes behind the oracle's `seed random 1` (0 -> 0.573565,
+        // 42 -> 0.102329, ...).
+        let cases: &[(i32, u16)] = &[
+            (0, 18794),
+            (1, 11421),
+            (2, 13685),
+            (3, 28606),
+            (4, 12892),
+            (42, 3353),
+            (-5, 12892),
+            (1_000_000, 11934),
+        ];
+        for (seed, bits) in cases {
+            let want = f32::from(*bits) * f32::from_bits(0x3800_0100);
+            assert_eq!(seeded_random(*seed), want, "seed {seed}");
+        }
+    }
 }

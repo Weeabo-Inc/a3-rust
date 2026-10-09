@@ -68,6 +68,7 @@ pub fn screenshot(
     let mut renderer = Renderer::new(&gpu, a3_render::wgpu::TextureFormat::Rgba8UnormSrgb);
     let mut scene = DebugScene::new();
     scene.load(&gpu, &mut renderer);
+    scene.hud_exec = engine.exec.clone();
     if let Some(world) = engine.load_world()? {
         let play = engine.play.then_some(engine.camera_mode);
         scene.load_world(
@@ -82,8 +83,8 @@ pub fn screenshot(
             scene.camera.fov.top = top;
         }
     }
-    if let Some((vfs, spec, moves)) = engine.load_model_vfs()? {
-        scene.load_model(&gpu, &mut renderer, vfs, spec, moves);
+    if let Some((vfs, spec, config)) = engine.load_model_vfs()? {
+        scene.load_model(&gpu, &mut renderer, vfs, spec, config.as_deref());
     }
     let mut input = InputState::new();
     if engine.play {

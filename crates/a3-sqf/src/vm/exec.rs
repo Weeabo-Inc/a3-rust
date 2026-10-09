@@ -37,9 +37,6 @@ pub(crate) struct CodeFrame {
     pub nil_ok: bool,
     /// `privateAll`: locals of enclosing scopes are invisible from here.
     pub private_all: bool,
-    /// `toFixed n`: numbers print with `n` decimals in this scope and the
-    /// scopes it starts.
-    pub fixed: Option<u8>,
     /// First scope of a new evaluation context (`isNil {...}`), where
     /// `diag_scope` counts from.
     pub context_root: bool,
@@ -69,6 +66,9 @@ pub(crate) struct ScriptState<H: Host> {
     /// The private variables of the outermost scope when it ended (kept for
     /// `__EXEC`/`__EVAL`, whose locals persist between calls).
     pub final_locals: Vec<(Sym, Value)>,
+    /// `toFixed n`: numbers print with `n` decimals for the rest of the
+    /// script (a setting of the script's context, not of a scope).
+    pub fixed: Option<u8>,
 }
 
 /// How a run of a script ended.
@@ -110,6 +110,7 @@ impl<H: Host> ScriptState<H> {
             unicode_mode: -1,
             resume_with: None,
             final_locals: Vec::new(),
+            fixed: None,
         };
         let mut inv = Invoke::new(code);
         inv.this = Some(this.unwrap_or(Value::Nil));
@@ -138,9 +139,7 @@ impl<H: Host> ScriptState<H> {
         if let Some(this) = inv.this {
             locals.push((Sym::THIS, this));
         }
-        let (parent_nil_ok, fixed) = self
-            .top_code()
-            .map_or((false, None), |cf| (cf.nil_ok, cf.fixed));
+        let parent_nil_ok = self.top_code().is_some_and(|cf| cf.nil_ok);
         let nil_ok = inv.nil_ok || parent_nil_ok;
         self.frames.push(Frame::Code(CodeFrame {
             code: inv.code,
@@ -153,7 +152,6 @@ impl<H: Host> ScriptState<H> {
             capture: inv.capture,
             nil_ok,
             private_all: false,
-            fixed,
             context_root: inv.nil_ok,
         }));
     }

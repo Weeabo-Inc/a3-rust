@@ -114,8 +114,8 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
     });
 }
 
-/// Same type for `isEqualType`: NaN counts as a number.
+/// Same type for `isEqualType`: an infinite or NaN number has type NaN,
+/// so `(1/0) isEqualType 0` is false.
 fn same_type(a: &Value, b: &Value) -> bool {
-    let norm = |t: Type| if t == Type::NaN { Type::Number } else { t };
-    norm(a.ty()) == norm(b.ty())
+    a.ty() == b.ty()
 }

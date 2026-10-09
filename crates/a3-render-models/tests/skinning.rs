@@ -223,8 +223,10 @@ fn plain_cube(color: &str) -> PreparedModel {
             skin: None,
             radius: 3f32.sqrt(),
             faces,
+            polygons: faces,
         }],
         lod_density_coef: 1.0,
+        draw_importance: 1.0,
         radius: 3f32.sqrt(),
         bbox: (Vec3::splat(-1.0), Vec3::splat(1.0)),
     }

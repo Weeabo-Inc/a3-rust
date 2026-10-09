@@ -19,11 +19,10 @@ pub enum Type {
     /// The result of a command that returns nothing (e.g. `hint`).
     Nothing,
     Bool,
-    /// A number. NaN and infinities are numbers too (`typeName` gives
-    /// `SCALAR`; the engine prints them `-1.#IND` / `1.#INF`).
+    /// A finite number.
     Number,
-    /// The engine's separate "Not a Number" type. It appears in command
-    /// signatures; the VM never produces a value of this type.
+    /// The engine's "Not a Number" type: a number that is infinite or NaN
+    /// (`typeName (1/0)` is `"NaN"`; it prints `inf`, `-inf`, `-nan(ind)`).
     NaN,
     String,
     Array,
@@ -232,6 +231,8 @@ impl TypeSet {
     pub const ANYTHING: TypeSet = TypeSet((1u64 << Type::ALL.len()) - 1);
     /// Numbers, including NaN.
     pub const NUMBER: TypeSet = TypeSet(Type::Number.bit() | Type::NaN.bit());
+    /// Finite numbers only (the engine's `SCALAR` without `NaN`).
+    pub const SCALAR: TypeSet = TypeSet(Type::Number.bit());
 
     /// The set holding only `ty`. A number type also admits NaN.
     pub const fn of(ty: Type) -> TypeSet {
@@ -239,6 +240,11 @@ impl TypeSet {
             Type::Number => TypeSet::NUMBER,
             _ => TypeSet(ty.bit()),
         }
+    }
+
+    /// The set holding only `ty` (a number type without NaN).
+    pub const fn exactly(ty: Type) -> TypeSet {
+        TypeSet(ty.bit())
     }
 
     /// Whether `ty` is a member.

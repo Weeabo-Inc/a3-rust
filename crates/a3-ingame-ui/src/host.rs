@@ -20,6 +20,17 @@ pub struct IguiHost {
     localizer: Option<Arc<dyn Localizer>>,
     /// Script errors reported so far (missing functions in `onLoad`, ...).
     pub errors: Vec<String>,
+    /// What scripts asked the HUD to show (`hint`, `systemChat`), in order.
+    pub script_ui: Vec<ScriptUi>,
+}
+
+/// A HUD request made by a script command.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ScriptUi {
+    /// `hint` (`silent` false) or `hintSilent`.
+    Hint { text: String, silent: bool },
+    /// `systemChat`.
+    SystemChat(String),
 }
 
 impl std::fmt::Debug for IguiHost {
@@ -47,6 +58,7 @@ impl IguiHost {
             vfs,
             localizer,
             errors: Vec::new(),
+            script_ui: Vec::new(),
         }
     }
 
@@ -68,6 +80,24 @@ impl Host for IguiHost {
 
     fn report_error(&mut self, error: &ScriptError) {
         self.errors.push(error.report.clone());
+    }
+
+    fn hint(&mut self, text: &str) {
+        self.script_ui.push(ScriptUi::Hint {
+            text: text.to_owned(),
+            silent: false,
+        });
+    }
+
+    fn hint_silent(&mut self, text: &str) {
+        self.script_ui.push(ScriptUi::Hint {
+            text: text.to_owned(),
+            silent: true,
+        });
+    }
+
+    fn system_chat(&mut self, text: &str) {
+        self.script_ui.push(ScriptUi::SystemChat(text.to_owned()));
     }
 
     fn load_file(&mut self, path: &str) -> Result<String, String> {

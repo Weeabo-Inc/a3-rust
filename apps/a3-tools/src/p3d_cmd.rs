@@ -279,21 +279,38 @@ pub fn info(model: &Model) -> String {
             a.name, a.source, a.transform
         );
     }
+    let _ = writeln!(
+        s,
+        "lodDensityCoef {:.3}, drawImportance {:.3}",
+        i.lod_density_coef, i.draw_importance
+    );
+    let _ = writeln!(
+        s,
+        "min shadow   {}, sbsource {:?}",
+        i.min_shadow, i.shadow_source
+    );
     let _ = writeln!(s, "LODs         {}", model.lods.len());
     let _ = writeln!(
         s,
-        "    {:>3}  {:<28} {:>8} {:>8} {:>5} {:>5} {:>5}",
-        "#", "resolution", "vertices", "faces", "sect", "sel", "tex"
+        "    {:>3}  {:<28} {:>8} {:>8} {:>5} {:>5} {:>5} {:>5} {:>5}",
+        "#", "resolution", "vertices", "faces", "sect", "sel", "tex", "sb", "sv"
     );
+    // A LOD's preferred shadow-buffer / shadow-volume LOD index, "-" when unset.
+    let shadow = |list: &[i32], n: usize| match list.get(n) {
+        Some(&l) if l >= 0 => l.to_string(),
+        _ => "-".to_owned(),
+    };
     for (n, lod) in model.lods.iter().enumerate() {
         let (vertices, faces) = counts(lod);
         let _ = writeln!(
             s,
-            "    {n:>3}  {:<28} {vertices:>8} {faces:>8} {:>5} {:>5} {:>5}",
+            "    {n:>3}  {:<28} {vertices:>8} {faces:>8} {:>5} {:>5} {:>5} {:>5} {:>5}",
             lod.resolution.to_string(),
             lod.sections.len(),
             lod.named_selections.len(),
-            lod.textures.len()
+            lod.textures.len(),
+            shadow(&i.preferred_shadow_buffer_lod, n),
+            shadow(&i.preferred_shadow_volume_lod, n)
         );
     }
     s
@@ -394,5 +411,35 @@ mod tests {
         assert!(text.contains("1.000"), "{text}");
         assert!(text.contains("Memory"), "{text}");
         assert!(lod_details(1, &model.lods[1]).contains("door"));
+    }
+
+    #[test]
+    fn info_shows_what_lod_and_shadow_selection_read() {
+        let model = Model {
+            encoding: Encoding::Odol,
+            version: 73,
+            info: ModelInfo {
+                lod_density_coef: 1.5,
+                draw_importance: 0.25,
+                min_shadow: 1,
+                preferred_shadow_buffer_lod: vec![2, -1],
+                preferred_shadow_volume_lod: vec![-1, 3],
+                ..ModelInfo::default()
+            },
+            skeleton: None,
+            animations: vec![],
+            lods: vec![Lod::default(), Lod::default()],
+        };
+        let text = info(&model);
+        assert!(text.contains("lodDensityCoef 1.500"), "{text}");
+        assert!(text.contains("drawImportance 0.250"), "{text}");
+        assert!(text.contains("min shadow   1"), "{text}");
+        // The per-LOD preferred shadow-buffer and shadow-volume LODs, "-" when unset.
+        let rows: Vec<&str> = text
+            .lines()
+            .filter(|l| l.trim_start().starts_with(['0', '1']) && l.contains("0.000"))
+            .collect();
+        assert!(rows[0].trim_end().ends_with("2     -"), "{text}");
+        assert!(rows[1].trim_end().ends_with("-     3"), "{text}");
     }
 }

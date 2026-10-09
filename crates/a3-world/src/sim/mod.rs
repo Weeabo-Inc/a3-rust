@@ -34,7 +34,7 @@ mod projectile;
 use crate::random::EngineRandom;
 use crate::{Create, DamageHit, EntityClass, EntityId, ListKind, SimulationClass, World};
 
-pub use air::AirState;
+pub use air::{AirState, Flight, HitIndices};
 pub use ground::GroundState;
 pub use man::{GRAVITY, MAX_STEP_DOWN, MAX_STEP_UP, ManInput, ManState, Motion, MoveState};
 pub use projectile::ProjectileState;

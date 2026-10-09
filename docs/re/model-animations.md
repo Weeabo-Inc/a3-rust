@@ -184,7 +184,12 @@ animation object carries its attach bone at `+0x90` (`int`) and that bone's blen
 - **Face rig** (measured): in the move RTMs, `face_hub`'s record is the inverse of the head's
   composed frame (its children land on their rest positions in model space), so the face rig does
   not follow the head through the base move. No vertex of the body model binds to a face bone;
-  the face belongs to the head proxy model, posed by its own path (not traced).
+  the face belongs to the head model. The head's `CfgHeads >> Grimaces` name face RTMs (`type =
+  "rtm"`; `NeutralFace >> anim = A3\Characters_F\Heads\Anim\male\Neutral.rtm`, parsed by
+  `0x1054620`), and `Neutral.rtm` carries all 103 bones as identity records. Laid over the
+  `face_hub` subtree (`face_hub` and every bone below it) it puts the face back on the head; the
+  rendered head then sits on the neck with its face in place. The engine's mask for this layer was
+  not traced (medium: the subtree is the inference that matches the data).
 - **Pose space and placement** (high for the data): the composed pose is in the pivots model's
   space, where the root record (the pelvis's `t.y = 0.912`) puts the feet on `y = 0`. An ODOL
   model's vertices are stored relative to its `bounding_center` (`autocenter`), so a vertex goes
@@ -196,6 +201,30 @@ animation object carries its attach bone at `+0x90` (`int`) and that bone's blen
   (`bone * up`) multiplies it by the bone's rotation (issue #247).
 - **Facing**: the posed Man faces `-Z` in model space, like the rest mesh (`p3d-odol.md`: a raw
   model's front is `-Z`).
+- **Gear on a Man** (high for the data, from `B_Soldier_01`'s proxies and the gear models; the
+  engine's proxy-drawing code was not traced). The body model's LOD 0 has 17 proxies. Their
+  `bone` field is a **skeleton** bone index, or -1:
+  - `weapon` (bone 88 `weapon`), `launcher` (89), `pistol` (71 `righthand`), `binoculars`
+    (49 `lefthand`), `pistol_holstered` (97 `rightupleg`), `nvg` and `hmd` (7 `head`), `flag` and
+    `radio` (4 `spine3`). The `weapon` proxy sits on the `weapon` bone's pivot `(-1, 0, 0)` and
+    turns a quarter about Y (orientation columns `(0,0,1)`, `(0,1,0)`, `(-1,0,0)`).
+  - `head_male`, `\a3\characters_f\heads\bysta`, `headgear`, `glasses`, `hair`, `equipment`,
+    `backpack` and `backpack2` have bone -1 and sit at the pivots origin with no rotation.
+  - **Worn models**: the item models (`ItemInfo >> uniformModel` of the linked items: vest
+    `equip_b_vest02`, helmet `headgear_b_helmet_plain`, NVG `nvg_proxy`) and the head
+    (`CfgHeads >> model`, `m_white_01`) carry `OFP2_ManSkeleton` and are modelled in the pivots
+    model's space. The head is autocentred: its `bounding_center = (0, 0.407, -0.023)` puts it on
+    the neck. They are skinned with the Man's pose (bones matched by name) and placed at his pivot
+    origin plus their own centre. The NVG model is skinned to `head` too, so it does not use the
+    `nvg` proxy's position.
+  - **Held models**: the rifle (`CfgWeapons >> model`, `MX_F.p3d`, its muzzle at `-x`) hangs on
+    the `weapon` proxy: `palette[weapon] * proxy * translate(own centre)`. Its linked attachments
+    (`LinkedItems >> * >> slot, item`) hang on the rifle's slot proxies, which the rifle class
+    names in `WeaponSlotsInfo >> <slot> >> linkProxy` (e.g. `\A3\data_f\proxies\weapon_slots\TOP`
+    for `CowsSlot`).
+  - **Proxy orientation is column-major**: read as columns, the `weapon` proxy turns the MX's
+    `-x` muzzle to `-Z`, the Man's front. Read as rows, it would point backwards. This settles the
+    open row/column question of `p3d-odol.md` for proxies.
 - **Skinning** (high): `a3-anim`'s `frame * translate(-pivot)` is exactly this emitted
   `[M | T - M*Q]`; `a3_anim::Pose::from_rtm_frames` composes it down the skeleton
   (`a3_anim::compose_hierarchy`), and `a3_pose::ManRig::skinning_pose` does the same for a move
@@ -209,7 +238,8 @@ animation object carries its attach bone at `+0x90` (`int`) and that bone's blen
 - Which layers a Man's animation holder carries on top of the base move (`+0x3a0`, `+0x740`):
   gestures, aiming, the weapon's `handAnim`, and how hand IK and the head/look direction act on
   the composed pose.
-- How the head proxy's face rig is posed (see *Face rig*).
+- The engine's mask for the head's face layer (see *Face rig*), and how gestures, lipsync and
+  blinking (`Grimaces` of type `eyes`, `lipsync`) act on it.
 - Hunter `wheel_*_destruct_unhide`: `hide` with `minValue..maxValue = -1..0`, so with
   `hitlfwheel` in `0..1` the bone stays hidden; the hit sources may feed negative values.
 - `animPeriod` / `initPhase` use by time-driven sources.

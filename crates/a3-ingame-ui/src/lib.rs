@@ -9,6 +9,11 @@
 //! - [`colors`]: the weapon-state colours (`RscInGameUI >> colorReady`, ...).
 //! - [`stance`]: the stance indicator textures (`CfgStanceIndicatorTextures`).
 //! - [`loadout`]: the [`UnitInfo`] of a unit as its config class spawns it.
+//! - [`hint`]: `hint` / `hintSilent` in `RscHint` ([`InGameUi::show_hint`]).
+//! - [`chat`]: the chat area (`RscChatListMission`), `systemChat` ([`InGameUi::system_chat`]).
+//!
+//! Scripts run on the layer's VM with [`InGameUi::exec`]; `hint`, `hintSilent` and
+//! `systemChat` reach the HUD.
 //!
 //! The behaviour follows `docs/re/ingame-ui.md`.
 //!
@@ -23,8 +28,10 @@
 //! let quads = hud.draw(&mut fonts); // hand to the UI render feature
 //! ```
 
+pub mod chat;
 pub mod colors;
 pub mod format;
+pub mod hint;
 pub mod host;
 mod hud;
 pub mod idc;
@@ -33,6 +40,7 @@ pub mod stance;
 pub mod unit_info;
 
 pub use colors::{IguiColors, MagazineTimers, Side};
+pub use hint::{HintConfig, HintText, SoundRef};
 pub use hud::{Dimm, HudOptions, InGameUi};
 pub use stance::{Stance, StanceAdjust, StanceState, StanceTextures};
 pub use unit_info::{

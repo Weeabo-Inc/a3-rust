@@ -23,6 +23,7 @@ a3-moves.workspace = true
 a3-p3d.workspace = true
 a3-paa.workspace = true
 a3-pose.workspace = true
+a3-rtm.workspace = true
 a3-wrp.workspace = true
 a3-physics.workspace = true
 a3-world.workspace = true

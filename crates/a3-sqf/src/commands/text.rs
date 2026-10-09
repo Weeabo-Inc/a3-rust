@@ -68,12 +68,16 @@ pub(super) fn register<H: Host>(r: &mut Registry<H>) {
         out.push_str(&escape_xml(rest));
         Ok(Value::Text(StructuredText::from_markup(&out)))
     });
-    for name in ["hint", "hintSilent"] {
-        r.unary(name, TEXT, NOTHING, |ctx, a| {
-            if let Value::Text(t) = &a {
-                ctx.host.hint(&t.plain());
-            }
-            Ok(Value::Nothing)
-        });
-    }
+    r.unary("hint", TEXT, NOTHING, |ctx, a| {
+        if let Value::Text(t) = &a {
+            ctx.host.hint(&t.plain());
+        }
+        Ok(Value::Nothing)
+    });
+    r.unary("hintSilent", TEXT, NOTHING, |ctx, a| {
+        if let Value::Text(t) = &a {
+            ctx.host.hint_silent(&t.plain());
+        }
+        Ok(Value::Nothing)
+    });
 }

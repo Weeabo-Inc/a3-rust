@@ -219,7 +219,7 @@ impl Lexer<'_> {
         let value = u64::from_str_radix(digits, 16).map_err(|_| {
             CompileError::new("Invalid number in expression", Span::new(start, self.pos))
         })?;
-        self.push(TokenKind::Number(value as f32), start);
+        self.push(TokenKind::Number(crate::number::ftz(value as f32)), start);
         Ok(())
     }
 
@@ -261,7 +261,7 @@ impl Lexer<'_> {
         let value: f64 = text.parse().map_err(|_| {
             CompileError::new("Invalid number in expression", Span::new(start, self.pos))
         })?;
-        self.push(TokenKind::Number(value as f32), start);
+        self.push(TokenKind::Number(crate::number::ftz(value as f32)), start);
         Ok(())
     }
 }

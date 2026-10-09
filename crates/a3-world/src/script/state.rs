@@ -11,6 +11,23 @@ use crate::{
 };
 
 pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
+    // AL EG. `engineOn`: starts or stops an aircraft's engine (other vehicles have no engine
+    // model yet, #125).
+    r.binary("engineOn", OBJ, BOOL, NOTHING, |ctx, a, b| {
+        let w = ctx.host.world_mut();
+        if let Some(ObjectRef::Entity(id)) = object_arg(w, &a)
+            && w.entity(id).is_some_and(|e| e.is_local())
+        {
+            w.set_engine_on(id, b.as_bool().unwrap_or(false));
+        }
+        Ok(Value::Nothing)
+    });
+    // AG. `isEngineOn`.
+    r.unary("isEngineOn", OBJ, BOOL, |ctx, a| {
+        let w = ctx.host.world();
+        let on = matches!(object_arg(w, &a), Some(ObjectRef::Entity(id)) if w.is_engine_on(id));
+        Ok(Value::Bool(on))
+    });
     // `typeOf`: the config class; "" for plain Static objects (trees, rocks, walls).
     r.unary("typeOf", OBJ, STR, |ctx, a| {
         let w = ctx.host.world();

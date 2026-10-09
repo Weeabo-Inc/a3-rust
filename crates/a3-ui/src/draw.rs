@@ -75,7 +75,8 @@ impl DrawList {
         &self.textures
     }
 
-    fn solid(&mut self, rect: [f32; 4], color: Rgba, clip: Option<[f32; 4]>) {
+    /// Adds an untextured quad (skipped when empty or transparent).
+    pub fn solid(&mut self, rect: [f32; 4], color: Rgba, clip: Option<[f32; 4]>) {
         if color[3] <= 0.0 || rect[2] <= 0.0 || rect[3] <= 0.0 {
             return;
         }
@@ -373,8 +374,13 @@ fn draw_control(
         ControlType::StructuredText => {
             list.solid(rect, with_alpha(c.color_background, alpha), clip);
             let (plain, align) = plain_structured_text(&c.text);
+            let default = match c.text_align {
+                Some(style::CENTER) => Align::Center,
+                Some(style::RIGHT) => Align::Right,
+                _ => Align::Left,
+            };
             let style = TextStyle {
-                align: align.unwrap_or(Align::Left),
+                align: align.unwrap_or(default),
                 vcenter: false,
                 multiline: true,
                 ..base_style

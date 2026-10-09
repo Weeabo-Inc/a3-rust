@@ -25,6 +25,7 @@ pub mod error;
 pub mod fsm;
 pub mod host;
 pub mod lexer;
+pub mod number;
 pub mod parser;
 pub mod preprocess;
 pub mod registry;

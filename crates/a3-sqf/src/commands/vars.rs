@@ -137,14 +137,11 @@ fn check_value(value: &Value, types: Option<&Value>, counts: Option<&Value>) -> 
         let types = types.borrow();
         if !types.is_empty() && !value.is_nil() {
             let ty = value.ty();
-            let ok = types.iter().any(|t| {
-                let tt = t.ty();
-                tt == ty || (tt == Type::Number && ty == Type::NaN)
-            });
+            let ok = types.iter().any(|t| t.ty() == ty);
             if !ok {
                 let expected = types
                     .iter()
-                    .fold(TypeSet::EMPTY, |acc, t| acc.union(TypeSet::of(t.ty())));
+                    .fold(TypeSet::EMPTY, |acc, t| acc.union(TypeSet::exactly(t.ty())));
                 return Some(SqfError::Generic(format!(
                     "Params: Type {}, expected {}",
                     ty,

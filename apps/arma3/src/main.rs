@@ -7,6 +7,7 @@
 mod combat;
 mod engine;
 mod environment;
+mod gear;
 mod hud;
 mod keys;
 mod man;
@@ -107,6 +108,10 @@ struct Cli {
     /// Model viewer: the phase of `--move`'s cycle to pose, 0..1.
     #[arg(long, default_value_t = 0.0, requires = "move_")]
     move_phase: f32,
+    /// Model viewer: dress the posed Man in the gear of this `CfgVehicles` class (e.g.
+    /// `B_Soldier_F`): head, vest, helmet, NVG and rifle.
+    #[arg(long, value_name = "CLASS", requires = "move_")]
+    loadout: Option<String>,
     /// `--screenshot`: after loading, time this many frames and print the average.
     #[arg(long, default_value_t = 0)]
     bench_frames: u64,
@@ -133,6 +138,10 @@ struct Cli {
     /// Leave out the debug text overlay, for frames to compare with the original game.
     #[arg(long)]
     no_overlay: bool,
+    /// `--play`: run this SQF on the in-game UI's script VM when play starts (`hint`,
+    /// `hintSilent`, `systemChat` show on the HUD).
+    #[arg(long, value_name = "SQF", requires = "play")]
+    exec: Option<String>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -167,6 +176,7 @@ fn main() -> anyhow::Result<()> {
             zoom: cli.view_zoom,
             lod: cli.lod,
             pose: cli.move_.clone().map(|name| (name, cli.move_phase)),
+            loadout: cli.loadout.clone(),
         }),
         environment: environment::EnvironmentSpec {
             date: cli.date,
@@ -176,6 +186,7 @@ fn main() -> anyhow::Result<()> {
             fog_distance: cli.fog_distance,
         },
         hide_overlay: cli.no_overlay,
+        exec: cli.exec.clone(),
     };
     log::info!(
         "a3-rust {} (targets Arma 3 {}), game dir: {:?}",
