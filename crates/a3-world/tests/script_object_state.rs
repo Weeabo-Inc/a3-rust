@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use a3_config::{ConfigTree, parse_text};
 use a3_sqf::{Registry, Value, Vm};
-use a3_world::script::{ScriptWorld, register_world_commands};
+use a3_world::script::{ScriptWorld, WorldHost, register_world_commands};
 use a3_world::{ClientId, EntityId, ObjectRef, TypeBank, World};
 
 const CONFIG: &str = r#"
