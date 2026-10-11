@@ -129,14 +129,21 @@ fn number(vm: &mut Vm<AudioWorld>, code: &str) -> f32 {
 #[test]
 fn the_fades_reach_the_audio_host_and_the_getters_read_it_back() {
     let mut vm = vm(Some(RecordingAudio::default()));
-    eval(&mut vm, "2 fadeSound 0.25; 3 fadeMusic 0.5; 0 fadeRadio 1.5");
+    eval(
+        &mut vm,
+        "2 fadeSound 0.25; 3 fadeMusic 0.5; 0 fadeRadio 1.5",
+    );
     assert_eq!(number(&mut vm, "soundVolume"), 0.25);
     assert_eq!(number(&mut vm, "musicVolume"), 0.5);
     assert_eq!(number(&mut vm, "radioVolume"), 1.5);
     let audio = vm.host.audio.as_ref().unwrap();
     assert_eq!(
         audio.fades,
-        [("sound", 2.0, 0.25), ("music", 3.0, 0.5), ("radio", 0.0, 1.5)]
+        [
+            ("sound", 2.0, 0.25),
+            ("music", 3.0, 0.5),
+            ("radio", 0.0, 1.5)
+        ]
     );
 }
 
@@ -144,8 +151,14 @@ fn the_fades_reach_the_audio_host_and_the_getters_read_it_back() {
 fn play_sound_and_play_music_take_the_name_of_either_form() {
     let mut vm = vm(Some(RecordingAudio::default()));
     let speaker = eval(&mut vm, r#"playSound "Alarm""#);
-    assert!(vm.host.is_null(speaker.as_handle().expect("playSound answers an Object")));
-    eval(&mut vm, r#"playSound ["Beep", true]; playMusic "LeadTrack01_F"; playMusic ["", 0]"#);
+    let Value::Handle(speaker) = speaker else {
+        panic!("playSound answers an Object, not {speaker:?}");
+    };
+    assert!(vm.host.is_null(speaker));
+    eval(
+        &mut vm,
+        r#"playSound ["Beep", true]; playMusic "LeadTrack01_F"; playMusic ["", 0]"#,
+    );
     let audio = vm.host.audio.as_ref().unwrap();
     assert_eq!(
         audio.played,
