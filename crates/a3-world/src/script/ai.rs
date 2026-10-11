@@ -404,6 +404,19 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
             Ok(Value::Nothing)
         });
     }
+    // AL EG. The engine's other stop, as a switch: `unit stop toggle` (0x541980) sets the same
+    // flag `doStop` does — the one `stopped` reads — and `false` releases it again. Stopping drops
+    // any order the unit had, as `doStop` leaves it.
+    r.binary("stop", OBJ, BOOL, NOTHING, |ctx, u, b| {
+        let w = ctx.host.world();
+        let unit = unit_arg(w, &u);
+        if let Some(unit) = unit {
+            ctx.host
+                .world_mut()
+                .set_unit_stopped(unit, b.as_bool().unwrap_or(false));
+        }
+        Ok(Value::Nothing)
+    });
     r.unary("stopped", OBJ, BOOL, |ctx, u| {
         let w = ctx.host.world();
         let stopped = unit_arg(w, &u).is_some_and(|u| w.unit_stopped(u));

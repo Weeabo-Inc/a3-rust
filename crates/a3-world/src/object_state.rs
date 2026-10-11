@@ -161,6 +161,15 @@ pub struct ObjectState {
     pub crew_in_immobile_cargo: bool,
     /// `setVehicleAmmo`: the ammo fraction, 0..1.
     pub vehicle_ammo: Option<f32>,
+    /// `allowFleeing`: the unit's cowardice, 0..1 (1 breaks first, 0 never breaks). `fleeing`
+    /// reads it back and the group tick acts on it (`docs/re/ai.md` §4).
+    pub fleeing: f32,
+    /// `flyInHeight`: the altitude above the ground below it an aircraft holds, when a mission
+    /// commanded one.
+    pub fly_in_height: Option<f32>,
+    /// `flyInHeightASL`: the `[standard, combat, stealth]` altitudes above sea level an aircraft
+    /// holds, picked by its crew's behaviour (`docs/re/sim-air.md`).
+    pub fly_in_height_asl: Option<[f32; 3]>,
 }
 
 impl ObjectState {
@@ -230,5 +239,24 @@ impl World {
     /// captive unit's `side` is civilian; its group keeps its side.
     pub fn captive(&self, unit: EntityId) -> i32 {
         self.object_state(unit).map_or(0, |s| s.captive)
+    }
+
+    /// The unit's `allowFleeing` cowardice, 0..1 (`fleeing`); 0 without one — a unit nobody told
+    /// to be afraid never breaks.
+    pub fn fleeing(&self, unit: EntityId) -> f32 {
+        self.object_state(unit).map_or(0.0, |s| s.fleeing)
+    }
+
+    /// `flyInHeight`: the altitude above the ground below it an aircraft was told to hold, or
+    /// `None` when no mission commanded one.
+    pub fn fly_in_height(&self, aircraft: EntityId) -> Option<f64> {
+        self.object_state(aircraft)?.fly_in_height.map(f64::from)
+    }
+
+    /// `flyInHeightASL`: the `[standard, combat, stealth]` altitudes above sea level an aircraft
+    /// was told to hold, or `None` when no mission commanded one.
+    pub fn fly_in_height_asl(&self, aircraft: EntityId) -> Option<[f64; 3]> {
+        let heights = self.object_state(aircraft)?.fly_in_height_asl?;
+        Some(heights.map(f64::from))
     }
 }

@@ -112,7 +112,6 @@ addMagazineCargo	binary	0x83a8f0	verified	decompiled 0x83a8f0 + oracle
 addMagazineCargoGlobal	binary	0x83ab60	verified	decompiled 0x83ab60 + oracle	
 addWeaponCargo	binary	0x83b720	verified	decompiled 0x83b720 + oracle	
 addWeaponCargoGlobal	binary	0x83b980	verified	decompiled 0x83b980 + oracle	
-allowFleeing	binary	0x1907c0	stub	decompiled 0x1907c0	no morale system yet: the courage is not stored (stub)
 backpackCargo	unary	0x83d0e0	verified	decompiled 0x83d0e0 + oracle	
 captive	unary	0x526070	verified	decompiled 0x526070 + oracle	
 captiveNum	unary	0x5260f0	verified	decompiled 0x5260f0 + oracle	
@@ -129,8 +128,6 @@ clearWeaponCargoGlobal	unary	0x83da40	verified	decompiled 0x83da40 + oracle
 disableAI	binary	0x526960	verified	decompiled 0x526960 + oracle	
 enableAI	binary	0x527420	verified	decompiled 0x527420 + oracle	
 engineOn	binary	0x569c30	verified	decompiled 0x569c30 + oracle	
-fleeing	unary	0x528630	stub	decompiled 0x528630	no morale system yet: always false (stub)
-flyInHeight	binary	0x53c0b0	stub	decompiled 0x53c0b0	no air AI yet: the height is not stored (stub)
 fuel	unary	0x528860	verified	decompiled 0x528860 + oracle	
 getAmmoCargo	unary	0x528fe0	verified	decompiled 0x528fe0 + oracle	
 getBackpackCargo	unary	0x83ebd0	verified	decompiled 0x83ebd0 + oracle	

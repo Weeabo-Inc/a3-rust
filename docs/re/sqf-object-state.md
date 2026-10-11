@@ -26,7 +26,7 @@ cargo mass (`script/inventory.rs`). Class checks: `0x1420ba9a0` EntityAI, `0x142
 | `setRank` / `setUnitRank` / `rank` / `rankId` | 0x5660a0 / 0x5660c0 / 0x565e60 / 0x565f80 | PRIVATE 0 … COLONEL 6, any case. An unknown name sets PRIVATE (oracle). `rank objNull` is `""`. |
 | `setSkill` (number) / `setUnitAbility` | 0x8b8100 / 0x566000 | General skill clamped to 0..1; default 0.5. |
 | `setSkill [name, value]` | 0x53f3b0 | One sub-skill. `unit skill name` gives it, else the general skill; `skill unit` the general one (oracle: after `setSkill 0.3; setSkill ["aimingAccuracy", 0.9]`: 0.3 / 0.9 / spotTime 0.3). |
-| `allowFleeing` / `fleeing` | 0x1907c0 / 0x528630 | Courage and the morale state — no morale system yet (stub; `fleeing` false). |
+| `allowFleeing` / `fleeing` | 0x1907c0 / 0x528630 | Cowardice, 1 maximum and 0 disabling fleeing (wiki), clamped 0..1 and stored on the unit; a group sets every man of it. No morale model yet: the group tick breaks a unit whose value is above its threshold, and `fleeing` hands the stored value back rather than the engine's Boolean (`ai.md` §4, §7). |
 
 ## Vehicles
 
@@ -42,7 +42,7 @@ cargo mass (`script/inventory.rs`). Class checks: `0x1420ba9a0` EntityAI, `0x142
 | `locked` | 0x537110 | The value, default 1; -1 for non-Transport and null. |
 | `lockDriver` / `lockedDriver`, `lockCargo` (bool / `[index, bool]`) / `lockedCargo` | 0x56d570 / 0x56cc40, 0x56d270 / 0x56d390 / 0x56cad0 | Driver and cargo seat locks. |
 | `engineOn` / `isEngineOn` | 0x569c30 / 0x56cca0 | The engine flag; an empty tank does not stop `engineOn true` at once (oracle). |
-| `flyInHeight` | 0x53c0b0 | Air AI flight height — no air AI yet (stub). |
+| `flyInHeight` / `flyInHeightASL` | 0x53c0b0 / 0x53c2a0 | An aircraft's commanded altitude: above the ground below it (`flyInHeight`, `[height, forced]` taking only the height) or above sea level (`flyInHeightASL`, `[standard, combat, stealth]`). Stored on the aircraft; the air step holds the higher of the two (`sim-air.md` §5). |
 
 ## Vehicle cargo
 

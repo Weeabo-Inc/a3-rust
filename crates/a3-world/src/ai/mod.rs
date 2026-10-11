@@ -28,6 +28,14 @@ use crate::{EntityId, Error, GroupId, ManInput, World};
 /// completion radius is usually wider than this, so the group comes to a stop inside it.
 pub const ARRIVE_RADIUS: f64 = 1.0;
 
+/// The cowardice (`allowFleeing`, 0..1) above which a unit breaks off: he stops working his
+/// group's waypoint and runs from the nearest contact instead. Ours, not traced — the engine's
+/// own break depends on the group's losses and the leader's courage sub-skill.
+const FLEEING_THRESHOLD: f32 = 0.5;
+
+/// How far from the contact a broken unit runs, in metres.
+const FLEE_DISTANCE: f64 = 100.0;
+
 /// The heading error a full turn input (`±1.0`) aims at, in degrees. Beyond this the unit stands
 /// and turns first; below it he turns while walking.
 const FULL_TURN_DEGREES: f64 = 90.0;
@@ -162,12 +170,20 @@ impl World {
             }
             let order = man.ai.move_order;
             let stopped = man.ai.stopped;
-            let goal = match (order, stopped, is_leader) {
+            // A broken unit (`allowFleeing`) has somewhere else to be than his waypoint; with
+            // nothing to run from he keeps his group's orders.
+            let flee = if order.is_none() && !stopped {
+                self.flee_goal(group, *unit)
+            } else {
+                None
+            };
+            let goal = match (flee, order, stopped, is_leader) {
+                (Some(flee), _, _, _) => Some(flee),
                 // An order of his own overrides everything the group is doing.
-                (Some(order), _, _) => Some(order),
-                (None, true, _) => None,
-                (None, false, true) => Some(orders.position),
-                (None, false, false) => leader_pose.map(|(position, heading)| {
+                (None, Some(order), _, _) => Some(order),
+                (None, None, true, _) => None,
+                (None, None, false, true) => Some(orders.position),
+                (None, None, false, false) => leader_pose.map(|(position, heading)| {
                     position + rotate_flat(formation.offset(index), heading)
                 }),
             };
@@ -208,11 +224,18 @@ impl World {
             }
             let order = man.ai.move_order;
             let stopped = man.ai.stopped;
-            let goal = match (order, stopped, is_leader) {
-                (Some(order), _, _) => Some(order),
-                (None, true, _) => None,
-                (None, false, true) => None,
-                (None, false, false) => leader_pose.map(|(position, heading)| {
+            // Broken (`allowFleeing`) even with the queue done: away from the contact.
+            let flee = if order.is_none() && !stopped {
+                self.flee_goal(group, *unit)
+            } else {
+                None
+            };
+            let goal = match (flee, order, stopped, is_leader) {
+                (Some(flee), _, _, _) => Some(flee),
+                (None, Some(order), _, _) => Some(order),
+                (None, None, true, _) => None,
+                (None, None, false, true) => None,
+                (None, None, false, false) => leader_pose.map(|(position, heading)| {
                     position + rotate_flat(formation.offset(index), heading)
                 }),
             };
@@ -239,6 +262,31 @@ impl World {
         if arrived {
             self.clear_move_order(unit);
         }
+    }
+
+    /// Where a unit whose courage broke (`allowFleeing`, read back by `fleeing`) runs to: straight
+    /// away from the nearest contact his group knows about, [`FLEE_DISTANCE`] metres out. `None`
+    /// while he holds — nobody is known, or his cowardice is at or below [`FLEEING_THRESHOLD`].
+    fn flee_goal(&self, group: GroupId, unit: EntityId) -> Option<DVec3> {
+        if self.fleeing(unit) <= FLEEING_THRESHOLD {
+            return None;
+        }
+        let position = self.entity(unit)?.position();
+        let threat = self
+            .group(group)?
+            .ai
+            .targets
+            .iter()
+            .map(|known| known.position)
+            .min_by(|a, b| flat_distance(position, *a).total_cmp(&flat_distance(position, *b)))?;
+        let away = DVec3::new(position.x - threat.x, 0.0, position.z - threat.z);
+        // Standing on top of him: any way out will do.
+        let away = if away.length_squared() > 1e-6 {
+            away.normalize()
+        } else {
+            DVec3::X
+        };
+        Some(position + away * FLEE_DISTANCE)
     }
 
     /// The input that stands `unit` still, turning him towards what the group knows about when
@@ -710,9 +758,18 @@ impl World {
     /// `doStop`: the unit stays where he is and leaves the formation until a waypoint or
     /// `doFollow` moves him.
     pub fn stop_unit(&mut self, unit: EntityId) {
+        self.set_unit_stopped(unit, true);
+    }
+
+    /// `stop unit toggle` (0x541980): the engine's scripted flag that keeps a unit from moving or
+    /// turning, the one `stopped` reads. `false` lets him go again; stopping drops any order of
+    /// his own, as `doStop` does.
+    pub fn set_unit_stopped(&mut self, unit: EntityId, stopped: bool) {
         if let Some(man) = self.man_mut(unit) {
-            man.ai.stopped = true;
-            man.ai.move_order = None;
+            man.ai.stopped = stopped;
+            if stopped {
+                man.ai.move_order = None;
+            }
         }
     }
 

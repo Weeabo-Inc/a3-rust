@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 use a3_config::{ConfigTree, parse_text};
 use a3_sqf::{Registry, Value, Vm};
-use a3_world::script::{ScriptWorld, register_world_commands};
-use a3_world::{ClientId, TypeBank, World};
+use a3_world::script::{ScriptWorld, WorldHost, register_world_commands};
+use a3_world::{ClientId, EntityId, ObjectRef, TypeBank, World};
 
 const CONFIG: &str = r#"
 class CfgVehicles {
@@ -15,6 +15,8 @@ class CfgVehicles {
     class Man: All { simulation = "soldier"; };
     class B_Soldier_F: Man { scope = 2; side = 1; };
     class Car: All { simulation = "carx"; };
+    class Heli: All { simulation = "helicopter"; };
+    class B_Heli_Light_01_F: Heli { scope = 2; side = 1; };
     class B_MRAP_01_F: Car {
         scope = 2; side = 1; fuelCapacity = 50;
         hiddenSelections[] = {"Camo1", "Camo2", "Camo3"};
@@ -69,6 +71,17 @@ fn sqf(vm: &mut Vm<ScriptWorld>, code: &str) -> String {
     match eval(vm, code) {
         Value::String(s) => s.to_string(),
         other => other.to_sqf_string(),
+    }
+}
+
+/// The Entity an SQF Object value names.
+fn entity(vm: &mut Vm<ScriptWorld>, code: &str) -> EntityId {
+    let Value::Handle(h) = eval(vm, code) else {
+        panic!("{code}: not an object")
+    };
+    match ObjectRef::from_handle_id(h.id) {
+        Some(ObjectRef::Entity(id)) => id,
+        _ => panic!("{code}: not an entity handle"),
     }
 }
 
@@ -137,6 +150,62 @@ fn unit_pos_ai_features_rank_skill() {
     );
     eval(&mut vm, "u setSkill 2");
     assert_eq!(sqf(&mut vm, "[skill u, u skill 'aimingAccuracy']"), "[1,1]");
+}
+
+#[test]
+fn fleeing_is_stored_and_read_back() {
+    let mut vm = vm();
+    // Nobody is afraid until a mission says so; a vehicle and a null object have no courage.
+    assert_eq!(
+        sqf(&mut vm, "[fleeing u, fleeing car, fleeing objNull]"),
+        "[0,0,0]"
+    );
+    eval(&mut vm, "u allowFleeing 0.75");
+    assert_eq!(sqf(&mut vm, "fleeing u"), "0.75");
+    // The cowardice lives on the 0..1 scale the wiki describes.
+    eval(&mut vm, "u allowFleeing 2");
+    assert_eq!(sqf(&mut vm, "fleeing u"), "1");
+    eval(&mut vm, "u allowFleeing -1");
+    assert_eq!(sqf(&mut vm, "fleeing u"), "0");
+    // A group sets every man of it, and each of them answers for it.
+    eval(
+        &mut vm,
+        "grp = group u;
+         v = grp createUnit ['B_Soldier_F', [5, 0, 0], [], 0, 'NONE'];
+         grp allowFleeing 0.25",
+    );
+    assert_eq!(sqf(&mut vm, "[fleeing u, fleeing v]"), "[0.25,0.25]");
+}
+
+#[test]
+fn the_flight_height_lands_on_the_aircraft() {
+    let mut vm = vm();
+    eval(
+        &mut vm,
+        "heli = 'B_Heli_Light_01_F' createVehicle [80, 0, 0]",
+    );
+    let id = entity(&mut vm, "heli");
+    assert_eq!(
+        vm.host.world().fly_in_height(id),
+        None,
+        "nothing commanded yet"
+    );
+
+    eval(&mut vm, "heli flyInHeight 80");
+    assert_eq!(vm.host.world().fly_in_height(id), Some(80.0));
+    // `[height, forced]` takes the height; the forced flag is not modelled.
+    eval(&mut vm, "heli flyInHeight [50, true]");
+    assert_eq!(vm.host.world().fly_in_height(id), Some(50.0));
+    // The ASL form keeps all three, one per behaviour.
+    eval(&mut vm, "heli flyInHeightASL [200, 100, 400]");
+    assert_eq!(
+        vm.host.world().fly_in_height_asl(id),
+        Some([200.0, 100.0, 400.0])
+    );
+    // A ground vehicle is not an aircraft: nothing is stored on it.
+    eval(&mut vm, "car flyInHeight 80");
+    let car = entity(&mut vm, "car");
+    assert_eq!(vm.host.world().fly_in_height(car), None);
 }
 
 #[test]

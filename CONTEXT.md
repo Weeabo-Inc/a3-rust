@@ -652,6 +652,19 @@ _Avoid_: pattern, arrangement
 What a Group knows about one enemy: a certainty from 0 to 4 and where and when it was last
 seen. Shared by every unit of the Group, not kept per unit.
 
+**Cowardice**:
+The 0..1 value a mission sets on a unit with `allowFleeing` (1 breaks first, 0 never) and reads
+back with `fleeing`; a unit above the group tick's break threshold leaves its waypoint and runs
+from the nearest contact its Group knows.
+_Avoid_: courage, morale (the engine's morale — the Group's losses against the leader's courage
+sub-skill — is not implemented)
+
+**Commanded flight height**:
+The altitude an aircraft is told to hold: `flyInHeight` above the ground below it, or
+`flyInHeightASL` above the sea with one altitude per Group behaviour (standard, combat, stealth).
+The air step flies the higher of the two while nobody is at the controls.
+_Avoid_: fly height on its own, cruise altitude
+
 ## Physics and collision
 
 **Collision world**:

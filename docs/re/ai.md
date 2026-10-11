@@ -141,10 +141,18 @@ on a unit is the same call on his group. It is not the same as `doMove`.
 | unit | goal |
 |---|---|
 | any unit with `move_order` (doMove/commandMove/moveTo) | his own order — overrides the group |
-| `stopped` (doStop) | none: he stands, out of the formation |
+| `stopped` (doStop, `stop unit true`) | none: he stands, out of the formation |
 | `disabled` (enableAI/disableAI, not yet a script command) | untouched — the script drives him |
+| broken (`allowFleeing` above `FLEEING_THRESHOLD`) | away from the nearest contact the group knows |
 | leader | the active waypoint's position |
 | follower | `leader.position + rotate_flat(formation.offset(index), leader.heading())` |
+
+**Fleeing.** `allowFleeing` stores a 0..1 cowardice on the unit (1 breaks first, 0 never; a group
+sets every man of it) and `fleeing` reads it back. A unit whose value is **above**
+`FLEEING_THRESHOLD = 0.5` and whose group knows of a contact leaves the waypoint alone and walks
+`FLEE_DISTANCE = 100` m straight away from the nearest one, in the formation or with the queue
+done alike; with no contact he keeps his group's orders, and an order of his own still wins. Both
+constants are ours (§7).
 
 On the way: `walk_towards` turns towards the goal and walks while the heading error is under
 `FULL_TURN_DEGREES = 90°` (otherwise turning on the spot — walking while turning sharply would
@@ -246,7 +254,8 @@ Registered by `crates/a3-world/src/script/ai.rs` (53 names incl. overloads). Han
 | `setFormation` / `formation` | | 0x191de0 / 0x190b40 | |
 | `doMove`, `commandMove`, `moveTo` | `unit(s) cmd pos` | 0x5690d0 / 0x568340 / 0x47de90 | left may be an array of units |
 | `doStop` | `doStop unit(s)` | 0x5690f0 | postfix works with an object (`a doStop`); the engine's own array examples use the prefix form `doStop [a, b]` |
-| `stopped` | `stopped unit` | 0x541a10 | |
+| `stop` | `unit stop toggle` | 0x541980 | the flag `doStop` sets, as a switch: `true` drops the unit's order as `doStop` does, `false` releases him |
+| `stopped` | `stopped unit` | 0x541a10 | reads the flag of `doStop`/`stop` |
 | `doFollow` | `unit(s) doFollow lead` | 0x569090 | clears his order, back into the formation |
 | `knowsAbout` | `who knowsAbout target` | 0x1c8640 / 0x1cbe50 | object/group/side on the left |
 | `reveal` | `who reveal target` / `who reveal [target, accuracy]` | 0x1c86f0 | a unit reveals to his group |
@@ -254,7 +263,7 @@ Registered by `crates/a3-world/src/script/ai.rs` (53 names incl. overloads). Han
 
 Engine commands in this area we have **not** registered: `copyWaypoints` (0x8fbec0),
 `enableAI`/`disableAI` (0x527420/0x526960), `setUnitPos` (0x53fc20), `commandStop` (0x568360),
-`stop` (0x541980), `unitReady` (0x569170), `waypointTimeoutCurrent` (0x8f8d20),
+`unitReady` (0x569170), `waypointTimeoutCurrent` (0x8f8d20),
 `lockWp` (0x1911a0), the waypoint attachment commands (`waypointAttachVehicle` etc.),
 `forceSpeed` (0x569ed0), `nearTargets` (0x1cb6a0).
 
@@ -285,5 +294,12 @@ Engine commands in this area we have **not** registered: `copyWaypoints` (0x8fbe
 - **Locality gates only the AI tick.** No network messages are produced or consumed for any of
   this; the network-facing World operations do not carry AI state, so a client-side mission
   setting waypoints changes its local copy only (#244).
-- `Behaviour::view_scale`, `FORMATION_SPACING`, the knowledge constants and `ARRIVE_RADIUS` are
-  our values, chosen to be plausible, not traced from the binary.
+- **`fleeing` answers a number, not the engine's Boolean.** The original's break is a morale
+  model — the group's losses against its strength, scaled by the leader's courage sub-skill, then
+  a run to a supply point or a "safe position" within 600 m (wiki). None of that exists here: a
+  unit breaks on the cowardice a mission set alone, runs straight away from the nearest contact,
+  and never stops; `fleeing` hands that 0..1 value back so a mission can watch it, and
+  `if (fleeing u)` reads as it does in the engine.
+- `Behaviour::view_scale`, `FORMATION_SPACING`, the knowledge constants, `ARRIVE_RADIUS`,
+  `FLEEING_THRESHOLD` and `FLEE_DISTANCE` are our values, chosen to be plausible, not traced from
+  the binary.
