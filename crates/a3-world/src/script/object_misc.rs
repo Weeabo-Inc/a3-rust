@@ -1,9 +1,9 @@
 //! Object, environment and global-script commands that do not belong to the unit, vehicle or
 //! container families: `direction`, `setOvercast`, the simple-object pair, and the commands whose
-//! contract we can honour while the subsystem behind them does not exist yet (`fadeMusic`,
-//! `enableStamina`, `enableTeamSwitch`, `enableAttack`, `createDiaryRecord`). From the decompiled
-//! handlers (RVAs from `docs/re/sqf-commands.tsv`) and the offline wiki for the syntax; the
-//! stubs are recorded as `stub` in `docs/fidelity/sqf-verified.tsv`.
+//! contract we can honour while the subsystem behind them does not exist yet (`enableStamina`,
+//! `enableTeamSwitch`, `enableAttack`, `createDiaryRecord`). From the decompiled handlers (RVAs
+//! from `docs/re/sqf-commands.tsv`) and the offline wiki for the syntax; the stubs are recorded
+//! as `stub` in `docs/fidelity/sqf-verified.tsv`.
 
 use a3_sqf::{Handle, HandleKind, Registry, Type, TypeSet, Value};
 
@@ -115,16 +115,9 @@ fn register_simple<H: WorldHost>(r: &mut Registry<H>) {
 }
 
 /// The commands whose subsystem does not exist yet: each keeps the state the engine keeps and
-/// records itself as a `stub` in `docs/fidelity/sqf-verified.tsv`.
+/// records itself as a `stub` in `docs/fidelity/sqf-verified.tsv`. (`fadeMusic`, once of this
+/// family, now lives in `audio_cmds`, against the host's audio engine.)
 fn register_globals<H: WorldHost>(r: &mut Registry<H>) {
-    // 0x553190: `time fadeMusic volume`. The mixer has no music bus, so only the target volume is
-    // kept _(stub)_.
-    r.binary("fadeMusic", NUM, NUM, NOTHING, |ctx, _, b| {
-        ctx.host
-            .world_mut()
-            .set_music_volume(b.as_number().unwrap_or(1.0));
-        Ok(Value::Nothing)
-    });
     // 0x55f850: there is no team-switch UI, so the flag is only kept _(stub)_.
     r.unary("enableTeamSwitch", BOOL, NOTHING, |ctx, a| {
         ctx.host

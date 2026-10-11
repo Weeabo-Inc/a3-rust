@@ -711,6 +711,7 @@ dependencies = [
 name = "arma3"
 version = "0.1.0"
 dependencies = [
+ "a3-audio",
  "a3-config",
  "a3-core",
  "a3-environment",

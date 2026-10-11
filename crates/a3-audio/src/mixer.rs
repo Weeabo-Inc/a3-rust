@@ -4,6 +4,7 @@
 use crate::filter::LowPass;
 use crate::spatial::{Emitter, Listener, equal_power_pan, spatialize};
 use crate::stream::StreamReader;
+use crate::volume::{Bus, TICKS_PER_SECOND, VolumeBus};
 use crate::{Clip, Stream};
 
 /// Frames mixed with one set of voice parameters; gains ramp across each block.
@@ -41,6 +42,9 @@ pub struct PlayParams {
     pub pan: f32,
     /// Fade-in time in seconds.
     pub fade_in: f32,
+    /// The volume bus the voice plays on: its bus gain multiplies the voice's own gain
+    /// (`fadeSound`, `fadeMusic`, `fadeRadio`).
+    pub bus: Bus,
 }
 
 impl Default for PlayParams {
@@ -53,6 +57,7 @@ impl Default for PlayParams {
             emitter: None,
             pan: 0.0,
             fade_in: 0.0,
+            bus: Bus::Sound,
         }
     }
 }
@@ -88,6 +93,18 @@ pub enum Command {
     SetListener(Listener),
     /// Set the gain applied to the whole mix.
     SetMasterGain(f32),
+    /// Set a bus's gain at once (`soundVolume`, `musicVolume`, `radioVolume`).
+    SetBusGain(Bus, f32),
+    /// Fade a bus to a gain over a number of engine ticks (`fadeSound`, `fadeMusic`,
+    /// `fadeRadio`).
+    FadeBus {
+        /// The bus to fade.
+        bus: Bus,
+        /// The gain it is heading for.
+        target: f32,
+        /// The fade's length in engine ticks (0 sets it at once).
+        ticks: f32,
+    },
     /// Stop every voice.
     StopAll,
 }
@@ -171,7 +188,8 @@ pub struct Mixer {
     max_voices: usize,
     voices: Vec<Voice>,
     listener: Listener,
-    master_gain: f32,
+    /// The master gain and the sound, music and radio gains under it; stepped by this mixer.
+    buses: VolumeBus,
     stats: MixerStats,
 }
 
@@ -183,7 +201,7 @@ impl Mixer {
             max_voices,
             voices: Vec::new(),
             listener: Listener::default(),
-            master_gain: 1.0,
+            buses: VolumeBus::new(),
             stats: MixerStats::default(),
         }
     }
@@ -191,6 +209,11 @@ impl Mixer {
     /// Output frames per second.
     pub fn sample_rate(&self) -> u32 {
         self.sample_rate
+    }
+
+    /// The volume buses (`soundVolume`, `fadeSound`, ...).
+    pub fn buses(&self) -> &VolumeBus {
+        &self.buses
     }
 
     /// Counters.
@@ -218,7 +241,9 @@ impl Mixer {
                 self.with_voice(id, |v| v.params.emitter = Some(*emitter));
             }
             Command::SetListener(listener) => self.listener = listener,
-            Command::SetMasterGain(gain) => self.master_gain = gain,
+            Command::SetMasterGain(gain) => self.buses.set_master_gain(gain),
+            Command::SetBusGain(bus, gain) => self.buses.set_gain(bus, gain),
+            Command::FadeBus { bus, target, ticks } => self.buses.fade_gain(bus, target, ticks),
             Command::StopAll => {
                 for v in &mut self.voices {
                     v.fade_out(0.0, self.sample_rate);
@@ -301,6 +326,9 @@ impl Mixer {
 
     fn render_block(&mut self, out: &mut [f32]) {
         let frames = out.len() / 2;
+        // Advance the scripted fades by this block's engine ticks before mixing with them.
+        self.buses
+            .step(frames as f32 / self.sample_rate as f32 * TICKS_PER_SECOND);
         let targets: Vec<Target> = self.voices.iter().map(|v| self.target(v)).collect();
 
         // Pick the voices to mix: audible ones by priority, then by loudness.
@@ -320,11 +348,11 @@ impl Mixer {
         }
 
         let rate = self.sample_rate as f32;
-        let master = self.master_gain;
         for (i, voice) in self.voices.iter_mut().enumerate() {
             let target = targets[i];
+            let gain = self.buses.voice_gain(voice.params.bus);
             if mixed[i] {
-                voice.mix(out, frames, target, master, rate);
+                voice.mix(out, frames, target, gain, rate);
             } else {
                 voice.skip(frames, target);
             }
@@ -369,7 +397,8 @@ impl Voice {
     }
 
     /// Mixes `frames` frames into `out`, ramping the gains from the last block to `target`.
-    fn mix(&mut self, out: &mut [f32], frames: usize, target: Target, master: f32, rate: f32) {
+    /// `bus_gain` is the voice's bus gain under the master, applied to every frame.
+    fn mix(&mut self, out: &mut [f32], frames: usize, target: Target, bus_gain: f32, rate: f32) {
         for filter in &mut self.filters {
             match target.cutoff {
                 Some(cutoff) => filter.set(cutoff, target.filter_q, rate),
@@ -387,7 +416,7 @@ impl Voice {
                 break;
             };
             let t = (n + 1) as f32 / frames as f32;
-            let env = self.envelope * master;
+            let env = self.envelope * bus_gain;
             for c in 0..2 {
                 let gain = start[c] + (target.gains[c] - start[c]) * t;
                 out[2 * n + c] += self.filters[c].process(sample[c]) * gain * env;

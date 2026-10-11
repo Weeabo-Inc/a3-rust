@@ -4,6 +4,7 @@
 //! (`--world altis`), an FPS overlay, a headless smoke-test mode and an offscreen screenshot
 //! mode for checking rendering changes.
 
+mod audio;
 mod combat;
 mod engine;
 mod environment;

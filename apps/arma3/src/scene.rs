@@ -12,6 +12,7 @@ use a3_render::{
 };
 use glam::{DAffine3, DQuat, DVec3, Vec3};
 
+use crate::audio::GameAudio;
 use crate::combat::Combat;
 use crate::gear::{Loadout, ManGear, place_man};
 use crate::man::ManAnimation;
@@ -319,6 +320,9 @@ pub struct DebugScene {
     sim_time: f64,
     /// The player's weapon and its shots, when playing.
     combat: Option<Combat>,
+    /// The game's sound output, started with the World: the volume buses the script commands
+    /// drive and the sounds `playSound`/`playMusic` name (`crate::audio::GameAudio`).
+    audio: Option<GameAudio>,
     /// The world's placed lights (lamps), discovered from `CfgVehicles >> Reflectors`. Not drawn
     /// yet; the shading pass is a separate change (`docs/re/render-materials.md` §3.4).
     lights: Vec<a3_environment::PlacedLight>,
@@ -346,6 +350,7 @@ impl DebugScene {
             hud_exec: None,
             sim_time: 0.0,
             combat: None,
+            audio: None,
             lights: Vec::new(),
         }
     }
@@ -373,6 +378,9 @@ impl DebugScene {
             env.set_sky_texture(sky_texture(&world).as_ref());
         }
         self.lights = world_lights(&world);
+        // The game's sound output, over the World's files and config: the scripted volume buses
+        // and the `CfgSounds`/`CfgMusic` classes the sound commands name.
+        self.audio = Some(GameAudio::new(world.vfs.clone(), &world.config));
         let terrain =
             TerrainRenderer::new(gpu, renderer, &world.landscape, Some(world.reader.clone()));
         let sea_config = SeaConfig::new(world.sea.waves, world.sea.water_ex);
@@ -596,6 +604,11 @@ impl DebugScene {
     /// Advance the scene by one frame.
     pub fn update(&mut self, input: &InputState, mouse_look: bool, dt: f64) {
         self.sim_time += dt;
+        // The listener follows the camera (from its last frame's pose), so 3D sounds are heard
+        // from where the view is.
+        if let Some(audio) = &self.audio {
+            audio.set_listener(self.camera.position, self.camera.forward());
+        }
         if self.player.is_some() {
             self.update_player(input, mouse_look, dt);
             return;
