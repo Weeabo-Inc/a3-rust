@@ -1,17 +1,22 @@
 //! Spawning a [`Mission`] into a [`World`]: Entities at the SQM positions, groups, leaders.
 //!
-//! What the engine does at mission start, in order: create every placed unit as an Entity at its
-//! `position[]` (the second component is height above sea level, like `CAN_COLLIDE`), set its
-//! heading from `azimut`, put it into its group, and make the unit with `leader=1` the group's
-//! leader. Units with `presence=0` are not created; units whose class the config does not know
-//! are reported in [`Spawned::unspawned`] instead of stopping the load.
+//! What the engine does at mission start, in order: create every placed unit as an Entity at the
+//! place its `position[]` names, set its heading from `azimut`, put it into its group, and make
+//! the unit with `leader=1` the group's leader. Units with `presence=0` are not created; units
+//! whose class the config does not know are reported in [`Spawned::unspawned`] instead of
+//! stopping the load.
+//!
+//! The place is the position only where the SQM stored one the engine uses ([`Unit::on_surface`]):
+//! the 2D editor's entities all stand on the ground at their `x`/`z` whatever their stored
+//! height, and over sea on the water surface; a 3D-editor entity stands where its `position[]`
+//! says. `docs/re/missions.md` §Placement has the measurements behind both.
 //!
 //! Not applied yet (no World support): `skill`, `rank`, `special` ("FLY"/"FORM"/"CARGO" vehicle
 //! placement) and `lock`. Waypoints and triggers are values only.
 
 use std::collections::BTreeMap;
 
-use a3_world::{Create, EntityId, GroupId, Side, TypeBank, World};
+use a3_world::{Create, EntityId, Error, GroupId, Side, TypeBank, World};
 use glam::DVec3;
 
 use crate::mission::{Mission, MissionGroup, Unit};
@@ -52,6 +57,26 @@ pub struct Unspawned {
     pub class: String,
     /// Why it was not created.
     pub reason: String,
+    /// The original engine does not create this unit either, so the Mission is at fault and not
+    /// the loader: its class is abstract (`scope = 0`, `WeaponHolder`) or no loaded addon
+    /// defines it (the Mark DLC's `ModuleHvt*_F` in this install). Measured against
+    /// `arma3server_x64.exe`, which logs the same refusal for both
+    /// (`docs/re/missions.md` §What the engine refuses to create).
+    pub engine_skips: bool,
+}
+
+impl Unspawned {
+    /// A unit the World refused, with [`Unspawned::engine_skips`] set from the reason.
+    fn new(id: i32, class: String, error: &Error) -> Self {
+        Self {
+            id,
+            class,
+            reason: error.to_string(),
+            // `UnknownType` is an addon the install does not have; the engine has nothing to
+            // create from either.
+            engine_skips: matches!(error, Error::AbstractType(_) | Error::UnknownType(_)),
+        }
+    }
 }
 
 /// Creates every unit of `mission` in `world` (types from `types`), grouped as the SQM places
@@ -131,26 +156,33 @@ fn create_unit(
     let entity_type = match types.get(&unit.class) {
         Ok(ty) => ty,
         Err(e) => {
-            out.unspawned.push(Unspawned {
-                id: unit.id,
-                class: unit.class.clone(),
-                reason: e.to_string(),
-            });
+            out.unspawned
+                .push(Unspawned::new(unit.id, unit.class.clone(), &e));
             return None;
         }
     };
-    let mut create = Create::new(entity_type, unit.position);
-    if unit.on_surface {
-        create = create.on_surface();
-    }
+    let create = if unit.on_surface {
+        // The stored height is not the Entity's place ([`Unit::on_surface`]): the engine puts it
+        // on the ground at its `x`/`z`, and on the sea surface where the terrain lies below it —
+        // a boat the 2D editor placed at height 0 over deep water floats, it does not sink to
+        // the sea floor (`docs/re/missions.md` §Placement). The collision world's Roadway
+        // surfaces (a bridge deck, a house floor) are not consulted: the terrain is the ground
+        // here.
+        let ground = world
+            .surface_height(unit.position.x, unit.position.z)
+            .max(0.0);
+        Create::new(
+            entity_type,
+            DVec3::new(unit.position.x, ground, unit.position.z),
+        )
+    } else {
+        Create::new(entity_type, unit.position)
+    };
     let id = match world.create(create) {
         Ok(id) => id,
         Err(e) => {
-            out.unspawned.push(Unspawned {
-                id: unit.id,
-                class: unit.class.clone(),
-                reason: e.to_string(),
-            });
+            out.unspawned
+                .push(Unspawned::new(unit.id, unit.class.clone(), &e));
             return None;
         }
     };

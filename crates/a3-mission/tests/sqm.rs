@@ -242,12 +242,18 @@ fn groups_units_and_leaders() {
         "the player unit carries the editor's player string"
     );
 
-    // `position[]` is {east, height above sea level, north}, as world space (x, y, z).
+    // `position[]` is {east, height, north}, as world space (x, y, z). The 2D editor's height is
+    // not the entity's place — the engine stands every entity of that format on the ground at
+    // its `x`/`z` — so it is kept as stored and the entity is marked `on_surface`
+    // (`docs/re/missions.md` §Placement).
     assert_eq!(
         west.units[0].position,
         glam::DVec3::new(1000.0, 0.0, 2000.0)
     );
-    assert!(!west.units[0].on_surface, "3 components keep their height");
+    assert!(
+        west.units[0].on_surface,
+        "the 2D editor's stored height is not a place"
+    );
     assert_eq!(west.units[0].azimut, Some(45.0));
     assert_eq!(
         west.units[1].position,
