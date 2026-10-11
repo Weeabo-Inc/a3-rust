@@ -10,9 +10,8 @@
 //! Contracts and handler RVAs: `docs/re/sqf-commands.tsv`, which has the nullary getters
 //! (`soundVolume` 0x8aaf30, `musicVolume` 0x8a9c40, `radioVolume` 0x8aaa50) and the binary fades
 //! (`fadeSound` 0x557200, `fadeMusic` 0x553190, `fadeRadio` 0x556460, each `time` and `volume`
-//! scalars, returning Nothing). The scalar and array setters of `soundVolume` are ours: the
-//! engine's table declares only the getter, and a script that assigns the volume gets the bus
-//! set rather than a script error.
+//! scalars, returning Nothing). `soundVolume` is the getter alone, as in the engine's table: the
+//! bus is set through `fadeSound`.
 //!
 //! All of these are argument global / effect local (`AG EL`, community wiki): they set the
 //! volume of *this* machine's audio and send nothing over the network.
@@ -84,19 +83,11 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     });
 
     // 0x8aaf30: `soundVolume`, the sound bus gain that `fadeSound` set. The engine's table has
-    // the getter alone; the two setters below are ours (see the module doc).
+    // the getter alone.
     r.nular("soundVolume", NUM, |ctx| {
         Ok(Value::Number(
             ctx.host.audio().map_or(1.0, |audio| audio.sound_volume()),
         ))
-    });
-    r.unary("soundVolume", NUM, NOTHING, |ctx, a| {
-        set_sound_volume(ctx, a.as_number().unwrap_or(1.0));
-        Ok(Value::Nothing)
-    });
-    r.unary("soundVolume", ARR, NOTHING, |ctx, a| {
-        set_sound_volume(ctx, first_number(&a).unwrap_or(1.0));
-        Ok(Value::Nothing)
     });
 
     // 0x553190: `time fadeMusic volume`. The World keeps the scripted music volume as well
@@ -166,13 +157,6 @@ pub(super) fn register<H: WorldHost>(r: &mut Registry<H>) {
     });
 }
 
-/// Sets the sound bus gain on a host that has one.
-fn set_sound_volume<H: WorldHost>(ctx: &mut Ctx<'_, H>, volume: f32) {
-    if let Some(audio) = ctx.host.audio() {
-        audio.set_sound_volume(volume);
-    }
-}
-
 /// Starts `name` on a host that has an audio engine.
 fn play_sound<H: WorldHost>(ctx: &mut Ctx<'_, H>, name: &str) {
     if let Some(audio) = ctx.host.audio() {
@@ -190,13 +174,6 @@ fn play_music<H: WorldHost>(ctx: &mut Ctx<'_, H>, name: &str) {
 /// A scalar argument: `nil` (which the VM never passes) reads as 0.
 fn number(value: &Value) -> f32 {
     value.as_number().unwrap_or(0.0)
-}
-
-/// The first number of an array value.
-fn first_number(value: &Value) -> Option<f32> {
-    let array = value.as_array()?;
-    let items = array.borrow();
-    items.first()?.as_number()
 }
 
 /// The first string of an array value.
